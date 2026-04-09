@@ -1,0 +1,154 @@
+project:
+  name: btc-polymarket-v1
+  timezone: UTC
+
+market:
+  exchange: binance
+  pair: BTC/USDT
+  timeframe: 1m
+
+horizons:
+  active: ["5m"]
+  specs:
+    "5m":
+      minutes: 5
+      grid_minutes: 5
+      label_builder: grid_direction
+      feature_profile: core_5m
+      signal_policy: default_edge_policy
+      sizing_plugin: fixed_fraction
+
+dataset:
+  train_start: "2024-01-01"
+  train_end: "2026-12-31"
+  strict_grid_only: true
+  drop_incomplete_candles: true
+  sample_quality_filter:
+    enabled: true
+    min_nz_volume_share_20: 0.60
+    max_flat_share_20: 0.70
+  sample_weighting:
+    enabled: true
+    base_weight: 1.0
+    nz_volume_share_20_weight: 0.50
+    flat_share_20_weight: 0.35
+    abs_ret_mean_20_weight: 0.30
+    abs_ret_mean_20_scale: 0.0015
+    dollar_vol_mean_20_weight: 0.35
+    dollar_vol_mean_20_scale: 5000000.0
+    min_weight: 0.50
+    max_weight: 3.00
+
+features:
+  profiles:
+    core_5m:
+      packs:
+        - momentum
+        - volatility
+        - path_structure
+        - regime
+        - volume
+        - candle_structure
+        - market_quality
+        - htf_context
+        - compression_breakout
+        - asymmetry
+        - flow_proxy
+        - lagged
+        - time
+      momentum_windows: [1, 3, 5, 10, 15]
+      vol_windows: [3, 5, 10, 30]
+      volume_windows: [3, 5, 10, 20]
+      market_quality_windows: [5, 20]
+      slope_windows: [3, 5]
+      range_windows: [3, 5, 10]
+      htf_context_timeframes: [5, 15]
+      htf_context_vol_window: 5
+      htf_context_range_window: 5
+      htf_context_zscore_window: 5
+      htf_context_efficiency_window: 5
+      htf_context_trend_strength_window: 5
+      lagged_feature_names:
+        - ret_1
+        - ret_3
+        - rv_5
+        - signed_volume_1
+        - nz_volume_share_5
+        - flat_share_5
+        - body_pct_1
+        - close_location_1
+      lagged_feature_lags: [1, 2, 3]
+      compression_window: 20
+      compression_rank_window: 100
+      compression_atr_short_window: 5
+      compression_atr_long_window: 20
+      compression_nr_windows: [4, 7]
+      asymmetry_rv_windows: [5, 20]
+      asymmetry_skew_windows: [10, 20]
+      asymmetry_imbalance_windows: [3, 5]
+      flow_volume_window: 3
+      use_vwap_distance: true
+      use_regime_features: true
+      use_time_features: true
+
+model:
+  active_plugin: lightgbm
+  plugins:
+    lightgbm:
+      n_estimators: 700
+      learning_rate: 0.03
+      num_leaves: 15
+      min_child_samples: 100
+      subsample: 1.0
+      colsample_bytree: 0.6
+      reg_alpha: 0.5
+      reg_lambda: 1.0
+      max_depth: 4
+      random_state: 42
+      class_weight: balanced
+    catboost: {}
+
+calibration:
+  active_plugin: isotonic
+
+signal:
+  policies:
+    default_edge_policy:
+      yes_price_min: 0.40
+      yes_price_max: 0.60
+      edge_threshold: 0.03
+
+sizing:
+  active_plugin: fixed_fraction
+  plugins:
+    fixed_fraction:
+      single_position_cap: 0.02
+      max_total_exposure: 0.20
+
+execution:
+  mode: paper
+  active_adapter: polymarket
+  active_mapper: btc_5m_polymarket
+  safeguards:
+    min_liquidity_clob: 1000.0
+    max_spread: 0.10
+    require_best_ask: true
+    enforce_idempotency_in_paper: false
+    idempotency_store_path: ./artifacts/state/live_orders.json
+  polymarket:
+    host: https://clob.polymarket.com
+    gamma_base_url: https://gamma-api.polymarket.com
+    chain_id: 137
+    signature_type: null
+    funder: null
+    private_key_env: POLYMARKET_PRIVATE_KEY
+    api_key_env: POLYMARKET_API_KEY
+    api_secret_env: POLYMARKET_API_SECRET
+    api_passphrase_env: POLYMARKET_API_PASSPHRASE
+    max_pages: 3
+    gamma_timeout_seconds: 5
+
+paths:
+  artifacts_dir: ./artifacts
+  model_dir: ./artifacts/models
+  logs_dir: ./artifacts/logs

@@ -1,0 +1,13 @@
+"""Stable constants shared across training and online inference."""
+
+DEFAULT_SETTINGS_PATH = "config/settings.yaml"
+DEFAULT_LOGGING_PATH = "config/logging.yaml"
+DEFAULT_TIMESTAMP_COLUMN = "timestamp"
+DEFAULT_TARGET_COLUMN = "target"
+DEFAULT_HORIZON_COLUMN = "horizon"
+DEFAULT_ASSET_COLUMN = "asset"
+DEFAULT_GRID_ID_COLUMN = "grid_id"
+DEFAULT_SAMPLE_WEIGHT_COLUMN = "sample_weight"
+DEFAULT_GRID_TIMESTAMP_COLUMN = "grid_t0"
+CORE_FEATURE_VERSION = "v3"
+CORE_LABEL_VERSION = "v1"
