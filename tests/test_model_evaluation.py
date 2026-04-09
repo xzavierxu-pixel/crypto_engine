@@ -3,7 +3,12 @@ from __future__ import annotations
 import pandas as pd
 
 from src.data.dataset_builder import TrainingFrame
-from src.model.evaluation import build_walk_forward_splits, compute_classification_metrics, purged_chronological_split
+from src.model.evaluation import (
+    build_walk_forward_splits,
+    compute_classification_metrics,
+    purged_chronological_split,
+    purged_chronological_time_window_split,
+)
 
 
 def _build_training_frame(length: int = 20) -> TrainingFrame:
@@ -64,3 +69,18 @@ def test_compute_classification_metrics_returns_core_probabilistic_scores() -> N
     assert metrics["positive_rate"] > 0.0
     assert metrics["sample_count"] == 5.0
     assert metrics["roc_auc"] == 1.0
+
+
+def test_purged_chronological_time_window_split_uses_tail_window() -> None:
+    training = _build_training_frame(length=400)
+
+    X_train, X_valid, y_train, y_valid, split = purged_chronological_time_window_split(
+        training,
+        validation_window_days=1,
+        purge_rows=2,
+    )
+
+    assert len(X_train) == len(y_train)
+    assert len(X_valid) == len(y_valid)
+    assert split.train_end < split.valid_start
+    assert split.valid_end == 400

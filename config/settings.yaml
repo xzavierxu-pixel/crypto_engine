@@ -107,7 +107,20 @@ model:
       max_depth: 4
       random_state: 42
       class_weight: balanced
-    catboost: {}
+    catboost:
+      iterations: 700
+      learning_rate: 0.03
+      depth: 5
+      l2_leaf_reg: 5.0
+      random_seed: 42
+      loss_function: Logloss
+      eval_metric: Logloss
+      verbose: false
+    logistic:
+      C: 0.5
+      max_iter: 2000
+      solver: lbfgs
+      random_state: 42
 
 calibration:
   active_plugin: isotonic

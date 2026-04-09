@@ -32,7 +32,13 @@ def main() -> None:
     parser.add_argument("--output-dir", required=True, help="Directory for model artifacts.")
     parser.add_argument("--config", default="config/settings.yaml", help="Path to settings YAML.")
     parser.add_argument("--horizon", default="5m", help="Horizon name to train.")
-    parser.add_argument("--validation-fraction", type=float, default=0.2, help="Holdout fraction for chronological validation.")
+    parser.add_argument("--model-plugin", default=None, help="Optional model plugin override.")
+    parser.add_argument(
+        "--validation-window-days",
+        type=int,
+        default=None,
+        help="Validation window size in days. Defaults to the value in config/settings.yaml.",
+    )
     parser.add_argument("--calibration-fraction", type=float, default=0.15, help="Fraction of the development window reserved for probability calibration.")
     parser.add_argument("--purge-rows", type=int, default=1, help="Grid rows removed between train and validation splits.")
     args = parser.parse_args()
@@ -40,12 +46,18 @@ def main() -> None:
     settings = load_settings(args.config)
     source = _load_input(Path(args.input))
     training = build_training_frame(source, settings, horizon_name=args.horizon)
+    validation_window_days = (
+        args.validation_window_days
+        if args.validation_window_days is not None
+        else settings.dataset.validation_window_days
+    )
     artifacts = train_model(
         training,
         settings,
-        validation_fraction=args.validation_fraction,
+        validation_window_days=validation_window_days,
         calibration_fraction=args.calibration_fraction,
         purge_rows=args.purge_rows,
+        model_plugin_name=args.model_plugin,
     )
 
     output_dir = Path(args.output_dir)
@@ -62,7 +74,7 @@ def main() -> None:
         "horizon": args.horizon,
         "feature_columns": artifacts.feature_columns,
         "feature_count": len(artifacts.feature_columns),
-        "model_plugin": settings.model.active_plugin,
+        "model_plugin": args.model_plugin or settings.model.active_plugin,
         "calibration_plugin": artifacts.calibrator.name,
         "config_hash": hash_config(settings),
         "train_row_count": len(training.frame),
@@ -76,7 +88,7 @@ def main() -> None:
             "max": float(training.sample_weight.max()) if training.sample_weight is not None else None,
             "mean": float(training.sample_weight.mean()) if training.sample_weight is not None else None,
         },
-        "validation_fraction": args.validation_fraction,
+        "validation_window_days": validation_window_days,
         "calibration_fraction": args.calibration_fraction,
         "purge_rows": args.purge_rows,
         "raw_validation_metrics": artifacts.raw_validation_metrics,

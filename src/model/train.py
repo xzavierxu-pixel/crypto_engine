@@ -15,6 +15,7 @@ from src.model.evaluation import (
     build_walk_forward_splits,
     compute_classification_metrics,
     purged_chronological_split,
+    purged_chronological_time_window_split,
     summarize_walk_forward,
 )
 from src.model.registry import create_model_plugin
@@ -47,6 +48,8 @@ def _build_calibration_oof_predictions(
     settings: Settings,
     calibration_fraction: float,
     purge_rows: int,
+    model_plugin_name: str | None = None,
+    model_plugin_params: dict | None = None,
 ) -> tuple[pd.Series, pd.Series]:
     if len(training.frame) < 200:
         return pd.Series(dtype="float64"), pd.Series(dtype="int64")
@@ -69,7 +72,11 @@ def _build_calibration_oof_predictions(
         fold_training = _slice_training_frame(training, split.train_slice)
         X_fold_valid = training.X.iloc[split.valid_slice]
         y_fold_valid = training.y.astype(int).iloc[split.valid_slice]
-        fold_model = create_model_plugin(settings)
+        fold_model = create_model_plugin(
+            settings,
+            plugin_name=model_plugin_name,
+            plugin_params=model_plugin_params,
+        )
         fold_model.fit(
             fold_training.X,
             fold_training.y.astype(int),
@@ -117,14 +124,22 @@ def _fit_model_and_calibrator(
     settings: Settings,
     calibration_fraction: float,
     purge_rows: int,
+    model_plugin_name: str | None = None,
+    model_plugin_params: dict | None = None,
 ) -> tuple[ModelPlugin, CalibrationPlugin]:
-    model = create_model_plugin(settings)
+    model = create_model_plugin(
+        settings,
+        plugin_name=model_plugin_name,
+        plugin_params=model_plugin_params,
+    )
     model.fit(training.X, training.y.astype(int), sample_weight=training.sample_weight)
     raw_calibration_proba, calibration_targets = _build_calibration_oof_predictions(
         training,
         settings,
         calibration_fraction=calibration_fraction,
         purge_rows=purge_rows,
+        model_plugin_name=model_plugin_name,
+        model_plugin_params=model_plugin_params,
     )
     calibrator = _select_calibrator(settings, raw_calibration_proba, calibration_targets)
     return model, calibrator
@@ -133,14 +148,16 @@ def _fit_model_and_calibrator(
 def train_model(
     training: TrainingFrame,
     settings: Settings,
-    validation_fraction: float = 0.2,
+    validation_window_days: int = 30,
     calibration_fraction: float = 0.15,
     purge_rows: int = 1,
     threshold: float = 0.5,
+    model_plugin_name: str | None = None,
+    model_plugin_params: dict | None = None,
 ) -> TrainingArtifacts:
-    _, X_valid, _, y_valid, split = purged_chronological_split(
+    _, X_valid, _, y_valid, split = purged_chronological_time_window_split(
         training,
-        validation_fraction=validation_fraction,
+        validation_window_days=validation_window_days,
         purge_rows=purge_rows,
     )
 
@@ -150,6 +167,8 @@ def train_model(
         settings,
         calibration_fraction=calibration_fraction,
         purge_rows=purge_rows,
+        model_plugin_name=model_plugin_name,
+        model_plugin_params=model_plugin_params,
     )
 
     raw_valid_proba = model.predict_proba(X_valid)
@@ -181,6 +200,8 @@ def train_model(
             settings,
             calibration_fraction=calibration_fraction,
             purge_rows=purge_rows,
+            model_plugin_name=model_plugin_name,
+            model_plugin_params=model_plugin_params,
         )
         raw_fold_proba = fold_model.predict_proba(X_fold_valid)
         calibrated_fold_proba = fold_calibrator.transform(raw_fold_proba)

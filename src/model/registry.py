@@ -4,22 +4,30 @@ from src.core.config import Settings
 from src.model.base import ModelPlugin
 from src.model.catboost_plugin import CatBoostClassifierPlugin
 from src.model.lightgbm_plugin import LightGBMClassifierPlugin
+from src.model.logistic_plugin import LogisticRegressionPlugin
 
 
 MODEL_PLUGINS: dict[str, type[ModelPlugin]] = {
     "lightgbm": LightGBMClassifierPlugin,
     "catboost": CatBoostClassifierPlugin,
+    "logistic": LogisticRegressionPlugin,
 }
 
 
-def create_model_plugin(settings: Settings, plugin_name: str | None = None) -> ModelPlugin:
+def create_model_plugin(
+    settings: Settings,
+    plugin_name: str | None = None,
+    plugin_params: dict | None = None,
+) -> ModelPlugin:
     target = plugin_name or settings.model.active_plugin
     try:
         plugin_cls = MODEL_PLUGINS[target]
     except KeyError as exc:
         raise KeyError(f"Unknown model plugin '{target}'.") from exc
-    plugin_params = settings.model.plugins.get(target, {})
-    return plugin_cls(**plugin_params)
+    resolved_params = dict(settings.model.plugins.get(target, {}))
+    if plugin_params:
+        resolved_params.update(plugin_params)
+    return plugin_cls(**resolved_params)
 
 
 def load_model_plugin(plugin_name: str, path: str) -> ModelPlugin:

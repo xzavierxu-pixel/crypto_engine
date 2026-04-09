@@ -34,6 +34,49 @@ class WalkForwardFoldResult:
     validation_probabilities: pd.Series
 
 
+def purged_chronological_time_window_split(
+    training: TrainingFrame,
+    validation_window_days: int,
+    purge_rows: int = 0,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, TimeSplit]:
+    if validation_window_days <= 0:
+        raise ValueError("validation_window_days must be > 0.")
+    if purge_rows < 0:
+        raise ValueError("purge_rows must be >= 0.")
+
+    frame = training.frame
+    if frame.empty:
+        raise ValueError("Training frame is empty.")
+
+    timestamps = pd.to_datetime(frame["timestamp"], utc=True)
+    valid_start_ts = timestamps.max() - pd.Timedelta(days=validation_window_days)
+    valid_start = int(timestamps.searchsorted(valid_start_ts, side="left"))
+    train_end = max(valid_start - purge_rows, 0)
+
+    if valid_start <= 0 or valid_start >= len(frame):
+        raise ValueError("Training frame is too small for the requested validation window.")
+    if train_end <= 0:
+        raise ValueError("Training frame is too small for the requested validation window and purge.")
+
+    split = TimeSplit(
+        train_start=0,
+        train_end=train_end,
+        valid_start=valid_start,
+        valid_end=len(frame),
+        purge_rows=purge_rows,
+    )
+
+    X = training.X
+    y = training.y.astype(int)
+    return (
+        X.iloc[split.train_slice],
+        X.iloc[split.valid_slice],
+        y.iloc[split.train_slice],
+        y.iloc[split.valid_slice],
+        split,
+    )
+
+
 def purged_chronological_split(
     training: TrainingFrame,
     validation_fraction: float = 0.2,
