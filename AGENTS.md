@@ -34,3 +34,11 @@ Implement a BTC/USDT 5-minute direction prediction system using Freqtrade/FreqAI
 - LightGBM baseline
 - unified settings file
 - shared core + model + thin strategy + execution stubs + tests
+
+## Shell tooling rule
+- Prefer `rtk` for verbose shell commands.
+- Before declaring `rtk` unavailable, first verify it with `where.exe rtk` and `rtk --version`.
+- If `where.exe rtk` returns a valid path or `rtk --version` succeeds, continue using `rtk`.
+- Only fall back to raw PowerShell commands after those checks fail in the current shell session.
+
+@RTK.md

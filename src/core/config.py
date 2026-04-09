@@ -49,6 +49,7 @@ class HorizonsConfig:
 class DatasetConfig:
     train_start: str
     train_end: str
+    validation_window_days: int
     strict_grid_only: bool
     drop_incomplete_candles: bool
     sample_quality_filter: dict[str, Any] = field(default_factory=dict)

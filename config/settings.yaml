@@ -21,6 +21,7 @@ horizons:
 dataset:
   train_start: "2024-01-01"
   train_end: "2026-12-31"
+  validation_window_days: 30
   strict_grid_only: true
   drop_incomplete_candles: true
   sample_quality_filter:
