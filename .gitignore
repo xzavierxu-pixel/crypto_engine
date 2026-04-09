@@ -1,6 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
+*.py[codz]
 *$py.class
 
 # C extensions
@@ -20,25 +20,34 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Pytest
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.hypothesis/
 .pytest_cache/
-pytest_debug.log
-
-# Virtual environments
-venv/
-.venv/
-env/
-ENV/
-
-# Secrets and environment variables
-.env
-.env.*
-*.key
-config/freqtrade_config.json
+cover/
 
 # Project specific: large artifacts, models, and datasets
 artifacts/
@@ -50,7 +59,32 @@ artifacts/
 !docs/*.json
 !src/**/*.json
 
+# Secrets and environment variables
+.env
+.env.*
+*.key
+config/freqtrade_config.json
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
 # Logs
 *.log
 logs/
 freqtrade.log
+
+# Editor & AI Tools
+.idea/
+.vscode/
+.cursorignore
+.cursorindexingignore
+
+# Other
+.mypy_cache/
+.ruff_cache/
+__pypackages__/
