@@ -28,4 +28,50 @@ def test_grid_direction_label_uses_grid_open_and_future_close() -> None:
     ]
     assert labeled.loc[0, "target"] == 1.0
     assert labeled.loc[1, "target"] == 1.0
-    assert labeled.loc[0, "label_version"] == "v1"
+    assert labeled.loc[0, "label_version"] == "v2"
+
+
+def test_grid_direction_label_supports_15m_horizon() -> None:
+    settings = load_settings()
+    horizon = get_horizon_spec(settings, "15m")
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=32, freq="1min"),
+            "open": [100 + index for index in range(32)],
+            "high": [101 + index for index in range(32)],
+            "low": [99 + index for index in range(32)],
+            "close": [100 + index for index in range(32)],
+        }
+    )
+
+    labeled = GridDirectionLabelBuilder().build(frame, settings, horizon)
+
+    assert list(labeled["timestamp"]) == [
+        pd.Timestamp("2024-01-01T12:00:00Z"),
+        pd.Timestamp("2024-01-01T12:15:00Z"),
+        pd.Timestamp("2024-01-01T12:30:00Z"),
+    ]
+    assert labeled.loc[0, "target"] == 1.0
+    assert labeled.loc[1, "target"] == 1.0
+    assert pd.isna(labeled.loc[2, "target"])
+    assert (labeled["horizon"] == "15m").all()
+
+
+def test_grid_direction_label_applies_threshold_multiplier_for_5m_v2() -> None:
+    settings = load_settings()
+    horizon = get_horizon_spec(settings, "5m")
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=10, freq="1min"),
+            "open": [100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0],
+            "high": [101.0] * 10,
+            "low": [99.0] * 10,
+            "close": [100.0, 100.05, 100.06, 100.07, 100.08, 100.09, 100.0, 100.0, 100.0, 100.0],
+        }
+    )
+
+    labeled = GridDirectionLabelBuilder().build(frame, settings, horizon)
+
+    assert labeled.loc[0, "target"] == 0.0
+    assert labeled.loc[1, "target"] == 0.0
+    assert labeled.loc[0, "label_version"] == "v2"

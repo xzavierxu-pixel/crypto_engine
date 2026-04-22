@@ -4,6 +4,11 @@ from src.features.asymmetry import AsymmetryFeaturePack
 from src.features.base import FeaturePack
 from src.features.candle_structure import CandleStructureFeaturePack
 from src.features.compression_breakout import CompressionBreakoutFeaturePack
+from src.features.derivatives_basis import DerivativesBasisFeaturePack
+from src.features.derivatives_book_ticker import DerivativesBookTickerFeaturePack
+from src.features.derivatives_funding import DerivativesFundingFeaturePack
+from src.features.derivatives_oi import DerivativesOIFeaturePack
+from src.features.derivatives_options import DerivativesOptionsFeaturePack
 from src.features.flow_proxy import FlowProxyFeaturePack
 from src.features.htf_context import HTFContextFeaturePack
 from src.features.lagged import LaggedFeaturePack
@@ -30,6 +35,11 @@ FEATURE_PACKS: dict[str, FeaturePack] = {
     "flow_proxy": FlowProxyFeaturePack(),
     "lagged": LaggedFeaturePack(),
     "time": TimeFeaturePack(),
+    "derivatives_funding": DerivativesFundingFeaturePack(),
+    "derivatives_basis": DerivativesBasisFeaturePack(),
+    "derivatives_book_ticker": DerivativesBookTickerFeaturePack(),
+    "derivatives_oi": DerivativesOIFeaturePack(),
+    "derivatives_options": DerivativesOptionsFeaturePack(),
 }
 
 

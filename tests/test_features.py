@@ -44,4 +44,4 @@ def test_feature_builder_uses_only_information_before_t0() -> None:
     assert "upside_rv_5" in feature_frame.columns
     assert "clv_1" in feature_frame.columns
     assert "ret_1_lag1" in feature_frame.columns
-    assert feature_frame["feature_version"].eq("v3").all()
+    assert feature_frame["feature_version"].eq("v4").all()

@@ -164,7 +164,7 @@ class BTCGridFreqAIStrategy(IStrategy):
             dataframe.loc[
                 np.logical_and.reduce(conditions),
                 ["enter_long", "enter_tag"],
-            ] = (1, "freqai_up_5m_prob")
+            ] = (1, f"freqai_up_{self.horizon_name}_prob")
         return dataframe
 
     def populate_exit_trend(self, dataframe: pd.DataFrame, metadata: dict) -> pd.DataFrame:

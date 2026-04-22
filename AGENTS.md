@@ -35,6 +35,17 @@ Implement a BTC/USDT 5-minute direction prediction system using Freqtrade/FreqAI
 - unified settings file
 - shared core + model + thin strategy + execution stubs + tests
 
+## Derivatives integration rules
+- Keep the main modeling pipeline spot-centered on BTC/USDT.
+- Do not convert the whole system into a futures-first bot.
+- Use derivatives data as an additional raw input layer.
+- Load and normalize raw derivatives data in `src/data/derivatives/`.
+- Build derivatives features only through shared feature packs.
+- Execution must not read derivatives raw data.
+- Signal layer may recompute features only via the shared builder.
+- Phase 1 scope is funding + basis only.
+- OI and options may exist as stubs but not full implementations in phase 1.
+
 ## Shell tooling rule
 - Prefer `rtk` for verbose shell commands.
 - Before declaring `rtk` unavailable, first verify it with `where.exe rtk` and `rtk --version`.

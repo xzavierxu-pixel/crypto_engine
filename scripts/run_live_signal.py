@@ -12,6 +12,7 @@ if str(REPO_ROOT) not in sys.path:
 from src.calibration.registry import load_calibration_plugin
 from src.core.config import load_settings
 from src.core.schemas import RiskState
+from src.data.derivatives.feature_store import load_derivatives_frame_from_settings
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
 from src.execution.adapters.polymarket import PolymarketExecutionAdapter
 from src.execution.audit import (
@@ -87,6 +88,17 @@ def main() -> None:
     parser.add_argument("--print-json", action="store_true", help="Print JSON summary.")
     parser.add_argument("--config", default="config/settings.yaml", help="Path to settings YAML.")
     parser.add_argument("--horizon", default="5m", help="Horizon name to run.")
+    parser.add_argument("--funding-input", help="Optional funding raw input override.")
+    parser.add_argument("--basis-input", help="Optional basis raw input override.")
+    parser.add_argument("--oi-input", help="Optional OI raw input override.")
+    parser.add_argument("--options-input", help="Optional options raw input override.")
+    parser.add_argument("--book-ticker-input", help="Optional bookTicker raw input override.")
+    parser.add_argument(
+        "--derivatives-path-mode",
+        choices=["latest", "archive"],
+        default=None,
+        help="Override derivatives path mode. Defaults to settings.derivatives.path_mode.",
+    )
     parser.add_argument(
         "--mode",
         choices=["paper", "live"],
@@ -97,6 +109,15 @@ def main() -> None:
     settings = load_settings(args.config)
     mode = args.mode or settings.execution.mode
     source = _load_input(Path(args.input))
+    derivatives_frame = load_derivatives_frame_from_settings(
+        settings,
+        funding_path=args.funding_input,
+        basis_path=args.basis_input,
+        oi_path=args.oi_input,
+        options_path=args.options_input,
+        book_ticker_path=args.book_ticker_input,
+        path_mode=args.derivatives_path_mode,
+    )
     model = load_model_plugin(settings.model.active_plugin, args.model)
     calibrator = load_calibration_plugin(settings.calibration.active_plugin, args.calibrator)
     signal_service = SignalService(settings, model=model, calibrator=calibrator)
@@ -105,7 +126,11 @@ def main() -> None:
     audit_service = AuditService(args.audit_log)
     idempotency_store = IdempotencyStore(settings.execution.safeguards["idempotency_store_path"])
 
-    signal = signal_service.predict_from_latest_frame(source, horizon_name=args.horizon)
+    signal = signal_service.predict_from_latest_frame(
+        source,
+        horizon_name=args.horizon,
+        derivatives_frame=derivatives_frame,
+    )
     audit_service.append(signal_generated_event(signal))
 
     market = mapper.map_signal(signal)

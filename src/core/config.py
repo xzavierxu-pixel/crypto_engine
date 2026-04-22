@@ -30,6 +30,7 @@ class HorizonSpecConfig:
     feature_profile: str
     signal_policy: str | None = None
     sizing_plugin: str | None = None
+    label_params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -49,9 +50,9 @@ class HorizonsConfig:
 class DatasetConfig:
     train_start: str
     train_end: str
-    validation_window_days: int
-    strict_grid_only: bool
-    drop_incomplete_candles: bool
+    validation_window_days: int = 30
+    strict_grid_only: bool = True
+    drop_incomplete_candles: bool = True
     sample_quality_filter: dict[str, Any] = field(default_factory=dict)
     sample_weighting: dict[str, Any] = field(default_factory=dict)
 
@@ -85,6 +86,99 @@ class FeatureProfileConfig:
     use_vwap_distance: bool = False
     use_regime_features: bool = False
     use_time_features: bool = False
+
+
+@dataclass(frozen=True)
+class DerivativesFundingConfig:
+    enabled: bool = False
+    path: str | None = None
+    archive_path: str | None = None
+    source: str | None = None
+    ffill_until_next: bool = True
+    zscore_window: int = 720
+
+
+@dataclass(frozen=True)
+class DerivativesBasisConfig:
+    enabled: bool = False
+    path: str | None = None
+    archive_path: str | None = None
+    source: str | None = None
+    use_mark_price: bool = True
+    use_index_price: bool = True
+    use_premium_index: bool = True
+    zscore_window: int = 720
+
+
+@dataclass(frozen=True)
+class DerivativesOIConfig:
+    enabled: bool = False
+    path: str | None = None
+    archive_path: str | None = None
+    frequency: str | None = None
+    zscore_window: int = 288
+    change_windows: list[int] = field(default_factory=lambda: [5, 60])
+    slope_window: int = 5
+
+
+@dataclass(frozen=True)
+class DerivativesOptionsConfig:
+    enabled: bool = False
+    path: str | None = None
+    archive_path: str | None = None
+    source: str | None = None
+    zscore_window: int = 288
+    change_window: int = 60
+    regime_zscore_threshold: float = 1.0
+
+
+@dataclass(frozen=True)
+class DerivativesBookTickerConfig:
+    enabled: bool = False
+    path: str | None = None
+    archive_path: str | None = None
+    source: str | None = None
+    zscore_window: int = 288
+
+
+@dataclass(frozen=True)
+class DerivativesConfig:
+    enabled: bool = False
+    exchange: str = ""
+    symbol_spot: str = ""
+    symbol_perp: str = ""
+    path_mode: str = "latest"
+    funding: DerivativesFundingConfig = field(default_factory=DerivativesFundingConfig)
+    basis: DerivativesBasisConfig = field(default_factory=DerivativesBasisConfig)
+    oi: DerivativesOIConfig = field(default_factory=DerivativesOIConfig)
+    options: DerivativesOptionsConfig = field(default_factory=DerivativesOptionsConfig)
+    book_ticker: DerivativesBookTickerConfig = field(default_factory=DerivativesBookTickerConfig)
+
+
+@dataclass(frozen=True)
+class DataBackfillMarketConfig:
+    enabled: bool = False
+    symbols: list[str] = field(default_factory=list)
+    data_types: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class DataBackfillOptionConfig:
+    enabled: bool = False
+    symbols: dict[str, list[str]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class DataBackfillConfig:
+    provider: str = ""
+    start_date: str = ""
+    use_monthly_for_full_months: bool = True
+    use_daily_for_open_month_tail: bool = True
+    verify_checksum: bool = True
+    spot: DataBackfillMarketConfig = field(default_factory=DataBackfillMarketConfig)
+    futures_um: DataBackfillMarketConfig = field(default_factory=DataBackfillMarketConfig)
+    futures_cm: DataBackfillMarketConfig = field(default_factory=DataBackfillMarketConfig)
+    option: DataBackfillOptionConfig = field(default_factory=DataBackfillOptionConfig)
 
 
 @dataclass(frozen=True)
@@ -132,6 +226,8 @@ class Settings:
     horizons: HorizonsConfig
     dataset: DatasetConfig
     features: FeaturesConfig
+    derivatives: DerivativesConfig
+    data_backfill: DataBackfillConfig
     model: PluginGroupConfig
     calibration: PluginGroupConfig
     signal: SignalConfig
@@ -154,12 +250,37 @@ class Settings:
                 for name, profile_payload in payload["features"]["profiles"].items()
             }
         )
+        derivatives_payload = payload.get("derivatives", {})
+        data_backfill_payload = payload.get("data_backfill", {})
         return cls(
             project=ProjectConfig(**payload["project"]),
             market=MarketConfig(**payload["market"]),
             horizons=horizons,
             dataset=DatasetConfig(**payload["dataset"]),
             features=features,
+            derivatives=DerivativesConfig(
+                enabled=derivatives_payload.get("enabled", False),
+                exchange=derivatives_payload.get("exchange", ""),
+                symbol_spot=derivatives_payload.get("symbol_spot", ""),
+                symbol_perp=derivatives_payload.get("symbol_perp", ""),
+                path_mode=derivatives_payload.get("path_mode", "latest"),
+                funding=DerivativesFundingConfig(**derivatives_payload.get("funding", {})),
+                basis=DerivativesBasisConfig(**derivatives_payload.get("basis", {})),
+                oi=DerivativesOIConfig(**derivatives_payload.get("oi", {})),
+                options=DerivativesOptionsConfig(**derivatives_payload.get("options", {})),
+                book_ticker=DerivativesBookTickerConfig(**derivatives_payload.get("book_ticker", {})),
+            ),
+            data_backfill=DataBackfillConfig(
+                provider=data_backfill_payload.get("provider", ""),
+                start_date=data_backfill_payload.get("start_date", ""),
+                use_monthly_for_full_months=data_backfill_payload.get("use_monthly_for_full_months", True),
+                use_daily_for_open_month_tail=data_backfill_payload.get("use_daily_for_open_month_tail", True),
+                verify_checksum=data_backfill_payload.get("verify_checksum", True),
+                spot=DataBackfillMarketConfig(**data_backfill_payload.get("spot", {})),
+                futures_um=DataBackfillMarketConfig(**data_backfill_payload.get("futures_um", {})),
+                futures_cm=DataBackfillMarketConfig(**data_backfill_payload.get("futures_cm", {})),
+                option=DataBackfillOptionConfig(**data_backfill_payload.get("option", {})),
+            ),
             model=PluginGroupConfig(**payload["model"]),
             calibration=PluginGroupConfig(**payload["calibration"]),
             signal=SignalConfig(**payload["signal"]),

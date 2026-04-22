@@ -101,3 +101,23 @@ def test_mapper_falls_back_to_events_scan_when_slug_lookup_misses() -> None:
     assert result["yes_token_id"] == "up-token"
     assert result["no_token_id"] == "down-token"
     assert any(url.endswith("/events") for url, _ in session.calls)
+
+
+def test_mapper_rejects_non_5m_signal() -> None:
+    settings = load_settings()
+    mapper = BTC5mPolymarketMapper(settings, session=FakeSession([], []))
+    signal = Signal(
+        asset="BTC/USDT",
+        horizon="15m",
+        t0=datetime(2026, 4, 8, 13, 45, tzinfo=UTC),
+        p_up=0.57,
+        model_version="m1",
+        feature_version="v1",
+    )
+
+    try:
+        mapper.map_signal(signal)
+    except ValueError as exc:
+        assert "only supports 5m signals" in str(exc)
+    else:
+        raise AssertionError("Expected the 5m mapper to reject a 15m signal.")

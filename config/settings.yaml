@@ -8,14 +8,27 @@ market:
   timeframe: 1m
 
 horizons:
-  active: ["5m"]
+  active: ["5m", "15m"]
   specs:
     "5m":
       minutes: 5
       grid_minutes: 5
       label_builder: grid_direction
+      label_params:
+        threshold_multiplier: 1.001
+        label_version: v2
       feature_profile: core_5m
       signal_policy: default_edge_policy
+      sizing_plugin: fixed_fraction
+    "15m":
+      minutes: 15
+      grid_minutes: 15
+      label_builder: grid_direction
+      label_params:
+        threshold_multiplier: 1.0
+        label_version: v1
+      feature_profile: core_15m
+      signal_policy: default_edge_policy_15m
       sizing_plugin: fixed_fraction
 
 dataset:
@@ -57,6 +70,11 @@ features:
         - flow_proxy
         - lagged
         - time
+        - derivatives_funding
+        - derivatives_basis
+        - derivatives_book_ticker
+        - derivatives_oi
+        - derivatives_options
       momentum_windows: [1, 3, 5, 10, 15]
       vol_windows: [3, 5, 10, 30]
       volume_windows: [3, 5, 10, 20]
@@ -91,6 +109,167 @@ features:
       use_vwap_distance: true
       use_regime_features: true
       use_time_features: true
+    core_15m:
+      packs:
+        - momentum
+        - volatility
+        - path_structure
+        - regime
+        - volume
+        - candle_structure
+        - market_quality
+        - htf_context
+        - compression_breakout
+        - asymmetry
+        - flow_proxy
+        - lagged
+        - time
+        - derivatives_funding
+        - derivatives_basis
+        - derivatives_book_ticker
+        - derivatives_oi
+        - derivatives_options
+      momentum_windows: [1, 3, 5, 10, 15]
+      vol_windows: [3, 5, 10, 30]
+      volume_windows: [3, 5, 10, 20]
+      market_quality_windows: [5, 20]
+      slope_windows: [3, 5]
+      range_windows: [3, 5, 10]
+      htf_context_timeframes: [5, 15]
+      htf_context_vol_window: 5
+      htf_context_range_window: 5
+      htf_context_zscore_window: 5
+      htf_context_efficiency_window: 5
+      htf_context_trend_strength_window: 5
+      lagged_feature_names:
+        - ret_1
+        - ret_3
+        - rv_5
+        - signed_volume_1
+        - nz_volume_share_5
+        - flat_share_5
+        - body_pct_1
+        - close_location_1
+      lagged_feature_lags: [1, 2, 3]
+      compression_window: 20
+      compression_rank_window: 100
+      compression_atr_short_window: 5
+      compression_atr_long_window: 20
+      compression_nr_windows: [4, 7]
+      asymmetry_rv_windows: [5, 20]
+      asymmetry_skew_windows: [10, 20]
+      asymmetry_imbalance_windows: [3, 5]
+      flow_volume_window: 3
+      use_vwap_distance: true
+      use_regime_features: true
+      use_time_features: true
+
+derivatives:
+  enabled: false
+  exchange: binance
+  symbol_spot: BTC/USDT
+  symbol_perp: BTC/USDT:USDT
+  path_mode: latest
+  funding:
+    enabled: true
+    path: ./artifacts/data/derivatives/binance_btcusdt_funding.parquet
+    archive_path: ./artifacts/data/binance_public/normalized
+    source: local_file
+    ffill_until_next: true
+    zscore_window: 720
+  basis:
+    enabled: true
+    path: ./artifacts/data/derivatives/binance_btcusdt_basis.parquet
+    archive_path: ./artifacts/data/binance_public/normalized
+    source: local_file
+    use_mark_price: true
+    use_index_price: true
+    use_premium_index: true
+    zscore_window: 720
+  oi:
+    enabled: false
+    path: null
+    archive_path: ./artifacts/data/binance_public/normalized
+    frequency: 5m
+    zscore_window: 288
+    change_windows: [5, 60]
+    slope_window: 5
+  options:
+    enabled: false
+    path: null
+    archive_path: ./artifacts/data/binance_public/normalized
+    source: local_file
+    zscore_window: 288
+    change_window: 60
+    regime_zscore_threshold: 1.0
+  book_ticker:
+    enabled: false
+    path: null
+    archive_path: ./artifacts/data/binance_public/normalized
+    source: local_file
+    zscore_window: 288
+
+data_backfill:
+  provider: binance_public
+  start_date: "2026-01-01"
+  use_monthly_for_full_months: true
+  use_daily_for_open_month_tail: true
+  verify_checksum: true
+
+  spot:
+    enabled: true
+    symbols: ["BTCUSDT"]
+    data_types:
+      klines:
+        intervals: ["1m"]
+      aggTrades: {}
+      trades: {}
+
+  futures_um:
+    enabled: true
+    symbols: ["BTCUSDT"]
+    data_types:
+      klines:
+        intervals: ["1m"]
+      markPriceKlines:
+        intervals: ["1m"]
+      indexPriceKlines:
+        intervals: ["1m"]
+      premiumIndexKlines:
+        intervals: ["1m"]
+      fundingRate: {}
+      bookTicker: {}
+      metrics: {}
+      aggTrades: {}
+      trades: {}
+      bookDepth: {}
+      liquidationSnapshot: {}
+
+  futures_cm:
+    enabled: true
+    symbols: ["BTCUSD_PERP"]
+    data_types:
+      klines:
+        intervals: ["1m"]
+      markPriceKlines:
+        intervals: ["1m"]
+      indexPriceKlines:
+        intervals: ["1m"]
+      premiumIndexKlines:
+        intervals: ["1m"]
+      fundingRate: {}
+      bookTicker: {}
+      metrics: {}
+      aggTrades: {}
+      trades: {}
+      bookDepth: {}
+      liquidationSnapshot: {}
+
+  option:
+    enabled: true
+    symbols:
+      BVOLIndex: ["BTCBVOLUSDT"]
+      EOHSummary: ["BTCUSDT"]
 
 model:
   active_plugin: lightgbm
@@ -128,6 +307,10 @@ calibration:
 signal:
   policies:
     default_edge_policy:
+      yes_price_min: 0.40
+      yes_price_max: 0.60
+      edge_threshold: 0.03
+    default_edge_policy_15m:
       yes_price_min: 0.40
       yes_price_max: 0.60
       edge_threshold: 0.03

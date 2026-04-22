@@ -116,6 +116,7 @@ def build_training_frame(
     raw_df: pd.DataFrame,
     settings: Settings,
     horizon_name: str | None = None,
+    derivatives_frame: pd.DataFrame | None = None,
 ) -> TrainingFrame:
     horizon = get_horizon_spec(settings, horizon_name)
     normalized = normalize_ohlcv_frame(raw_df, timestamp_column=DEFAULT_TIMESTAMP_COLUMN, require_volume=False)
@@ -125,6 +126,7 @@ def build_training_frame(
         settings,
         horizon_name=horizon.name,
         select_grid_only=True,
+        derivatives_frame=derivatives_frame,
     )
     label_builder = get_label_builder(horizon.label_builder)
     label_frame = label_builder.build(normalized, settings, horizon, select_grid_only=True)

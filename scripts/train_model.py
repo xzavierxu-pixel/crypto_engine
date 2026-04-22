@@ -10,8 +10,13 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.core.config import load_settings
+from src.core.constants import DERIVATIVES_SCHEMA_VERSION
 from src.core.versioning import hash_config
 from src.data.dataset_builder import build_training_frame
+from src.data.derivatives.feature_store import (
+    load_derivatives_frame_from_settings,
+    resolve_derivatives_paths,
+)
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
 from src.model.train import train_model
 
@@ -33,6 +38,17 @@ def main() -> None:
     parser.add_argument("--config", default="config/settings.yaml", help="Path to settings YAML.")
     parser.add_argument("--horizon", default="5m", help="Horizon name to train.")
     parser.add_argument("--model-plugin", default=None, help="Optional model plugin override.")
+    parser.add_argument("--funding-input", help="Optional funding raw input override.")
+    parser.add_argument("--basis-input", help="Optional basis raw input override.")
+    parser.add_argument("--oi-input", help="Optional OI raw input override.")
+    parser.add_argument("--options-input", help="Optional options raw input override.")
+    parser.add_argument("--book-ticker-input", help="Optional bookTicker raw input override.")
+    parser.add_argument(
+        "--derivatives-path-mode",
+        choices=["latest", "archive"],
+        default=None,
+        help="Override derivatives path mode. Defaults to settings.derivatives.path_mode.",
+    )
     parser.add_argument(
         "--validation-window-days",
         type=int,
@@ -45,7 +61,30 @@ def main() -> None:
 
     settings = load_settings(args.config)
     source = _load_input(Path(args.input))
-    training = build_training_frame(source, settings, horizon_name=args.horizon)
+    derivatives_paths = resolve_derivatives_paths(
+        settings,
+        funding_path=args.funding_input,
+        basis_path=args.basis_input,
+        oi_path=args.oi_input,
+        options_path=args.options_input,
+        book_ticker_path=args.book_ticker_input,
+        path_mode=args.derivatives_path_mode,
+    )
+    derivatives_frame = load_derivatives_frame_from_settings(
+        settings,
+        funding_path=args.funding_input,
+        basis_path=args.basis_input,
+        oi_path=args.oi_input,
+        options_path=args.options_input,
+        book_ticker_path=args.book_ticker_input,
+        path_mode=args.derivatives_path_mode,
+    )
+    training = build_training_frame(
+        source,
+        settings,
+        horizon_name=args.horizon,
+        derivatives_frame=derivatives_frame,
+    )
     validation_window_days = (
         args.validation_window_days
         if args.validation_window_days is not None
@@ -88,9 +127,27 @@ def main() -> None:
             "max": float(training.sample_weight.max()) if training.sample_weight is not None else None,
             "mean": float(training.sample_weight.mean()) if training.sample_weight is not None else None,
         },
+        "derivatives": {
+            "enabled": settings.derivatives.enabled,
+            "schema_version": DERIVATIVES_SCHEMA_VERSION if settings.derivatives.enabled else None,
+            "path_mode": derivatives_paths["path_mode"],
+            "funding_enabled": settings.derivatives.funding.enabled,
+            "basis_enabled": settings.derivatives.basis.enabled,
+            "oi_enabled": settings.derivatives.oi.enabled,
+            "options_enabled": settings.derivatives.options.enabled,
+            "book_ticker_enabled": settings.derivatives.book_ticker.enabled,
+            "funding_path": derivatives_paths["funding_path"],
+            "basis_path": derivatives_paths["basis_path"],
+            "oi_path": derivatives_paths["oi_path"],
+            "options_path": derivatives_paths["options_path"],
+            "book_ticker_path": derivatives_paths["book_ticker_path"],
+        },
         "validation_window_days": validation_window_days,
         "calibration_fraction": args.calibration_fraction,
         "purge_rows": args.purge_rows,
+        "train_metrics": artifacts.train_metrics,
+        "train_window": artifacts.train_window,
+        "validation_window": artifacts.validation_window,
         "raw_validation_metrics": artifacts.raw_validation_metrics,
         "validation_metrics": artifacts.validation_metrics,
         "walk_forward_summary": artifacts.walk_forward_summary,

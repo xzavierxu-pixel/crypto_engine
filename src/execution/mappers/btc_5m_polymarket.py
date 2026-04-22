@@ -143,6 +143,10 @@ class BTC5mPolymarketMapper(MarketMapper):
         }
 
     def map_signal(self, signal: Signal) -> dict:
+        if signal.horizon != "5m":
+            raise ValueError(
+                f"{self.name} only supports 5m signals, received horizon='{signal.horizon}'."
+            )
         window_start, window_end = self.get_window_bounds(signal)
         slug = self.build_btc_5m_slug(window_start)
 

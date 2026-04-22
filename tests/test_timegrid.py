@@ -29,6 +29,24 @@ def test_select_grid_rows_keeps_only_5m_boundaries() -> None:
     ]
 
 
+def test_select_grid_rows_keeps_only_15m_boundaries() -> None:
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=31, freq="1min"),
+            "open": range(31),
+            "high": range(31),
+            "low": range(31),
+            "close": range(31),
+        }
+    )
+    grid = select_grid_rows(frame, grid_minutes=15)
+    assert list(grid["timestamp"]) == [
+        pd.Timestamp("2024-01-01T12:00:00Z"),
+        pd.Timestamp("2024-01-01T12:15:00Z"),
+        pd.Timestamp("2024-01-01T12:30:00Z"),
+    ]
+
+
 def test_add_grid_columns_populates_grid_metadata() -> None:
     frame = pd.DataFrame(
         {

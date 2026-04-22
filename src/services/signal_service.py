@@ -7,7 +7,7 @@ from src.core.config import Settings
 from src.core.schemas import Signal
 from src.core.versioning import hash_config
 from src.model.base import ModelPlugin
-from src.model.infer import predict_frame
+from src.model.infer import predict_frame as infer_frame
 from src.services.feature_service import FeatureService
 
 
@@ -27,26 +27,38 @@ class SignalService:
         self.feature_service = FeatureService(settings)
         self.model_version = model_version or f"{settings.model.active_plugin}:{hash_config(settings)}"
 
-    def predict_frame(self, frame: pd.DataFrame, horizon_name: str = "5m") -> pd.Series:
+    def predict_frame(
+        self,
+        frame: pd.DataFrame,
+        horizon_name: str = "5m",
+        derivatives_frame: pd.DataFrame | None = None,
+    ) -> pd.Series:
         feature_frame = self.feature_service.build_feature_frame(
             frame,
             horizon_name=horizon_name,
             select_grid_only=True,
+            derivatives_frame=derivatives_frame,
         )
-        return predict_frame(
+        return infer_frame(
             feature_frame,
             self.model,
             calibrator=self.calibrator,
             feature_columns=self.feature_columns,
         )
 
-    def predict_from_latest_frame(self, frame: pd.DataFrame, horizon_name: str = "5m") -> Signal:
+    def predict_from_latest_frame(
+        self,
+        frame: pd.DataFrame,
+        horizon_name: str = "5m",
+        derivatives_frame: pd.DataFrame | None = None,
+    ) -> Signal:
         feature_frame = self.feature_service.build_feature_frame(
             frame,
             horizon_name=horizon_name,
             select_grid_only=True,
+            derivatives_frame=derivatives_frame,
         )
-        probabilities = predict_frame(
+        probabilities = infer_frame(
             feature_frame,
             self.model,
             calibrator=self.calibrator,

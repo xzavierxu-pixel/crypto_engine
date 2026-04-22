@@ -94,3 +94,43 @@ def test_strategy_entry_uses_probability_and_activity_filters() -> None:
     assert entries["enter_long"].tolist() == [1, 0, 0]
     assert entries.loc[entries["enter_long"] == 1, "enter_tag"].iloc[0] == "freqai_up_5m_prob"
     assert exits["exit_long"].tolist() == [0, 0, 0]
+
+
+def test_strategy_custom_exit_matches_15m_horizon() -> None:
+    strategy = BTCGridFreqAIStrategy(config={"candle_type_def": "spot"}, horizon_name="15m")
+    trade = SimpleNamespace(open_date_utc=pd.Timestamp("2024-01-01T12:00:00Z").to_pydatetime())
+
+    assert strategy.custom_exit("BTC/USDT", trade, pd.Timestamp("2024-01-01T12:14:00Z").to_pydatetime(), 0, 0) is None
+    assert strategy.custom_exit("BTC/USDT", trade, pd.Timestamp("2024-01-01T12:15:00Z").to_pydatetime(), 0, 0) == "horizon_timeout"
+
+
+def test_strategy_entry_tag_uses_selected_horizon_name() -> None:
+    strategy = BTCGridFreqAIStrategy(
+        config={
+            "candle_type_def": "spot",
+            "freqai_signal": {
+                "entry_probability_threshold": 0.58,
+                "entry_probability_margin": 0.16,
+                "min_nz_volume_share_20": 0.2,
+                "max_flat_share_20": 0.95,
+                "exit_probability_threshold": 0.55,
+            },
+        },
+        horizon_name="15m",
+    )
+    frame = pd.DataFrame(
+        {
+            "date": pd.date_range("2024-01-01T12:00:00Z", periods=1, freq="1min"),
+            "do_predict": [1],
+            "is_grid_t0": [True],
+            "up": [0.62],
+            "down": [0.35],
+            "%-nz_volume_share_20": [0.4],
+            "%-flat_share_20": [0.8],
+            "&s-up_or_down": ["up"],
+        }
+    )
+
+    entries = strategy.populate_entry_trend(frame.copy(), metadata={"pair": "BTC/USDT"})
+
+    assert entries.loc[0, "enter_tag"] == "freqai_up_15m_prob"
