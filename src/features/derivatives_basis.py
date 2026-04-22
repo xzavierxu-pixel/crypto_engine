@@ -35,9 +35,7 @@ class DerivativesBasisFeaturePack(FeaturePack):
 
         if basis_settings.use_mark_price:
             if "raw_mark_price" not in df.columns:
-                raise ValueError(
-                    "Basis feature pack requires a 'raw_mark_price' column when mark price features are enabled."
-                )
+                return pd.DataFrame(index=df.index)
             mark_price = df["raw_mark_price"].shift(1)
             basis_mark_spot = mark_price / spot_close - 1.0
             features["basis_mark_spot"] = basis_mark_spot
@@ -48,18 +46,14 @@ class DerivativesBasisFeaturePack(FeaturePack):
 
         if basis_settings.use_index_price:
             if "raw_index_price" not in df.columns:
-                raise ValueError(
-                    "Basis feature pack requires a 'raw_index_price' column when index price features are enabled."
-                )
+                return pd.DataFrame(index=df.index)
             index_price = df["raw_index_price"].shift(1)
             basis_index_spot = index_price / spot_close - 1.0
             features["basis_index_spot"] = basis_index_spot
 
         if basis_settings.use_premium_index:
             if "raw_premium_index" not in df.columns:
-                raise ValueError(
-                    "Basis feature pack requires a 'raw_premium_index' column when premium index features are enabled."
-                )
+                return pd.DataFrame(index=df.index)
             premium_index = df["raw_premium_index"].shift(1)
             features["premium_index"] = premium_index
             features[f"premium_index_zscore_{window}"] = _rolling_zscore(premium_index, window)

@@ -85,13 +85,36 @@ def _build_stage1_training_frame(training: TrainingFrame, settings: Settings) ->
     tau = float(settings.labels.two_stage.active_return_threshold)
     frame = training.frame.copy()
     frame["stage1_target"] = (frame[DEFAULT_ABS_RETURN_COLUMN] > tau).astype(int)
+    class_counts = frame["stage1_target"].value_counts()
+    positive_count = int(class_counts.get(1, 0))
+    negative_count = int(class_counts.get(0, 0))
+    if positive_count > 0 and negative_count > 0:
+        majority_count = max(positive_count, negative_count)
+        minority_count = min(positive_count, negative_count)
+        minority_weight = majority_count / minority_count
+        minority_class = 1 if positive_count < negative_count else 0
+        class_weight = pd.Series(1.0, index=frame.index, dtype="float64")
+        class_weight.loc[frame["stage1_target"] == minority_class] = float(minority_weight)
+    else:
+        class_weight = pd.Series(1.0, index=frame.index, dtype="float64")
+
+    base_weight_column = (
+        DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN
+        if DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN in frame.columns
+        else DEFAULT_SAMPLE_WEIGHT_COLUMN
+        if DEFAULT_SAMPLE_WEIGHT_COLUMN in frame.columns
+        else None
+    )
+    if base_weight_column is not None:
+        frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = frame[base_weight_column].astype("float64") * class_weight
+    else:
+        frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = class_weight
+
     return _replace_training_columns(
         training,
         frame=frame,
         target_column="stage1_target",
-        sample_weight_column=DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN
-        if DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN in frame.columns
-        else DEFAULT_SAMPLE_WEIGHT_COLUMN,
+        sample_weight_column=DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN,
     )
 
 
@@ -150,9 +173,17 @@ def _fit_model(
     settings: Settings,
     *,
     stage: str,
+    validation: TrainingFrame | None = None,
 ) -> ModelPlugin:
     model = create_model_plugin(settings, stage=stage)
-    model.fit(training.X, training.y.astype(int), sample_weight=training.sample_weight)
+    model.fit(
+        training.X,
+        training.y.astype(int),
+        X_valid=validation.X if validation is not None and not validation.frame.empty else None,
+        y_valid=validation.y.astype(int) if validation is not None and not validation.frame.empty else None,
+        sample_weight=training.sample_weight,
+        sample_weight_valid=validation.sample_weight if validation is not None and not validation.frame.empty else None,
+    )
     return model
 
 
@@ -189,7 +220,10 @@ def _build_oof_predictions(
         fold_model.fit(
             fold_training.X,
             fold_training.y.astype(int),
+            X_valid=X_valid,
+            y_valid=y_valid,
             sample_weight=fold_training.sample_weight,
+            sample_weight_valid=training.sample_weight.iloc[split.valid_slice] if training.sample_weight is not None else None,
         )
         oof_probabilities.append(fold_model.predict_proba(X_valid))
         oof_targets.append(y_valid)
@@ -307,7 +341,8 @@ def _train_two_stage_for_split(
         stage="Stage 1",
     )
     stage1_oof_targets = stage1_training.y.astype(int).loc[stage1_oof.index]
-    stage1_model = _fit_model(stage1_training, settings, stage="stage1")
+    stage1_validation = _build_stage1_training_frame(validation, settings)
+    stage1_model = _fit_model(stage1_training, settings, stage="stage1", validation=stage1_validation)
     stage1_calibrator = _select_calibrator(settings, stage1_oof, stage1_oof_targets, stage="stage1")
 
     stage2_training = _build_stage2_training_frame(development, stage1_oof_aligned, settings)
@@ -315,7 +350,13 @@ def _train_two_stage_for_split(
         raise ValueError("No active samples available for Stage 2 training.")
     base_rate = float(stage2_training.y.mean())
     stage2_oof_raw, _ = _build_oof_predictions(stage2_training, settings, stage="stage2")
-    stage2_model = _fit_model(stage2_training, settings, stage="stage2")
+    stage2_validation = _build_stage2_training_frame(validation, stage1_valid_proba := stage1_calibrator.transform(stage1_model.predict_proba(validation.X)), settings)
+    stage2_model = _fit_model(
+        stage2_training,
+        settings,
+        stage="stage2",
+        validation=stage2_validation if not stage2_validation.frame.empty else None,
+    )
     _, stage2_oof_raw = _require_strict_oof_predictions(
         stage2_training,
         stage2_oof_raw,
@@ -333,9 +374,8 @@ def _train_two_stage_for_split(
     )
 
     stage1_dev_proba = stage1_calibrator.transform(stage1_model.predict_proba(stage1_training.X))
-    stage1_valid_proba = stage1_calibrator.transform(stage1_model.predict_proba(validation.X))
     stage2_dev_input = _build_stage2_training_frame(development, stage1_dev_proba, settings)
-    stage2_valid_input = _build_stage2_training_frame(validation, stage1_valid_proba, settings)
+    stage2_valid_input = stage2_validation
     stage2_dev_proba = stage2_calibrator.transform(stage2_model.predict_proba(stage2_dev_input.X))
     stage2_valid_proba = (
         stage2_calibrator.transform(stage2_model.predict_proba(stage2_valid_input.X))

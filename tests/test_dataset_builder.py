@@ -5,7 +5,8 @@ from dataclasses import replace
 import pandas as pd
 
 from src.core.config import DatasetConfig, load_settings
-from src.data.dataset_builder import build_training_frame
+from src.data.dataset_builder import TrainingFrame, build_training_frame
+from src.model.train import _build_stage1_training_frame
 
 
 def test_build_training_frame_drops_incomplete_rows_and_exposes_feature_columns() -> None:
@@ -63,3 +64,35 @@ def test_build_training_frame_respects_dataset_timerange() -> None:
     assert training.frame["timestamp"].min() >= pd.Timestamp("2024-01-01T14:00:00Z")
     assert training.frame["timestamp"].max() <= pd.Timestamp("2024-01-01T15:00:00Z")
     assert training.frame["target"].eq(1.0).all()
+
+
+def test_stage1_training_frame_multiplies_class_balance_into_sample_weight() -> None:
+    settings = load_settings()
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=6, freq="1min"),
+            "open": [100.0] * 6,
+            "high": [101.0] * 6,
+            "low": [99.0] * 6,
+            "close": [100.0] * 6,
+            "volume": [10.0] * 6,
+            "abs_return": [0.0004, 0.0005, 0.0006, 0.0007, 0.0001, 0.0002],
+            "target": [1.0, 1.0, 1.0, 1.0, 0.0, 0.0],
+            "sample_weight": [1.0] * 6,
+            "stage1_sample_weight": [1.0] * 6,
+        }
+    )
+    custom_training = TrainingFrame(
+        frame=frame,
+        feature_columns=[],
+        target_column="target",
+        sample_weight_column="sample_weight",
+    )
+
+    stage1_training = _build_stage1_training_frame(custom_training, settings)
+
+    negative_weights = stage1_training.frame.loc[stage1_training.frame["stage1_target"] == 0, "stage1_sample_weight"]
+    positive_weights = stage1_training.frame.loc[stage1_training.frame["stage1_target"] == 1, "stage1_sample_weight"]
+
+    assert negative_weights.iloc[0] == 2.0
+    assert positive_weights.iloc[0] == 1.0

@@ -25,9 +25,7 @@ class DerivativesFundingFeaturePack(FeaturePack):
         if not settings.derivatives.enabled or not settings.derivatives.funding.enabled:
             return pd.DataFrame(index=df.index)
         if "raw_funding_rate" not in df.columns:
-            raise ValueError(
-                "Funding feature pack requires a 'raw_funding_rate' column from the derivatives raw frame."
-            )
+            return pd.DataFrame(index=df.index)
 
         funding_rate = df["raw_funding_rate"].shift(1)
         window = settings.derivatives.funding.zscore_window

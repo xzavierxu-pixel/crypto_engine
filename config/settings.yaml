@@ -15,7 +15,6 @@ horizons:
       grid_minutes: 5
       label_builder: grid_direction
       label_params:
-        threshold_multiplier: 1.001
         label_version: v2
       feature_profile: core_5m
       signal_policy: two_stage_policy
@@ -25,7 +24,6 @@ horizons:
       grid_minutes: 15
       label_builder: grid_direction
       label_params:
-        threshold_multiplier: 1.0
         label_version: v1
       feature_profile: core_15m
       signal_policy: default_edge_policy_15m
@@ -55,7 +53,7 @@ dataset:
 
 labels:
   two_stage:
-    active_return_threshold: 0.0002
+    active_return_threshold: 0.0005
 
 features:
   profiles:
@@ -173,7 +171,7 @@ features:
       use_time_features: true
 
 derivatives:
-  enabled: false
+  enabled: true
   exchange: binance
   symbol_spot: BTC/USDT
   symbol_perp: BTC/USDT:USDT
@@ -219,7 +217,7 @@ derivatives:
 
 data_backfill:
   provider: binance_public
-  start_date: "2026-01-01"
+  start_date: "2025-01-01"
   use_monthly_for_full_months: true
   use_daily_for_open_month_tail: true
   verify_checksum: true
@@ -285,30 +283,36 @@ model:
     stage2: lightgbm_stage2
   plugins:
     lightgbm_stage1:
-      n_estimators: 300
-      learning_rate: 0.05
-      num_leaves: 10
-      min_child_samples: 100
+      n_estimators: 200
+      learning_rate: 0.03
+      num_leaves: 200
+      min_child_samples: 200
       subsample: 0.8
       subsample_freq: 1
       colsample_bytree: 0.6
       reg_alpha: 0.5
-      reg_lambda: 1.0
-      max_depth: 4
-      scale_pos_weight: 1.5
+      reg_lambda: 2.0
+      max_depth: 10
+      scale_pos_weight: null
+      verbosity: -1
       random_state: 42
+      early_stopping_rounds: 50
+      eval_metric: binary_logloss
     lightgbm_stage2:
-      n_estimators: 700
+      n_estimators: 200
       learning_rate: 0.03
-      num_leaves: 15
-      min_child_samples: 200
+      num_leaves: 200
+      min_child_samples: 150
       subsample: 0.8
       subsample_freq: 1
-      colsample_bytree: 0.4
+      colsample_bytree: 0.5
       reg_alpha: 0.5
-      reg_lambda: 1.0
-      max_depth: 4
+      reg_lambda: 2.0
+      max_depth: 10
+      verbosity: -1
       random_state: 42
+      early_stopping_rounds: 50
+      eval_metric: binary_logloss
     lightgbm:
       n_estimators: 700
       learning_rate: 0.03
@@ -339,7 +343,7 @@ model:
 calibration:
   active_plugins:
     stage1: none
-    stage2: isotonic
+    stage2: none
   plugins: {}
 
 signal:

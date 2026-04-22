@@ -57,7 +57,7 @@ def test_grid_direction_label_supports_15m_horizon() -> None:
     assert (labeled["horizon"] == "15m").all()
 
 
-def test_grid_direction_label_applies_threshold_multiplier_for_5m_v2() -> None:
+def test_grid_direction_label_uses_pure_direction_without_threshold_multiplier() -> None:
     settings = load_settings()
     horizon = get_horizon_spec(settings, "5m")
     frame = pd.DataFrame(
@@ -72,6 +72,6 @@ def test_grid_direction_label_applies_threshold_multiplier_for_5m_v2() -> None:
 
     labeled = GridDirectionLabelBuilder().build(frame, settings, horizon)
 
-    assert labeled.loc[0, "target"] == 0.0
+    assert labeled.loc[0, "target"] == 1.0
     assert labeled.loc[1, "target"] == 0.0
     assert labeled.loc[0, "label_version"] == "v2"

@@ -27,10 +27,7 @@ class DerivativesBookTickerFeaturePack(FeaturePack):
         required_columns = {"raw_bid_price", "raw_bid_qty", "raw_ask_price", "raw_ask_qty"}
         missing = sorted(required_columns.difference(df.columns))
         if missing:
-            raise ValueError(
-                "Book ticker feature pack requires raw bid/ask price and qty columns. "
-                f"Missing: {', '.join(missing)}"
-            )
+            return pd.DataFrame(index=df.index)
 
         bid_price = pd.to_numeric(df["raw_bid_price"], errors="coerce").shift(1)
         ask_price = pd.to_numeric(df["raw_ask_price"], errors="coerce").shift(1)

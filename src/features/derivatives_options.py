@@ -25,9 +25,7 @@ class DerivativesOptionsFeaturePack(FeaturePack):
         if not settings.derivatives.enabled or not settings.derivatives.options.enabled:
             return pd.DataFrame(index=df.index)
         if "raw_atm_iv_near" not in df.columns:
-            raise ValueError(
-                "Options feature pack requires a 'raw_atm_iv_near' column from the derivatives raw frame."
-            )
+            return pd.DataFrame(index=df.index)
 
         options_config = settings.derivatives.options
         atm_iv = df["raw_atm_iv_near"].shift(1)

@@ -41,7 +41,7 @@ class DerivativesOIFeaturePack(FeaturePack):
         if not settings.derivatives.enabled or not settings.derivatives.oi.enabled:
             return pd.DataFrame(index=df.index)
         if "raw_open_interest" not in df.columns:
-            raise ValueError("OI feature pack requires a 'raw_open_interest' column from the derivatives raw frame.")
+            return pd.DataFrame(index=df.index)
 
         oi_config = settings.derivatives.oi
         oi_level = df["raw_open_interest"].shift(1)

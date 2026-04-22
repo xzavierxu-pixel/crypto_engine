@@ -79,6 +79,15 @@ def _resolve_source_path(
     return str(latest_path) if latest_path else None
 
 
+def _load_optional_frame(path: str | Path | None, loader) -> pd.DataFrame | None:
+    if not path:
+        return None
+    resolved_path = Path(path)
+    if not resolved_path.exists():
+        return None
+    return loader(resolved_path)
+
+
 def resolve_derivatives_paths(
     settings: Settings,
     *,
@@ -174,31 +183,31 @@ class DerivativesFeatureStore:
             path = self.settings.derivatives.funding.path
             if not path:
                 raise ValueError("Derivatives funding is enabled but no funding path is configured.")
-            resolved_funding = load_funding_frame(Path(path))
+            resolved_funding = _load_optional_frame(path, load_funding_frame)
 
         if resolved_basis is None and self.settings.derivatives.basis.enabled:
             path = self.settings.derivatives.basis.path
             if not path:
                 raise ValueError("Derivatives basis is enabled but no basis path is configured.")
-            resolved_basis = load_basis_frame(Path(path))
+            resolved_basis = _load_optional_frame(path, load_basis_frame)
 
         if resolved_oi is None and self.settings.derivatives.oi.enabled:
             path = self.settings.derivatives.oi.path
             if not path:
                 raise ValueError("Derivatives OI is enabled but no OI path is configured.")
-            resolved_oi = load_oi_frame(Path(path))
+            resolved_oi = _load_optional_frame(path, load_oi_frame)
 
         if resolved_options is None and self.settings.derivatives.options.enabled:
             path = self.settings.derivatives.options.path
             if not path:
                 raise ValueError("Derivatives options is enabled but no options path is configured.")
-            resolved_options = load_options_frame(Path(path))
+            resolved_options = _load_optional_frame(path, load_options_frame)
 
         if resolved_book_ticker is None and self.settings.derivatives.book_ticker.enabled:
             path = self.settings.derivatives.book_ticker.path
             if not path:
                 raise ValueError("Derivatives book ticker is enabled but no book ticker path is configured.")
-            resolved_book_ticker = load_book_ticker_frame(Path(path))
+            resolved_book_ticker = _load_optional_frame(path, load_book_ticker_frame)
 
         return merge_derivatives_frames(
             funding_frame=resolved_funding,
@@ -240,6 +249,8 @@ def _load_archive_frame(
 
     symbol = resolve_um_symbol(settings)
     resolved_archive_path = Path(archive_path)
+    if not resolved_archive_path.exists():
+        return None
     if source_name == "funding":
         return load_archive_funding_frame(resolved_archive_path, symbol=symbol)
     if source_name == "basis":
@@ -264,11 +275,11 @@ def load_derivatives_frame_from_paths(
     options_path: str | Path | None = None,
     book_ticker_path: str | Path | None = None,
 ) -> pd.DataFrame | None:
-    resolved_funding = load_funding_frame(Path(funding_path)) if funding_path else None
-    resolved_basis = load_basis_frame(Path(basis_path)) if basis_path else None
-    resolved_oi = load_oi_frame(Path(oi_path)) if oi_path else None
-    resolved_options = load_options_frame(Path(options_path)) if options_path else None
-    resolved_book_ticker = load_book_ticker_frame(Path(book_ticker_path)) if book_ticker_path else None
+    resolved_funding = _load_optional_frame(funding_path, load_funding_frame)
+    resolved_basis = _load_optional_frame(basis_path, load_basis_frame)
+    resolved_oi = _load_optional_frame(oi_path, load_oi_frame)
+    resolved_options = _load_optional_frame(options_path, load_options_frame)
+    resolved_book_ticker = _load_optional_frame(book_ticker_path, load_book_ticker_frame)
     if (
         resolved_funding is None
         and resolved_basis is None
