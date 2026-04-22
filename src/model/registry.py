@@ -9,6 +9,8 @@ from src.model.logistic_plugin import LogisticRegressionPlugin
 
 MODEL_PLUGINS: dict[str, type[ModelPlugin]] = {
     "lightgbm": LightGBMClassifierPlugin,
+    "lightgbm_stage1": LightGBMClassifierPlugin,
+    "lightgbm_stage2": LightGBMClassifierPlugin,
     "catboost": CatBoostClassifierPlugin,
     "logistic": LogisticRegressionPlugin,
 }
@@ -18,8 +20,9 @@ def create_model_plugin(
     settings: Settings,
     plugin_name: str | None = None,
     plugin_params: dict | None = None,
+    stage: str | None = None,
 ) -> ModelPlugin:
-    target = plugin_name or settings.model.active_plugin
+    target = plugin_name or settings.model.resolve_plugin(stage=stage)
     try:
         plugin_cls = MODEL_PLUGINS[target]
     except KeyError as exc:

@@ -14,15 +14,18 @@ from src.features.htf_context import HTFContextFeaturePack
 from src.features.lagged import LaggedFeaturePack
 from src.features.market_quality import MarketQualityFeaturePack
 from src.features.momentum import MomentumFeaturePack
+from src.features.momentum_acceleration import MomentumAccelerationFeaturePack
 from src.features.path_structure import PathStructureFeaturePack
 from src.features.regime import RegimeFeaturePack
 from src.features.time_features import TimeFeaturePack
+from src.features.intra_5m_structure import Intra5mStructureFeaturePack
 from src.features.volume import VolumeFeaturePack
 from src.features.volatility import VolatilityFeaturePack
 
 
 FEATURE_PACKS: dict[str, FeaturePack] = {
     "momentum": MomentumFeaturePack(),
+    "momentum_acceleration": MomentumAccelerationFeaturePack(),
     "volatility": VolatilityFeaturePack(),
     "path_structure": PathStructureFeaturePack(),
     "regime": RegimeFeaturePack(),
@@ -33,6 +36,7 @@ FEATURE_PACKS: dict[str, FeaturePack] = {
     "compression_breakout": CompressionBreakoutFeaturePack(),
     "asymmetry": AsymmetryFeaturePack(),
     "flow_proxy": FlowProxyFeaturePack(),
+    "intra_5m_structure": Intra5mStructureFeaturePack(),
     "lagged": LaggedFeaturePack(),
     "time": TimeFeaturePack(),
     "derivatives_funding": DerivativesFundingFeaturePack(),

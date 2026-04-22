@@ -14,8 +14,12 @@ CALIBRATION_PLUGINS: dict[str, type[CalibrationPlugin]] = {
 }
 
 
-def create_calibration_plugin(settings: Settings, plugin_name: str | None = None) -> CalibrationPlugin:
-    target = plugin_name or settings.calibration.active_plugin
+def create_calibration_plugin(
+    settings: Settings,
+    plugin_name: str | None = None,
+    stage: str | None = None,
+) -> CalibrationPlugin:
+    target = plugin_name or settings.calibration.resolve_plugin(stage=stage)
     try:
         plugin_cls = CALIBRATION_PLUGINS[target]
     except KeyError as exc:

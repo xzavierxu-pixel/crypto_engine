@@ -89,6 +89,16 @@ class FeatureProfileConfig:
 
 
 @dataclass(frozen=True)
+class TwoStageLabelsConfig:
+    active_return_threshold: float = 0.0002
+
+
+@dataclass(frozen=True)
+class LabelsConfig:
+    two_stage: TwoStageLabelsConfig = field(default_factory=TwoStageLabelsConfig)
+
+
+@dataclass(frozen=True)
 class DerivativesFundingConfig:
     enabled: bool = False
     path: str | None = None
@@ -194,8 +204,16 @@ class FeaturesConfig:
 
 @dataclass(frozen=True)
 class PluginGroupConfig:
-    active_plugin: str
+    active_plugin: str | None = None
+    active_plugins: dict[str, str] = field(default_factory=dict)
     plugins: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def resolve_plugin(self, stage: str | None = None) -> str:
+        if stage is not None and stage in self.active_plugins:
+            return self.active_plugins[stage]
+        if self.active_plugin is None:
+            raise KeyError(f"No active plugin configured for stage '{stage}'.")
+        return self.active_plugin
 
 
 @dataclass(frozen=True)
@@ -210,6 +228,7 @@ class ExecutionConfig:
     active_mapper: str
     safeguards: dict[str, Any] = field(default_factory=dict)
     polymarket: dict[str, Any] = field(default_factory=dict)
+    fixed_contract_size: float = 5.0
 
 
 @dataclass(frozen=True)
@@ -226,6 +245,7 @@ class Settings:
     horizons: HorizonsConfig
     dataset: DatasetConfig
     features: FeaturesConfig
+    labels: LabelsConfig
     derivatives: DerivativesConfig
     data_backfill: DataBackfillConfig
     model: PluginGroupConfig
@@ -258,6 +278,9 @@ class Settings:
             horizons=horizons,
             dataset=DatasetConfig(**payload["dataset"]),
             features=features,
+            labels=LabelsConfig(
+                two_stage=TwoStageLabelsConfig(**payload.get("labels", {}).get("two_stage", {}))
+            ),
             derivatives=DerivativesConfig(
                 enabled=derivatives_payload.get("enabled", False),
                 exchange=derivatives_payload.get("exchange", ""),

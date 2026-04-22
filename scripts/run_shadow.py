@@ -5,11 +5,12 @@ import json
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.calibration.registry import load_calibration_plugin
 from src.core.config import load_settings
 from src.core.schemas import MarketQuote, RiskState
 from src.data.derivatives.feature_store import load_derivatives_frame_from_settings
@@ -20,10 +21,12 @@ from src.execution.audit import (
     market_mapped_event,
     order_created_event,
     signal_generated_event,
+    stage1_drift_alert_event,
 )
 from src.execution.mappers.btc_5m_polymarket import BTC5mPolymarketMapper
 from src.execution.order_router import build_order_request
-from src.model.registry import load_model_plugin
+from src.model.artifacts import load_two_stage_artifacts
+from src.model.drift import Stage1DriftMonitor
 from src.services.audit_service import AuditService
 from src.services.signal_service import SignalService
 from src.signal.decision_engine import evaluate_entry
@@ -37,6 +40,25 @@ def _load_input(path: Path):
     if path.suffix.lower() in {".feather", ".ft"}:
         return load_ohlcv_feather(path)
     raise ValueError(f"Unsupported input format: {path.suffix}")
+
+
+def _build_stage1_drift_monitor(
+    reference_probabilities: list[float],
+    *,
+    threshold: float = 0.1,
+    window_size: int = 500,
+    min_history: int = 50,
+    alert_consecutive: int = 3,
+) -> Stage1DriftMonitor | None:
+    if not reference_probabilities:
+        return None
+    return Stage1DriftMonitor(
+        pd.Series(reference_probabilities, dtype="float64"),
+        threshold=threshold,
+        window_size=window_size,
+        min_history=min_history,
+        alert_consecutive=alert_consecutive,
+    )
 
 
 def _merge_quote_metadata(quote: MarketQuote, market: dict | None) -> MarketQuote:
@@ -88,6 +110,7 @@ def _build_shadow_summary(
             "horizon": signal.horizon,
             "t0": signal.t0.isoformat(),
             "p_up": round(signal.p_up, 6),
+            "p_active": round(float(signal.p_active or 0.0), 6),
             "model_version": signal.model_version,
             "feature_version": signal.feature_version,
         },
@@ -123,6 +146,7 @@ def _print_shadow_summary(summary: dict) -> None:
     print(f"signal.horizon={summary['signal']['horizon']}")
     print(f"signal.t0={summary['signal']['t0']}")
     print(f"signal.p_up={summary['signal']['p_up']}")
+    print(f"signal.p_active={summary['signal']['p_active']}")
     print(f"market.market_id={summary['market']['market_id']}")
     print(f"market.slug={summary['market']['slug']}")
     print(f"market.window_start={summary['market']['window_start']}")
@@ -146,8 +170,21 @@ def _print_shadow_summary(summary: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a shadow signal and decision pass.")
     parser.add_argument("--input", required=True, help="Path to OHLCV CSV or parquet input.")
-    parser.add_argument("--model", required=True, help="Path to serialized model.")
-    parser.add_argument("--calibrator", required=True, help="Path to serialized calibrator.")
+    parser.add_argument("--artifact-dir", help="Directory containing two-stage model artifacts and training_report.json.")
+    parser.add_argument("--report", help="Path to training_report.json for two-stage model loading.")
+    parser.add_argument("--stage1-model", help="Optional explicit Stage 1 model path.")
+    parser.add_argument("--stage2-model", help="Optional explicit Stage 2 model path.")
+    parser.add_argument("--stage1-calibrator", help="Optional explicit Stage 1 calibrator path.")
+    parser.add_argument("--stage2-calibrator", help="Optional explicit Stage 2 calibrator path.")
+    parser.add_argument("--drift-threshold", type=float, default=0.1, help="KS threshold for Stage 1 drift.")
+    parser.add_argument("--drift-window-size", type=int, default=500, help="Live window size for Stage 1 drift.")
+    parser.add_argument("--drift-min-history", type=int, default=50, help="Minimum history before Stage 1 drift is evaluated.")
+    parser.add_argument(
+        "--drift-alert-consecutive",
+        type=int,
+        default=3,
+        help="Consecutive threshold breaches required before emitting a Stage 1 drift alert.",
+    )
     parser.add_argument("--yes-price", type=float, help="Observed Polymarket YES price.")
     parser.add_argument("--market-id", help="Observed Polymarket token identifier.")
     parser.add_argument("--audit-log", default="artifacts/logs/shadow.jsonl", help="Audit log path.")
@@ -184,9 +221,35 @@ def main() -> None:
         options_path=args.options_input,
         path_mode=args.derivatives_path_mode,
     )
-    model = load_model_plugin(settings.model.active_plugin, args.model)
-    calibrator = load_calibration_plugin(settings.calibration.active_plugin, args.calibrator)
-    signal_service = SignalService(settings, model=model, calibrator=calibrator)
+    bundle = load_two_stage_artifacts(
+        settings,
+        report_path=args.report,
+        artifact_dir=args.artifact_dir,
+        stage1_model_path=args.stage1_model,
+        stage2_model_path=args.stage2_model,
+        stage1_calibrator_path=args.stage1_calibrator,
+        stage2_calibrator_path=args.stage2_calibrator,
+    )
+    drift_monitor = _build_stage1_drift_monitor(
+        bundle.stage1_reference_probabilities,
+        threshold=args.drift_threshold,
+        window_size=args.drift_window_size,
+        min_history=args.drift_min_history,
+        alert_consecutive=args.drift_alert_consecutive,
+    )
+    signal_service = SignalService(
+        settings,
+        stage1_model=bundle.stage1_model,
+        stage2_model=bundle.stage2_model,
+        stage1_calibrator=bundle.stage1_calibrator,
+        stage2_calibrator=bundle.stage2_calibrator,
+        feature_columns=bundle.feature_columns,
+        stage2_feature_columns=bundle.stage2_feature_columns,
+        stage1_threshold=bundle.stage1_threshold,
+        buy_threshold=bundle.buy_threshold,
+        model_version=bundle.model_version,
+        stage1_drift_monitor=drift_monitor,
+    )
     audit_service = AuditService(args.audit_log)
     mapper = BTC5mPolymarketMapper(settings)
     adapter = PolymarketExecutionAdapter(settings)
@@ -197,6 +260,9 @@ def main() -> None:
         derivatives_frame=derivatives_frame,
     )
     audit_service.append(signal_generated_event(signal))
+    drift_state = signal.decision_context.get("stage1_drift")
+    if drift_state and drift_state.get("alert"):
+        audit_service.append(stage1_drift_alert_event(signal, drift_state))
 
     quote, market = _resolve_quote(signal, args, mapper=mapper, adapter=adapter)
 

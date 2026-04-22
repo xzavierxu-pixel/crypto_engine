@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from statistics import mean
 
+import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, brier_score_loss, log_loss, roc_auc_score
 
@@ -194,3 +195,74 @@ def summarize_walk_forward(results: list[WalkForwardFoldResult]) -> dict[str, fl
             summary[f"{metric_name}_min"] = float(min(values))
             summary[f"{metric_name}_max"] = float(max(values))
     return summary
+
+
+def compute_pnl_metrics(
+    y_true: pd.Series,
+    stage1_probabilities: pd.Series,
+    stage2_probabilities: pd.Series,
+    stage1_threshold: float,
+    buy_threshold: float,
+) -> dict[str, float]:
+    if not (len(y_true) == len(stage1_probabilities) == len(stage2_probabilities)):
+        raise ValueError("y_true, stage1_probabilities, and stage2_probabilities must have the same length.")
+
+    y = y_true.astype(int)
+    p_active = stage1_probabilities.astype(float).clip(0.0, 1.0)
+    p_up = stage2_probabilities.astype(float).clip(0.0, 1.0)
+    active_mask = p_active >= stage1_threshold
+    coverage = float(active_mask.mean()) if len(active_mask) else 0.0
+
+    metrics: dict[str, float] = {
+        "coverage": coverage,
+        "active_sample_count": float(active_mask.sum()),
+        "buy_threshold": float(buy_threshold),
+        "stage1_threshold": float(stage1_threshold),
+    }
+    if active_mask.any():
+        active_true = y.loc[active_mask]
+        active_pred = (p_up.loc[active_mask] >= buy_threshold).astype(int)
+        trade_accuracy = float(accuracy_score(active_true, active_pred))
+        pnl_per_trade = float(2.0 * trade_accuracy - 1.0)
+        metrics.update(
+            {
+                "trade_accuracy": trade_accuracy,
+                "pnl_per_trade": pnl_per_trade,
+                "pnl_per_sample": float(coverage * pnl_per_trade),
+                "buy_rate": float((active_pred == 1).mean()),
+                "sell_rate": float((active_pred == 0).mean()),
+            }
+        )
+    else:
+        metrics.update(
+            {
+                "trade_accuracy": 0.0,
+                "pnl_per_trade": 0.0,
+                "pnl_per_sample": 0.0,
+                "buy_rate": 0.0,
+                "sell_rate": 0.0,
+            }
+        )
+
+    realized = np.where(
+        active_mask.to_numpy(),
+        np.where((p_up >= buy_threshold).to_numpy() == y.to_numpy(), 1.0, -1.0),
+        0.0,
+    )
+    pnl_series = pd.Series(realized)
+    equity = pnl_series.cumsum()
+    running_max = equity.cummax()
+    drawdown = equity - running_max
+    metrics["sharpe"] = float(pnl_series.mean() / pnl_series.std()) if pnl_series.std(ddof=0) > 0 else 0.0
+    metrics["max_drawdown"] = float(drawdown.min()) if not drawdown.empty else 0.0
+
+    longest_losing_streak = 0
+    current_streak = 0
+    for value in pnl_series:
+        if value < 0:
+            current_streak += 1
+            longest_losing_streak = max(longest_losing_streak, current_streak)
+        else:
+            current_streak = 0
+    metrics["longest_losing_streak"] = float(longest_losing_streak)
+    return metrics

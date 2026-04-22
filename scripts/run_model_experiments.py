@@ -15,7 +15,7 @@ from src.core.config import FeaturesConfig, Settings, load_settings
 from src.data.dataset_builder import build_training_frame
 from src.data.derivatives.feature_store import load_derivatives_frame_from_settings
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
-from src.model.train import train_model
+from src.model.train import train_two_stage_model
 
 
 CANONICAL_VARIANT_ORDER = [
@@ -41,19 +41,31 @@ def _load_input(path: Path):
 
 
 def _select_metrics(metrics: dict[str, float]) -> dict[str, float]:
-    return {
-        "accuracy": metrics["accuracy"],
-        "log_loss": metrics["log_loss"],
-        "roc_auc": metrics["roc_auc"],
-        "sample_count": metrics["sample_count"],
+    allowed = {
+        "accuracy",
+        "balanced_accuracy",
+        "log_loss",
+        "roc_auc",
+        "sample_count",
+        "coverage",
+        "trade_accuracy",
+        "pnl_per_trade",
+        "pnl_per_sample",
+        "sharpe",
+        "max_drawdown",
+        "longest_losing_streak",
+        "buy_rate",
+        "sell_rate",
+        "active_sample_count",
     }
+    return {key: value for key, value in metrics.items() if key in allowed}
 
 
 def _rank_key(result: dict) -> tuple[float, float, float]:
     return (
-        result["validation_metrics"]["roc_auc"],
-        -result["validation_metrics"]["log_loss"],
-        result["validation_metrics"]["accuracy"],
+        result["walk_forward_summary"].get("pnl_per_sample_mean", float("-inf")),
+        result["walk_forward_summary"].get("pnl_per_sample_min", float("-inf")),
+        result["walk_forward_summary"].get("trade_accuracy_mean", float("-inf")),
     )
 
 
@@ -68,14 +80,14 @@ def _build_leaderboard(results: list[dict]) -> list[dict]:
             {
                 "rank": rank,
                 "variant": result["variant"],
-                "model_plugin": result["model_plugin"],
+                "stage1_model_plugin": result["model_plugins"]["stage1"],
+                "stage2_model_plugin": result["model_plugins"]["stage2"],
                 "feature_count": result["feature_count"],
-                "validation_roc_auc": _round_metric(result["validation_metrics"]["roc_auc"]),
-                "validation_log_loss": _round_metric(result["validation_metrics"]["log_loss"]),
-                "validation_accuracy": _round_metric(result["validation_metrics"]["accuracy"]),
-                "train_roc_auc": _round_metric(result["train_metrics"]["roc_auc"]),
-                "overfit_gap_roc_auc": _round_metric(result["overfit_gap"]["roc_auc"]),
-                "overfit_gap_log_loss": _round_metric(result["overfit_gap"]["log_loss"]),
+                "validation_pnl_per_sample": _round_metric(result["validation_metrics"]["end_to_end"]["pnl_per_sample"]),
+                "validation_trade_accuracy": _round_metric(result["validation_metrics"]["end_to_end"]["trade_accuracy"]),
+                "validation_coverage": _round_metric(result["validation_metrics"]["end_to_end"]["coverage"]),
+                "walk_forward_pnl_per_sample_mean": _round_metric(result["walk_forward_summary"].get("pnl_per_sample_mean", 0.0)),
+                "walk_forward_pnl_per_sample_min": _round_metric(result["walk_forward_summary"].get("pnl_per_sample_min", 0.0)),
                 "duration_seconds": _round_metric(result["duration_seconds"], digits=2),
             }
         )
@@ -92,36 +104,37 @@ def _build_variant_summary(results: list[dict]) -> list[dict]:
     baseline = best_by_variant.get("baseline")
     summary: list[dict] = []
     for variant, best_result in sorted(best_by_variant.items(), key=lambda item: _rank_key(item[1]), reverse=True):
-        validation = best_result["validation_metrics"]
-        train = best_result["train_metrics"]
+        validation = best_result["validation_metrics"]["end_to_end"]
+        train = best_result["train_metrics"]["end_to_end"]
         entry = {
             "variant": variant,
-            "best_model_plugin": best_result["model_plugin"],
+            "best_model_plugins": best_result["model_plugins"],
             "feature_count": best_result["feature_count"],
             "validation_metrics": {
-                "roc_auc": _round_metric(validation["roc_auc"]),
-                "log_loss": _round_metric(validation["log_loss"]),
-                "accuracy": _round_metric(validation["accuracy"]),
-                "sample_count": int(validation["sample_count"]),
+                "pnl_per_sample": _round_metric(validation["pnl_per_sample"]),
+                "trade_accuracy": _round_metric(validation["trade_accuracy"]),
+                "coverage": _round_metric(validation["coverage"]),
+                "sample_count": int(validation.get("sample_count", 0)),
             },
             "train_metrics": {
-                "roc_auc": _round_metric(train["roc_auc"]),
-                "log_loss": _round_metric(train["log_loss"]),
-                "accuracy": _round_metric(train["accuracy"]),
+                "pnl_per_sample": _round_metric(train["pnl_per_sample"]),
+                "trade_accuracy": _round_metric(train["trade_accuracy"]),
+                "coverage": _round_metric(train["coverage"]),
             },
             "overfit_gap": {
-                "roc_auc": _round_metric(best_result["overfit_gap"]["roc_auc"]),
-                "log_loss": _round_metric(best_result["overfit_gap"]["log_loss"]),
-                "accuracy": _round_metric(best_result["overfit_gap"]["accuracy"]),
+                "pnl_per_sample": _round_metric(best_result["overfit_gap"]["pnl_per_sample"]),
+                "trade_accuracy": _round_metric(best_result["overfit_gap"]["trade_accuracy"]),
+                "coverage": _round_metric(best_result["overfit_gap"]["coverage"]),
             },
+            "walk_forward_summary": best_result["walk_forward_summary"],
             "derivatives": best_result["derivatives"],
         }
         if baseline is not None:
-            baseline_validation = baseline["validation_metrics"]
+            baseline_validation = baseline["validation_metrics"]["end_to_end"]
             entry["delta_vs_baseline"] = {
-                "roc_auc": _round_metric(validation["roc_auc"] - baseline_validation["roc_auc"]),
-                "log_loss": _round_metric(validation["log_loss"] - baseline_validation["log_loss"]),
-                "accuracy": _round_metric(validation["accuracy"] - baseline_validation["accuracy"]),
+                "pnl_per_sample": _round_metric(validation["pnl_per_sample"] - baseline_validation["pnl_per_sample"]),
+                "trade_accuracy": _round_metric(validation["trade_accuracy"] - baseline_validation["trade_accuracy"]),
+                "coverage": _round_metric(validation["coverage"] - baseline_validation["coverage"]),
             }
         summary.append(entry)
     return summary
@@ -140,17 +153,17 @@ def _build_derivatives_progression(variant_summary: list[dict]) -> list[dict]:
         metrics = entry["validation_metrics"]
         progression_entry = {
             "variant": variant,
-            "best_model_plugin": entry["best_model_plugin"],
-            "validation_roc_auc": metrics["roc_auc"],
-            "validation_log_loss": metrics["log_loss"],
-            "validation_accuracy": metrics["accuracy"],
+            "best_model_plugins": entry["best_model_plugins"],
+            "validation_pnl_per_sample": metrics["pnl_per_sample"],
+            "validation_trade_accuracy": metrics["trade_accuracy"],
+            "validation_coverage": metrics["coverage"],
         }
         if previous_entry is not None:
             previous_metrics = previous_entry["validation_metrics"]
             progression_entry["delta_vs_previous"] = {
-                "roc_auc": _round_metric(metrics["roc_auc"] - previous_metrics["roc_auc"]),
-                "log_loss": _round_metric(metrics["log_loss"] - previous_metrics["log_loss"]),
-                "accuracy": _round_metric(metrics["accuracy"] - previous_metrics["accuracy"]),
+                "pnl_per_sample": _round_metric(metrics["pnl_per_sample"] - previous_metrics["pnl_per_sample"]),
+                "trade_accuracy": _round_metric(metrics["trade_accuracy"] - previous_metrics["trade_accuracy"]),
+                "coverage": _round_metric(metrics["coverage"] - previous_metrics["coverage"]),
             }
         progression.append(progression_entry)
         previous_entry = entry
@@ -173,46 +186,45 @@ def _render_summary_markdown(summary: dict) -> str:
     lines.extend(
         [
             f"- Best variant: `{summary['best_variant']}`",
-            f"- Best model plugin: `{summary['best_model_plugin']}`",
+            f"- Best model plugins: `stage1={summary['best_model_plugins']['stage1']}`, `stage2={summary['best_model_plugins']['stage2']}`",
             f"- Validation window days: `{summary['validation_window_days']}`",
             "",
             "## Leaderboard",
             "",
-            "| Rank | Variant | Model | ROC AUC | Log Loss | Accuracy | Features | ROC AUC Gap | Duration (s) |",
-            "|---|---|---|---:|---:|---:|---:|---:|---:|",
+            "| Rank | Variant | Stage1 | Stage2 | PnL/Sample | Trade Acc | Coverage | WF Mean | WF Min | Features | Duration (s) |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for entry in summary["leaderboard"]:
         lines.append(
-            f"| {entry['rank']} | `{entry['variant']}` | `{entry['model_plugin']}` | "
-            f"{entry['validation_roc_auc']:.6f} | {entry['validation_log_loss']:.6f} | "
-            f"{entry['validation_accuracy']:.6f} | {entry['feature_count']} | "
-            f"{entry['overfit_gap_roc_auc']:.6f} | {entry['duration_seconds']:.2f} |"
+            f"| {entry['rank']} | `{entry['variant']}` | `{entry['stage1_model_plugin']}` | `{entry['stage2_model_plugin']}` | "
+            f"{entry['validation_pnl_per_sample']:.6f} | {entry['validation_trade_accuracy']:.6f} | "
+            f"{entry['validation_coverage']:.6f} | {entry['walk_forward_pnl_per_sample_mean']:.6f} | "
+            f"{entry['walk_forward_pnl_per_sample_min']:.6f} | {entry['feature_count']} | {entry['duration_seconds']:.2f} |"
         )
 
     lines.extend(["", "## Best By Variant", ""])
-    lines.append("| Variant | Best Model | ROC AUC | Log Loss | Accuracy | dAUC vs Baseline | dAcc vs Baseline |")
-    lines.append("|---|---|---:|---:|---:|---:|---:|")
+    lines.append("| Variant | Best Stage1 | Best Stage2 | PnL/Sample | Trade Acc | Coverage | dPnL vs Baseline |")
+    lines.append("|---|---|---|---:|---:|---:|---:|")
     for entry in summary["variant_summary"]:
         delta = entry.get("delta_vs_baseline", {})
         lines.append(
-            f"| `{entry['variant']}` | `{entry['best_model_plugin']}` | "
-            f"{entry['validation_metrics']['roc_auc']:.6f} | {entry['validation_metrics']['log_loss']:.6f} | "
-            f"{entry['validation_metrics']['accuracy']:.6f} | "
-            f"{float(delta.get('roc_auc', 0.0)):.6f} | {float(delta.get('accuracy', 0.0)):.6f} |"
+            f"| `{entry['variant']}` | `{entry['best_model_plugins']['stage1']}` | `{entry['best_model_plugins']['stage2']}` | "
+            f"{entry['validation_metrics']['pnl_per_sample']:.6f} | {entry['validation_metrics']['trade_accuracy']:.6f} | "
+            f"{entry['validation_metrics']['coverage']:.6f} | {float(delta.get('pnl_per_sample', 0.0)):.6f} |"
         )
 
     if summary["derivatives_progression"]:
         lines.extend(["", "## Derivatives Progression", ""])
-        lines.append("| Variant | Best Model | ROC AUC | dAUC vs Prev | Log Loss | dLogLoss vs Prev | Accuracy | dAcc vs Prev |")
-        lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
+        lines.append("| Variant | Stage1 | Stage2 | PnL/Sample | dPnL vs Prev | Trade Acc | dAcc vs Prev | Coverage | dCov vs Prev |")
+        lines.append("|---|---|---|---:|---:|---:|---:|---:|---:|")
         for entry in summary["derivatives_progression"]:
             delta = entry.get("delta_vs_previous", {})
             lines.append(
-                f"| `{entry['variant']}` | `{entry['best_model_plugin']}` | "
-                f"{entry['validation_roc_auc']:.6f} | {float(delta.get('roc_auc', 0.0)):.6f} | "
-                f"{entry['validation_log_loss']:.6f} | {float(delta.get('log_loss', 0.0)):.6f} | "
-                f"{entry['validation_accuracy']:.6f} | {float(delta.get('accuracy', 0.0)):.6f} |"
+                f"| `{entry['variant']}` | `{entry['best_model_plugins']['stage1']}` | `{entry['best_model_plugins']['stage2']}` | "
+                f"{entry['validation_pnl_per_sample']:.6f} | {float(delta.get('pnl_per_sample', 0.0)):.6f} | "
+                f"{entry['validation_trade_accuracy']:.6f} | {float(delta.get('trade_accuracy', 0.0)):.6f} | "
+                f"{entry['validation_coverage']:.6f} | {float(delta.get('coverage', 0.0)):.6f} |"
             )
 
     return "\n".join(lines) + "\n"
@@ -233,14 +245,14 @@ def _write_summary(
     variant_summary = _build_variant_summary(ranked_results)
     derivatives_progression = _build_derivatives_progression(variant_summary)
     summary = {
-        "ranking_metric_priority": ["roc_auc", "log_loss", "accuracy"],
+        "ranking_metric_priority": ["pnl_per_sample_mean", "pnl_per_sample_min", "trade_accuracy_mean"],
         "validation_window_days": validation_window_days,
         "variants": variants,
         "results": ranked_results,
         "leaderboard": leaderboard,
         "variant_summary": variant_summary,
         "derivatives_progression": derivatives_progression,
-        "best_model_plugin": ranked_results[0]["model_plugin"] if ranked_results else None,
+        "best_model_plugins": ranked_results[0]["model_plugins"] if ranked_results else None,
         "best_variant": ranked_results[0]["variant"] if ranked_results else None,
     }
     (output_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
@@ -260,7 +272,11 @@ def _collect_existing_results(
         result = _load_existing_result(report_path)
         if allowed_variants is not None and result["variant"] not in allowed_variants:
             continue
-        if allowed_model_plugins is not None and result["model_plugin"] not in allowed_model_plugins:
+        if allowed_model_plugins is not None and not (
+            result.get("model_plugin") in allowed_model_plugins
+            or result.get("model_plugins", {}).get("stage1") in allowed_model_plugins
+            or result.get("model_plugins", {}).get("stage2") in allowed_model_plugins
+        ):
             continue
         results.append(result)
     return results
@@ -496,7 +512,7 @@ def main() -> None:
     parser.add_argument(
         "--model-plugins",
         default="logistic,catboost,lightgbm",
-        help="Comma-separated model plugin names to compare.",
+        help="Comma-separated model plugin names to compare for both stage1 and stage2.",
     )
     parser.add_argument(
         "--ablation-variants",
@@ -519,7 +535,6 @@ def main() -> None:
         action="store_true",
         help="Skip training and rebuild summary files from existing experiment_report.json files only.",
     )
-    parser.add_argument("--calibration-fraction", type=float, default=0.15, help="Calibration fraction.")
     parser.add_argument("--purge-rows", type=int, default=1, help="Rows purged between train and validation.")
     args = parser.parse_args()
     if not args.summary_only and not args.input:
@@ -576,74 +591,100 @@ def main() -> None:
         variant_settings: Settings | None = None
         training = None
 
-        for plugin_name in model_plugins:
-            plugin_output_dir = output_dir / variant_name / plugin_name
-            plugin_output_dir.mkdir(parents=True, exist_ok=True)
-            report_path = plugin_output_dir / "experiment_report.json"
+        for stage1_plugin in model_plugins:
+            for stage2_plugin in model_plugins:
+                combo_name = f"{stage1_plugin}__{stage2_plugin}"
+                plugin_output_dir = output_dir / variant_name / combo_name
+                plugin_output_dir.mkdir(parents=True, exist_ok=True)
+                report_path = plugin_output_dir / "experiment_report.json"
 
-            if report_path.exists() and (args.skip_existing or args.summary_only):
-                results.append(_load_existing_result(report_path))
-                continue
-            if args.summary_only:
-                continue
+                if report_path.exists() and (args.skip_existing or args.summary_only):
+                    results.append(_load_existing_result(report_path))
+                    continue
+                if args.summary_only:
+                    continue
 
-            if variant_settings is None:
-                variant_settings = _build_settings_variant(settings, args.horizon, variant_name)
-                training = build_training_frame(
-                    source,
+                if variant_settings is None:
+                    variant_settings = _build_settings_variant(settings, args.horizon, variant_name)
+                    training = build_training_frame(
+                        source,
+                        variant_settings,
+                        horizon_name=args.horizon,
+                        derivatives_frame=derivatives_frame,
+                    )
+                experiment_settings = replace(
                     variant_settings,
-                    horizon_name=args.horizon,
-                    derivatives_frame=derivatives_frame,
+                    model=replace(
+                        variant_settings.model,
+                        active_plugins={"stage1": stage1_plugin, "stage2": stage2_plugin},
+                    ),
                 )
-            started_at = time.perf_counter()
-            artifacts = train_model(
-                training,
-                variant_settings,
-                validation_window_days=validation_window_days,
-                calibration_fraction=args.calibration_fraction,
-                purge_rows=args.purge_rows,
-                model_plugin_name=plugin_name,
-            )
-            duration_seconds = time.perf_counter() - started_at
+                started_at = time.perf_counter()
+                artifacts = train_two_stage_model(
+                    training,
+                    experiment_settings,
+                    validation_window_days=validation_window_days,
+                    purge_rows=args.purge_rows,
+                )
+                duration_seconds = time.perf_counter() - started_at
 
-            result = {
-                "variant": variant_name,
-                "model_plugin": plugin_name,
-                "feature_count": len(artifacts.feature_columns),
-                "duration_seconds": duration_seconds,
-                "train_metrics": _select_metrics(artifacts.train_metrics),
-                "validation_metrics": _select_metrics(artifacts.validation_metrics),
-                "overfit_gap": {
-                    "roc_auc": artifacts.train_metrics["roc_auc"] - artifacts.validation_metrics["roc_auc"],
-                    "log_loss": artifacts.validation_metrics["log_loss"] - artifacts.train_metrics["log_loss"],
-                    "accuracy": artifacts.train_metrics["accuracy"] - artifacts.validation_metrics["accuracy"],
-                },
-                "train_window": artifacts.train_window,
-                "validation_window": artifacts.validation_window,
-                "derivatives": {
-                    "enabled": variant_settings.derivatives.enabled,
-                    "funding_enabled": variant_settings.derivatives.funding.enabled,
-                    "basis_enabled": variant_settings.derivatives.basis.enabled,
-                    "book_ticker_enabled": variant_settings.derivatives.book_ticker.enabled,
-                    "oi_enabled": variant_settings.derivatives.oi.enabled,
-                    "options_enabled": variant_settings.derivatives.options.enabled,
-                    "packs": [
-                        pack
-                        for pack in variant_settings.features.get_profile(
-                            variant_settings.horizons.get_active_spec(args.horizon).feature_profile
-                        ).packs
-                        if pack.startswith("derivatives_")
-                    ],
-                },
-            }
-            results.append(result)
+                result = {
+                    "variant": variant_name,
+                    "model_plugins": {"stage1": stage1_plugin, "stage2": stage2_plugin},
+                    "feature_count": len(artifacts.feature_columns),
+                    "duration_seconds": duration_seconds,
+                    "stage1_threshold": artifacts.stage1_threshold,
+                    "buy_threshold": artifacts.buy_threshold,
+                    "base_rate": artifacts.base_rate,
+                    "train_metrics": {
+                        name: _select_metrics(values) for name, values in artifacts.train_metrics.items()
+                    },
+                    "validation_metrics": {
+                        name: _select_metrics(values) for name, values in artifacts.validation_metrics.items()
+                    },
+                    "overfit_gap": {
+                        "pnl_per_sample": artifacts.train_metrics["end_to_end"]["pnl_per_sample"]
+                        - artifacts.validation_metrics["end_to_end"]["pnl_per_sample"],
+                        "trade_accuracy": artifacts.train_metrics["end_to_end"]["trade_accuracy"]
+                        - artifacts.validation_metrics["end_to_end"]["trade_accuracy"],
+                        "coverage": artifacts.train_metrics["end_to_end"]["coverage"]
+                        - artifacts.validation_metrics["end_to_end"]["coverage"],
+                    },
+                    "train_window": artifacts.train_window,
+                    "validation_window": artifacts.validation_window,
+                    "walk_forward_summary": artifacts.walk_forward_summary,
+                    "stage1_threshold_scan": artifacts.stage1_threshold_scan,
+                    "stage1_probability_summary": artifacts.stage1_probability_summary,
+                    "derivatives": {
+                        "enabled": variant_settings.derivatives.enabled,
+                        "funding_enabled": variant_settings.derivatives.funding.enabled,
+                        "basis_enabled": variant_settings.derivatives.basis.enabled,
+                        "book_ticker_enabled": variant_settings.derivatives.book_ticker.enabled,
+                        "oi_enabled": variant_settings.derivatives.oi.enabled,
+                        "options_enabled": variant_settings.derivatives.options.enabled,
+                        "packs": [
+                            pack
+                            for pack in variant_settings.features.get_profile(
+                                variant_settings.horizons.get_active_spec(args.horizon).feature_profile
+                            ).packs
+                            if pack.startswith("derivatives_")
+                        ],
+                    },
+                }
+                results.append(result)
 
-            artifacts.model.save(plugin_output_dir / f"{plugin_name}.pkl")
-            artifacts.calibrator.save(plugin_output_dir / f"{artifacts.calibrator.name}.pkl")
-            report_path.write_text(
-                json.dumps(result, indent=2),
-                encoding="utf-8",
-            )
+                artifacts.stage1_model.save(plugin_output_dir / f"{stage1_plugin}.stage1.pkl")
+                artifacts.stage2_model.save(plugin_output_dir / f"{stage2_plugin}.stage2.pkl")
+                artifacts.stage1_calibrator.save(
+                    plugin_output_dir / f"{artifacts.stage1_calibrator.name}.stage1.pkl"
+                )
+                artifacts.stage2_calibrator.save(
+                    plugin_output_dir / f"{artifacts.stage2_calibrator.name}.stage2.pkl"
+                )
+                report_path.write_text(
+                    json.dumps(result, indent=2),
+                    encoding="utf-8",
+                )
 
     if not results:
         raise ValueError("No experiment results were produced. Disable --summary-only or provide existing reports.")

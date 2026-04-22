@@ -58,6 +58,7 @@ artifacts/
 *.json
 !docs/*.json
 !src/**/*.json
+!artifacts\models\manual\two_stage_offline_eval_20260422\training_report.json
 
 # Secrets and environment variables
 .env

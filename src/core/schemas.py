@@ -21,6 +21,7 @@ class Signal:
     p_up: float
     model_version: str
     feature_version: str
+    p_active: float | None = None
     decision_context: dict[str, Any] = field(default_factory=dict)
 
 

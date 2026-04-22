@@ -14,6 +14,22 @@ def signal_generated_event(signal: Signal) -> AuditEvent:
             "horizon": signal.horizon,
             "t0": signal.t0.isoformat(),
             "p_up": signal.p_up,
+            "p_active": signal.p_active,
+            "decision_context": signal.decision_context,
+        },
+    )
+
+
+def stage1_drift_alert_event(signal: Signal, drift_state: dict) -> AuditEvent:
+    return AuditEvent(
+        event_type="stage1_drift_alert",
+        timestamp=datetime.now(UTC),
+        payload={
+            "asset": signal.asset,
+            "horizon": signal.horizon,
+            "t0": signal.t0.isoformat(),
+            "p_active": signal.p_active,
+            "drift": drift_state,
         },
     )
 

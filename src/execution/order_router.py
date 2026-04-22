@@ -11,10 +11,19 @@ def build_order_request(
     if not decision.should_trade or decision.side is None:
         raise ValueError("Cannot build order request for a non-trade decision.")
 
+    side = "YES" if decision.side in {"YES", "BUY"} else "NO"
+    market_id = quote.market_id
+    price = quote.yes_price
+    if side == "NO":
+        market_id = str(quote.metadata.get("no_token_id", quote.market_id))
+        if quote.no_price is None:
+            raise ValueError("Cannot build NO-side order without no_price.")
+        price = quote.no_price
+
     return OrderRequest(
-        market_id=quote.market_id,
-        side=decision.side,
-        price=quote.yes_price,
+        market_id=market_id,
+        side=side,
+        price=price,
         size=decision.target_size,
         signal_t0=signal.t0,
         metadata={

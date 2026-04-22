@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pandas as pd
 
 from src.core.config import Settings
@@ -8,9 +10,17 @@ from src.data.dataset_builder import infer_feature_columns
 from src.features.builder import build_feature_frame
 
 
+@dataclass(frozen=True)
+class FeatureSnapshot:
+    horizon: str
+    row: pd.Series
+    source_timestamp: pd.Timestamp
+
+
 class FeatureService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+        self._snapshots: dict[str, FeatureSnapshot] = {}
 
     def build_feature_frame(
         self,
@@ -52,6 +62,31 @@ class FeatureService:
         if feature_frame.empty:
             raise ValueError("No feature rows available for the requested horizon.")
         return feature_frame.iloc[-1]
+
+    def preheat_latest_feature_snapshot(
+        self,
+        df: pd.DataFrame,
+        horizon_name: str | None = None,
+        derivatives_frame: pd.DataFrame | None = None,
+    ) -> FeatureSnapshot:
+        latest = self.build_latest_feature_row(
+            df,
+            horizon_name=horizon_name,
+            derivatives_frame=derivatives_frame,
+        )
+        snapshot = FeatureSnapshot(
+            horizon=str(latest["horizon"]),
+            row=latest.copy(),
+            source_timestamp=pd.Timestamp(df[DEFAULT_TIMESTAMP_COLUMN].iloc[-1]),
+        )
+        self._snapshots[snapshot.horizon] = snapshot
+        return snapshot
+
+    def get_preheated_snapshot(self, horizon_name: str) -> FeatureSnapshot:
+        try:
+            return self._snapshots[horizon_name]
+        except KeyError as exc:
+            raise KeyError(f"No preheated snapshot available for horizon '{horizon_name}'.") from exc
 
     def build_freqai_feature_dataframe(
         self,

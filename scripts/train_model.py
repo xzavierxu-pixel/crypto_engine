@@ -18,7 +18,7 @@ from src.data.derivatives.feature_store import (
     resolve_derivatives_paths,
 )
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
-from src.model.train import train_model
+from src.model.train import train_two_stage_model
 
 
 def _load_input(path: Path):
@@ -32,12 +32,11 @@ def _load_input(path: Path):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train a baseline BTC Polymarket model.")
+    parser = argparse.ArgumentParser(description="Train the two-stage BTC Polymarket model.")
     parser.add_argument("--input", required=True, help="Path to OHLCV CSV or parquet input.")
     parser.add_argument("--output-dir", required=True, help="Directory for model artifacts.")
     parser.add_argument("--config", default="config/settings.yaml", help="Path to settings YAML.")
     parser.add_argument("--horizon", default="5m", help="Horizon name to train.")
-    parser.add_argument("--model-plugin", default=None, help="Optional model plugin override.")
     parser.add_argument("--funding-input", help="Optional funding raw input override.")
     parser.add_argument("--basis-input", help="Optional basis raw input override.")
     parser.add_argument("--oi-input", help="Optional OI raw input override.")
@@ -55,7 +54,6 @@ def main() -> None:
         default=None,
         help="Validation window size in days. Defaults to the value in config/settings.yaml.",
     )
-    parser.add_argument("--calibration-fraction", type=float, default=0.15, help="Fraction of the development window reserved for probability calibration.")
     parser.add_argument("--purge-rows", type=int, default=1, help="Grid rows removed between train and validation splits.")
     args = parser.parse_args()
 
@@ -90,22 +88,24 @@ def main() -> None:
         if args.validation_window_days is not None
         else settings.dataset.validation_window_days
     )
-    artifacts = train_model(
+    artifacts = train_two_stage_model(
         training,
         settings,
         validation_window_days=validation_window_days,
-        calibration_fraction=args.calibration_fraction,
         purge_rows=args.purge_rows,
-        model_plugin_name=args.model_plugin,
     )
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    model_path = output_dir / f"{settings.model.active_plugin}.pkl"
-    calibrator_path = output_dir / f"{artifacts.calibrator.name}.pkl"
+    stage1_model_path = output_dir / f"{settings.model.resolve_plugin(stage='stage1')}.stage1.pkl"
+    stage2_model_path = output_dir / f"{settings.model.resolve_plugin(stage='stage2')}.stage2.pkl"
+    stage1_calibrator_path = output_dir / f"{artifacts.stage1_calibrator.name}.stage1.pkl"
+    stage2_calibrator_path = output_dir / f"{artifacts.stage2_calibrator.name}.stage2.pkl"
     report_path = output_dir / "training_report.json"
-    artifacts.model.save(model_path)
-    artifacts.calibrator.save(calibrator_path)
+    artifacts.stage1_model.save(stage1_model_path)
+    artifacts.stage2_model.save(stage2_model_path)
+    artifacts.stage1_calibrator.save(stage1_calibrator_path)
+    artifacts.stage2_calibrator.save(stage2_calibrator_path)
     report_payload = {
         "project": settings.project.name,
         "market": settings.market.pair,
@@ -113,8 +113,15 @@ def main() -> None:
         "horizon": args.horizon,
         "feature_columns": artifacts.feature_columns,
         "feature_count": len(artifacts.feature_columns),
-        "model_plugin": args.model_plugin or settings.model.active_plugin,
-        "calibration_plugin": artifacts.calibrator.name,
+        "stage2_feature_columns": artifacts.stage2_feature_columns,
+        "model_plugins": {
+            "stage1": settings.model.resolve_plugin(stage="stage1"),
+            "stage2": settings.model.resolve_plugin(stage="stage2"),
+        },
+        "calibration_plugins": {
+            "stage1": artifacts.stage1_calibrator.name,
+            "stage2": artifacts.stage2_calibrator.name,
+        },
         "config_hash": hash_config(settings),
         "train_row_count": len(training.frame),
         "train_start": str(training.frame["timestamp"].min()) if not training.frame.empty else None,
@@ -143,26 +150,19 @@ def main() -> None:
             "book_ticker_path": derivatives_paths["book_ticker_path"],
         },
         "validation_window_days": validation_window_days,
-        "calibration_fraction": args.calibration_fraction,
         "purge_rows": args.purge_rows,
+        "stage1_threshold": artifacts.stage1_threshold,
+        "buy_threshold": artifacts.buy_threshold,
+        "base_rate": artifacts.base_rate,
+        "stage1_threshold_scan": artifacts.stage1_threshold_scan,
+        "stage1_probability_summary": artifacts.stage1_probability_summary,
+        "stage1_probability_reference": artifacts.stage1_probability_reference,
         "train_metrics": artifacts.train_metrics,
         "train_window": artifacts.train_window,
         "validation_window": artifacts.validation_window,
-        "raw_validation_metrics": artifacts.raw_validation_metrics,
         "validation_metrics": artifacts.validation_metrics,
         "walk_forward_summary": artifacts.walk_forward_summary,
-        "walk_forward_folds": [
-            {
-                "fold_index": fold.fold_index,
-                "train_start": fold.split.train_start,
-                "train_end": fold.split.train_end,
-                "valid_start": fold.split.valid_start,
-                "valid_end": fold.split.valid_end,
-                "purge_rows": fold.split.purge_rows,
-                "metrics": fold.metrics,
-            }
-            for fold in artifacts.walk_forward_results
-        ],
+        "walk_forward_folds": artifacts.walk_forward_fold_details,
     }
     report_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
 

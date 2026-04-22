@@ -4,7 +4,12 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from src.core.schemas import Decision, MarketQuote, Signal
-from scripts.run_shadow import _build_shadow_summary, _merge_quote_metadata, _resolve_quote
+from scripts.run_shadow import (
+    _build_shadow_summary,
+    _build_stage1_drift_monitor,
+    _merge_quote_metadata,
+    _resolve_quote,
+)
 
 
 class FakeMapper:
@@ -39,6 +44,7 @@ def make_signal() -> Signal:
         p_up=0.57,
         model_version="m1",
         feature_version="v1",
+        p_active=0.71,
     )
 
 
@@ -105,6 +111,25 @@ def test_build_shadow_summary_contains_signal_market_decision_and_order() -> Non
     )
 
     assert summary["signal"]["asset"] == "BTC/USDT"
+    assert summary["signal"]["p_active"] == 0.71
     assert summary["market"]["slug"] == "btc-updown-5m-123"
     assert summary["decision"]["should_trade"] is True
     assert summary["order"]["market_id"] == "yes-1"
+
+
+def test_build_stage1_drift_monitor_requires_real_reference_sample() -> None:
+    assert _build_stage1_drift_monitor([]) is None
+
+    monitor = _build_stage1_drift_monitor(
+        [0.2, 0.4, 0.6, 0.8],
+        threshold=0.01,
+        window_size=4,
+        min_history=2,
+        alert_consecutive=2,
+    )
+
+    assert monitor is not None
+    state = {}
+    for value in [0.2, 0.4, 0.6, 0.8]:
+        state = monitor.update(value)
+    assert state["window_size"] == 4

@@ -141,102 +141,107 @@ def test_experiment_summary_helpers_build_rankings_and_variant_rollups() -> None
     results = [
         {
             "variant": "baseline",
-            "model_plugin": "logistic",
+            "model_plugins": {"stage1": "logistic", "stage2": "logistic"},
             "feature_count": 120,
             "duration_seconds": 10.123,
-            "train_metrics": {"roc_auc": 0.54, "log_loss": 0.69, "accuracy": 0.52, "sample_count": 1000.0},
-            "validation_metrics": {"roc_auc": 0.53, "log_loss": 0.692, "accuracy": 0.51, "sample_count": 200.0},
-            "overfit_gap": {"roc_auc": 0.01, "log_loss": 0.002, "accuracy": 0.01},
+            "train_metrics": {"end_to_end": {"pnl_per_sample": 0.01, "trade_accuracy": 0.51, "coverage": 0.50}},
+            "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.008, "trade_accuracy": 0.51, "coverage": 0.40, "sample_count": 200.0}},
+            "walk_forward_summary": {"pnl_per_sample_mean": 0.007, "pnl_per_sample_min": 0.001, "trade_accuracy_mean": 0.51},
+            "overfit_gap": {"pnl_per_sample": 0.002, "trade_accuracy": 0.0, "coverage": 0.10},
             "derivatives": {"enabled": False, "packs": []},
         },
         {
             "variant": "funding_basis",
-            "model_plugin": "catboost",
+            "model_plugins": {"stage1": "catboost", "stage2": "catboost"},
             "feature_count": 130,
             "duration_seconds": 25.5,
-            "train_metrics": {"roc_auc": 0.59, "log_loss": 0.685, "accuracy": 0.55, "sample_count": 1000.0},
-            "validation_metrics": {"roc_auc": 0.56, "log_loss": 0.689, "accuracy": 0.53, "sample_count": 200.0},
-            "overfit_gap": {"roc_auc": 0.03, "log_loss": 0.004, "accuracy": 0.02},
+            "train_metrics": {"end_to_end": {"pnl_per_sample": 0.05, "trade_accuracy": 0.58, "coverage": 0.60}},
+            "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.04, "trade_accuracy": 0.57, "coverage": 0.55, "sample_count": 200.0}},
+            "walk_forward_summary": {"pnl_per_sample_mean": 0.035, "pnl_per_sample_min": 0.020, "trade_accuracy_mean": 0.56},
+            "overfit_gap": {"pnl_per_sample": 0.01, "trade_accuracy": 0.01, "coverage": 0.05},
             "derivatives": {"enabled": True, "packs": ["derivatives_funding", "derivatives_basis"]},
         },
         {
             "variant": "funding",
-            "model_plugin": "lightgbm",
+            "model_plugins": {"stage1": "lightgbm", "stage2": "lightgbm"},
             "feature_count": 125,
             "duration_seconds": 18.0,
-            "train_metrics": {"roc_auc": 0.57, "log_loss": 0.688, "accuracy": 0.54, "sample_count": 1000.0},
-            "validation_metrics": {"roc_auc": 0.55, "log_loss": 0.690, "accuracy": 0.525, "sample_count": 200.0},
-            "overfit_gap": {"roc_auc": 0.02, "log_loss": 0.002, "accuracy": 0.015},
+            "train_metrics": {"end_to_end": {"pnl_per_sample": 0.03, "trade_accuracy": 0.55, "coverage": 0.54}},
+            "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.02, "trade_accuracy": 0.54, "coverage": 0.50, "sample_count": 200.0}},
+            "walk_forward_summary": {"pnl_per_sample_mean": 0.018, "pnl_per_sample_min": 0.010, "trade_accuracy_mean": 0.54},
+            "overfit_gap": {"pnl_per_sample": 0.01, "trade_accuracy": 0.01, "coverage": 0.04},
             "derivatives": {"enabled": True, "packs": ["derivatives_funding"]},
         },
         {
             "variant": "funding_basis",
-            "model_plugin": "logistic",
+            "model_plugins": {"stage1": "logistic", "stage2": "catboost"},
             "feature_count": 130,
             "duration_seconds": 8.5,
-            "train_metrics": {"roc_auc": 0.56, "log_loss": 0.689, "accuracy": 0.53, "sample_count": 1000.0},
-            "validation_metrics": {"roc_auc": 0.54, "log_loss": 0.691, "accuracy": 0.52, "sample_count": 200.0},
-            "overfit_gap": {"roc_auc": 0.02, "log_loss": 0.002, "accuracy": 0.01},
+            "train_metrics": {"end_to_end": {"pnl_per_sample": 0.025, "trade_accuracy": 0.54, "coverage": 0.52}},
+            "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.015, "trade_accuracy": 0.53, "coverage": 0.48, "sample_count": 200.0}},
+            "walk_forward_summary": {"pnl_per_sample_mean": 0.013, "pnl_per_sample_min": 0.002, "trade_accuracy_mean": 0.53},
+            "overfit_gap": {"pnl_per_sample": 0.01, "trade_accuracy": 0.01, "coverage": 0.04},
             "derivatives": {"enabled": True, "packs": ["derivatives_funding", "derivatives_basis"]},
         },
     ]
 
-    ranked_results = sorted(results, key=lambda result: (result["validation_metrics"]["roc_auc"], -result["validation_metrics"]["log_loss"], result["validation_metrics"]["accuracy"]), reverse=True)
+    ranked_results = sorted(results, key=lambda result: (result["walk_forward_summary"]["pnl_per_sample_mean"], result["walk_forward_summary"]["pnl_per_sample_min"], result["walk_forward_summary"]["trade_accuracy_mean"]), reverse=True)
     leaderboard = _build_leaderboard(ranked_results)
     variant_summary = _build_variant_summary(ranked_results)
     progression = _build_derivatives_progression(variant_summary)
 
     assert leaderboard[0]["rank"] == 1
     assert leaderboard[0]["variant"] == "funding_basis"
-    assert leaderboard[0]["model_plugin"] == "catboost"
+    assert leaderboard[0]["stage1_model_plugin"] == "catboost"
+    assert leaderboard[0]["stage2_model_plugin"] == "catboost"
 
     assert [entry["variant"] for entry in variant_summary] == ["funding_basis", "funding", "baseline"]
     funding_basis_entry = next(entry for entry in variant_summary if entry["variant"] == "funding_basis")
-    assert funding_basis_entry["best_model_plugin"] == "catboost"
-    assert funding_basis_entry["delta_vs_baseline"]["roc_auc"] == 0.03
+    assert funding_basis_entry["best_model_plugins"]["stage1"] == "catboost"
+    assert funding_basis_entry["delta_vs_baseline"]["pnl_per_sample"] == 0.032
 
     assert [entry["variant"] for entry in progression] == ["baseline", "funding", "funding_basis"]
-    assert progression[1]["delta_vs_previous"]["roc_auc"] == 0.02
-    assert progression[2]["delta_vs_previous"]["roc_auc"] == 0.01
+    assert progression[1]["delta_vs_previous"]["pnl_per_sample"] == 0.012
+    assert progression[2]["delta_vs_previous"]["pnl_per_sample"] == 0.02
 
 
 def test_render_summary_markdown_includes_leaderboard_and_progression_sections() -> None:
     summary = {
         "results": [{"variant": "funding", "model_plugin": "catboost"}],
         "best_variant": "funding",
-        "best_model_plugin": "catboost",
+        "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm"},
         "validation_window_days": 30,
         "leaderboard": [
             {
                 "rank": 1,
                 "variant": "funding",
-                "model_plugin": "catboost",
+                "stage1_model_plugin": "catboost",
+                "stage2_model_plugin": "lightgbm",
                 "feature_count": 130,
-                "validation_roc_auc": 0.56,
-                "validation_log_loss": 0.689,
-                "validation_accuracy": 0.53,
-                "train_roc_auc": 0.59,
-                "overfit_gap_roc_auc": 0.03,
-                "overfit_gap_log_loss": 0.004,
+                "validation_pnl_per_sample": 0.04,
+                "validation_trade_accuracy": 0.57,
+                "validation_coverage": 0.55,
+                "walk_forward_pnl_per_sample_mean": 0.03,
+                "walk_forward_pnl_per_sample_min": 0.01,
                 "duration_seconds": 25.5,
             }
         ],
         "variant_summary": [
             {
                 "variant": "funding",
-                "best_model_plugin": "catboost",
-                "validation_metrics": {"roc_auc": 0.56, "log_loss": 0.689, "accuracy": 0.53, "sample_count": 200},
-                "delta_vs_baseline": {"roc_auc": 0.02, "log_loss": -0.001, "accuracy": 0.01},
+                "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm"},
+                "validation_metrics": {"pnl_per_sample": 0.04, "trade_accuracy": 0.57, "coverage": 0.55, "sample_count": 200},
+                "delta_vs_baseline": {"pnl_per_sample": 0.02, "trade_accuracy": 0.03, "coverage": 0.05},
             }
         ],
         "derivatives_progression": [
             {
                 "variant": "funding",
-                "best_model_plugin": "catboost",
-                "validation_roc_auc": 0.56,
-                "validation_log_loss": 0.689,
-                "validation_accuracy": 0.53,
-                "delta_vs_previous": {"roc_auc": 0.02, "log_loss": -0.001, "accuracy": 0.01},
+                "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm"},
+                "validation_pnl_per_sample": 0.04,
+                "validation_trade_accuracy": 0.57,
+                "validation_coverage": 0.55,
+                "delta_vs_previous": {"pnl_per_sample": 0.02, "trade_accuracy": 0.03, "coverage": 0.05},
             }
         ],
     }
@@ -249,6 +254,7 @@ def test_render_summary_markdown_includes_leaderboard_and_progression_sections()
     assert "## Derivatives Progression" in markdown
     assert "`funding`" in markdown
     assert "`catboost`" in markdown
+    assert "`lightgbm`" in markdown
 
 
 def test_collect_existing_results_and_write_summary_support_resume_flow(tmp_path: Path) -> None:
@@ -259,22 +265,24 @@ def test_collect_existing_results_and_write_summary_support_resume_flow(tmp_path
 
     baseline_result = {
         "variant": "baseline",
-        "model_plugin": "catboost",
+        "model_plugins": {"stage1": "catboost", "stage2": "catboost"},
         "feature_count": 126,
         "duration_seconds": 10.0,
-        "train_metrics": {"roc_auc": 0.58, "log_loss": 0.686, "accuracy": 0.55, "sample_count": 1000.0},
-        "validation_metrics": {"roc_auc": 0.537, "log_loss": 0.691, "accuracy": 0.525, "sample_count": 200.0},
-        "overfit_gap": {"roc_auc": 0.043, "log_loss": 0.005, "accuracy": 0.025},
+        "train_metrics": {"end_to_end": {"pnl_per_sample": 0.02, "trade_accuracy": 0.53, "coverage": 0.50}},
+        "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.01, "trade_accuracy": 0.52, "coverage": 0.48, "sample_count": 200.0}},
+        "walk_forward_summary": {"pnl_per_sample_mean": 0.008, "pnl_per_sample_min": 0.002, "trade_accuracy_mean": 0.52},
+        "overfit_gap": {"pnl_per_sample": 0.01, "trade_accuracy": 0.01, "coverage": 0.02},
         "derivatives": {"enabled": False, "packs": []},
     }
     funding_result = {
         "variant": "funding",
-        "model_plugin": "lightgbm",
+        "model_plugins": {"stage1": "lightgbm", "stage2": "lightgbm"},
         "feature_count": 130,
         "duration_seconds": 8.0,
-        "train_metrics": {"roc_auc": 0.59, "log_loss": 0.684, "accuracy": 0.56, "sample_count": 1000.0},
-        "validation_metrics": {"roc_auc": 0.545, "log_loss": 0.690, "accuracy": 0.528, "sample_count": 200.0},
-        "overfit_gap": {"roc_auc": 0.045, "log_loss": 0.006, "accuracy": 0.032},
+        "train_metrics": {"end_to_end": {"pnl_per_sample": 0.03, "trade_accuracy": 0.55, "coverage": 0.54}},
+        "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.02, "trade_accuracy": 0.54, "coverage": 0.50, "sample_count": 200.0}},
+        "walk_forward_summary": {"pnl_per_sample_mean": 0.018, "pnl_per_sample_min": 0.010, "trade_accuracy_mean": 0.54},
+        "overfit_gap": {"pnl_per_sample": 0.01, "trade_accuracy": 0.01, "coverage": 0.04},
         "derivatives": {"enabled": True, "packs": ["derivatives_funding"]},
     }
     (baseline_dir / "experiment_report.json").write_text(json.dumps(baseline_result), encoding="utf-8")
@@ -293,6 +301,6 @@ def test_collect_existing_results_and_write_summary_support_resume_flow(tmp_path
     )
 
     assert summary["best_variant"] == "funding"
-    assert summary["best_model_plugin"] == "lightgbm"
+    assert summary["best_model_plugins"]["stage1"] == "lightgbm"
     assert (tmp_path / "summary.json").exists()
     assert (tmp_path / "summary.md").exists()

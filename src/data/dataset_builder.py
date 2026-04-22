@@ -7,10 +7,12 @@ import pandas as pd
 
 from src.core.config import Settings
 from src.core.constants import (
+    DEFAULT_ABS_RETURN_COLUMN,
     DEFAULT_ASSET_COLUMN,
     DEFAULT_GRID_ID_COLUMN,
     DEFAULT_HORIZON_COLUMN,
     DEFAULT_SAMPLE_WEIGHT_COLUMN,
+    DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN,
     DEFAULT_TARGET_COLUMN,
     DEFAULT_TIMESTAMP_COLUMN,
 )
@@ -18,6 +20,7 @@ from src.core.validation import normalize_ohlcv_frame
 from src.data.preprocess import drop_incomplete_samples, filter_by_timerange
 from src.features.builder import build_feature_frame
 from src.horizons.registry import get_horizon_spec
+from src.labels.abs_return import build_abs_return_frame, compute_stage1_boundary_weight
 from src.labels.registry import get_label_builder
 
 
@@ -36,7 +39,9 @@ BASE_DATASET_COLUMNS = {
     "feature_version",
     "label_version",
     DEFAULT_TARGET_COLUMN,
+    DEFAULT_ABS_RETURN_COLUMN,
     DEFAULT_SAMPLE_WEIGHT_COLUMN,
+    DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN,
 }
 
 
@@ -137,6 +142,13 @@ def build_training_frame(
         how="left",
         validate="one_to_one",
     )
+    abs_return_frame = build_abs_return_frame(normalized, horizon)
+    training_frame = training_frame.merge(
+        abs_return_frame,
+        on=DEFAULT_TIMESTAMP_COLUMN,
+        how="left",
+        validate="one_to_one",
+    )
     training_frame = filter_by_timerange(
         training_frame,
         start=settings.dataset.train_start,
@@ -157,6 +169,12 @@ def build_training_frame(
     if sample_weights is not None:
         training_frame[DEFAULT_SAMPLE_WEIGHT_COLUMN] = sample_weights
         sample_weight_column = DEFAULT_SAMPLE_WEIGHT_COLUMN
+    tau = float(settings.labels.two_stage.active_return_threshold)
+    boundary_weight = compute_stage1_boundary_weight(training_frame[DEFAULT_ABS_RETURN_COLUMN], tau=tau)
+    if sample_weights is not None:
+        training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = sample_weights * boundary_weight
+    else:
+        training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = boundary_weight
 
     return TrainingFrame(
         frame=training_frame.reset_index(drop=True),

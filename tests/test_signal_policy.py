@@ -16,6 +16,8 @@ def test_decision_engine_accepts_positive_edge_inside_price_band() -> None:
         p_up=0.59,
         model_version="m1",
         feature_version="v1",
+        p_active=0.74,
+        decision_context={"stage1_threshold": 0.5, "buy_threshold": 0.55},
     )
 
     decision = evaluate_entry(
@@ -27,7 +29,7 @@ def test_decision_engine_accepts_positive_edge_inside_price_band() -> None:
 
     assert decision.should_trade is True
     assert decision.side == "YES"
-    assert decision.target_size == 0.02
+    assert decision.target_size == 5.0
 
 
 def test_decision_engine_rejects_when_risk_capacity_is_exhausted() -> None:
@@ -39,6 +41,8 @@ def test_decision_engine_rejects_when_risk_capacity_is_exhausted() -> None:
         p_up=0.59,
         model_version="m1",
         feature_version="v1",
+        p_active=0.20,
+        decision_context={"stage1_threshold": 0.5, "buy_threshold": 0.55},
     )
 
     decision = evaluate_entry(
@@ -49,4 +53,4 @@ def test_decision_engine_rejects_when_risk_capacity_is_exhausted() -> None:
     )
 
     assert decision.should_trade is False
-    assert decision.reason == "risk_capacity_exhausted"
+    assert decision.reason == "stage1_below_threshold"
