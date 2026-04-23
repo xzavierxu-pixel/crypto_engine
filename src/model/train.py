@@ -29,6 +29,8 @@ class TrainingArtifacts:
     train_metrics: dict[str, float]
     train_window: dict[str, str | int | None]
     validation_window: dict[str, str | int | None]
+    development_frame: pd.DataFrame
+    validation_frame: pd.DataFrame
     raw_validation_probabilities: pd.Series
     validation_probabilities: pd.Series
     raw_validation_metrics: dict[str, float]
@@ -252,6 +254,8 @@ def train_model(
             "start": str(validation_frame["timestamp"].min()) if not validation_frame.empty else None,
             "end": str(validation_frame["timestamp"].max()) if not validation_frame.empty else None,
         },
+        development_frame=development_frame,
+        validation_frame=validation_frame,
         raw_validation_probabilities=raw_valid_proba,
         validation_probabilities=calibrated_valid_proba,
         raw_validation_metrics=raw_validation_metrics,

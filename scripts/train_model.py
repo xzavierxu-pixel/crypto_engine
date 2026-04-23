@@ -13,6 +13,7 @@ from src.core.config import load_settings
 from src.core.versioning import hash_config
 from src.data.dataset_builder import build_training_frame
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
+from src.model.evaluation import build_threshold_scan
 from src.model.train import train_model
 
 
@@ -24,6 +25,13 @@ def _load_input(path: Path):
     if path.suffix.lower() in {".feather", ".ft"}:
         return load_ohlcv_feather(path)
     raise ValueError(f"Unsupported input format: {path.suffix}")
+
+
+def _model_input_frame(frame, feature_columns: list[str], target_column: str, sample_weight_column: str | None):
+    columns = ["timestamp", target_column, *feature_columns]
+    if sample_weight_column and sample_weight_column in frame.columns:
+        columns.insert(2, sample_weight_column)
+    return frame.loc[:, columns].copy()
 
 
 def main() -> None:
@@ -68,6 +76,30 @@ def main() -> None:
     report_path = output_dir / "training_report.json"
     artifacts.model.save(model_path)
     artifacts.calibrator.save(calibrator_path)
+    threshold_scan = build_threshold_scan(
+        artifacts.validation_frame[training.target_column].astype(int),
+        artifacts.validation_probabilities,
+    )
+    best_threshold_row = threshold_scan.sort_values(
+        ["f1", "precision", "recall", "threshold"],
+        ascending=[False, False, False, True],
+    ).iloc[0]
+    threshold_scan_path = output_dir / "threshold_scan_validation.csv"
+    train_processed_path = output_dir / "train_model_input.parquet"
+    valid_processed_path = output_dir / "valid_model_input.parquet"
+    threshold_scan.to_csv(threshold_scan_path, index=False)
+    _model_input_frame(
+        artifacts.development_frame,
+        artifacts.feature_columns,
+        training.target_column,
+        training.sample_weight_column,
+    ).to_parquet(train_processed_path, index=False)
+    _model_input_frame(
+        artifacts.validation_frame,
+        artifacts.feature_columns,
+        training.target_column,
+        training.sample_weight_column,
+    ).to_parquet(valid_processed_path, index=False)
     report_payload = {
         "project": settings.project.name,
         "market": settings.market.pair,
@@ -95,6 +127,26 @@ def main() -> None:
         "train_metrics": artifacts.train_metrics,
         "train_window": artifacts.train_window,
         "validation_window": artifacts.validation_window,
+        "threshold_scan": {
+            "path": str(threshold_scan_path.resolve()),
+            "best_by_f1": {
+                "threshold": float(best_threshold_row["threshold"]),
+                "precision": float(best_threshold_row["precision"]),
+                "recall": float(best_threshold_row["recall"]),
+                "f1": float(best_threshold_row["f1"]),
+                "accuracy": float(best_threshold_row["accuracy"]),
+                "balanced_accuracy": float(best_threshold_row["balanced_accuracy"]),
+                "predicted_positive_count": int(best_threshold_row["predicted_positive_count"]),
+                "predicted_positive_rate": float(best_threshold_row["predicted_positive_rate"]),
+            },
+        },
+        "processed_data": {
+            "train_model_input_path": str(train_processed_path.resolve()),
+            "valid_model_input_path": str(valid_processed_path.resolve()),
+            "columns": ["timestamp", training.target_column, training.sample_weight_column, *artifacts.feature_columns]
+            if training.sample_weight_column
+            else ["timestamp", training.target_column, *artifacts.feature_columns],
+        },
         "raw_validation_metrics": artifacts.raw_validation_metrics,
         "validation_metrics": artifacts.validation_metrics,
         "walk_forward_summary": artifacts.walk_forward_summary,

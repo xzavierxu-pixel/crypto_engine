@@ -4,7 +4,16 @@ from dataclasses import dataclass
 from statistics import mean
 
 import pandas as pd
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, brier_score_loss, log_loss, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    brier_score_loss,
+    f1_score,
+    log_loss,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 
 from src.data.dataset_builder import TrainingFrame
 
@@ -179,6 +188,38 @@ def compute_classification_metrics(
     if y.nunique() == 2:
         metrics["roc_auc"] = float(roc_auc_score(y, proba))
     return metrics
+
+
+def build_threshold_scan(
+    y_true: pd.Series,
+    probabilities: pd.Series,
+    thresholds: list[float] | None = None,
+) -> pd.DataFrame:
+    if len(y_true) != len(probabilities):
+        raise ValueError("y_true and probabilities must have the same length.")
+
+    y = y_true.astype(int)
+    proba = probabilities.astype(float).clip(0.0, 1.0)
+    resolved_thresholds = thresholds or [index / 1000 for index in range(1001)]
+    rows: list[dict[str, float | int]] = []
+
+    for threshold in resolved_thresholds:
+        predictions = (proba >= threshold).astype(int)
+        predicted_positive_count = int(predictions.sum())
+        rows.append(
+            {
+                "threshold": float(threshold),
+                "precision": float(precision_score(y, predictions, zero_division=0)),
+                "recall": float(recall_score(y, predictions, zero_division=0)),
+                "f1": float(f1_score(y, predictions, zero_division=0)),
+                "accuracy": float(accuracy_score(y, predictions)),
+                "balanced_accuracy": float(balanced_accuracy_score(y, predictions)),
+                "predicted_positive_count": predicted_positive_count,
+                "predicted_positive_rate": float(predicted_positive_count / len(y)) if len(y) else 0.0,
+            }
+        )
+
+    return pd.DataFrame(rows)
 
 
 def summarize_walk_forward(results: list[WalkForwardFoldResult]) -> dict[str, float | int]:

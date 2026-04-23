@@ -9,6 +9,7 @@ from src.calibration.registry import load_calibration_plugin
 from src.core.config import load_settings
 from src.data.dataset_builder import build_training_frame
 from src.model.infer import predict_frame
+from src.model.evaluation import build_threshold_scan
 from src.model.registry import load_model_plugin
 from src.model.train import train_model
 
@@ -33,6 +34,8 @@ def test_train_model_pipeline_and_roundtrip() -> None:
     assert artifacts.validation_probabilities.between(0.0, 1.0).all()
     assert "accuracy" in artifacts.validation_metrics
     assert "fold_count" in artifacts.walk_forward_summary
+    assert not artifacts.development_frame.empty
+    assert not artifacts.validation_frame.empty
 
     output_dir = Path("artifacts/test_model_pipeline")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -52,6 +55,28 @@ def test_train_model_pipeline_and_roundtrip() -> None:
 
     assert len(predictions) == 5
     assert predictions.between(0.0, 1.0).all()
+
+
+def test_build_threshold_scan_reports_f1_selection_fields() -> None:
+    y_true = pd.Series([0, 0, 1, 1])
+    probabilities = pd.Series([0.1, 0.4, 0.6, 0.9])
+
+    scan = build_threshold_scan(y_true, probabilities, thresholds=[0.0, 0.5, 0.7, 1.0])
+    best = scan.sort_values(["f1", "precision", "recall", "threshold"], ascending=[False, False, False, True]).iloc[0]
+
+    assert list(scan.columns) == [
+        "threshold",
+        "precision",
+        "recall",
+        "f1",
+        "accuracy",
+        "balanced_accuracy",
+        "predicted_positive_count",
+        "predicted_positive_rate",
+    ]
+    assert best["threshold"] == 0.5
+    assert best["f1"] == 1.0
+    assert best["predicted_positive_count"] == 2
 
 
 def test_train_model_pipeline_with_logistic_plugin_override() -> None:
