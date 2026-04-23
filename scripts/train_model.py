@@ -102,10 +102,17 @@ def main() -> None:
     stage1_calibrator_path = output_dir / f"{artifacts.stage1_calibrator.name}.stage1.pkl"
     stage2_calibrator_path = output_dir / f"{artifacts.stage2_calibrator.name}.stage2.pkl"
     report_path = output_dir / "training_report.json"
+    threshold_search_path = output_dir / "threshold_search.json"
+    stage1_probability_reference_path = output_dir / "stage1_probability_reference.json"
     artifacts.stage1_model.save(stage1_model_path)
     artifacts.stage2_model.save(stage2_model_path)
     artifacts.stage1_calibrator.save(stage1_calibrator_path)
     artifacts.stage2_calibrator.save(stage2_calibrator_path)
+    threshold_search_path.write_text(json.dumps(artifacts.threshold_search, indent=2), encoding="utf-8")
+    stage1_probability_reference_path.write_text(
+        json.dumps(artifacts.stage1_probability_reference, indent=2),
+        encoding="utf-8",
+    )
     report_payload = {
         "project": settings.project.name,
         "market": settings.market.pair,
@@ -114,6 +121,10 @@ def main() -> None:
         "feature_columns": artifacts.feature_columns,
         "feature_count": len(artifacts.feature_columns),
         "stage2_feature_columns": artifacts.stage2_feature_columns,
+        "feature_counts": {
+            "stage1": len(artifacts.feature_columns),
+            "stage2": len(artifacts.stage2_feature_columns),
+        },
         "model_plugins": {
             "stage1": settings.model.resolve_plugin(stage="stage1"),
             "stage2": settings.model.resolve_plugin(stage="stage2"),
@@ -154,9 +165,9 @@ def main() -> None:
         "stage1_threshold": artifacts.stage1_threshold,
         "buy_threshold": artifacts.buy_threshold,
         "base_rate": artifacts.base_rate,
-        "stage1_threshold_scan": artifacts.stage1_threshold_scan,
+        "threshold_search_path": threshold_search_path.name,
         "stage1_probability_summary": artifacts.stage1_probability_summary,
-        "stage1_probability_reference": artifacts.stage1_probability_reference,
+        "stage1_probability_reference_path": stage1_probability_reference_path.name,
         "train_metrics": artifacts.train_metrics,
         "train_window": artifacts.train_window,
         "validation_window": artifacts.validation_window,

@@ -113,7 +113,8 @@ deployment/
 | `CE_PAIR` | `BTCUSDT` | Binance symbol |
 | `CE_TIMEFRAME` | `1m` | K 线周期 |
 | `CE_DATA_WINDOW_DAYS` | `400` | 每次刷新的回溯窗口 |
-| `CE_MODEL_PLUGIN` | `lightgbm` | 训练插件名 |
+| `CE_STAGE1_MODEL_PLUGIN` | `lightgbm_stage1` | Stage 1 训练插件名 |
+| `CE_STAGE2_MODEL_PLUGIN` | `lightgbm_stage2` | Stage 2 训练插件名 |
 | `CE_RUN_MODE` | `shadow` | `shadow` 或 `live` |
 | `CE_KEEP_MODEL_VERSIONS` | `10` | 保留最近多少次训练 |
 | `CE_KEEP_LOG_DAYS` | `30` | 日志保留天数 |
@@ -175,7 +176,7 @@ deployment/
 
 1. `with_lock train`。
 2. `ts=$(date -u +%Y-%m-%dT%H-%M-%SZ)`；`out="$CE_DATA_DIR/artifacts/models/$ts"`；`mkdir -p "$out"`。
-3. `run_python scripts/train_model.py --input <training.parquet> --output-dir "$out" --config "$CE_CONFIG" --horizon 5m [--model-plugin "$CE_MODEL_PLUGIN"]`。
+3. `run_python scripts/train_model.py --input <training.parquet> --output-dir "$out" --config "$CE_CONFIG" --horizon 5m`。
 4. **校验产物**：`test -s "$out/model.*"` 且 `test -s "$out/metrics.json"`；解析 metrics.json，对 AUC / logloss 做下限断言（阈值由 `.env` 中 `CE_MIN_AUC`、`CE_MAX_LOGLOSS` 给出，默认放宽到 0.5 / 1.0）。
 5. 原子发布：`ln -sfn "$out" "$CE_DATA_DIR/artifacts/models/current.new" && mv -Tf "$CE_DATA_DIR/artifacts/models/current.new" "$CE_DATA_DIR/artifacts/models/current"`。
 6. 调用 `rotate-artifacts.sh` 保留最近 `$CE_KEEP_MODEL_VERSIONS` 份。
@@ -415,7 +416,7 @@ rtk python scripts/run_shadow.py --help
 
 1. 依赖安装方式（`requirements.txt` vs `pyproject.toml`）。
 2. `config/settings.yaml` 里是否已有 `execution.audit.log_path`，若有则以它为准，否则用 `.env` 的 `CE_AUDIT_DIR` 并通过 CLI 传入。
-3. `train_model.py` 是否接受 `--model-plugin`、`--validation-window-days` 等全部拟传参数（从 `scripts/train_model.py` 已知接受）。
+3. `train_model.py` 是否接受部署层拟传的 `--validation-window-days`、`--horizon` 等参数，并确认两阶段插件选择继续由 `config/settings.yaml` 驱动。
 4. live 推理脚本是否支持直接从实时交易所拉最近 1m K 线，还是依赖本地 `data/raw/*.parquet`；若后者，`live.timer` 前需要先确保 `refresh-data` 产物在 `$CE_LIVE_STALE_MINUTES` 内（healthcheck 已覆盖，但 `run-live-cycle.sh` 也要显式断言）。
 
 ---

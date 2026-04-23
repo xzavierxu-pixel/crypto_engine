@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from lightgbm import LGBMClassifier, early_stopping
+from lightgbm import LGBMClassifier, early_stopping, log_evaluation
 
 from src.model.base import ModelPlugin
 
@@ -38,15 +38,21 @@ class LightGBMClassifierPlugin(ModelPlugin):
     ) -> "LightGBMClassifierPlugin":
         fit_kwargs: dict[str, Any] = {}
         if X_valid is not None and y_valid is not None:
-            fit_kwargs["eval_set"] = [(X_valid, y_valid)]
+            fit_kwargs["eval_set"] = [(X_train, y_train), (X_valid, y_valid)]
+            fit_kwargs["eval_names"] = ["train", "validation"]
             if sample_weight_valid is not None:
-                fit_kwargs["eval_sample_weight"] = [sample_weight_valid]
+                eval_sample_weight = [sample_weight if sample_weight is not None else None, sample_weight_valid]
+                fit_kwargs["eval_sample_weight"] = eval_sample_weight
+            elif sample_weight is not None:
+                fit_kwargs["eval_sample_weight"] = [sample_weight, None]
             if "eval_metric" in self.fit_params:
                 fit_kwargs["eval_metric"] = self.fit_params["eval_metric"]
+            callbacks = [log_evaluation(period=10)]
             if "early_stopping_rounds" in self.fit_params:
-                fit_kwargs["callbacks"] = [
+                callbacks.append(
                     early_stopping(self.fit_params["early_stopping_rounds"], verbose=False)
-                ]
+                )
+            fit_kwargs["callbacks"] = callbacks
         if sample_weight is not None:
             fit_kwargs["sample_weight"] = sample_weight
         self.model.fit(X_train, y_train, **fit_kwargs)

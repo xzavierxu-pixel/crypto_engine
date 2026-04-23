@@ -66,7 +66,7 @@ def test_build_training_frame_respects_dataset_timerange() -> None:
     assert training.frame["target"].eq(1.0).all()
 
 
-def test_stage1_training_frame_multiplies_class_balance_into_sample_weight() -> None:
+def test_stage1_training_frame_uses_boundary_weight_only() -> None:
     settings = load_settings()
     frame = pd.DataFrame(
         {
@@ -78,8 +78,8 @@ def test_stage1_training_frame_multiplies_class_balance_into_sample_weight() -> 
             "volume": [10.0] * 6,
             "abs_return": [0.0004, 0.0005, 0.0006, 0.0007, 0.0001, 0.0002],
             "target": [1.0, 1.0, 1.0, 1.0, 0.0, 0.0],
-            "sample_weight": [1.0] * 6,
-            "stage1_sample_weight": [1.0] * 6,
+            "sample_weight": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "stage1_sample_weight": [0.4, 0.5, 0.6, 0.7, 0.1, 0.2],
         }
     )
     custom_training = TrainingFrame(
@@ -91,8 +91,4 @@ def test_stage1_training_frame_multiplies_class_balance_into_sample_weight() -> 
 
     stage1_training = _build_stage1_training_frame(custom_training, settings)
 
-    negative_weights = stage1_training.frame.loc[stage1_training.frame["stage1_target"] == 0, "stage1_sample_weight"]
-    positive_weights = stage1_training.frame.loc[stage1_training.frame["stage1_target"] == 1, "stage1_sample_weight"]
-
-    assert negative_weights.iloc[0] == 2.0
-    assert positive_weights.iloc[0] == 1.0
+    assert stage1_training.frame["stage1_sample_weight"].tolist() == frame["stage1_sample_weight"].tolist()

@@ -48,7 +48,7 @@ class TwoStageTrainingArtifacts:
     walk_forward_results: list[WalkForwardFoldResult]
     walk_forward_fold_details: list[dict[str, Any]]
     base_rate: float
-    stage1_threshold_scan: list[dict[str, float]]
+    threshold_search: dict[str, Any]
     stage1_probability_summary: dict[str, dict[str, float]]
     stage1_probability_reference: dict[str, Any]
 
@@ -85,30 +85,8 @@ def _build_stage1_training_frame(training: TrainingFrame, settings: Settings) ->
     tau = float(settings.labels.two_stage.active_return_threshold)
     frame = training.frame.copy()
     frame["stage1_target"] = (frame[DEFAULT_ABS_RETURN_COLUMN] > tau).astype(int)
-    class_counts = frame["stage1_target"].value_counts()
-    positive_count = int(class_counts.get(1, 0))
-    negative_count = int(class_counts.get(0, 0))
-    if positive_count > 0 and negative_count > 0:
-        majority_count = max(positive_count, negative_count)
-        minority_count = min(positive_count, negative_count)
-        minority_weight = majority_count / minority_count
-        minority_class = 1 if positive_count < negative_count else 0
-        class_weight = pd.Series(1.0, index=frame.index, dtype="float64")
-        class_weight.loc[frame["stage1_target"] == minority_class] = float(minority_weight)
-    else:
-        class_weight = pd.Series(1.0, index=frame.index, dtype="float64")
-
-    base_weight_column = (
-        DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN
-        if DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN in frame.columns
-        else DEFAULT_SAMPLE_WEIGHT_COLUMN
-        if DEFAULT_SAMPLE_WEIGHT_COLUMN in frame.columns
-        else None
-    )
-    if base_weight_column is not None:
-        frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = frame[base_weight_column].astype("float64") * class_weight
-    else:
-        frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = class_weight
+    if DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN not in frame.columns:
+        frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = 1.0
 
     return _replace_training_columns(
         training,
@@ -134,10 +112,19 @@ def _build_stage2_training_frame(
         training,
         frame=active_frame,
         target_column=DEFAULT_TARGET_COLUMN,
-        sample_weight_column=DEFAULT_SAMPLE_WEIGHT_COLUMN if DEFAULT_SAMPLE_WEIGHT_COLUMN in active_frame.columns else None,
+        sample_weight_column=None,
         feature_columns=[*training.feature_columns, DEFAULT_STAGE1_PROBABILITY_COLUMN],
         reset_index=False,
     )
+
+
+def _compute_stage1_scale_pos_weight(training: TrainingFrame) -> float:
+    class_counts = training.y.astype(int).value_counts()
+    positive_count = int(class_counts.get(1, 0))
+    negative_count = int(class_counts.get(0, 0))
+    if positive_count <= 0 or negative_count <= 0:
+        return 1.0
+    return float(negative_count / positive_count)
 
 
 def _select_calibrator(
@@ -175,7 +162,10 @@ def _fit_model(
     stage: str,
     validation: TrainingFrame | None = None,
 ) -> ModelPlugin:
-    model = create_model_plugin(settings, stage=stage)
+    plugin_params: dict[str, Any] | None = None
+    if stage == "stage1":
+        plugin_params = {"scale_pos_weight": _compute_stage1_scale_pos_weight(training)}
+    model = create_model_plugin(settings, stage=stage, plugin_params=plugin_params)
     model.fit(
         training.X,
         training.y.astype(int),
@@ -216,7 +206,10 @@ def _build_oof_predictions(
         fold_training = _slice_training_frame(training, split.train_slice)
         X_valid = training.X.iloc[split.valid_slice]
         y_valid = training.y.astype(int).iloc[split.valid_slice]
-        fold_model = create_model_plugin(settings, stage=stage)
+        plugin_params: dict[str, Any] | None = None
+        if stage == "stage1":
+            plugin_params = {"scale_pos_weight": _compute_stage1_scale_pos_weight(fold_training)}
+        fold_model = create_model_plugin(settings, stage=stage, plugin_params=plugin_params)
         fold_model.fit(
             fold_training.X,
             fold_training.y.astype(int),
@@ -284,35 +277,66 @@ def _tune_stage1_threshold(
     stage1_probabilities: pd.Series,
     stage2_probabilities: pd.Series,
     y_true: pd.Series,
-    buy_threshold: float,
-) -> tuple[float, list[dict[str, float]]]:
+    min_active_samples: int = 25,
+) -> tuple[float, float, dict[str, Any]]:
+    stage1_candidates = [round(float(threshold), 4) for threshold in np.arange(0.10, 0.901, 0.02)]
+    buy_candidates = [round(float(threshold), 4) for threshold in np.arange(0.10, 0.901, 0.02)]
     records: list[dict[str, float]] = []
-    best_threshold = 0.5
-    best_score = float("-inf")
+    best_stage1_threshold = 0.5
+    best_buy_threshold = 0.5
+    best_rank_key = (float("-inf"), float("-inf"), float("-inf"))
 
-    for threshold in np.arange(0.30, 0.80, 0.02):
-        metrics = compute_pnl_metrics(
-            y_true=y_true,
-            stage1_probabilities=stage1_probabilities,
-            stage2_probabilities=stage2_probabilities,
-            stage1_threshold=float(threshold),
-            buy_threshold=buy_threshold,
-        )
-        if metrics["active_sample_count"] < 25:
-            continue
-        record = {
-            "threshold": float(threshold),
-            "coverage": metrics["coverage"],
-            "trade_accuracy": metrics["trade_accuracy"],
-            "pnl_per_trade": metrics["pnl_per_trade"],
-            "pnl_per_sample": metrics["pnl_per_sample"],
-        }
-        records.append(record)
-        if record["pnl_per_sample"] > best_score:
-            best_score = record["pnl_per_sample"]
-            best_threshold = float(threshold)
+    for stage1_threshold in stage1_candidates:
+        for buy_threshold in buy_candidates:
+            metrics = compute_pnl_metrics(
+                y_true=y_true,
+                stage1_probabilities=stage1_probabilities,
+                stage2_probabilities=stage2_probabilities,
+                stage1_threshold=stage1_threshold,
+                buy_threshold=buy_threshold,
+            )
+            record = {
+                "stage1_threshold": stage1_threshold,
+                "buy_threshold": buy_threshold,
+                "coverage": metrics["coverage"],
+                "trade_accuracy": metrics["trade_accuracy"],
+                "pnl_per_trade": metrics["pnl_per_trade"],
+                "pnl_per_sample": metrics["pnl_per_sample"],
+                "active_sample_count": metrics["active_sample_count"],
+            }
+            records.append(record)
+            if metrics["active_sample_count"] < min_active_samples:
+                continue
+            rank_key = (
+                record["pnl_per_sample"],
+                record["trade_accuracy"],
+                record["coverage"],
+            )
+            if rank_key > best_rank_key:
+                best_rank_key = rank_key
+                best_stage1_threshold = stage1_threshold
+                best_buy_threshold = buy_threshold
 
-    return best_threshold, records
+    return (
+        best_stage1_threshold,
+        best_buy_threshold,
+        {
+            "stage1_threshold_candidates": stage1_candidates,
+            "buy_threshold_candidates": buy_candidates,
+            "ranking_priority": ["pnl_per_sample", "trade_accuracy", "coverage"],
+            "min_active_sample_count": min_active_samples,
+            "records": records,
+            "best": {
+                "stage1_threshold": best_stage1_threshold,
+                "buy_threshold": best_buy_threshold,
+                "ranking_key": {
+                    "pnl_per_sample": best_rank_key[0],
+                    "trade_accuracy": best_rank_key[1],
+                    "coverage": best_rank_key[2],
+                },
+            },
+        },
+    )
 
 
 def _train_two_stage_for_split(
@@ -328,7 +352,8 @@ def _train_two_stage_for_split(
     pd.Series,
     float,
     float,
-    list[dict[str, float]],
+    float,
+    dict[str, Any],
     dict[str, dict[str, float]],
     dict[str, Any],
     dict[str, dict[str, float]],
@@ -366,11 +391,10 @@ def _train_two_stage_for_split(
     stage2_calibrator = _select_calibrator(settings, stage2_oof_raw, stage2_oof_targets, stage="stage2")
     stage2_oof = stage2_calibrator.transform(stage2_oof_raw)
     stage1_active_prob = stage2_training.frame.loc[stage2_oof.index, DEFAULT_STAGE1_PROBABILITY_COLUMN].astype("float64")
-    stage1_threshold, threshold_scan = _tune_stage1_threshold(
+    stage1_threshold, buy_threshold, threshold_search = _tune_stage1_threshold(
         stage1_probabilities=stage1_active_prob,
         stage2_probabilities=stage2_oof,
         y_true=stage2_oof_targets,
-        buy_threshold=base_rate,
     )
 
     stage1_dev_proba = stage1_calibrator.transform(stage1_model.predict_proba(stage1_training.X))
@@ -390,13 +414,13 @@ def _train_two_stage_for_split(
 
     train_metrics = {
         "stage1": compute_classification_metrics(stage1_training.y.astype(int), stage1_dev_proba, threshold=stage1_threshold),
-        "stage2": compute_classification_metrics(stage2_dev_input.y.astype(int), stage2_dev_proba, threshold=base_rate),
+        "stage2": compute_classification_metrics(stage2_dev_input.y.astype(int), stage2_dev_proba, threshold=buy_threshold),
         "end_to_end": compute_pnl_metrics(
             y_true=development.y.astype(int),
             stage1_probabilities=stage1_dev_proba,
             stage2_probabilities=full_stage2_dev_proba,
             stage1_threshold=stage1_threshold,
-            buy_threshold=base_rate,
+            buy_threshold=buy_threshold,
         ),
     }
     validation_metrics = {
@@ -406,7 +430,7 @@ def _train_two_stage_for_split(
             threshold=stage1_threshold,
         ),
         "stage2": (
-            compute_classification_metrics(stage2_valid_input.y.astype(int), stage2_valid_proba, threshold=base_rate)
+            compute_classification_metrics(stage2_valid_input.y.astype(int), stage2_valid_proba, threshold=buy_threshold)
             if not stage2_valid_input.frame.empty
             else {"sample_count": 0.0}
         ),
@@ -416,7 +440,7 @@ def _train_two_stage_for_split(
                 stage1_probabilities=stage1_valid_proba,
                 stage2_probabilities=full_stage2_valid_proba,
                 stage1_threshold=stage1_threshold,
-                buy_threshold=base_rate,
+                buy_threshold=buy_threshold,
             )
             if not validation.frame.empty
             else {"sample_count": 0.0, "pnl_per_sample": 0.0, "coverage": 0.0}
@@ -438,8 +462,9 @@ def _train_two_stage_for_split(
         stage1_valid_proba,
         stage2_valid_proba,
         stage1_threshold,
+        buy_threshold,
         base_rate,
-        threshold_scan,
+        threshold_search,
         probability_summary,
         probability_reference,
         {"train": train_metrics, "validation": validation_metrics},
@@ -469,7 +494,8 @@ def train_two_stage_model(
         _stage2_valid_proba,
         stage1_threshold,
         buy_threshold,
-        threshold_scan,
+        base_rate,
+        threshold_search,
         probability_summary,
         probability_reference,
         metrics,
@@ -477,54 +503,57 @@ def train_two_stage_model(
 
     train_rows = split.train_end - split.train_start
     valid_rows = split.valid_end - split.valid_start
+    walk_forward_enabled = bool(settings.dataset.walk_forward.get("enabled", False))
     walk_forward_results: list[WalkForwardFoldResult] = []
     walk_forward_fold_details: list[dict[str, Any]] = []
-    walk_forward_splits = build_walk_forward_splits(
-        training,
-        min_train_size=max(train_rows, 1),
-        validation_size=max(valid_rows, 1),
-        step_size=max(valid_rows // 2, 1),
-        purge_rows=purge_rows,
-    )
-    for fold_index, fold_split in enumerate(walk_forward_splits, start=1):
-        fold_train = _slice_training_frame(training, fold_split.train_slice)
-        fold_valid = _slice_training_frame(training, fold_split.valid_slice)
-        (
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _fold_stage1_threshold,
-            _fold_buy_threshold,
-            _fold_threshold_scan,
-            _fold_probability_summary,
-            _fold_probability_reference,
-            fold_metrics,
-        ) = _train_two_stage_for_split(fold_train, fold_valid, settings)
-        walk_forward_results.append(
-            WalkForwardFoldResult(
-                fold_index=fold_index,
-                split=fold_split,
-                metrics=fold_metrics["validation"]["end_to_end"],
-                validation_probabilities=pd.Series(dtype="float64"),
+    if walk_forward_enabled:
+        walk_forward_splits = build_walk_forward_splits(
+            training,
+            min_train_size=max(train_rows, 1),
+            validation_size=max(valid_rows, 1),
+            step_size=max(valid_rows // 2, 1),
+            purge_rows=purge_rows,
+        )
+        for fold_index, fold_split in enumerate(walk_forward_splits, start=1):
+            fold_train = _slice_training_frame(training, fold_split.train_slice)
+            fold_valid = _slice_training_frame(training, fold_split.valid_slice)
+            (
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _fold_stage1_threshold,
+                _fold_buy_threshold,
+                _fold_base_rate,
+                _fold_threshold_search,
+                _fold_probability_summary,
+                _fold_probability_reference,
+                fold_metrics,
+            ) = _train_two_stage_for_split(fold_train, fold_valid, settings)
+            walk_forward_results.append(
+                WalkForwardFoldResult(
+                    fold_index=fold_index,
+                    split=fold_split,
+                    metrics=fold_metrics["validation"]["end_to_end"],
+                    validation_probabilities=pd.Series(dtype="float64"),
+                )
             )
-        )
-        walk_forward_fold_details.append(
-            {
-                "fold_index": fold_index,
-                "train_start": fold_split.train_start,
-                "train_end": fold_split.train_end,
-                "valid_start": fold_split.valid_start,
-                "valid_end": fold_split.valid_end,
-                "purge_rows": fold_split.purge_rows,
-                "stage1_threshold": _fold_stage1_threshold,
-                "buy_threshold": _fold_buy_threshold,
-                "base_rate": _fold_buy_threshold,
-                "metrics": fold_metrics["validation"],
-            }
-        )
+            walk_forward_fold_details.append(
+                {
+                    "fold_index": fold_index,
+                    "train_start": fold_split.train_start,
+                    "train_end": fold_split.train_end,
+                    "valid_start": fold_split.valid_start,
+                    "valid_end": fold_split.valid_end,
+                    "purge_rows": fold_split.purge_rows,
+                    "stage1_threshold": _fold_stage1_threshold,
+                    "buy_threshold": _fold_buy_threshold,
+                    "base_rate": _fold_base_rate,
+                    "metrics": fold_metrics["validation"],
+                }
+            )
 
     development_frame = development.frame
     validation_frame = validation.frame
@@ -551,11 +580,15 @@ def train_two_stage_model(
             "end": str(validation_frame["timestamp"].max()) if not validation_frame.empty else None,
         },
         validation_metrics=metrics["validation"],
-        walk_forward_summary=summarize_walk_forward(walk_forward_results),
+        walk_forward_summary=(
+            summarize_walk_forward(walk_forward_results)
+            if walk_forward_enabled
+            else {"enabled": False, "fold_count": 0}
+        ),
         walk_forward_results=walk_forward_results,
         walk_forward_fold_details=walk_forward_fold_details,
-        base_rate=buy_threshold,
-        stage1_threshold_scan=threshold_scan,
+        base_rate=base_rate,
+        threshold_search=threshold_search,
         stage1_probability_summary=probability_summary,
         stage1_probability_reference=probability_reference,
     )

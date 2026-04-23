@@ -36,10 +36,20 @@ def test_train_model_pipeline_and_roundtrip() -> None:
     assert "stage2" in artifacts.train_metrics
     assert "end_to_end" in artifacts.validation_metrics
     assert "accuracy" in artifacts.train_metrics["stage1"]
+    assert "precision" in artifacts.train_metrics["stage1"]
+    assert "recall" in artifacts.train_metrics["stage1"]
+    assert "precision" in artifacts.train_metrics["stage2"]
+    assert "recall" in artifacts.train_metrics["stage2"]
     assert "accuracy" in artifacts.validation_metrics["stage1"]
+    assert "precision" in artifacts.validation_metrics["stage1"]
+    assert "recall" in artifacts.validation_metrics["stage1"]
+    assert "precision" in artifacts.validation_metrics["stage2"]
+    assert "recall" in artifacts.validation_metrics["stage2"]
     assert artifacts.train_window["row_count"] > 0
     assert artifacts.validation_window["row_count"] > 0
-    assert "fold_count" in artifacts.walk_forward_summary
+    assert artifacts.walk_forward_summary == {"enabled": False, "fold_count": 0}
+    assert artifacts.threshold_search["best"]["stage1_threshold"] == artifacts.stage1_threshold
+    assert artifacts.threshold_search["best"]["buy_threshold"] == artifacts.buy_threshold
 
     output_dir = Path("artifacts/test_model_pipeline")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -112,13 +122,27 @@ def test_train_model_script_writes_train_metrics_into_training_report(
     report = json.loads((output_dir / "training_report.json").read_text(encoding="utf-8"))
     assert report["model_plugins"]["stage1"] == "lightgbm_stage1"
     assert report["model_plugins"]["stage2"] == "lightgbm_stage2"
+    assert report["feature_counts"]["stage1"] == len(report["feature_columns"])
+    assert report["feature_counts"]["stage2"] == len(report["stage2_feature_columns"])
     assert report["train_metrics"]["stage1"]["sample_count"] > 0
     assert "accuracy" in report["train_metrics"]["stage1"]
+    assert "precision" in report["train_metrics"]["stage1"]
+    assert "recall" in report["train_metrics"]["stage1"]
+    assert "precision" in report["train_metrics"]["stage2"]
+    assert "recall" in report["train_metrics"]["stage2"]
+    assert "precision" in report["validation_metrics"]["stage1"]
+    assert "recall" in report["validation_metrics"]["stage1"]
+    assert "precision" in report["validation_metrics"]["stage2"]
+    assert "recall" in report["validation_metrics"]["stage2"]
     assert report["train_window"]["row_count"] > 0
     assert report["validation_window"]["row_count"] > 0
-    assert report["stage1_probability_reference"]["stage1_prob_oof_train"]["sample_count"] > 0
-    assert report["stage1_probability_reference"]["stage1_prob_oof_train"]["sample"]
-    assert report["walk_forward_folds"]
-    assert "stage1" in report["walk_forward_folds"][0]["metrics"]
-    assert "stage2" in report["walk_forward_folds"][0]["metrics"]
-    assert "end_to_end" in report["walk_forward_folds"][0]["metrics"]
+    assert "stage1_probability_reference" not in report
+    assert "stage1_threshold_scan" not in report
+    assert report["walk_forward_summary"] == {"enabled": False, "fold_count": 0}
+    assert report["walk_forward_folds"] == []
+    threshold_search = json.loads((output_dir / report["threshold_search_path"]).read_text(encoding="utf-8"))
+    reference = json.loads((output_dir / report["stage1_probability_reference_path"]).read_text(encoding="utf-8"))
+    assert threshold_search["best"]["stage1_threshold"] == report["stage1_threshold"]
+    assert threshold_search["best"]["buy_threshold"] == report["buy_threshold"]
+    assert reference["stage1_prob_oof_train"]["sample_count"] > 0
+    assert reference["stage1_prob_oof_train"]["sample"]

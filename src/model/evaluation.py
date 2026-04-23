@@ -5,7 +5,15 @@ from statistics import mean
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, brier_score_loss, log_loss, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    brier_score_loss,
+    log_loss,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 
 from src.data.dataset_builder import TrainingFrame
 
@@ -174,6 +182,8 @@ def compute_classification_metrics(
         "balanced_accuracy": float(balanced_accuracy_score(y, predictions)),
         "brier_score": float(brier_score_loss(y, proba)),
         "log_loss": float(log_loss(y, pd.concat([1.0 - proba, proba], axis=1), labels=[0, 1])),
+        "precision": float(precision_score(y, predictions, zero_division=0)),
+        "recall": float(recall_score(y, predictions, zero_division=0)),
         "positive_rate": positive_rate,
         "sample_count": float(len(y)),
     }
@@ -184,10 +194,10 @@ def compute_classification_metrics(
 
 def summarize_walk_forward(results: list[WalkForwardFoldResult]) -> dict[str, float | int]:
     if not results:
-        return {"fold_count": 0}
+        return {"enabled": False, "fold_count": 0}
 
     metric_names = sorted({name for result in results for name in result.metrics})
-    summary: dict[str, float | int] = {"fold_count": len(results)}
+    summary: dict[str, float | int] = {"enabled": True, "fold_count": len(results)}
     for metric_name in metric_names:
         values = [result.metrics[metric_name] for result in results if metric_name in result.metrics]
         if values:

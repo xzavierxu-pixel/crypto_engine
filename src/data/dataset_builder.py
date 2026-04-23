@@ -171,10 +171,7 @@ def build_training_frame(
         sample_weight_column = DEFAULT_SAMPLE_WEIGHT_COLUMN
     tau = float(settings.labels.two_stage.active_return_threshold)
     boundary_weight = compute_stage1_boundary_weight(training_frame[DEFAULT_ABS_RETURN_COLUMN], tau=tau)
-    if sample_weights is not None:
-        training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = sample_weights * boundary_weight
-    else:
-        training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = boundary_weight
+    training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = boundary_weight
 
     return TrainingFrame(
         frame=training_frame.reset_index(drop=True),

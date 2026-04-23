@@ -7,6 +7,15 @@ from src.model.lightgbm_plugin import LightGBMClassifierPlugin
 
 def test_lightgbm_plugin_routes_eval_metric_and_early_stopping_to_fit(monkeypatch) -> None:
     captured: dict[str, object] = {}
+    callback_names: list[str] = []
+
+    def fake_early_stopping(rounds, verbose=False):
+        callback_names.append("early_stopping")
+        return ("early_stopping", rounds, verbose)
+
+    def fake_log_evaluation(period=1):
+        callback_names.append("log_evaluation")
+        return ("log_evaluation", period)
 
     class FakeLGBMClassifier:
         def __init__(self, **params) -> None:
@@ -19,6 +28,8 @@ def test_lightgbm_plugin_routes_eval_metric_and_early_stopping_to_fit(monkeypatc
             return [[0.4, 0.6] for _ in range(len(X))]
 
     monkeypatch.setattr("src.model.lightgbm_plugin.LGBMClassifier", FakeLGBMClassifier)
+    monkeypatch.setattr("src.model.lightgbm_plugin.early_stopping", fake_early_stopping)
+    monkeypatch.setattr("src.model.lightgbm_plugin.log_evaluation", fake_log_evaluation)
 
     plugin = LightGBMClassifierPlugin(
         n_estimators=200,
@@ -47,8 +58,10 @@ def test_lightgbm_plugin_routes_eval_metric_and_early_stopping_to_fit(monkeypatc
         "learning_rate": 0.03,
     }
     fit_kwargs = captured["fit_kwargs"]
-    assert fit_kwargs["eval_set"] == [(X_valid, y_valid)]
-    assert fit_kwargs["eval_sample_weight"] == [sample_weight_valid]
+    assert fit_kwargs["eval_set"] == [(X_train, y_train), (X_valid, y_valid)]
+    assert fit_kwargs["eval_names"] == ["train", "validation"]
+    assert fit_kwargs["eval_sample_weight"] == [sample_weight, sample_weight_valid]
     assert fit_kwargs["eval_metric"] == "binary_logloss"
     assert fit_kwargs["sample_weight"] is sample_weight
     assert fit_kwargs["callbacks"]
+    assert callback_names == ["log_evaluation", "early_stopping"]

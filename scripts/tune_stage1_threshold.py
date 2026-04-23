@@ -56,7 +56,7 @@ def main() -> None:
         "stage1_threshold": artifacts.stage1_threshold,
         "buy_threshold": artifacts.buy_threshold,
         "base_rate": artifacts.base_rate,
-        "threshold_scan": artifacts.stage1_threshold_scan,
+        "threshold_search": artifacts.threshold_search,
         "stage1_probability_summary": artifacts.stage1_probability_summary,
     }
     Path(args.output).write_text(json.dumps(payload, indent=2), encoding="utf-8")

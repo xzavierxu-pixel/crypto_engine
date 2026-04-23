@@ -66,6 +66,8 @@ def test_compute_classification_metrics_returns_core_probabilistic_scores() -> N
     assert metrics["balanced_accuracy"] == 1.0
     assert metrics["brier_score"] < 0.2
     assert metrics["log_loss"] < 0.6
+    assert metrics["precision"] == 1.0
+    assert metrics["recall"] == 1.0
     assert metrics["positive_rate"] > 0.0
     assert metrics["sample_count"] == 5.0
     assert metrics["roc_auc"] == 1.0
@@ -84,3 +86,11 @@ def test_purged_chronological_time_window_split_uses_tail_window() -> None:
     assert len(X_valid) == len(y_valid)
     assert split.train_end < split.valid_start
     assert split.valid_end == 400
+
+
+def test_summarize_walk_forward_marks_empty_results_as_disabled() -> None:
+    from src.model.evaluation import summarize_walk_forward
+
+    summary = summarize_walk_forward([])
+
+    assert summary == {"enabled": False, "fold_count": 0}

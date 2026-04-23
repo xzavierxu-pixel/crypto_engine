@@ -44,8 +44,12 @@ def test_load_two_stage_artifacts_from_report_and_directory(tmp_path: Path) -> N
         "stage1_threshold": artifacts.stage1_threshold,
         "buy_threshold": artifacts.buy_threshold,
         "base_rate": artifacts.base_rate,
-        "stage1_probability_reference": artifacts.stage1_probability_reference,
+        "stage1_probability_reference_path": "stage1_probability_reference.json",
     }
+    (artifact_dir / "stage1_probability_reference.json").write_text(
+        json.dumps(artifacts.stage1_probability_reference),
+        encoding="utf-8",
+    )
     report_path = artifact_dir / "training_report.json"
     report_path.write_text(json.dumps(report), encoding="utf-8")
 
@@ -117,8 +121,12 @@ def test_load_two_stage_artifacts_auto_discovers_latest_bundle_from_artifacts_ro
         "stage1_threshold": artifacts.stage1_threshold,
         "buy_threshold": artifacts.buy_threshold,
         "base_rate": artifacts.base_rate,
-        "stage1_probability_reference": artifacts.stage1_probability_reference,
+        "stage1_probability_reference_path": "stage1_probability_reference.json",
     }
+    (artifact_dir / "stage1_probability_reference.json").write_text(
+        json.dumps(artifacts.stage1_probability_reference),
+        encoding="utf-8",
+    )
     (artifact_dir / "training_report.json").write_text(json.dumps(report), encoding="utf-8")
     monkeypatch.chdir(tmp_path)
 

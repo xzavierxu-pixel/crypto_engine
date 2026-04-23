@@ -43,6 +43,25 @@ def _read_report(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def _load_stage1_reference_probabilities(report: dict[str, Any], artifact_root: Path | None) -> list[float]:
+    reference_path = report.get("stage1_probability_reference_path")
+    if reference_path and artifact_root is not None:
+        resolved_path = artifact_root / reference_path
+        if resolved_path.exists():
+            reference_payload = _read_report(resolved_path)
+            return [
+                float(value)
+                for value in reference_payload.get("stage1_prob_oof_train", {}).get("sample", [])
+            ]
+
+    return [
+        float(value)
+        for value in report.get("stage1_probability_reference", {})
+        .get("stage1_prob_oof_train", {})
+        .get("sample", [])
+    ]
+
+
 def load_two_stage_artifacts(
     settings: Settings,
     *,
@@ -85,12 +104,7 @@ def load_two_stage_artifacts(
     if None in {stage1_model_path, stage2_model_path, stage1_calibrator_path, stage2_calibrator_path}:
         raise ValueError("Two-stage artifact paths are incomplete. Provide report_path or all explicit paths.")
 
-    stage1_reference_probabilities = [
-        float(value)
-        for value in report.get("stage1_probability_reference", {})
-        .get("stage1_prob_oof_train", {})
-        .get("sample", [])
-    ]
+    stage1_reference_probabilities = _load_stage1_reference_probabilities(report, artifact_root)
 
     return TwoStageArtifactBundle(
         stage1_model=load_model_plugin(stage1_model_name, str(stage1_model_path)),

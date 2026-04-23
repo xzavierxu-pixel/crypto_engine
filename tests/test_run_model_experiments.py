@@ -163,7 +163,7 @@ def test_experiment_summary_helpers_build_rankings_and_variant_rollups() -> None
         },
         {
             "variant": "funding",
-            "model_plugins": {"stage1": "lightgbm", "stage2": "lightgbm"},
+            "model_plugins": {"stage1": "lightgbm_stage1", "stage2": "lightgbm_stage2"},
             "feature_count": 125,
             "duration_seconds": 18.0,
             "train_metrics": {"end_to_end": {"pnl_per_sample": 0.03, "trade_accuracy": 0.55, "coverage": 0.54}},
@@ -209,14 +209,14 @@ def test_render_summary_markdown_includes_leaderboard_and_progression_sections()
     summary = {
         "results": [{"variant": "funding", "model_plugin": "catboost"}],
         "best_variant": "funding",
-        "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm"},
+        "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm_stage2"},
         "validation_window_days": 30,
         "leaderboard": [
             {
                 "rank": 1,
                 "variant": "funding",
                 "stage1_model_plugin": "catboost",
-                "stage2_model_plugin": "lightgbm",
+                "stage2_model_plugin": "lightgbm_stage2",
                 "feature_count": 130,
                 "validation_pnl_per_sample": 0.04,
                 "validation_trade_accuracy": 0.57,
@@ -229,7 +229,7 @@ def test_render_summary_markdown_includes_leaderboard_and_progression_sections()
         "variant_summary": [
             {
                 "variant": "funding",
-                "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm"},
+                "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm_stage2"},
                 "validation_metrics": {"pnl_per_sample": 0.04, "trade_accuracy": 0.57, "coverage": 0.55, "sample_count": 200},
                 "delta_vs_baseline": {"pnl_per_sample": 0.02, "trade_accuracy": 0.03, "coverage": 0.05},
             }
@@ -237,7 +237,7 @@ def test_render_summary_markdown_includes_leaderboard_and_progression_sections()
         "derivatives_progression": [
             {
                 "variant": "funding",
-                "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm"},
+                "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm_stage2"},
                 "validation_pnl_per_sample": 0.04,
                 "validation_trade_accuracy": 0.57,
                 "validation_coverage": 0.55,
@@ -254,13 +254,13 @@ def test_render_summary_markdown_includes_leaderboard_and_progression_sections()
     assert "## Derivatives Progression" in markdown
     assert "`funding`" in markdown
     assert "`catboost`" in markdown
-    assert "`lightgbm`" in markdown
+    assert "`lightgbm_stage2`" in markdown
 
 
 def test_collect_existing_results_and_write_summary_support_resume_flow(tmp_path: Path) -> None:
     baseline_dir = tmp_path / "baseline" / "catboost"
     baseline_dir.mkdir(parents=True)
-    funding_dir = tmp_path / "funding" / "lightgbm"
+    funding_dir = tmp_path / "funding" / "lightgbm_stage1__lightgbm_stage2"
     funding_dir.mkdir(parents=True)
 
     baseline_result = {
@@ -276,7 +276,7 @@ def test_collect_existing_results_and_write_summary_support_resume_flow(tmp_path
     }
     funding_result = {
         "variant": "funding",
-        "model_plugins": {"stage1": "lightgbm", "stage2": "lightgbm"},
+        "model_plugins": {"stage1": "lightgbm_stage1", "stage2": "lightgbm_stage2"},
         "feature_count": 130,
         "duration_seconds": 8.0,
         "train_metrics": {"end_to_end": {"pnl_per_sample": 0.03, "trade_accuracy": 0.55, "coverage": 0.54}},
@@ -288,7 +288,12 @@ def test_collect_existing_results_and_write_summary_support_resume_flow(tmp_path
     (baseline_dir / "experiment_report.json").write_text(json.dumps(baseline_result), encoding="utf-8")
     (funding_dir / "experiment_report.json").write_text(json.dumps(funding_result), encoding="utf-8")
 
-    collected = _collect_existing_results(tmp_path, variants=["baseline", "funding"], model_plugins=["catboost", "lightgbm"])
+    collected = _collect_existing_results(
+        tmp_path,
+        variants=["baseline", "funding"],
+        stage1_model_plugins=["catboost", "lightgbm_stage1"],
+        stage2_model_plugins=["catboost", "lightgbm_stage2"],
+    )
 
     assert len(collected) == 2
     assert _ordered_variants(collected) == ["baseline", "funding"]
@@ -301,6 +306,6 @@ def test_collect_existing_results_and_write_summary_support_resume_flow(tmp_path
     )
 
     assert summary["best_variant"] == "funding"
-    assert summary["best_model_plugins"]["stage1"] == "lightgbm"
+    assert summary["best_model_plugins"]["stage1"] == "lightgbm_stage1"
     assert (tmp_path / "summary.json").exists()
     assert (tmp_path / "summary.md").exists()

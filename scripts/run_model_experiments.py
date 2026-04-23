@@ -44,6 +44,8 @@ def _select_metrics(metrics: dict[str, float]) -> dict[str, float]:
     allowed = {
         "accuracy",
         "balanced_accuracy",
+        "precision",
+        "recall",
         "log_loss",
         "roc_auc",
         "sample_count",
@@ -263,20 +265,20 @@ def _write_summary(
 def _collect_existing_results(
     output_dir: Path,
     variants: list[str] | None = None,
-    model_plugins: list[str] | None = None,
+    stage1_model_plugins: list[str] | None = None,
+    stage2_model_plugins: list[str] | None = None,
 ) -> list[dict]:
     allowed_variants = set(variants) if variants is not None else None
-    allowed_model_plugins = set(model_plugins) if model_plugins is not None else None
+    allowed_stage1_model_plugins = set(stage1_model_plugins) if stage1_model_plugins is not None else None
+    allowed_stage2_model_plugins = set(stage2_model_plugins) if stage2_model_plugins is not None else None
     results: list[dict] = []
     for report_path in sorted(output_dir.rglob("experiment_report.json")):
         result = _load_existing_result(report_path)
         if allowed_variants is not None and result["variant"] not in allowed_variants:
             continue
-        if allowed_model_plugins is not None and not (
-            result.get("model_plugin") in allowed_model_plugins
-            or result.get("model_plugins", {}).get("stage1") in allowed_model_plugins
-            or result.get("model_plugins", {}).get("stage2") in allowed_model_plugins
-        ):
+        if allowed_stage1_model_plugins is not None and result.get("model_plugins", {}).get("stage1") not in allowed_stage1_model_plugins:
+            continue
+        if allowed_stage2_model_plugins is not None and result.get("model_plugins", {}).get("stage2") not in allowed_stage2_model_plugins:
             continue
         results.append(result)
     return results
@@ -510,9 +512,14 @@ def main() -> None:
         help="Override derivatives path mode. Defaults to settings.derivatives.path_mode.",
     )
     parser.add_argument(
-        "--model-plugins",
-        default="logistic,catboost,lightgbm",
-        help="Comma-separated model plugin names to compare for both stage1 and stage2.",
+        "--stage1-model-plugins",
+        default="logistic,catboost,lightgbm_stage1",
+        help="Comma-separated stage1 model plugin names to compare.",
+    )
+    parser.add_argument(
+        "--stage2-model-plugins",
+        default="logistic,catboost,lightgbm_stage2",
+        help="Comma-separated stage2 model plugin names to compare.",
     )
     parser.add_argument(
         "--ablation-variants",
@@ -548,7 +555,8 @@ def main() -> None:
     )
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    model_plugins = [name.strip() for name in args.model_plugins.split(",") if name.strip()]
+    stage1_model_plugins = [name.strip() for name in args.stage1_model_plugins.split(",") if name.strip()]
+    stage2_model_plugins = [name.strip() for name in args.stage2_model_plugins.split(",") if name.strip()]
 
     if args.summary_only:
         requested_variants = None if args.ablation_variants == "auto" else _resolve_variants(
@@ -558,7 +566,8 @@ def main() -> None:
         results = _collect_existing_results(
             output_dir=output_dir,
             variants=requested_variants,
-            model_plugins=model_plugins,
+            stage1_model_plugins=stage1_model_plugins,
+            stage2_model_plugins=stage2_model_plugins,
         )
         if not results:
             raise ValueError("No existing experiment reports matched the requested filters.")
@@ -591,8 +600,8 @@ def main() -> None:
         variant_settings: Settings | None = None
         training = None
 
-        for stage1_plugin in model_plugins:
-            for stage2_plugin in model_plugins:
+        for stage1_plugin in stage1_model_plugins:
+            for stage2_plugin in stage2_model_plugins:
                 combo_name = f"{stage1_plugin}__{stage2_plugin}"
                 plugin_output_dir = output_dir / variant_name / combo_name
                 plugin_output_dir.mkdir(parents=True, exist_ok=True)
@@ -632,6 +641,10 @@ def main() -> None:
                     "variant": variant_name,
                     "model_plugins": {"stage1": stage1_plugin, "stage2": stage2_plugin},
                     "feature_count": len(artifacts.feature_columns),
+                    "feature_counts": {
+                        "stage1": len(artifacts.feature_columns),
+                        "stage2": len(artifacts.stage2_feature_columns),
+                    },
                     "duration_seconds": duration_seconds,
                     "stage1_threshold": artifacts.stage1_threshold,
                     "buy_threshold": artifacts.buy_threshold,
@@ -653,7 +666,7 @@ def main() -> None:
                     "train_window": artifacts.train_window,
                     "validation_window": artifacts.validation_window,
                     "walk_forward_summary": artifacts.walk_forward_summary,
-                    "stage1_threshold_scan": artifacts.stage1_threshold_scan,
+                    "threshold_search_best": artifacts.threshold_search["best"],
                     "stage1_probability_summary": artifacts.stage1_probability_summary,
                     "derivatives": {
                         "enabled": variant_settings.derivatives.enabled,
