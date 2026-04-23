@@ -23,14 +23,17 @@ class GridDirectionLabelBuilder(LabelBuilder):
         normalized = normalize_ohlcv_frame(df, timestamp_column=DEFAULT_TIMESTAMP_COLUMN, require_volume=False)
         labeled = add_grid_columns(normalized, grid_minutes=horizon.grid_minutes)
         future_close = labeled["close"].shift(-horizon.future_close_offset)
-        target = (future_close > labeled["open"]).astype("float64")
+        label_params = horizon.label_params or {}
+        threshold_multiplier = float(label_params.get("threshold_multiplier", 1.0))
+        label_version = str(label_params.get("label_version", CORE_LABEL_VERSION))
+        target = (future_close > threshold_multiplier * labeled["open"]).astype("float64")
         target[future_close.isna()] = pd.NA
         target[~labeled["is_grid_t0"]] = pd.NA
 
         labeled[DEFAULT_TARGET_COLUMN] = target
         labeled["asset"] = settings.market.pair
         labeled["horizon"] = horizon.name
-        labeled["label_version"] = CORE_LABEL_VERSION
+        labeled["label_version"] = label_version
 
         if select_grid_only is None:
             select_grid_only = settings.dataset.strict_grid_only

@@ -30,6 +30,7 @@ class HorizonSpecConfig:
     feature_profile: str
     signal_policy: str | None = None
     sizing_plugin: str | None = None
+    label_params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

@@ -62,7 +62,8 @@ def main() -> None:
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    model_path = output_dir / f"{settings.model.active_plugin}.pkl"
+    model_plugin_name = args.model_plugin or settings.model.active_plugin
+    model_path = output_dir / f"{model_plugin_name}.pkl"
     calibrator_path = output_dir / f"{artifacts.calibrator.name}.pkl"
     report_path = output_dir / "training_report.json"
     artifacts.model.save(model_path)
@@ -74,7 +75,7 @@ def main() -> None:
         "horizon": args.horizon,
         "feature_columns": artifacts.feature_columns,
         "feature_count": len(artifacts.feature_columns),
-        "model_plugin": args.model_plugin or settings.model.active_plugin,
+        "model_plugin": model_plugin_name,
         "calibration_plugin": artifacts.calibrator.name,
         "config_hash": hash_config(settings),
         "train_row_count": len(training.frame),
@@ -91,6 +92,9 @@ def main() -> None:
         "validation_window_days": validation_window_days,
         "calibration_fraction": args.calibration_fraction,
         "purge_rows": args.purge_rows,
+        "train_metrics": artifacts.train_metrics,
+        "train_window": artifacts.train_window,
+        "validation_window": artifacts.validation_window,
         "raw_validation_metrics": artifacts.raw_validation_metrics,
         "validation_metrics": artifacts.validation_metrics,
         "walk_forward_summary": artifacts.walk_forward_summary,

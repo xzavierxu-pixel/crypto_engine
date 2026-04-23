@@ -26,6 +26,9 @@ class TrainingArtifacts:
     model: ModelPlugin
     calibrator: CalibrationPlugin
     feature_columns: list[str]
+    train_metrics: dict[str, float]
+    train_window: dict[str, str | int | None]
+    validation_window: dict[str, str | int | None]
     raw_validation_probabilities: pd.Series
     validation_probabilities: pd.Series
     raw_validation_metrics: dict[str, float]
@@ -149,17 +152,25 @@ def train_model(
     training: TrainingFrame,
     settings: Settings,
     validation_window_days: int = 30,
+    validation_fraction: float | None = None,
     calibration_fraction: float = 0.15,
     purge_rows: int = 1,
     threshold: float = 0.5,
     model_plugin_name: str | None = None,
     model_plugin_params: dict | None = None,
 ) -> TrainingArtifacts:
-    _, X_valid, _, y_valid, split = purged_chronological_time_window_split(
-        training,
-        validation_window_days=validation_window_days,
-        purge_rows=purge_rows,
-    )
+    if validation_fraction is not None:
+        _, X_valid, _, y_valid, split = purged_chronological_split(
+            training,
+            validation_fraction=validation_fraction,
+            purge_rows=purge_rows,
+        )
+    else:
+        _, X_valid, _, y_valid, split = purged_chronological_time_window_split(
+            training,
+            validation_window_days=validation_window_days,
+            purge_rows=purge_rows,
+        )
 
     development = _slice_training_frame(training, split.train_slice)
     model, calibrator = _fit_model_and_calibrator(
@@ -173,8 +184,16 @@ def train_model(
 
     raw_valid_proba = model.predict_proba(X_valid)
     calibrated_valid_proba = calibrator.transform(raw_valid_proba)
+    development_probabilities = calibrator.transform(model.predict_proba(development.X))
+    train_metrics = compute_classification_metrics(
+        development.y.astype(int),
+        development_probabilities,
+        threshold=threshold,
+    )
     raw_validation_metrics = compute_classification_metrics(y_valid, raw_valid_proba, threshold=threshold)
     validation_metrics = compute_classification_metrics(y_valid, calibrated_valid_proba, threshold=threshold)
+    development_frame = development.frame
+    validation_frame = training.frame.iloc[split.valid_slice].reset_index(drop=True)
 
     train_rows = split.train_end - split.train_start
     valid_rows = split.valid_end - split.valid_start
@@ -222,6 +241,17 @@ def train_model(
         model=model,
         calibrator=calibrator,
         feature_columns=training.feature_columns,
+        train_metrics=train_metrics,
+        train_window={
+            "row_count": len(development_frame),
+            "start": str(development_frame["timestamp"].min()) if not development_frame.empty else None,
+            "end": str(development_frame["timestamp"].max()) if not development_frame.empty else None,
+        },
+        validation_window={
+            "row_count": len(validation_frame),
+            "start": str(validation_frame["timestamp"].min()) if not validation_frame.empty else None,
+            "end": str(validation_frame["timestamp"].max()) if not validation_frame.empty else None,
+        },
         raw_validation_probabilities=raw_valid_proba,
         validation_probabilities=calibrated_valid_proba,
         raw_validation_metrics=raw_validation_metrics,

@@ -14,4 +14,5 @@ def get_horizon_spec(settings: Settings, name: str | None = None) -> HorizonSpec
         feature_profile=config.feature_profile,
         signal_policy=config.signal_policy,
         sizing_plugin=config.sizing_plugin,
+        label_params=dict(config.label_params),
     )
