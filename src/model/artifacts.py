@@ -8,6 +8,7 @@ from typing import Any
 from src.calibration.base import CalibrationPlugin
 from src.calibration.registry import load_calibration_plugin
 from src.core.config import Settings
+from src.core.constants import DEFAULT_STAGE1_PROBABILITY_COLUMN
 from src.model.base import ModelPlugin
 from src.model.registry import load_model_plugin
 
@@ -49,15 +50,13 @@ def _load_stage1_reference_probabilities(report: dict[str, Any], artifact_root: 
         resolved_path = artifact_root / reference_path
         if resolved_path.exists():
             reference_payload = _read_report(resolved_path)
-            return [
-                float(value)
-                for value in reference_payload.get("stage1_prob_oof_train", {}).get("sample", [])
-            ]
+            train_key = "stage1_prob_train" if "stage1_prob_train" in reference_payload else "stage1_prob_oof_train"
+            return [float(value) for value in reference_payload.get(train_key, {}).get("sample", [])]
 
     return [
         float(value)
         for value in report.get("stage1_probability_reference", {})
-        .get("stage1_prob_oof_train", {})
+        .get("stage1_prob_train", report.get("stage1_probability_reference", {}).get("stage1_prob_oof_train", {}))
         .get("sample", [])
     ]
 
@@ -105,14 +104,21 @@ def load_two_stage_artifacts(
         raise ValueError("Two-stage artifact paths are incomplete. Provide report_path or all explicit paths.")
 
     stage1_reference_probabilities = _load_stage1_reference_probabilities(report, artifact_root)
+    stage2_feature_columns = list(report.get("stage2_feature_columns", []))
+    feature_columns = list(report.get("feature_columns", []))
+    if not feature_columns and stage2_feature_columns:
+        feature_columns = [
+            column for column in stage2_feature_columns
+            if column != DEFAULT_STAGE1_PROBABILITY_COLUMN
+        ]
 
     return TwoStageArtifactBundle(
         stage1_model=load_model_plugin(stage1_model_name, str(stage1_model_path)),
         stage2_model=load_model_plugin(stage2_model_name, str(stage2_model_path)),
         stage1_calibrator=load_calibration_plugin(stage1_calibrator_name, str(stage1_calibrator_path)),
         stage2_calibrator=load_calibration_plugin(stage2_calibrator_name, str(stage2_calibrator_path)),
-        feature_columns=list(report.get("feature_columns", [])),
-        stage2_feature_columns=list(report.get("stage2_feature_columns", [])),
+        feature_columns=feature_columns,
+        stage2_feature_columns=stage2_feature_columns,
         stage1_threshold=float(report.get("stage1_threshold", 0.5)),
         buy_threshold=float(report.get("buy_threshold", report.get("base_rate", 0.5))),
         base_rate=float(report.get("base_rate", 0.5)),

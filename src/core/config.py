@@ -54,6 +54,7 @@ class DatasetConfig:
     strict_grid_only: bool = True
     drop_incomplete_candles: bool = True
     walk_forward: dict[str, Any] = field(default_factory=dict)
+    threshold_search: dict[str, Any] = field(default_factory=dict)
     sample_quality_filter: dict[str, Any] = field(default_factory=dict)
     sample_weighting: dict[str, Any] = field(default_factory=dict)
 

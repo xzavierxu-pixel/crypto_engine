@@ -21,7 +21,6 @@ from src.data.dataset_builder import TrainingFrame
 from src.model.base import ModelPlugin
 from src.model.evaluation import (
     WalkForwardFoldResult,
-    build_walk_forward_splits,
     compute_classification_metrics,
     compute_pnl_metrics,
     purged_chronological_time_window_split,
@@ -59,6 +58,65 @@ def _slice_training_frame(training: TrainingFrame, frame_slice: slice) -> Traini
         feature_columns=training.feature_columns,
         target_column=training.target_column,
         sample_weight_column=training.sample_weight_column,
+    )
+
+
+def _make_training_frame_from_cached_split(frame: pd.DataFrame) -> TrainingFrame:
+    feature_columns = [
+        column for column in frame.columns
+        if column not in {
+            "timestamp",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "asset",
+            "horizon",
+            "grid_id",
+            "grid_t0",
+            "is_grid_t0",
+            "feature_version",
+            "label_version",
+            DEFAULT_TARGET_COLUMN,
+            DEFAULT_ABS_RETURN_COLUMN,
+            DEFAULT_SAMPLE_WEIGHT_COLUMN,
+            DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN,
+        }
+    ]
+    return TrainingFrame(
+        frame=frame.reset_index(drop=True),
+        feature_columns=feature_columns,
+        target_column=DEFAULT_TARGET_COLUMN,
+        sample_weight_column=DEFAULT_SAMPLE_WEIGHT_COLUMN if DEFAULT_SAMPLE_WEIGHT_COLUMN in frame.columns else None,
+    )
+
+
+def load_cached_training_split(
+    *,
+    development_frame: pd.DataFrame,
+    validation_frame: pd.DataFrame,
+) -> tuple[TrainingFrame, TrainingFrame]:
+    return (
+        _make_training_frame_from_cached_split(development_frame),
+        _make_training_frame_from_cached_split(validation_frame),
+    )
+
+
+def split_training_frame(
+    training: TrainingFrame,
+    *,
+    validation_window_days: int = 30,
+    purge_rows: int = 1,
+) -> tuple[TrainingFrame, TrainingFrame]:
+    _, _, _, _, split = purged_chronological_time_window_split(
+        training,
+        validation_window_days=validation_window_days,
+        purge_rows=purge_rows,
+    )
+    return (
+        _slice_training_frame(training, split.train_slice),
+        _slice_training_frame(training, split.valid_slice),
     )
 
 
@@ -127,6 +185,18 @@ def _compute_stage1_scale_pos_weight(training: TrainingFrame) -> float:
     return float(negative_count / positive_count)
 
 
+def _resolve_model_plugin_params(
+    training: TrainingFrame,
+    settings: Settings,
+    *,
+    stage: str,
+) -> dict[str, Any] | None:
+    plugin_name = settings.model.resolve_plugin(stage=stage)
+    if not plugin_name.startswith("lightgbm"):
+        return None
+    return {"scale_pos_weight": _compute_stage1_scale_pos_weight(training)}
+
+
 def _select_calibrator(
     settings: Settings,
     raw_probabilities: pd.Series,
@@ -162,9 +232,7 @@ def _fit_model(
     stage: str,
     validation: TrainingFrame | None = None,
 ) -> ModelPlugin:
-    plugin_params: dict[str, Any] | None = None
-    if stage == "stage1":
-        plugin_params = {"scale_pos_weight": _compute_stage1_scale_pos_weight(training)}
+    plugin_params = _resolve_model_plugin_params(training, settings, stage=stage)
     model = create_model_plugin(settings, stage=stage, plugin_params=plugin_params)
     model.fit(
         training.X,
@@ -175,75 +243,6 @@ def _fit_model(
         sample_weight_valid=validation.sample_weight if validation is not None and not validation.frame.empty else None,
     )
     return model
-
-
-def _build_oof_predictions(
-    training: TrainingFrame,
-    settings: Settings,
-    *,
-    stage: str,
-    step_size: int | None = None,
-) -> tuple[pd.Series, pd.Series]:
-    minimum_rows = 60
-    if len(training.frame) < minimum_rows:
-        return pd.Series(dtype="float64"), pd.Series(dtype="int64")
-
-    validation_size = max(len(training.frame) // 5, 1)
-    min_train_size = max(validation_size * 2, minimum_rows)
-    walk_splits = build_walk_forward_splits(
-        training,
-        min_train_size=min_train_size,
-        validation_size=validation_size,
-        step_size=step_size or max(validation_size // 2, 1),
-        purge_rows=1,
-    )
-    if not walk_splits:
-        return pd.Series(dtype="float64"), pd.Series(dtype="int64")
-
-    oof_probabilities: list[pd.Series] = []
-    oof_targets: list[pd.Series] = []
-    for split in walk_splits:
-        fold_training = _slice_training_frame(training, split.train_slice)
-        X_valid = training.X.iloc[split.valid_slice]
-        y_valid = training.y.astype(int).iloc[split.valid_slice]
-        plugin_params: dict[str, Any] | None = None
-        if stage == "stage1":
-            plugin_params = {"scale_pos_weight": _compute_stage1_scale_pos_weight(fold_training)}
-        fold_model = create_model_plugin(settings, stage=stage, plugin_params=plugin_params)
-        fold_model.fit(
-            fold_training.X,
-            fold_training.y.astype(int),
-            X_valid=X_valid,
-            y_valid=y_valid,
-            sample_weight=fold_training.sample_weight,
-            sample_weight_valid=training.sample_weight.iloc[split.valid_slice] if training.sample_weight is not None else None,
-        )
-        oof_probabilities.append(fold_model.predict_proba(X_valid))
-        oof_targets.append(y_valid)
-
-    probability_series = pd.concat(oof_probabilities).sort_index()
-    target_series = pd.concat(oof_targets).sort_index()
-    if probability_series.index.has_duplicates:
-        probability_series = probability_series.groupby(level=0).mean()
-    if target_series.index.has_duplicates:
-        target_series = target_series.groupby(level=0).last()
-    return probability_series, target_series
-
-
-def _require_strict_oof_predictions(
-    training: TrainingFrame,
-    oof_probabilities: pd.Series,
-    *,
-    stage: str,
-) -> tuple[pd.Series, pd.Series]:
-    if oof_probabilities.empty:
-        raise ValueError(f"{stage} strict OOF predictions are unavailable for the current split.")
-
-    aligned = oof_probabilities.reindex(training.frame.index).astype("float64")
-    covered = aligned.dropna()
-    if covered.empty:
-        raise ValueError(f"{stage} strict OOF predictions are unavailable for the current split.")
-    return aligned, covered
 
 
 def _summarize_probability_series(probabilities: pd.Series) -> dict[str, float]:
@@ -273,23 +272,74 @@ def _serialize_probability_reference(probabilities: pd.Series, max_points: int =
     }
 
 
+def _summarize_threshold_records(records: list[dict[str, float]]) -> dict[str, dict[str, float | None]]:
+    metric_columns = [
+        "coverage",
+        "trade_accuracy",
+        "pnl_per_trade",
+        "pnl_per_sample",
+        "active_sample_count",
+        "stage1_precision",
+        "stage1_recall",
+    ]
+    if not records:
+        return {
+            metric: {"max": None, "min": None, "mean": None, "median": None}
+            for metric in metric_columns
+        }
+
+    frame = pd.DataFrame(records)
+    summary: dict[str, dict[str, float | None]] = {}
+    for metric in metric_columns:
+        series = frame[metric].astype("float64")
+        summary[metric] = {
+            "max": float(series.max()),
+            "min": float(series.min()),
+            "mean": float(series.mean()),
+            "median": float(series.median()),
+        }
+    return summary
+
+
+def _get_threshold_search_settings(settings: Settings) -> dict[str, float]:
+    config = settings.dataset.threshold_search
+    return {
+        "min_stage1_coverage": float(config.get("min_stage1_coverage", 0.60)),
+        "min_active_samples": int(config.get("min_active_samples", 25)),
+    }
+
+
 def _tune_stage1_threshold(
+    *,
+    stage1_y_true: pd.Series,
     stage1_probabilities: pd.Series,
+    end_to_end_y_true: pd.Series,
     stage2_probabilities: pd.Series,
-    y_true: pd.Series,
-    min_active_samples: int = 25,
+    min_stage1_coverage: float,
+    min_active_samples: int,
 ) -> tuple[float, float, dict[str, Any]]:
     stage1_candidates = [round(float(threshold), 4) for threshold in np.arange(0.10, 0.901, 0.02)]
     buy_candidates = [round(float(threshold), 4) for threshold in np.arange(0.10, 0.901, 0.02)]
-    records: list[dict[str, float]] = []
+    all_records: list[dict[str, float]] = []
+    eligible_records: list[dict[str, float]] = []
     best_stage1_threshold = 0.5
     best_buy_threshold = 0.5
     best_rank_key = (float("-inf"), float("-inf"), float("-inf"))
+    best_coverage_fallback_key = (float("-inf"), float("-inf"), float("-inf"))
+    used_coverage_fallback = False
+
+    stage1_y = stage1_y_true.astype(int)
+    end_to_end_y = end_to_end_y_true.astype(int)
 
     for stage1_threshold in stage1_candidates:
+        stage1_metrics = compute_classification_metrics(
+            stage1_y,
+            stage1_probabilities,
+            threshold=stage1_threshold,
+        )
         for buy_threshold in buy_candidates:
             metrics = compute_pnl_metrics(
-                y_true=y_true,
+                y_true=end_to_end_y,
                 stage1_probabilities=stage1_probabilities,
                 stage2_probabilities=stage2_probabilities,
                 stage1_threshold=stage1_threshold,
@@ -303,10 +353,25 @@ def _tune_stage1_threshold(
                 "pnl_per_trade": metrics["pnl_per_trade"],
                 "pnl_per_sample": metrics["pnl_per_sample"],
                 "active_sample_count": metrics["active_sample_count"],
+                "stage1_precision": stage1_metrics["precision"],
+                "stage1_recall": stage1_metrics["recall"],
             }
-            records.append(record)
-            if metrics["active_sample_count"] < min_active_samples:
+            all_records.append(record)
+            if record["active_sample_count"] < min_active_samples:
                 continue
+            coverage_fallback_key = (
+                record["coverage"],
+                record["pnl_per_sample"],
+                record["trade_accuracy"],
+            )
+            if coverage_fallback_key > best_coverage_fallback_key:
+                best_coverage_fallback_key = coverage_fallback_key
+                best_stage1_threshold = stage1_threshold
+                best_buy_threshold = buy_threshold
+
+            if record["coverage"] < min_stage1_coverage:
+                continue
+            eligible_records.append(record)
             rank_key = (
                 record["pnl_per_sample"],
                 record["trade_accuracy"],
@@ -317,23 +382,52 @@ def _tune_stage1_threshold(
                 best_stage1_threshold = stage1_threshold
                 best_buy_threshold = buy_threshold
 
+    constraint_satisfied = best_rank_key[0] != float("-inf")
+    if not constraint_satisfied:
+        used_coverage_fallback = True
+
+    best_record = next(
+        (
+            record
+            for record in all_records
+            if record["stage1_threshold"] == best_stage1_threshold and record["buy_threshold"] == best_buy_threshold
+        ),
+        None,
+    )
+
     return (
         best_stage1_threshold,
         best_buy_threshold,
         {
+            "selection_data": "validation",
             "stage1_threshold_candidates": stage1_candidates,
             "buy_threshold_candidates": buy_candidates,
             "ranking_priority": ["pnl_per_sample", "trade_accuracy", "coverage"],
+            "stage1_coverage_constraint": min_stage1_coverage,
+            "constraint_applied": True,
+            "constraint_satisfied": constraint_satisfied,
+            "fallback_reason": (
+                f"no threshold combination satisfied validation stage1 coverage >= {min_stage1_coverage:.4f}"
+                if used_coverage_fallback
+                else None
+            ),
             "min_active_sample_count": min_active_samples,
-            "records": records,
+            "total_record_count": len(all_records),
+            "eligible_record_count": len(eligible_records),
+            "records": eligible_records,
+            "record_metric_summary": _summarize_threshold_records(eligible_records),
             "best": {
                 "stage1_threshold": best_stage1_threshold,
                 "buy_threshold": best_buy_threshold,
                 "ranking_key": {
-                    "pnl_per_sample": best_rank_key[0],
-                    "trade_accuracy": best_rank_key[1],
-                    "coverage": best_rank_key[2],
+                    "pnl_per_sample": best_rank_key[0] if constraint_satisfied else best_coverage_fallback_key[1],
+                    "trade_accuracy": best_rank_key[1] if constraint_satisfied else best_coverage_fallback_key[2],
+                    "coverage": best_rank_key[2] if constraint_satisfied else best_coverage_fallback_key[0],
                 },
+                "stage1_precision": None if best_record is None else best_record["stage1_precision"],
+                "stage1_recall": None if best_record is None else best_record["stage1_recall"],
+                "coverage": None if best_record is None else best_record["coverage"],
+                "active_sample_count": None if best_record is None else best_record["active_sample_count"],
             },
         },
     )
@@ -358,59 +452,65 @@ def _train_two_stage_for_split(
     dict[str, Any],
     dict[str, dict[str, float]],
 ]:
+    threshold_settings = _get_threshold_search_settings(settings)
     stage1_training = _build_stage1_training_frame(development, settings)
-    stage1_oof_raw, _ = _build_oof_predictions(stage1_training, settings, stage="stage1")
-    stage1_oof_aligned, stage1_oof = _require_strict_oof_predictions(
-        stage1_training,
-        stage1_oof_raw,
-        stage="Stage 1",
-    )
-    stage1_oof_targets = stage1_training.y.astype(int).loc[stage1_oof.index]
     stage1_validation = _build_stage1_training_frame(validation, settings)
     stage1_model = _fit_model(stage1_training, settings, stage="stage1", validation=stage1_validation)
-    stage1_calibrator = _select_calibrator(settings, stage1_oof, stage1_oof_targets, stage="stage1")
+    stage1_dev_raw = stage1_model.predict_proba(stage1_training.X)
+    stage1_valid_raw = stage1_model.predict_proba(stage1_validation.X)
+    stage1_calibrator = _select_calibrator(
+        settings,
+        stage1_valid_raw,
+        stage1_validation.y.astype(int),
+        stage="stage1",
+    )
+    stage1_dev_proba = stage1_calibrator.transform(stage1_dev_raw)
+    stage1_valid_proba = stage1_calibrator.transform(stage1_valid_raw)
 
-    stage2_training = _build_stage2_training_frame(development, stage1_oof_aligned, settings)
+    stage2_training = _build_stage2_training_frame(development, stage1_dev_proba, settings)
     if stage2_training.frame.empty:
         raise ValueError("No active samples available for Stage 2 training.")
     base_rate = float(stage2_training.y.mean())
-    stage2_oof_raw, _ = _build_oof_predictions(stage2_training, settings, stage="stage2")
-    stage2_validation = _build_stage2_training_frame(validation, stage1_valid_proba := stage1_calibrator.transform(stage1_model.predict_proba(validation.X)), settings)
+    stage2_validation = _build_stage2_training_frame(validation, stage1_valid_proba, settings)
     stage2_model = _fit_model(
         stage2_training,
         settings,
         stage="stage2",
         validation=stage2_validation if not stage2_validation.frame.empty else None,
     )
-    _, stage2_oof_raw = _require_strict_oof_predictions(
-        stage2_training,
-        stage2_oof_raw,
-        stage="Stage 2",
-    )
-    stage2_oof_targets = stage2_training.y.astype(int).loc[stage2_oof_raw.index]
-    stage2_calibrator = _select_calibrator(settings, stage2_oof_raw, stage2_oof_targets, stage="stage2")
-    stage2_oof = stage2_calibrator.transform(stage2_oof_raw)
-    stage1_active_prob = stage2_training.frame.loc[stage2_oof.index, DEFAULT_STAGE1_PROBABILITY_COLUMN].astype("float64")
-    stage1_threshold, buy_threshold, threshold_search = _tune_stage1_threshold(
-        stage1_probabilities=stage1_active_prob,
-        stage2_probabilities=stage2_oof,
-        y_true=stage2_oof_targets,
-    )
-
-    stage1_dev_proba = stage1_calibrator.transform(stage1_model.predict_proba(stage1_training.X))
-    stage2_dev_input = _build_stage2_training_frame(development, stage1_dev_proba, settings)
-    stage2_valid_input = stage2_validation
-    stage2_dev_proba = stage2_calibrator.transform(stage2_model.predict_proba(stage2_dev_input.X))
-    stage2_valid_proba = (
-        stage2_calibrator.transform(stage2_model.predict_proba(stage2_valid_input.X))
-        if not stage2_valid_input.frame.empty
+    stage2_dev_raw = stage2_model.predict_proba(stage2_training.X)
+    stage2_valid_raw = (
+        stage2_model.predict_proba(stage2_validation.X)
+        if not stage2_validation.frame.empty
         else pd.Series(dtype="float64")
     )
+    stage2_calibrator = _select_calibrator(
+        settings,
+        stage2_valid_raw,
+        stage2_validation.y.astype(int) if not stage2_validation.frame.empty else pd.Series(dtype="int64"),
+        stage="stage2",
+    )
+    stage2_dev_proba = stage2_calibrator.transform(stage2_dev_raw)
+    stage2_valid_proba = (
+        stage2_calibrator.transform(stage2_valid_raw)
+        if not stage2_valid_raw.empty
+        else pd.Series(dtype="float64")
+    )
+    stage2_dev_input = _build_stage2_training_frame(development, stage1_dev_proba, settings)
+    stage2_valid_input = stage2_validation
     full_stage2_dev_proba = pd.Series(base_rate, index=development.frame.index, dtype="float64")
     full_stage2_valid_proba = pd.Series(base_rate, index=validation.frame.index, dtype="float64")
     full_stage2_dev_proba.loc[stage2_dev_input.frame.index] = stage2_dev_proba.to_numpy()
     if not stage2_valid_input.frame.empty:
         full_stage2_valid_proba.loc[stage2_valid_input.frame.index] = stage2_valid_proba.to_numpy()
+    stage1_threshold, buy_threshold, threshold_search = _tune_stage1_threshold(
+        stage1_y_true=stage1_validation.y.astype(int),
+        stage1_probabilities=stage1_valid_proba,
+        end_to_end_y_true=validation.y.astype(int),
+        stage2_probabilities=full_stage2_valid_proba,
+        min_stage1_coverage=threshold_settings["min_stage1_coverage"],
+        min_active_samples=threshold_settings["min_active_samples"],
+    )
 
     train_metrics = {
         "stage1": compute_classification_metrics(stage1_training.y.astype(int), stage1_dev_proba, threshold=stage1_threshold),
@@ -447,11 +547,11 @@ def _train_two_stage_for_split(
         ),
     }
     probability_summary = {
-        "stage1_prob_oof_train": _summarize_probability_series(stage1_oof),
+        "stage1_prob_train": _summarize_probability_series(stage1_dev_proba),
         "stage1_prob_validation": _summarize_probability_series(stage1_valid_proba),
     }
     probability_reference = {
-        "stage1_prob_oof_train": _serialize_probability_reference(stage1_oof),
+        "stage1_prob_train": _serialize_probability_reference(stage1_dev_proba),
     }
 
     return (
@@ -477,14 +577,24 @@ def train_two_stage_model(
     validation_window_days: int = 30,
     purge_rows: int = 1,
 ) -> TwoStageTrainingArtifacts:
-    _, _, _, _, split = purged_chronological_time_window_split(
+    development, validation = split_training_frame(
         training,
         validation_window_days=validation_window_days,
         purge_rows=purge_rows,
     )
+    return train_two_stage_model_from_split(
+        development=development,
+        validation=validation,
+        settings=settings,
+    )
 
-    development = _slice_training_frame(training, split.train_slice)
-    validation = _slice_training_frame(training, split.valid_slice)
+
+def train_two_stage_model_from_split(
+    *,
+    development: TrainingFrame,
+    validation: TrainingFrame,
+    settings: Settings,
+) -> TwoStageTrainingArtifacts:
     (
         stage1_model,
         stage1_calibrator,
@@ -501,70 +611,21 @@ def train_two_stage_model(
         metrics,
     ) = _train_two_stage_for_split(development, validation, settings)
 
-    train_rows = split.train_end - split.train_start
-    valid_rows = split.valid_end - split.valid_start
     walk_forward_enabled = bool(settings.dataset.walk_forward.get("enabled", False))
     walk_forward_results: list[WalkForwardFoldResult] = []
     walk_forward_fold_details: list[dict[str, Any]] = []
-    if walk_forward_enabled:
-        walk_forward_splits = build_walk_forward_splits(
-            training,
-            min_train_size=max(train_rows, 1),
-            validation_size=max(valid_rows, 1),
-            step_size=max(valid_rows // 2, 1),
-            purge_rows=purge_rows,
-        )
-        for fold_index, fold_split in enumerate(walk_forward_splits, start=1):
-            fold_train = _slice_training_frame(training, fold_split.train_slice)
-            fold_valid = _slice_training_frame(training, fold_split.valid_slice)
-            (
-                _,
-                _,
-                _,
-                _,
-                _,
-                _,
-                _fold_stage1_threshold,
-                _fold_buy_threshold,
-                _fold_base_rate,
-                _fold_threshold_search,
-                _fold_probability_summary,
-                _fold_probability_reference,
-                fold_metrics,
-            ) = _train_two_stage_for_split(fold_train, fold_valid, settings)
-            walk_forward_results.append(
-                WalkForwardFoldResult(
-                    fold_index=fold_index,
-                    split=fold_split,
-                    metrics=fold_metrics["validation"]["end_to_end"],
-                    validation_probabilities=pd.Series(dtype="float64"),
-                )
-            )
-            walk_forward_fold_details.append(
-                {
-                    "fold_index": fold_index,
-                    "train_start": fold_split.train_start,
-                    "train_end": fold_split.train_end,
-                    "valid_start": fold_split.valid_start,
-                    "valid_end": fold_split.valid_end,
-                    "purge_rows": fold_split.purge_rows,
-                    "stage1_threshold": _fold_stage1_threshold,
-                    "buy_threshold": _fold_buy_threshold,
-                    "base_rate": _fold_base_rate,
-                    "metrics": fold_metrics["validation"],
-                }
-            )
+    # walk_forward is retained as a compatibility/reporting switch only.
 
     development_frame = development.frame
     validation_frame = validation.frame
-    stage2_feature_columns = [*training.feature_columns, DEFAULT_STAGE1_PROBABILITY_COLUMN]
+    stage2_feature_columns = [*development.feature_columns, DEFAULT_STAGE1_PROBABILITY_COLUMN]
 
     return TwoStageTrainingArtifacts(
         stage1_model=stage1_model,
         stage1_calibrator=stage1_calibrator,
         stage2_model=stage2_model,
         stage2_calibrator=stage2_calibrator,
-        feature_columns=training.feature_columns,
+        feature_columns=development.feature_columns,
         stage2_feature_columns=stage2_feature_columns,
         stage1_threshold=stage1_threshold,
         buy_threshold=buy_threshold,
