@@ -25,6 +25,9 @@ class ModelPlugin(ABC):
     def predict_proba(self, X: pd.DataFrame) -> pd.Series:
         raise NotImplementedError
 
+    def predict_proba_multiclass(self, X: pd.DataFrame) -> pd.DataFrame:
+        raise NotImplementedError(f"{self.__class__.__name__} does not support multiclass probabilities.")
+
     @abstractmethod
     def save(self, path: str | Path) -> None:
         raise NotImplementedError

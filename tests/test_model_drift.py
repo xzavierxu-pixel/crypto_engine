@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.model.drift import Stage1DriftMonitor, compute_ks_distance
+from src.model.drift import Stage1DriftMonitor, Stage2DirectionDriftMonitor, compute_ks_distance
 
 
 def test_compute_ks_distance_detects_distribution_shift() -> None:
@@ -55,4 +55,22 @@ def test_stage1_drift_monitor_requires_consecutive_breaches_before_alerting() ->
 
     state = monitor.update(0.95)
     assert state["consecutive_alerts"] == 2
+    assert state["alert"] is True
+
+
+def test_stage2_direction_drift_monitor_tracks_p_up_minus_p_down_shift() -> None:
+    monitor = Stage2DirectionDriftMonitor(
+        pd.Series([0.1, 0.15, 0.2] * 100),
+        threshold=0.1,
+        window_size=20,
+        min_history=10,
+        alert_consecutive=1,
+    )
+
+    state = {}
+    for _ in range(20):
+        state = monitor.update(p_up=0.95, p_down=0.05)
+
+    assert state["window_size"] == 20
+    assert state["threshold_breached"] is True
     assert state["alert"] is True

@@ -41,10 +41,19 @@ def make_signal() -> Signal:
         asset="BTC/USDT",
         horizon="5m",
         t0=datetime(2026, 4, 8, 13, 45, tzinfo=UTC),
+        p_down=0.20,
+        p_flat=0.23,
         p_up=0.57,
         model_version="m1",
         feature_version="v1",
         p_active=0.71,
+        decision_context={
+            "stage1_threshold": 0.6,
+            "up_threshold": 0.65,
+            "down_threshold": 0.64,
+            "margin_threshold": 0.08,
+            "stage1_rejected": False,
+        },
     )
 
 
@@ -112,6 +121,8 @@ def test_build_shadow_summary_contains_signal_market_decision_and_order() -> Non
 
     assert summary["signal"]["asset"] == "BTC/USDT"
     assert summary["signal"]["p_active"] == 0.71
+    assert summary["signal"]["p_down"] == 0.2
+    assert summary["signal"]["stage1_threshold"] == 0.6
     assert summary["market"]["slug"] == "btc-updown-5m-123"
     assert summary["decision"]["should_trade"] is True
     assert summary["order"]["market_id"] == "yes-1"

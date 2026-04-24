@@ -47,6 +47,14 @@ class HorizonsConfig:
 
 
 @dataclass(frozen=True)
+class ThresholdSearchConfig:
+    stage1_coverage_min: float = 0.60
+    stage1_coverage_max: float = 0.80
+    min_active_samples: int = 25
+    min_end_to_end_coverage: float = 0.30
+
+
+@dataclass(frozen=True)
 class DatasetConfig:
     train_start: str
     train_end: str
@@ -54,9 +62,8 @@ class DatasetConfig:
     strict_grid_only: bool = True
     drop_incomplete_candles: bool = True
     walk_forward: dict[str, Any] = field(default_factory=dict)
-    threshold_search: dict[str, Any] = field(default_factory=dict)
+    threshold_search: ThresholdSearchConfig = field(default_factory=ThresholdSearchConfig)
     sample_quality_filter: dict[str, Any] = field(default_factory=dict)
-    sample_weighting: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -209,6 +216,7 @@ class PluginGroupConfig:
     active_plugin: str | None = None
     active_plugins: dict[str, str] = field(default_factory=dict)
     plugins: dict[str, dict[str, Any]] = field(default_factory=dict)
+    stage2_class_weight: str | dict[int, float] | None = None
 
     def resolve_plugin(self, stage: str | None = None) -> str:
         if stage is not None and stage in self.active_plugins:
@@ -219,8 +227,23 @@ class PluginGroupConfig:
 
 
 @dataclass(frozen=True)
+class TwoStagePolicyConfig:
+    stage1_threshold: float | None = None
+    up_threshold: float | None = None
+    down_threshold: float | None = None
+    margin_threshold: float | None = None
+
+
+@dataclass(frozen=True)
 class SignalConfig:
     policies: dict[str, dict[str, Any]]
+
+    def get_two_stage_policy(self, name: str) -> TwoStagePolicyConfig:
+        try:
+            payload = self.policies[name]
+        except KeyError as exc:
+            raise KeyError(f"Unknown signal policy '{name}'.") from exc
+        return TwoStagePolicyConfig(**payload)
 
 
 @dataclass(frozen=True)
@@ -278,7 +301,16 @@ class Settings:
             project=ProjectConfig(**payload["project"]),
             market=MarketConfig(**payload["market"]),
             horizons=horizons,
-            dataset=DatasetConfig(**payload["dataset"]),
+            dataset=DatasetConfig(
+                train_start=payload["dataset"]["train_start"],
+                train_end=payload["dataset"]["train_end"],
+                validation_window_days=payload["dataset"].get("validation_window_days", 30),
+                strict_grid_only=payload["dataset"].get("strict_grid_only", True),
+                drop_incomplete_candles=payload["dataset"].get("drop_incomplete_candles", True),
+                walk_forward=payload["dataset"].get("walk_forward", {}),
+                threshold_search=ThresholdSearchConfig(**payload["dataset"].get("threshold_search", {})),
+                sample_quality_filter=payload["dataset"].get("sample_quality_filter", {}),
+            ),
             features=features,
             labels=LabelsConfig(
                 two_stage=TwoStageLabelsConfig(**payload.get("labels", {}).get("two_stage", {}))

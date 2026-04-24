@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy as np
 import pandas as pd
 
 from src.core.config import Settings
@@ -11,8 +10,9 @@ from src.core.constants import (
     DEFAULT_ASSET_COLUMN,
     DEFAULT_GRID_ID_COLUMN,
     DEFAULT_HORIZON_COLUMN,
-    DEFAULT_SAMPLE_WEIGHT_COLUMN,
+    DEFAULT_SIGNED_RETURN_COLUMN,
     DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN,
+    DEFAULT_STAGE2_TARGET_COLUMN,
     DEFAULT_TARGET_COLUMN,
     DEFAULT_TIMESTAMP_COLUMN,
 )
@@ -21,6 +21,7 @@ from src.data.preprocess import drop_incomplete_samples, filter_by_timerange
 from src.features.builder import build_feature_frame
 from src.horizons.registry import get_horizon_spec
 from src.labels.abs_return import build_abs_return_frame, compute_stage1_boundary_weight
+from src.labels.three_class_direction import build_three_class_direction_target
 from src.labels.registry import get_label_builder
 
 
@@ -40,7 +41,8 @@ BASE_DATASET_COLUMNS = {
     "label_version",
     DEFAULT_TARGET_COLUMN,
     DEFAULT_ABS_RETURN_COLUMN,
-    DEFAULT_SAMPLE_WEIGHT_COLUMN,
+    DEFAULT_SIGNED_RETURN_COLUMN,
+    DEFAULT_STAGE2_TARGET_COLUMN,
     DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN,
 }
 
@@ -87,34 +89,6 @@ def _apply_sample_quality_filter(frame: pd.DataFrame, settings: Settings) -> pd.
         mask &= filtered["flat_share_20"] <= float(max_flat_share_20)
 
     return filtered.loc[mask].reset_index(drop=True)
-
-
-def _build_sample_weights(frame: pd.DataFrame, settings: Settings) -> pd.Series | None:
-    config = settings.dataset.sample_weighting
-    if not config or not config.get("enabled", False):
-        return None
-
-    weights = pd.Series(float(config.get("base_weight", 1.0)), index=frame.index, dtype="float64")
-
-    if "nz_volume_share_20" in frame.columns:
-        weights += float(config.get("nz_volume_share_20_weight", 0.0)) * frame["nz_volume_share_20"].clip(0.0, 1.0)
-    if "flat_share_20" in frame.columns:
-        weights -= float(config.get("flat_share_20_weight", 0.0)) * frame["flat_share_20"].clip(0.0, 1.0)
-    if "abs_ret_mean_20" in frame.columns:
-        abs_ret_scale = float(config.get("abs_ret_mean_20_scale", 0.001))
-        weights += float(config.get("abs_ret_mean_20_weight", 0.0)) * (
-            frame["abs_ret_mean_20"] / max(abs_ret_scale, 1e-12)
-        ).clip(0.0, 1.0)
-    if "dollar_vol_mean_20" in frame.columns:
-        dollar_scale = float(config.get("dollar_vol_mean_20_scale", 1.0))
-        weights += float(config.get("dollar_vol_mean_20_weight", 0.0)) * (
-            np.log1p(frame["dollar_vol_mean_20"].clip(lower=0.0))
-            / np.log1p(max(dollar_scale, 1e-12))
-        ).clip(0.0, 1.0)
-
-    min_weight = float(config.get("min_weight", 0.5))
-    max_weight = float(config.get("max_weight", 3.0))
-    return weights.clip(lower=min_weight, upper=max_weight)
 
 
 def build_training_frame(
@@ -164,12 +138,11 @@ def build_training_frame(
             target_column=DEFAULT_TARGET_COLUMN,
         )
     training_frame = _apply_sample_quality_filter(training_frame, settings)
-    sample_weights = _build_sample_weights(training_frame, settings)
-    sample_weight_column = None
-    if sample_weights is not None:
-        training_frame[DEFAULT_SAMPLE_WEIGHT_COLUMN] = sample_weights
-        sample_weight_column = DEFAULT_SAMPLE_WEIGHT_COLUMN
     tau = float(settings.labels.two_stage.active_return_threshold)
+    training_frame[DEFAULT_STAGE2_TARGET_COLUMN] = build_three_class_direction_target(
+        training_frame[DEFAULT_SIGNED_RETURN_COLUMN],
+        tau=tau,
+    )
     boundary_weight = compute_stage1_boundary_weight(training_frame[DEFAULT_ABS_RETURN_COLUMN], tau=tau)
     training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = boundary_weight
 
@@ -177,5 +150,5 @@ def build_training_frame(
         frame=training_frame.reset_index(drop=True),
         feature_columns=feature_columns,
         target_column=DEFAULT_TARGET_COLUMN,
-        sample_weight_column=sample_weight_column,
+        sample_weight_column=None,
     )

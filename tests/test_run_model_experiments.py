@@ -144,10 +144,10 @@ def test_experiment_summary_helpers_build_rankings_and_variant_rollups() -> None
             "model_plugins": {"stage1": "logistic", "stage2": "logistic"},
             "feature_count": 120,
             "duration_seconds": 10.123,
-            "train_metrics": {"end_to_end": {"pnl_per_sample": 0.01, "trade_accuracy": 0.51, "coverage": 0.50}},
-            "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.008, "trade_accuracy": 0.51, "coverage": 0.40, "sample_count": 200.0}},
-            "walk_forward_summary": {"pnl_per_sample_mean": 0.007, "pnl_per_sample_min": 0.001, "trade_accuracy_mean": 0.51},
-            "overfit_gap": {"pnl_per_sample": 0.002, "trade_accuracy": 0.0, "coverage": 0.10},
+            "train_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.01, "precision_up": 0.30, "precision_down": 0.31, "coverage_end_to_end": 0.50}},
+            "validation_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.008, "precision_up": 0.25, "precision_down": 0.26, "coverage_end_to_end": 0.40, "sample_count": 200.0}},
+            "walk_forward_summary": {"trade_pnl.pnl_per_sample_mean": 0.007, "trade_pnl.pnl_per_sample_min": 0.001, "precision_up_mean": 0.25, "precision_down_mean": 0.26},
+            "overfit_gap": {"pnl_per_sample": 0.002, "precision_sum": 0.10, "coverage": 0.10},
             "derivatives": {"enabled": False, "packs": []},
         },
         {
@@ -155,10 +155,10 @@ def test_experiment_summary_helpers_build_rankings_and_variant_rollups() -> None
             "model_plugins": {"stage1": "catboost", "stage2": "catboost"},
             "feature_count": 130,
             "duration_seconds": 25.5,
-            "train_metrics": {"end_to_end": {"pnl_per_sample": 0.05, "trade_accuracy": 0.58, "coverage": 0.60}},
-            "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.04, "trade_accuracy": 0.57, "coverage": 0.55, "sample_count": 200.0}},
-            "walk_forward_summary": {"pnl_per_sample_mean": 0.035, "pnl_per_sample_min": 0.020, "trade_accuracy_mean": 0.56},
-            "overfit_gap": {"pnl_per_sample": 0.01, "trade_accuracy": 0.01, "coverage": 0.05},
+            "train_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.05, "precision_up": 0.40, "precision_down": 0.38, "coverage_end_to_end": 0.60}},
+            "validation_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.04, "precision_up": 0.36, "precision_down": 0.35, "coverage_end_to_end": 0.55, "sample_count": 200.0}},
+            "walk_forward_summary": {"trade_pnl.pnl_per_sample_mean": 0.035, "trade_pnl.pnl_per_sample_min": 0.020, "precision_up_mean": 0.35, "precision_down_mean": 0.34},
+            "overfit_gap": {"pnl_per_sample": 0.01, "precision_sum": 0.07, "coverage": 0.05},
             "derivatives": {"enabled": True, "packs": ["derivatives_funding", "derivatives_basis"]},
         },
         {
@@ -166,10 +166,10 @@ def test_experiment_summary_helpers_build_rankings_and_variant_rollups() -> None
             "model_plugins": {"stage1": "lightgbm_stage1", "stage2": "lightgbm_stage2"},
             "feature_count": 125,
             "duration_seconds": 18.0,
-            "train_metrics": {"end_to_end": {"pnl_per_sample": 0.03, "trade_accuracy": 0.55, "coverage": 0.54}},
-            "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.02, "trade_accuracy": 0.54, "coverage": 0.50, "sample_count": 200.0}},
-            "walk_forward_summary": {"pnl_per_sample_mean": 0.018, "pnl_per_sample_min": 0.010, "trade_accuracy_mean": 0.54},
-            "overfit_gap": {"pnl_per_sample": 0.01, "trade_accuracy": 0.01, "coverage": 0.04},
+            "train_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.03, "precision_up": 0.34, "precision_down": 0.33, "coverage_end_to_end": 0.54}},
+            "validation_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.02, "precision_up": 0.31, "precision_down": 0.30, "coverage_end_to_end": 0.50, "sample_count": 200.0}},
+            "walk_forward_summary": {"trade_pnl.pnl_per_sample_mean": 0.018, "trade_pnl.pnl_per_sample_min": 0.010, "precision_up_mean": 0.30, "precision_down_mean": 0.29},
+            "overfit_gap": {"pnl_per_sample": 0.01, "precision_sum": 0.06, "coverage": 0.04},
             "derivatives": {"enabled": True, "packs": ["derivatives_funding"]},
         },
         {
@@ -177,15 +177,23 @@ def test_experiment_summary_helpers_build_rankings_and_variant_rollups() -> None
             "model_plugins": {"stage1": "logistic", "stage2": "catboost"},
             "feature_count": 130,
             "duration_seconds": 8.5,
-            "train_metrics": {"end_to_end": {"pnl_per_sample": 0.025, "trade_accuracy": 0.54, "coverage": 0.52}},
-            "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.015, "trade_accuracy": 0.53, "coverage": 0.48, "sample_count": 200.0}},
-            "walk_forward_summary": {"pnl_per_sample_mean": 0.013, "pnl_per_sample_min": 0.002, "trade_accuracy_mean": 0.53},
-            "overfit_gap": {"pnl_per_sample": 0.01, "trade_accuracy": 0.01, "coverage": 0.04},
+            "train_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.025, "precision_up": 0.33, "precision_down": 0.32, "coverage_end_to_end": 0.52}},
+            "validation_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.015, "precision_up": 0.29, "precision_down": 0.28, "coverage_end_to_end": 0.48, "sample_count": 200.0}},
+            "walk_forward_summary": {"trade_pnl.pnl_per_sample_mean": 0.013, "trade_pnl.pnl_per_sample_min": 0.002, "precision_up_mean": 0.28, "precision_down_mean": 0.27},
+            "overfit_gap": {"pnl_per_sample": 0.01, "precision_sum": 0.08, "coverage": 0.04},
             "derivatives": {"enabled": True, "packs": ["derivatives_funding", "derivatives_basis"]},
         },
     ]
 
-    ranked_results = sorted(results, key=lambda result: (result["walk_forward_summary"]["pnl_per_sample_mean"], result["walk_forward_summary"]["pnl_per_sample_min"], result["walk_forward_summary"]["trade_accuracy_mean"]), reverse=True)
+    ranked_results = sorted(
+        results,
+        key=lambda result: (
+            result["walk_forward_summary"]["trade_pnl.pnl_per_sample_mean"],
+            result["walk_forward_summary"]["trade_pnl.pnl_per_sample_min"],
+            result["walk_forward_summary"]["precision_up_mean"] + result["walk_forward_summary"]["precision_down_mean"],
+        ),
+        reverse=True,
+    )
     leaderboard = _build_leaderboard(ranked_results)
     variant_summary = _build_variant_summary(ranked_results)
     progression = _build_derivatives_progression(variant_summary)
@@ -219,7 +227,7 @@ def test_render_summary_markdown_includes_leaderboard_and_progression_sections()
                 "stage2_model_plugin": "lightgbm_stage2",
                 "feature_count": 130,
                 "validation_pnl_per_sample": 0.04,
-                "validation_trade_accuracy": 0.57,
+                "validation_precision_sum": 0.71,
                 "validation_coverage": 0.55,
                 "walk_forward_pnl_per_sample_mean": 0.03,
                 "walk_forward_pnl_per_sample_min": 0.01,
@@ -230,8 +238,8 @@ def test_render_summary_markdown_includes_leaderboard_and_progression_sections()
             {
                 "variant": "funding",
                 "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm_stage2"},
-                "validation_metrics": {"pnl_per_sample": 0.04, "trade_accuracy": 0.57, "coverage": 0.55, "sample_count": 200},
-                "delta_vs_baseline": {"pnl_per_sample": 0.02, "trade_accuracy": 0.03, "coverage": 0.05},
+                "validation_metrics": {"pnl_per_sample": 0.04, "precision_sum": 0.71, "coverage": 0.55, "sample_count": 200},
+                "delta_vs_baseline": {"pnl_per_sample": 0.02, "precision_sum": 0.03, "coverage": 0.05},
             }
         ],
         "derivatives_progression": [
@@ -239,9 +247,9 @@ def test_render_summary_markdown_includes_leaderboard_and_progression_sections()
                 "variant": "funding",
                 "best_model_plugins": {"stage1": "catboost", "stage2": "lightgbm_stage2"},
                 "validation_pnl_per_sample": 0.04,
-                "validation_trade_accuracy": 0.57,
+                "validation_precision_sum": 0.71,
                 "validation_coverage": 0.55,
-                "delta_vs_previous": {"pnl_per_sample": 0.02, "trade_accuracy": 0.03, "coverage": 0.05},
+                "delta_vs_previous": {"pnl_per_sample": 0.02, "precision_sum": 0.03, "coverage": 0.05},
             }
         ],
     }
@@ -268,10 +276,10 @@ def test_collect_existing_results_and_write_summary_support_resume_flow(tmp_path
         "model_plugins": {"stage1": "catboost", "stage2": "catboost"},
         "feature_count": 126,
         "duration_seconds": 10.0,
-        "train_metrics": {"end_to_end": {"pnl_per_sample": 0.02, "trade_accuracy": 0.53, "coverage": 0.50}},
-        "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.01, "trade_accuracy": 0.52, "coverage": 0.48, "sample_count": 200.0}},
-        "walk_forward_summary": {"pnl_per_sample_mean": 0.008, "pnl_per_sample_min": 0.002, "trade_accuracy_mean": 0.52},
-        "overfit_gap": {"pnl_per_sample": 0.01, "trade_accuracy": 0.01, "coverage": 0.02},
+        "train_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.02, "precision_up": 0.27, "precision_down": 0.26, "coverage_end_to_end": 0.50}},
+        "validation_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.01, "precision_up": 0.26, "precision_down": 0.26, "coverage_end_to_end": 0.48, "sample_count": 200.0}},
+        "walk_forward_summary": {"trade_pnl.pnl_per_sample_mean": 0.008, "trade_pnl.pnl_per_sample_min": 0.002, "precision_up_mean": 0.26, "precision_down_mean": 0.26},
+        "overfit_gap": {"pnl_per_sample": 0.01, "precision_sum": 0.01, "coverage": 0.02},
         "derivatives": {"enabled": False, "packs": []},
     }
     funding_result = {
@@ -279,10 +287,10 @@ def test_collect_existing_results_and_write_summary_support_resume_flow(tmp_path
         "model_plugins": {"stage1": "lightgbm_stage1", "stage2": "lightgbm_stage2"},
         "feature_count": 130,
         "duration_seconds": 8.0,
-        "train_metrics": {"end_to_end": {"pnl_per_sample": 0.03, "trade_accuracy": 0.55, "coverage": 0.54}},
-        "validation_metrics": {"end_to_end": {"pnl_per_sample": 0.02, "trade_accuracy": 0.54, "coverage": 0.50, "sample_count": 200.0}},
-        "walk_forward_summary": {"pnl_per_sample_mean": 0.018, "pnl_per_sample_min": 0.010, "trade_accuracy_mean": 0.54},
-        "overfit_gap": {"pnl_per_sample": 0.01, "trade_accuracy": 0.01, "coverage": 0.04},
+        "train_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.03, "precision_up": 0.31, "precision_down": 0.31, "coverage_end_to_end": 0.54}},
+        "validation_metrics": {"end_to_end": {"trade_pnl.pnl_per_sample": 0.02, "precision_up": 0.30, "precision_down": 0.30, "coverage_end_to_end": 0.50, "sample_count": 200.0}},
+        "walk_forward_summary": {"trade_pnl.pnl_per_sample_mean": 0.018, "trade_pnl.pnl_per_sample_min": 0.010, "precision_up_mean": 0.30, "precision_down_mean": 0.30},
+        "overfit_gap": {"pnl_per_sample": 0.01, "precision_sum": 0.02, "coverage": 0.04},
         "derivatives": {"enabled": True, "packs": ["derivatives_funding"]},
     }
     (baseline_dir / "experiment_report.json").write_text(json.dumps(baseline_result), encoding="utf-8")

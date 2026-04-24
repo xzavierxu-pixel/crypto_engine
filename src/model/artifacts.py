@@ -22,9 +22,12 @@ class TwoStageArtifactBundle:
     feature_columns: list[str]
     stage2_feature_columns: list[str]
     stage1_threshold: float
-    buy_threshold: float
+    up_threshold: float
+    down_threshold: float
+    margin_threshold: float
     base_rate: float
     stage1_reference_probabilities: list[float]
+    stage2_direction_reference: list[float]
     model_version: str | None
     training_report: dict[str, Any]
 
@@ -33,6 +36,10 @@ def discover_latest_artifact_dir(search_root: str | Path = "artifacts") -> Path 
     root = Path(search_root)
     if not root.exists():
         return None
+    manifest_paths = [path for path in root.rglob("artifact_manifest.json") if path.is_file()]
+    if manifest_paths:
+        latest_manifest = max(manifest_paths, key=lambda path: path.stat().st_mtime)
+        return latest_manifest.parent
     report_paths = [path for path in root.rglob("training_report.json") if path.is_file()]
     if not report_paths:
         return None
@@ -61,6 +68,19 @@ def _load_stage1_reference_probabilities(report: dict[str, Any], artifact_root: 
     ]
 
 
+def _load_stage2_direction_reference(report: dict[str, Any], artifact_root: Path | None) -> list[float]:
+    reference_path = report.get("stage2_direction_reference_path")
+    if reference_path and artifact_root is not None:
+        resolved_path = artifact_root / reference_path
+        if resolved_path.exists():
+            reference_payload = _read_report(resolved_path)
+            return [float(value) for value in reference_payload.get("stage2_direction_train", {}).get("sample", [])]
+    return [
+        float(value)
+        for value in report.get("stage2_direction_reference", {}).get("stage2_direction_train", {}).get("sample", [])
+    ]
+
+
 def load_two_stage_artifacts(
     settings: Settings,
     *,
@@ -78,9 +98,12 @@ def load_two_stage_artifacts(
     if report_path is not None:
         resolved_report_path = Path(report_path)
     elif resolved_artifact_dir is not None:
-        candidate = resolved_artifact_dir / "training_report.json"
-        if candidate.exists():
-            resolved_report_path = candidate
+        manifest_candidate = resolved_artifact_dir / "artifact_manifest.json"
+        report_candidate = resolved_artifact_dir / "training_report.json"
+        if manifest_candidate.exists():
+            resolved_report_path = manifest_candidate
+        elif report_candidate.exists():
+            resolved_report_path = report_candidate
 
     report: dict[str, Any] = _read_report(resolved_report_path) if resolved_report_path is not None else {}
     artifact_root = resolved_artifact_dir if resolved_artifact_dir is not None else (
@@ -104,6 +127,7 @@ def load_two_stage_artifacts(
         raise ValueError("Two-stage artifact paths are incomplete. Provide report_path or all explicit paths.")
 
     stage1_reference_probabilities = _load_stage1_reference_probabilities(report, artifact_root)
+    stage2_direction_reference = _load_stage2_direction_reference(report, artifact_root)
     stage2_feature_columns = list(report.get("stage2_feature_columns", []))
     feature_columns = list(report.get("feature_columns", []))
     if not feature_columns and stage2_feature_columns:
@@ -119,10 +143,13 @@ def load_two_stage_artifacts(
         stage2_calibrator=load_calibration_plugin(stage2_calibrator_name, str(stage2_calibrator_path)),
         feature_columns=feature_columns,
         stage2_feature_columns=stage2_feature_columns,
-        stage1_threshold=float(report.get("stage1_threshold", 0.5)),
-        buy_threshold=float(report.get("buy_threshold", report.get("base_rate", 0.5))),
+        stage1_threshold=float(report["stage1_threshold"]),
+        up_threshold=float(report["up_threshold"]),
+        down_threshold=float(report["down_threshold"]),
+        margin_threshold=float(report["margin_threshold"]),
         base_rate=float(report.get("base_rate", 0.5)),
         stage1_reference_probabilities=stage1_reference_probabilities,
+        stage2_direction_reference=stage2_direction_reference,
         model_version=report.get("config_hash"),
         training_report=report,
     )

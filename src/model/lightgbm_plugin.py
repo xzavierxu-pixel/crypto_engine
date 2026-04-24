@@ -25,6 +25,7 @@ class LightGBMClassifierPlugin(ModelPlugin):
         if eval_metric is not None:
             self.fit_params["eval_metric"] = eval_metric
 
+        self.objective = str(model_params.get("objective", "binary"))
         self.model = LGBMClassifier(**model_params)
 
     def fit(
@@ -61,6 +62,16 @@ class LightGBMClassifierPlugin(ModelPlugin):
     def predict_proba(self, X: pd.DataFrame) -> pd.Series:
         probabilities = self.model.predict_proba(X)[:, 1]
         return pd.Series(probabilities, index=X.index, name="p_up")
+
+    def predict_proba_multiclass(self, X: pd.DataFrame) -> pd.DataFrame:
+        probabilities = self.model.predict_proba(X)
+        if probabilities.ndim != 2 or probabilities.shape[1] != 3:
+            raise ValueError("Expected multiclass probabilities with three columns.")
+        return pd.DataFrame(
+            probabilities,
+            index=X.index,
+            columns=["p_down", "p_flat", "p_up"],
+        )
 
     def save(self, path: str | Path) -> None:
         with Path(path).open("wb") as handle:

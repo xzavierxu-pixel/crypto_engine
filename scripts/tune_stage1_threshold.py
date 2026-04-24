@@ -54,7 +54,9 @@ def main() -> None:
     payload = {
         "horizon": args.horizon,
         "stage1_threshold": artifacts.stage1_threshold,
-        "buy_threshold": artifacts.buy_threshold,
+        "up_threshold": artifacts.up_threshold,
+        "down_threshold": artifacts.down_threshold,
+        "margin_threshold": artifacts.margin_threshold,
         "base_rate": artifacts.base_rate,
         "threshold_search": artifacts.threshold_search,
         "stage1_probability_summary": artifacts.stage1_probability_summary,

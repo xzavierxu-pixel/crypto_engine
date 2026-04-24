@@ -49,7 +49,7 @@ dataset:
 
 labels:
   two_stage:
-    active_return_threshold: 0.0005
+    active_return_threshold: 0.0001
 
 features:
   profiles:
@@ -123,26 +123,15 @@ features:
         - compression_breakout
         - asymmetry
         - flow_proxy
-        - intra_5m_structure
         - lagged
         - time
-        - derivatives_funding
-        - derivatives_basis
-        - derivatives_book_ticker
-        - derivatives_oi
-        - derivatives_options
-      momentum_windows: [1, 3, 5, 10, 15]
-      vol_windows: [3, 5, 10, 30]
+      momentum_windows: [1, 3, 5, 10]
+      vol_windows: [3, 5, 10, 20]
       volume_windows: [3, 5, 10, 20]
       market_quality_windows: [5, 20]
       slope_windows: [3, 5]
       range_windows: [3, 5, 10]
-      htf_context_timeframes: [5, 15]
-      htf_context_vol_window: 5
-      htf_context_range_window: 5
-      htf_context_zscore_window: 5
-      htf_context_efficiency_window: 5
-      htf_context_trend_strength_window: 5
+      htf_context_timeframes: [15, 60]
       lagged_feature_names:
         - ret_1
         - ret_3
@@ -150,8 +139,6 @@ features:
         - signed_volume_1
         - nz_volume_share_5
         - flat_share_5
-        - body_pct_1
-        - close_location_1
       lagged_feature_lags: [1, 2, 3]
       compression_window: 20
       compression_rank_window: 100
@@ -169,21 +156,21 @@ features:
 derivatives:
   enabled: true
   exchange: binance
-  symbol_spot: BTC/USDT
-  symbol_perp: BTC/USDT:USDT
+  symbol_spot: BTCUSDT
+  symbol_perp: BTCUSDT
   path_mode: latest
   funding:
     enabled: true
+    source: binance
     path: ./artifacts/data/derivatives/binance_btcusdt_funding.parquet
     archive_path: ./artifacts/data/binance_public/normalized
-    source: local_file
     ffill_until_next: true
     zscore_window: 720
   basis:
     enabled: true
+    source: binance
     path: ./artifacts/data/derivatives/binance_btcusdt_basis.parquet
     archive_path: ./artifacts/data/binance_public/normalized
-    source: local_file
     use_mark_price: true
     use_index_price: true
     use_premium_index: true
@@ -198,26 +185,25 @@ derivatives:
     slope_window: 5
   options:
     enabled: false
+    source: deribit
     path: null
     archive_path: ./artifacts/data/binance_public/normalized
-    source: local_file
     zscore_window: 288
     change_window: 60
     regime_zscore_threshold: 1.0
   book_ticker:
     enabled: false
+    source: binance
     path: null
     archive_path: ./artifacts/data/binance_public/normalized
-    source: local_file
     zscore_window: 288
 
 data_backfill:
-  provider: binance_public
-  start_date: "2025-01-01"
+  provider: binance-public
+  start_date: "2024-01-01"
   use_monthly_for_full_months: true
   use_daily_for_open_month_tail: true
   verify_checksum: true
-
   spot:
     enabled: true
     symbols: ["BTCUSDT"]
@@ -226,7 +212,6 @@ data_backfill:
         intervals: ["1m"]
       aggTrades: {}
       trades: {}
-
   futures_um:
     enabled: true
     symbols: ["BTCUSDT"]
@@ -246,7 +231,6 @@ data_backfill:
       trades: {}
       bookDepth: {}
       liquidationSnapshot: {}
-
   futures_cm:
     enabled: true
     symbols: ["BTCUSD_PERP"]
@@ -266,7 +250,6 @@ data_backfill:
       trades: {}
       bookDepth: {}
       liquidationSnapshot: {}
-
   option:
     enabled: true
     symbols:

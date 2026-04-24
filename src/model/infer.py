@@ -18,3 +18,12 @@ def predict_frame(
     if calibrator is None:
         return raw
     return calibrator.transform(raw)
+
+
+def predict_frame_multiclass(
+    frame: pd.DataFrame,
+    model: ModelPlugin,
+    feature_columns: list[str] | None = None,
+) -> pd.DataFrame:
+    resolved_columns = feature_columns or infer_feature_columns(frame)
+    return model.predict_proba_multiclass(frame[resolved_columns])

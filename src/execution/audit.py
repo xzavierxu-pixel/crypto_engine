@@ -6,6 +6,7 @@ from src.core.schemas import AuditEvent, Decision, GuardResult, MarketQuote, Ord
 
 
 def signal_generated_event(signal: Signal) -> AuditEvent:
+    context = signal.decision_context
     return AuditEvent(
         event_type="signal_generated",
         timestamp=datetime.now(UTC),
@@ -13,8 +14,16 @@ def signal_generated_event(signal: Signal) -> AuditEvent:
             "asset": signal.asset,
             "horizon": signal.horizon,
             "t0": signal.t0.isoformat(),
+            "p_down": signal.p_down,
+            "p_flat": signal.p_flat,
             "p_up": signal.p_up,
             "p_active": signal.p_active,
+            "stage1_threshold": context.get("stage1_threshold"),
+            "up_threshold": context.get("up_threshold"),
+            "down_threshold": context.get("down_threshold"),
+            "margin_threshold": context.get("margin_threshold"),
+            "side": context.get("side"),
+            "stage1_rejected": context.get("stage1_rejected"),
             "decision_context": signal.decision_context,
         },
     )
@@ -29,6 +38,22 @@ def stage1_drift_alert_event(signal: Signal, drift_state: dict) -> AuditEvent:
             "horizon": signal.horizon,
             "t0": signal.t0.isoformat(),
             "p_active": signal.p_active,
+            "drift": drift_state,
+        },
+    )
+
+
+def stage2_drift_alert_event(signal: Signal, drift_state: dict) -> AuditEvent:
+    return AuditEvent(
+        event_type="stage2_drift_alert",
+        timestamp=datetime.now(UTC),
+        payload={
+            "asset": signal.asset,
+            "horizon": signal.horizon,
+            "t0": signal.t0.isoformat(),
+            "p_down": signal.p_down,
+            "p_flat": signal.p_flat,
+            "p_up": signal.p_up,
             "drift": drift_state,
         },
     )
@@ -49,6 +74,7 @@ def market_mapped_event(signal: Signal, quote: MarketQuote) -> AuditEvent:
 
 
 def decision_evaluated_event(signal: Signal, quote: MarketQuote, decision: Decision) -> AuditEvent:
+    context = signal.decision_context
     return AuditEvent(
         event_type="decision_evaluated",
         timestamp=datetime.now(UTC),
@@ -57,7 +83,14 @@ def decision_evaluated_event(signal: Signal, quote: MarketQuote, decision: Decis
             "market_id": quote.market_id,
             "t0": signal.t0.isoformat(),
             "yes_price": quote.yes_price,
+            "p_down": signal.p_down,
+            "p_flat": signal.p_flat,
             "p_up": signal.p_up,
+            "p_active": signal.p_active,
+            "stage1_threshold": context.get("stage1_threshold"),
+            "up_threshold": context.get("up_threshold"),
+            "down_threshold": context.get("down_threshold"),
+            "margin_threshold": context.get("margin_threshold"),
             "should_trade": decision.should_trade,
             "side": decision.side,
             "edge": decision.edge,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import subprocess
 import sys
 from pathlib import Path
 
@@ -63,6 +64,28 @@ def _write_cached_split(output_dir: Path, development, validation) -> None:
     logging.info("Cached split data written to %s and %s", development_path, validation_path)
 
 
+def _run_split_data_quality_report(output_dir: Path) -> None:
+    script_path = REPO_ROOT / "src" / "quality check" / "data_quality_report.py"
+    if not script_path.exists():
+        logging.warning("Data quality report script not found at %s; skipping split DQC.", script_path)
+        return
+    development_path = output_dir / "development_frame.parquet"
+    validation_path = output_dir / "validation_frame.parquet"
+    dqc_output_dir = output_dir / "data_quality"
+    command = [
+        sys.executable,
+        str(script_path),
+        "--train",
+        str(development_path),
+        "--valid",
+        str(validation_path),
+        "--output-dir",
+        str(dqc_output_dir),
+    ]
+    logging.info("Generating split data quality report in %s", dqc_output_dir)
+    subprocess.run(command, check=True, cwd=str(REPO_ROOT))
+
+
 def main() -> None:
     _configure_logging()
     parser = argparse.ArgumentParser(description="Train the two-stage BTC Polymarket model.")
@@ -120,7 +143,6 @@ def main() -> None:
         training_row_count = len(development.frame) + len(validation.frame)
         train_start = str(development.frame["timestamp"].min()) if not development.frame.empty else None
         train_end = str(validation.frame["timestamp"].max()) if not validation.frame.empty else None
-        sample_weight = development.sample_weight
         logging.info(
             "Training from cached split: development_rows=%s, validation_rows=%s",
             len(development.frame),
@@ -152,10 +174,10 @@ def main() -> None:
             purge_rows=args.purge_rows,
         )
         _write_cached_split(output_dir, development, validation)
+        _run_split_data_quality_report(output_dir)
         training_row_count = len(training.frame)
         train_start = str(training.frame["timestamp"].min()) if not training.frame.empty else None
         train_end = str(training.frame["timestamp"].max()) if not training.frame.empty else None
-        sample_weight = training.sample_weight
         logging.info(
             "Training two-stage model: rows=%s, validation_window_days=%s, purge_rows=%s",
             len(training.frame),
@@ -163,7 +185,7 @@ def main() -> None:
             args.purge_rows,
         )
 
-    logging.info("Starting validation-based threshold search with configured coverage constraint")
+    logging.info("Starting decoupled threshold search for Stage 1 filter and Stage 2 decisions")
     artifacts = train_two_stage_model_from_split(
         development=development,
         validation=validation,
@@ -175,9 +197,10 @@ def main() -> None:
     stage2_model_path = output_dir / f"{settings.model.resolve_plugin(stage='stage2')}.stage2.pkl"
     stage1_calibrator_path = output_dir / f"{artifacts.stage1_calibrator.name}.stage1.pkl"
     stage2_calibrator_path = output_dir / f"{artifacts.stage2_calibrator.name}.stage2.pkl"
-    report_path = output_dir / "training_report.json"
+    manifest_path = output_dir / "artifact_manifest.json"
     threshold_search_path = output_dir / "threshold_search.json"
     stage1_probability_reference_path = output_dir / "stage1_probability_reference.json"
+    stage2_direction_reference_path = output_dir / "stage2_direction_reference.json"
     artifacts.stage1_model.save(stage1_model_path)
     artifacts.stage2_model.save(stage2_model_path)
     artifacts.stage1_calibrator.save(stage1_calibrator_path)
@@ -187,7 +210,11 @@ def main() -> None:
         json.dumps(artifacts.stage1_probability_reference, indent=2),
         encoding="utf-8",
     )
-    report_payload = {
+    stage2_direction_reference_path.write_text(
+        json.dumps(artifacts.stage2_direction_reference, indent=2),
+        encoding="utf-8",
+    )
+    manifest_payload = {
         "project": settings.project.name,
         "market": settings.market.pair,
         "exchange": settings.market.exchange,
@@ -210,13 +237,6 @@ def main() -> None:
         "train_start": train_start,
         "train_end": train_end,
         "sample_quality_filter": settings.dataset.sample_quality_filter,
-        "sample_weighting": settings.dataset.sample_weighting,
-        "sample_weight_summary": {
-            "enabled": sample_weight is not None,
-            "min": float(sample_weight.min()) if sample_weight is not None else None,
-            "max": float(sample_weight.max()) if sample_weight is not None else None,
-            "mean": float(sample_weight.mean()) if sample_weight is not None else None,
-        },
         "derivatives": {
             "enabled": settings.derivatives.enabled,
             "schema_version": DERIVATIVES_SCHEMA_VERSION if settings.derivatives.enabled else None,
@@ -235,18 +255,32 @@ def main() -> None:
         "validation_window_days": validation_window_days,
         "purge_rows": args.purge_rows,
         "stage1_threshold": artifacts.stage1_threshold,
-        "buy_threshold": artifacts.buy_threshold,
+        "up_threshold": artifacts.up_threshold,
+        "down_threshold": artifacts.down_threshold,
+        "margin_threshold": artifacts.margin_threshold,
         "base_rate": artifacts.base_rate,
-        "threshold_selection_data": artifacts.threshold_search.get("selection_data"),
+        "threshold_selection_data": {
+            "stage1": artifacts.threshold_search.get("stage1_threshold_search", {}).get("selection_data"),
+            "stage2": artifacts.threshold_search.get("stage2_threshold_search", {}).get("selection_data"),
+        },
         "threshold_search_constraints": {
-            "stage1_coverage_constraint": artifacts.threshold_search.get("stage1_coverage_constraint"),
-            "constraint_applied": artifacts.threshold_search.get("constraint_applied"),
-            "constraint_satisfied": artifacts.threshold_search.get("constraint_satisfied"),
-            "fallback_reason": artifacts.threshold_search.get("fallback_reason"),
+            "stage1": {
+                "coverage_min": artifacts.threshold_search.get("stage1_threshold_search", {}).get("coverage_min"),
+                "coverage_max": artifacts.threshold_search.get("stage1_threshold_search", {}).get("coverage_max"),
+                "constraint_satisfied": artifacts.threshold_search.get("stage1_threshold_search", {}).get("constraint_satisfied"),
+                "fallback_reason": artifacts.threshold_search.get("stage1_threshold_search", {}).get("fallback_reason"),
+            },
+            "stage2": {
+                "min_active_samples": artifacts.threshold_search.get("stage2_threshold_search", {}).get("min_active_samples"),
+                "min_end_to_end_coverage": artifacts.threshold_search.get("stage2_threshold_search", {}).get("min_end_to_end_coverage"),
+                "constraint_satisfied": artifacts.threshold_search.get("stage2_threshold_search", {}).get("constraint_satisfied"),
+                "fallback_reason": artifacts.threshold_search.get("stage2_threshold_search", {}).get("fallback_reason"),
+            },
         },
         "threshold_search_path": threshold_search_path.name,
         "stage1_probability_summary": artifacts.stage1_probability_summary,
         "stage1_probability_reference_path": stage1_probability_reference_path.name,
+        "stage2_direction_reference_path": stage2_direction_reference_path.name,
         "train_metrics": artifacts.train_metrics,
         "train_window": artifacts.train_window,
         "validation_window": artifacts.validation_window,
@@ -254,15 +288,16 @@ def main() -> None:
         "walk_forward_summary": artifacts.walk_forward_summary,
         "walk_forward_folds": artifacts.walk_forward_fold_details,
     }
-    report_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
     logging.info(
-        "Training finished: stage1_threshold=%.4f, buy_threshold=%.4f, base_rate=%.4f, stage1_valid_precision=%.4f, stage1_valid_recall=%.4f, stage2_valid_accuracy=%.4f",
+        "Training finished: stage1_threshold=%.4f, up_threshold=%.4f, down_threshold=%.4f, margin_threshold=%.4f, stage1_valid_precision=%.4f, stage1_valid_recall=%.4f, stage2_valid_macro_f1=%.4f",
         artifacts.stage1_threshold,
-        artifacts.buy_threshold,
-        artifacts.base_rate,
+        artifacts.up_threshold,
+        artifacts.down_threshold,
+        artifacts.margin_threshold,
         artifacts.validation_metrics["stage1"].get("precision", 0.0),
         artifacts.validation_metrics["stage1"].get("recall", 0.0),
-        artifacts.validation_metrics["stage2"].get("accuracy", 0.0),
+        artifacts.validation_metrics["stage2"].get("macro_f1", 0.0),
     )
 
 

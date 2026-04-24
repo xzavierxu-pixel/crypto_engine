@@ -46,28 +46,44 @@ def _select_metrics(metrics: dict[str, float]) -> dict[str, float]:
         "balanced_accuracy",
         "precision",
         "recall",
+        "multiclass_precision_up",
+        "multiclass_precision_down",
+        "multiclass_recall_up",
+        "multiclass_recall_down",
+        "trade_precision_up",
+        "trade_precision_down",
+        "trade_recall_up",
+        "trade_recall_down",
+        "up_auc",
+        "down_auc",
+        "macro_f1",
         "log_loss",
         "roc_auc",
         "sample_count",
         "coverage",
-        "trade_accuracy",
-        "pnl_per_trade",
-        "pnl_per_sample",
-        "sharpe",
-        "max_drawdown",
-        "longest_losing_streak",
-        "buy_rate",
-        "sell_rate",
-        "active_sample_count",
+        "coverage_end_to_end",
+        "stage1_selected_count",
+        "stage1_selected_ratio",
+        "stage2_trade_count",
+        "trade_pnl.pnl_per_trade",
+        "trade_pnl.pnl_per_sample",
+        "class_pnl.up",
+        "class_pnl.down",
+        "support_up",
+        "support_down",
+        "support_flat",
     }
     return {key: value for key, value in metrics.items() if key in allowed}
 
 
 def _rank_key(result: dict) -> tuple[float, float, float]:
     return (
-        result["walk_forward_summary"].get("pnl_per_sample_mean", float("-inf")),
-        result["walk_forward_summary"].get("pnl_per_sample_min", float("-inf")),
-        result["walk_forward_summary"].get("trade_accuracy_mean", float("-inf")),
+        result["walk_forward_summary"].get("trade_pnl.pnl_per_sample_mean", float("-inf")),
+        result["walk_forward_summary"].get("trade_pnl.pnl_per_sample_min", float("-inf")),
+        (
+            result["walk_forward_summary"].get("trade_precision_up_mean", float("-inf"))
+            + result["walk_forward_summary"].get("trade_precision_down_mean", float("-inf"))
+        ),
     )
 
 
@@ -85,11 +101,18 @@ def _build_leaderboard(results: list[dict]) -> list[dict]:
                 "stage1_model_plugin": result["model_plugins"]["stage1"],
                 "stage2_model_plugin": result["model_plugins"]["stage2"],
                 "feature_count": result["feature_count"],
-                "validation_pnl_per_sample": _round_metric(result["validation_metrics"]["end_to_end"]["pnl_per_sample"]),
-                "validation_trade_accuracy": _round_metric(result["validation_metrics"]["end_to_end"]["trade_accuracy"]),
-                "validation_coverage": _round_metric(result["validation_metrics"]["end_to_end"]["coverage"]),
-                "walk_forward_pnl_per_sample_mean": _round_metric(result["walk_forward_summary"].get("pnl_per_sample_mean", 0.0)),
-                "walk_forward_pnl_per_sample_min": _round_metric(result["walk_forward_summary"].get("pnl_per_sample_min", 0.0)),
+                "validation_pnl_per_sample": _round_metric(result["validation_metrics"]["end_to_end"]["trade_pnl.pnl_per_sample"]),
+                "validation_precision_sum": _round_metric(
+                    result["validation_metrics"]["end_to_end"].get("trade_precision_up", 0.0)
+                    + result["validation_metrics"]["end_to_end"].get("trade_precision_down", 0.0)
+                ),
+                "validation_coverage": _round_metric(result["validation_metrics"]["end_to_end"]["coverage_end_to_end"]),
+                "walk_forward_pnl_per_sample_mean": _round_metric(
+                    result["walk_forward_summary"].get("trade_pnl.pnl_per_sample_mean", 0.0)
+                ),
+                "walk_forward_pnl_per_sample_min": _round_metric(
+                    result["walk_forward_summary"].get("trade_pnl.pnl_per_sample_min", 0.0)
+                ),
                 "duration_seconds": _round_metric(result["duration_seconds"], digits=2),
             }
         )
@@ -113,19 +136,19 @@ def _build_variant_summary(results: list[dict]) -> list[dict]:
             "best_model_plugins": best_result["model_plugins"],
             "feature_count": best_result["feature_count"],
             "validation_metrics": {
-                "pnl_per_sample": _round_metric(validation["pnl_per_sample"]),
-                "trade_accuracy": _round_metric(validation["trade_accuracy"]),
-                "coverage": _round_metric(validation["coverage"]),
+                "pnl_per_sample": _round_metric(validation["trade_pnl.pnl_per_sample"]),
+                "precision_sum": _round_metric(validation.get("trade_precision_up", 0.0) + validation.get("trade_precision_down", 0.0)),
+                "coverage": _round_metric(validation["coverage_end_to_end"]),
                 "sample_count": int(validation.get("sample_count", 0)),
             },
             "train_metrics": {
-                "pnl_per_sample": _round_metric(train["pnl_per_sample"]),
-                "trade_accuracy": _round_metric(train["trade_accuracy"]),
-                "coverage": _round_metric(train["coverage"]),
+                "pnl_per_sample": _round_metric(train["trade_pnl.pnl_per_sample"]),
+                "precision_sum": _round_metric(train.get("trade_precision_up", 0.0) + train.get("trade_precision_down", 0.0)),
+                "coverage": _round_metric(train["coverage_end_to_end"]),
             },
             "overfit_gap": {
                 "pnl_per_sample": _round_metric(best_result["overfit_gap"]["pnl_per_sample"]),
-                "trade_accuracy": _round_metric(best_result["overfit_gap"]["trade_accuracy"]),
+                "precision_sum": _round_metric(best_result["overfit_gap"]["precision_sum"]),
                 "coverage": _round_metric(best_result["overfit_gap"]["coverage"]),
             },
             "walk_forward_summary": best_result["walk_forward_summary"],
@@ -134,9 +157,14 @@ def _build_variant_summary(results: list[dict]) -> list[dict]:
         if baseline is not None:
             baseline_validation = baseline["validation_metrics"]["end_to_end"]
             entry["delta_vs_baseline"] = {
-                "pnl_per_sample": _round_metric(validation["pnl_per_sample"] - baseline_validation["pnl_per_sample"]),
-                "trade_accuracy": _round_metric(validation["trade_accuracy"] - baseline_validation["trade_accuracy"]),
-                "coverage": _round_metric(validation["coverage"] - baseline_validation["coverage"]),
+                "pnl_per_sample": _round_metric(
+                    validation["trade_pnl.pnl_per_sample"] - baseline_validation["trade_pnl.pnl_per_sample"]
+                ),
+                "precision_sum": _round_metric(
+                    (validation.get("trade_precision_up", 0.0) + validation.get("trade_precision_down", 0.0))
+                    - (baseline_validation.get("trade_precision_up", 0.0) + baseline_validation.get("trade_precision_down", 0.0))
+                ),
+                "coverage": _round_metric(validation["coverage_end_to_end"] - baseline_validation["coverage_end_to_end"]),
             }
         summary.append(entry)
     return summary
@@ -157,14 +185,14 @@ def _build_derivatives_progression(variant_summary: list[dict]) -> list[dict]:
             "variant": variant,
             "best_model_plugins": entry["best_model_plugins"],
             "validation_pnl_per_sample": metrics["pnl_per_sample"],
-            "validation_trade_accuracy": metrics["trade_accuracy"],
+            "validation_precision_sum": metrics["precision_sum"],
             "validation_coverage": metrics["coverage"],
         }
         if previous_entry is not None:
             previous_metrics = previous_entry["validation_metrics"]
             progression_entry["delta_vs_previous"] = {
                 "pnl_per_sample": _round_metric(metrics["pnl_per_sample"] - previous_metrics["pnl_per_sample"]),
-                "trade_accuracy": _round_metric(metrics["trade_accuracy"] - previous_metrics["trade_accuracy"]),
+                "precision_sum": _round_metric(metrics["precision_sum"] - previous_metrics["precision_sum"]),
                 "coverage": _round_metric(metrics["coverage"] - previous_metrics["coverage"]),
             }
         progression.append(progression_entry)
@@ -193,39 +221,39 @@ def _render_summary_markdown(summary: dict) -> str:
             "",
             "## Leaderboard",
             "",
-            "| Rank | Variant | Stage1 | Stage2 | PnL/Sample | Trade Acc | Coverage | WF Mean | WF Min | Features | Duration (s) |",
+            "| Rank | Variant | Stage1 | Stage2 | PnL/Sample | Precision Sum | Coverage | WF Mean | WF Min | Features | Duration (s) |",
             "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for entry in summary["leaderboard"]:
         lines.append(
             f"| {entry['rank']} | `{entry['variant']}` | `{entry['stage1_model_plugin']}` | `{entry['stage2_model_plugin']}` | "
-            f"{entry['validation_pnl_per_sample']:.6f} | {entry['validation_trade_accuracy']:.6f} | "
+            f"{entry['validation_pnl_per_sample']:.6f} | {entry['validation_precision_sum']:.6f} | "
             f"{entry['validation_coverage']:.6f} | {entry['walk_forward_pnl_per_sample_mean']:.6f} | "
             f"{entry['walk_forward_pnl_per_sample_min']:.6f} | {entry['feature_count']} | {entry['duration_seconds']:.2f} |"
         )
 
     lines.extend(["", "## Best By Variant", ""])
-    lines.append("| Variant | Best Stage1 | Best Stage2 | PnL/Sample | Trade Acc | Coverage | dPnL vs Baseline |")
+    lines.append("| Variant | Best Stage1 | Best Stage2 | PnL/Sample | Precision Sum | Coverage | dPnL vs Baseline |")
     lines.append("|---|---|---|---:|---:|---:|---:|")
     for entry in summary["variant_summary"]:
         delta = entry.get("delta_vs_baseline", {})
         lines.append(
             f"| `{entry['variant']}` | `{entry['best_model_plugins']['stage1']}` | `{entry['best_model_plugins']['stage2']}` | "
-            f"{entry['validation_metrics']['pnl_per_sample']:.6f} | {entry['validation_metrics']['trade_accuracy']:.6f} | "
+            f"{entry['validation_metrics']['pnl_per_sample']:.6f} | {entry['validation_metrics']['precision_sum']:.6f} | "
             f"{entry['validation_metrics']['coverage']:.6f} | {float(delta.get('pnl_per_sample', 0.0)):.6f} |"
         )
 
     if summary["derivatives_progression"]:
         lines.extend(["", "## Derivatives Progression", ""])
-        lines.append("| Variant | Stage1 | Stage2 | PnL/Sample | dPnL vs Prev | Trade Acc | dAcc vs Prev | Coverage | dCov vs Prev |")
+        lines.append("| Variant | Stage1 | Stage2 | PnL/Sample | dPnL vs Prev | Precision Sum | dPrec vs Prev | Coverage | dCov vs Prev |")
         lines.append("|---|---|---|---:|---:|---:|---:|---:|---:|")
         for entry in summary["derivatives_progression"]:
             delta = entry.get("delta_vs_previous", {})
             lines.append(
                 f"| `{entry['variant']}` | `{entry['best_model_plugins']['stage1']}` | `{entry['best_model_plugins']['stage2']}` | "
                 f"{entry['validation_pnl_per_sample']:.6f} | {float(delta.get('pnl_per_sample', 0.0)):.6f} | "
-                f"{entry['validation_trade_accuracy']:.6f} | {float(delta.get('trade_accuracy', 0.0)):.6f} | "
+                f"{entry['validation_precision_sum']:.6f} | {float(delta.get('precision_sum', 0.0)):.6f} | "
                 f"{entry['validation_coverage']:.6f} | {float(delta.get('coverage', 0.0)):.6f} |"
             )
 
@@ -247,7 +275,11 @@ def _write_summary(
     variant_summary = _build_variant_summary(ranked_results)
     derivatives_progression = _build_derivatives_progression(variant_summary)
     summary = {
-        "ranking_metric_priority": ["pnl_per_sample_mean", "pnl_per_sample_min", "trade_accuracy_mean"],
+        "ranking_metric_priority": [
+            "trade_pnl.pnl_per_sample_mean",
+            "trade_pnl.pnl_per_sample_min",
+            "trade_precision_up_mean + trade_precision_down_mean",
+        ],
         "validation_window_days": validation_window_days,
         "variants": variants,
         "results": ranked_results,
@@ -647,7 +679,10 @@ def main() -> None:
                     },
                     "duration_seconds": duration_seconds,
                     "stage1_threshold": artifacts.stage1_threshold,
-                    "buy_threshold": artifacts.buy_threshold,
+                    "up_threshold": artifacts.up_threshold,
+                    "down_threshold": artifacts.down_threshold,
+                    "margin_threshold": artifacts.margin_threshold,
+                    "buy_threshold": artifacts.up_threshold,
                     "base_rate": artifacts.base_rate,
                     "train_metrics": {
                         name: _select_metrics(values) for name, values in artifacts.train_metrics.items()
@@ -656,17 +691,24 @@ def main() -> None:
                         name: _select_metrics(values) for name, values in artifacts.validation_metrics.items()
                     },
                     "overfit_gap": {
-                        "pnl_per_sample": artifacts.train_metrics["end_to_end"]["pnl_per_sample"]
-                        - artifacts.validation_metrics["end_to_end"]["pnl_per_sample"],
-                        "trade_accuracy": artifacts.train_metrics["end_to_end"]["trade_accuracy"]
-                        - artifacts.validation_metrics["end_to_end"]["trade_accuracy"],
-                        "coverage": artifacts.train_metrics["end_to_end"]["coverage"]
-                        - artifacts.validation_metrics["end_to_end"]["coverage"],
+                        "pnl_per_sample": artifacts.train_metrics["end_to_end"]["trade_pnl.pnl_per_sample"]
+                        - artifacts.validation_metrics["end_to_end"]["trade_pnl.pnl_per_sample"],
+                        "precision_sum": (
+                            artifacts.train_metrics["end_to_end"].get("trade_precision_up", 0.0)
+                            + artifacts.train_metrics["end_to_end"].get("trade_precision_down", 0.0)
+                            - artifacts.validation_metrics["end_to_end"].get("trade_precision_up", 0.0)
+                            - artifacts.validation_metrics["end_to_end"].get("trade_precision_down", 0.0)
+                        ),
+                        "coverage": artifacts.train_metrics["end_to_end"]["coverage_end_to_end"]
+                        - artifacts.validation_metrics["end_to_end"]["coverage_end_to_end"],
                     },
                     "train_window": artifacts.train_window,
                     "validation_window": artifacts.validation_window,
                     "walk_forward_summary": artifacts.walk_forward_summary,
-                    "threshold_search_best": artifacts.threshold_search["best"],
+                    "threshold_search_best": {
+                        "stage1": artifacts.threshold_search["stage1_threshold_search"]["best"],
+                        "stage2": artifacts.threshold_search["stage2_threshold_search"]["best"],
+                    },
                     "stage1_probability_summary": artifacts.stage1_probability_summary,
                     "derivatives": {
                         "enabled": variant_settings.derivatives.enabled,

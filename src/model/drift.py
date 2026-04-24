@@ -51,3 +51,36 @@ class Stage1DriftMonitor:
             "consecutive_alerts": self._consecutive_alerts,
             "alert": bool(self._consecutive_alerts >= self.alert_consecutive),
         }
+
+
+@dataclass
+class Stage2DirectionDriftMonitor:
+    reference: pd.Series
+    threshold: float = 0.1
+    window_size: int = 500
+    min_history: int = 50
+    alert_consecutive: int = 1
+
+    def __post_init__(self) -> None:
+        self._history: deque[float] = deque(maxlen=self.window_size)
+        self._consecutive_alerts = 0
+
+    def update(self, p_up: float, p_down: float) -> dict[str, float | bool | int]:
+        self._history.append(float(p_up) - float(p_down))
+        observed = pd.Series(list(self._history), dtype="float64")
+        ks_distance = compute_ks_distance(self.reference, observed)
+        threshold_breached = bool(
+            len(self._history) >= min(self.min_history, self.window_size) and ks_distance > self.threshold
+        )
+        if threshold_breached:
+            self._consecutive_alerts += 1
+        else:
+            self._consecutive_alerts = 0
+        return {
+            "enabled": True,
+            "window_size": len(self._history),
+            "ks_distance": ks_distance,
+            "threshold_breached": threshold_breached,
+            "consecutive_alerts": self._consecutive_alerts,
+            "alert": bool(self._consecutive_alerts >= self.alert_consecutive),
+        }

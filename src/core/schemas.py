@@ -18,10 +18,12 @@ class Signal:
     asset: str
     horizon: str
     t0: datetime
-    p_up: float
+    p_up: float | None
     model_version: str
     feature_version: str
     p_active: float | None = None
+    p_down: float | None = None
+    p_flat: float | None = None
     decision_context: dict[str, Any] = field(default_factory=dict)
 
 

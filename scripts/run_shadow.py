@@ -22,11 +22,12 @@ from src.execution.audit import (
     order_created_event,
     signal_generated_event,
     stage1_drift_alert_event,
+    stage2_drift_alert_event,
 )
 from src.execution.mappers.btc_5m_polymarket import BTC5mPolymarketMapper
 from src.execution.order_router import build_order_request
 from src.model.artifacts import load_two_stage_artifacts
-from src.model.drift import Stage1DriftMonitor
+from src.model.drift import Stage1DriftMonitor, Stage2DirectionDriftMonitor
 from src.services.audit_service import AuditService
 from src.services.signal_service import SignalService
 from src.signal.decision_engine import evaluate_entry
@@ -54,6 +55,25 @@ def _build_stage1_drift_monitor(
         return None
     return Stage1DriftMonitor(
         pd.Series(reference_probabilities, dtype="float64"),
+        threshold=threshold,
+        window_size=window_size,
+        min_history=min_history,
+        alert_consecutive=alert_consecutive,
+    )
+
+
+def _build_stage2_drift_monitor(
+    reference_direction: list[float],
+    *,
+    threshold: float = 0.1,
+    window_size: int = 500,
+    min_history: int = 50,
+    alert_consecutive: int = 3,
+) -> Stage2DirectionDriftMonitor | None:
+    if not reference_direction:
+        return None
+    return Stage2DirectionDriftMonitor(
+        pd.Series(reference_direction, dtype="float64"),
         threshold=threshold,
         window_size=window_size,
         min_history=min_history,
@@ -109,8 +129,15 @@ def _build_shadow_summary(
             "asset": signal.asset,
             "horizon": signal.horizon,
             "t0": signal.t0.isoformat(),
-            "p_up": round(signal.p_up, 6),
+            "p_down": round(signal.p_down, 6) if signal.p_down is not None else None,
+            "p_flat": round(signal.p_flat, 6) if signal.p_flat is not None else None,
+            "p_up": round(signal.p_up, 6) if signal.p_up is not None else None,
             "p_active": round(float(signal.p_active or 0.0), 6),
+            "stage1_threshold": signal.decision_context.get("stage1_threshold"),
+            "up_threshold": signal.decision_context.get("up_threshold"),
+            "down_threshold": signal.decision_context.get("down_threshold"),
+            "margin_threshold": signal.decision_context.get("margin_threshold"),
+            "stage1_rejected": signal.decision_context.get("stage1_rejected"),
             "model_version": signal.model_version,
             "feature_version": signal.feature_version,
         },
@@ -145,8 +172,15 @@ def _print_shadow_summary(summary: dict) -> None:
     print(f"signal.asset={summary['signal']['asset']}")
     print(f"signal.horizon={summary['signal']['horizon']}")
     print(f"signal.t0={summary['signal']['t0']}")
+    print(f"signal.p_down={summary['signal']['p_down']}")
+    print(f"signal.p_flat={summary['signal']['p_flat']}")
     print(f"signal.p_up={summary['signal']['p_up']}")
     print(f"signal.p_active={summary['signal']['p_active']}")
+    print(f"signal.stage1_threshold={summary['signal']['stage1_threshold']}")
+    print(f"signal.up_threshold={summary['signal']['up_threshold']}")
+    print(f"signal.down_threshold={summary['signal']['down_threshold']}")
+    print(f"signal.margin_threshold={summary['signal']['margin_threshold']}")
+    print(f"signal.stage1_rejected={summary['signal']['stage1_rejected']}")
     print(f"market.market_id={summary['market']['market_id']}")
     print(f"market.slug={summary['market']['slug']}")
     print(f"market.window_start={summary['market']['window_start']}")
@@ -237,6 +271,13 @@ def main() -> None:
         min_history=args.drift_min_history,
         alert_consecutive=args.drift_alert_consecutive,
     )
+    stage2_drift_monitor = _build_stage2_drift_monitor(
+        bundle.stage2_direction_reference,
+        threshold=args.drift_threshold,
+        window_size=args.drift_window_size,
+        min_history=args.drift_min_history,
+        alert_consecutive=args.drift_alert_consecutive,
+    )
     signal_service = SignalService(
         settings,
         stage1_model=bundle.stage1_model,
@@ -246,9 +287,12 @@ def main() -> None:
         feature_columns=bundle.feature_columns,
         stage2_feature_columns=bundle.stage2_feature_columns,
         stage1_threshold=bundle.stage1_threshold,
-        buy_threshold=bundle.buy_threshold,
+        up_threshold=bundle.up_threshold,
+        down_threshold=bundle.down_threshold,
+        margin_threshold=bundle.margin_threshold,
         model_version=bundle.model_version,
         stage1_drift_monitor=drift_monitor,
+        stage2_drift_monitor=stage2_drift_monitor,
     )
     audit_service = AuditService(args.audit_log)
     mapper = BTC5mPolymarketMapper(settings)
@@ -263,6 +307,9 @@ def main() -> None:
     drift_state = signal.decision_context.get("stage1_drift")
     if drift_state and drift_state.get("alert"):
         audit_service.append(stage1_drift_alert_event(signal, drift_state))
+    stage2_drift_state = signal.decision_context.get("stage2_drift")
+    if stage2_drift_state and stage2_drift_state.get("alert"):
+        audit_service.append(stage2_drift_alert_event(signal, stage2_drift_state))
 
     quote, market = _resolve_quote(signal, args, mapper=mapper, adapter=adapter)
 
