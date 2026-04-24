@@ -10,15 +10,16 @@ from src.model.train import _build_stage1_training_frame
 
 
 def test_build_training_frame_drops_incomplete_rows_and_exposes_feature_columns() -> None:
-    settings = load_settings()
+    base_settings = load_settings()
+    settings = replace(base_settings, derivatives=replace(base_settings.derivatives, enabled=False))
     frame = pd.DataFrame(
         {
-            "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=360, freq="1min"),
-            "open": [100 + index for index in range(360)],
-            "high": [101 + index for index in range(360)],
-            "low": [99 + index for index in range(360)],
-            "close": [100 + index for index in range(360)],
-            "volume": [10 + index for index in range(360)],
+            "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=720, freq="1min"),
+            "open": [100 + index for index in range(720)],
+            "high": [101 + index for index in range(720)],
+            "low": [99 + index for index in range(720)],
+            "close": [100 + index for index in range(720)],
+            "volume": [10 + index for index in range(720)],
         }
     )
 
@@ -32,13 +33,14 @@ def test_build_training_frame_drops_incomplete_rows_and_exposes_feature_columns(
     assert training.frame["target"].notna().all()
     assert training.X.columns.tolist() == training.feature_columns
     assert len(training.X) == len(training.y)
-    assert training.sample_weight is not None
-    assert training.sample_weight.between(0.5, 3.0).all()
+    assert "stage1_sample_weight" in training.frame.columns
+    assert training.frame["stage1_sample_weight"].between(0.5, 3.0).all()
     assert training.frame["timestamp"].min() >= pd.Timestamp("2024-01-01T13:40:00Z")
 
 
 def test_build_training_frame_respects_dataset_timerange() -> None:
-    settings = load_settings()
+    base_settings = load_settings()
+    settings = replace(base_settings, derivatives=replace(base_settings.derivatives, enabled=False))
     custom_dataset = DatasetConfig(
         train_start="2024-01-01T14:00:00Z",
         train_end="2024-01-01T15:00:00Z",
@@ -49,12 +51,12 @@ def test_build_training_frame_respects_dataset_timerange() -> None:
 
     frame = pd.DataFrame(
         {
-            "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=360, freq="1min"),
-            "open": [100 + index for index in range(360)],
-            "high": [101 + index for index in range(360)],
-            "low": [99 + index for index in range(360)],
-            "close": [100 + index for index in range(360)],
-            "volume": [10 + index for index in range(360)],
+            "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=720, freq="1min"),
+            "open": [100 + index for index in range(720)],
+            "high": [101 + index for index in range(720)],
+            "low": [99 + index for index in range(720)],
+            "close": [100 + index for index in range(720)],
+            "volume": [10 + index for index in range(720)],
         }
     )
 

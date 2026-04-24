@@ -27,11 +27,27 @@ class MarketQualityFeaturePack(FeaturePack):
         flat_candle = past_close.diff().abs().le(1e-12)
         nonzero_volume = volume.gt(0)
         dollar_volume = past_close * volume
+        stale_trade_flag = (nonzero_volume & returns.abs().le(1e-5)).astype(float)
 
         for window in windows:
             min_periods = window
-            features[f"nz_volume_share_{window}"] = (
-                nonzero_volume.astype(float).rolling(window=window, min_periods=min_periods).mean()
+            short_p20 = volume.rolling(window=window, min_periods=min_periods).quantile(0.2)
+            long_reference_window = max(window * 3, window + 10)
+            long_p20 = volume.rolling(
+                window=long_reference_window,
+                min_periods=long_reference_window,
+            ).quantile(0.2)
+            below_short_p20 = (volume <= short_p20).astype(float)
+            below_long_p20 = (volume <= long_p20).astype(float)
+
+            features[f"low_volume_flag_share_{window}"] = (
+                below_long_p20.rolling(window=window, min_periods=min_periods).mean()
+            )
+            features[f"volume_below_rolling_p20_share_{window}"] = (
+                below_short_p20.rolling(window=window, min_periods=min_periods).mean()
+            )
+            features[f"stale_trade_share_{window}"] = (
+                stale_trade_flag.rolling(window=window, min_periods=min_periods).mean()
             )
             features[f"flat_share_{window}"] = (
                 flat_candle.astype(float).rolling(window=window, min_periods=min_periods).mean()

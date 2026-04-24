@@ -24,7 +24,7 @@ def test_strategy_builds_freqai_columns_and_sets_grid_target() -> None:
     assert len(indicators) == len(frame)
     assert "%-ret_1" in indicators.columns
     assert "%-relative_volume_5" in indicators.columns
-    assert "%-nz_volume_share_20" in indicators.columns
+    assert "%-low_volume_flag_share_20" in indicators.columns
     assert indicators["is_grid_t0"].sum() == 6
 
     labeled = strategy.set_freqai_targets(frame.copy(), metadata={"pair": "BTC/USDT"})
@@ -69,8 +69,6 @@ def test_strategy_entry_uses_probability_and_activity_filters() -> None:
             "freqai_signal": {
                 "entry_probability_threshold": 0.58,
                 "entry_probability_margin": 0.16,
-                "min_nz_volume_share_20": 0.2,
-                "max_flat_share_20": 0.95,
                 "exit_probability_threshold": 0.55,
             },
         }
@@ -82,8 +80,6 @@ def test_strategy_entry_uses_probability_and_activity_filters() -> None:
             "is_grid_t0": [True, True, True],
             "up": [0.62, 0.60, 0.70],
             "down": [0.35, 0.47, 0.10],
-            "%-nz_volume_share_20": [0.4, 0.1, 0.5],
-            "%-flat_share_20": [0.8, 0.8, 0.98],
             "&s-up_or_down": ["up", "up", "up"],
         }
     )
@@ -91,7 +87,7 @@ def test_strategy_entry_uses_probability_and_activity_filters() -> None:
     entries = strategy.populate_entry_trend(frame.copy(), metadata={"pair": "BTC/USDT"})
     exits = strategy.populate_exit_trend(frame.copy(), metadata={"pair": "BTC/USDT"})
 
-    assert entries["enter_long"].tolist() == [1, 0, 0]
+    assert entries["enter_long"].tolist() == [1, 0, 1]
     assert entries.loc[entries["enter_long"] == 1, "enter_tag"].iloc[0] == "freqai_up_5m_prob"
     assert exits["exit_long"].tolist() == [0, 0, 0]
 
@@ -111,8 +107,6 @@ def test_strategy_entry_tag_uses_selected_horizon_name() -> None:
             "freqai_signal": {
                 "entry_probability_threshold": 0.58,
                 "entry_probability_margin": 0.16,
-                "min_nz_volume_share_20": 0.2,
-                "max_flat_share_20": 0.95,
                 "exit_probability_threshold": 0.55,
             },
         },
@@ -125,8 +119,6 @@ def test_strategy_entry_tag_uses_selected_horizon_name() -> None:
             "is_grid_t0": [True],
             "up": [0.62],
             "down": [0.35],
-            "%-nz_volume_share_20": [0.4],
-            "%-flat_share_20": [0.8],
             "&s-up_or_down": ["up"],
         }
     )

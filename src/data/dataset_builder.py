@@ -73,24 +73,6 @@ def infer_feature_columns(df: pd.DataFrame) -> list[str]:
     return [column for column in df.columns if column not in BASE_DATASET_COLUMNS]
 
 
-def _apply_sample_quality_filter(frame: pd.DataFrame, settings: Settings) -> pd.DataFrame:
-    config = settings.dataset.sample_quality_filter
-    if not config or not config.get("enabled", False):
-        return frame
-
-    filtered = frame.copy()
-    mask = pd.Series(True, index=filtered.index)
-    min_nz_volume_share_20 = config.get("min_nz_volume_share_20")
-    max_flat_share_20 = config.get("max_flat_share_20")
-
-    if min_nz_volume_share_20 is not None and "nz_volume_share_20" in filtered.columns:
-        mask &= filtered["nz_volume_share_20"] >= float(min_nz_volume_share_20)
-    if max_flat_share_20 is not None and "flat_share_20" in filtered.columns:
-        mask &= filtered["flat_share_20"] <= float(max_flat_share_20)
-
-    return filtered.loc[mask].reset_index(drop=True)
-
-
 def build_training_frame(
     raw_df: pd.DataFrame,
     settings: Settings,
@@ -137,7 +119,6 @@ def build_training_frame(
             feature_columns=feature_columns,
             target_column=DEFAULT_TARGET_COLUMN,
         )
-    training_frame = _apply_sample_quality_filter(training_frame, settings)
     tau = float(settings.labels.two_stage.active_return_threshold)
     training_frame[DEFAULT_STAGE2_TARGET_COLUMN] = build_three_class_direction_target(
         training_frame[DEFAULT_SIGNED_RETURN_COLUMN],

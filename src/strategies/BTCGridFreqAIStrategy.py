@@ -65,8 +65,6 @@ class BTCGridFreqAIStrategy(IStrategy):
         self.exit_probability_threshold = float(
             self.freqai_signal_config.get("exit_probability_threshold", 0.55)
         )
-        self.min_nz_volume_share_20 = float(self.freqai_signal_config.get("min_nz_volume_share_20", 0.2))
-        self.max_flat_share_20 = float(self.freqai_signal_config.get("max_flat_share_20", 0.95))
         super().__init__(raw_config or {"candle_type_def": "spot"})
 
     def feature_engineering_expand_all(
@@ -138,7 +136,6 @@ class BTCGridFreqAIStrategy(IStrategy):
         dataframe["enter_tag"] = None
         if {"do_predict", "is_grid_t0"}.issubset(dataframe.columns):
             probability_ready = {"up", "down"}.issubset(dataframe.columns)
-            activity_ready = {"%-nz_volume_share_20", "%-flat_share_20"}.issubset(dataframe.columns)
             conditions = [
                 dataframe["do_predict"] == 1,
                 dataframe["is_grid_t0"] == True,
@@ -152,14 +149,6 @@ class BTCGridFreqAIStrategy(IStrategy):
                 )
             else:
                 conditions.append(dataframe["&s-up_or_down"] == "up")
-
-            if activity_ready:
-                conditions.extend(
-                    [
-                        dataframe["%-nz_volume_share_20"] >= self.min_nz_volume_share_20,
-                        dataframe["%-flat_share_20"] <= self.max_flat_share_20,
-                    ]
-                )
 
             dataframe.loc[
                 np.logical_and.reduce(conditions),

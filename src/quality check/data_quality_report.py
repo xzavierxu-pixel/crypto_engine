@@ -8,6 +8,23 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.data.dataset_builder import infer_feature_columns
+
+
+def _select_columns(
+    df: pd.DataFrame,
+    *,
+    model_features_only: bool,
+) -> pd.DataFrame:
+    if not model_features_only:
+        return df
+    feature_columns = infer_feature_columns(df)
+    return df.loc[:, feature_columns].copy()
+
 
 def _build_missing_report(df: pd.DataFrame) -> pd.DataFrame:
     null_counts = df.isnull().sum()
@@ -148,19 +165,24 @@ def write_reports(
     train_path: Path,
     valid_path: Path | None,
     output_dir: Path,
+    model_features_only: bool,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    train_df = pd.read_parquet(train_path)
+    train_df = _select_columns(pd.read_parquet(train_path), model_features_only=model_features_only)
     train_report = run_dqc(train_df, "TRAIN")
-    payload: dict[str, Any] = {"train": train_report}
+    payload: dict[str, Any] = {"train": train_report, "scope": "model_features" if model_features_only else "full_frame"}
 
     if valid_path is not None and valid_path.exists():
-        valid_df = pd.read_parquet(valid_path)
+        valid_df = _select_columns(pd.read_parquet(valid_path), model_features_only=model_features_only)
         valid_report = run_dqc(valid_df, "VALID")
         payload["valid"] = valid_report
         payload["comparison"] = compare_frames(train_report, valid_report)
 
     summary_lines = []
+    summary_lines.append(
+        f"Feature Scope: {'model features only' if model_features_only else 'full training frame'}"
+    )
+    summary_lines.append("")
     summary_lines.extend(_render_report(train_report))
     if "valid" in payload:
         summary_lines.append("")
@@ -191,12 +213,18 @@ def main() -> None:
     parser.add_argument("--train", type=str, required=True, help="Path to train parquet.")
     parser.add_argument("--valid", type=str, default=None, help="Path to valid parquet.")
     parser.add_argument("--output-dir", type=str, required=True, help="Directory for data quality outputs.")
+    parser.add_argument(
+        "--full-frame",
+        action="store_true",
+        help="Inspect the full parquet schema instead of model feature columns only.",
+    )
     args = parser.parse_args()
 
     payload = write_reports(
         train_path=Path(args.train),
         valid_path=Path(args.valid) if args.valid else None,
         output_dir=Path(args.output_dir),
+        model_features_only=not args.full_frame,
     )
     sys.stdout.write(f"Wrote DQC report to {Path(args.output_dir)} for datasets: {', '.join(payload.keys())}\n")
 

@@ -42,10 +42,6 @@ dataset:
     stage1_coverage_max: 0.80
     min_active_samples: 25
     min_end_to_end_coverage: 0.30
-  sample_quality_filter:
-    enabled: false
-    min_nz_volume_share_20: 0.60
-    max_flat_share_20: 0.70
 
 labels:
   two_stage:
@@ -68,6 +64,7 @@ features:
         - asymmetry
         - flow_proxy
         - intra_5m_structure
+        - interaction_bank
         - lagged
         - time
         - derivatives_funding
@@ -81,7 +78,7 @@ features:
       market_quality_windows: [5, 20]
       slope_windows: [3, 5]
       range_windows: [3, 5, 10]
-      htf_context_timeframes: [5, 15]
+      htf_context_timeframes: [15]
       htf_context_vol_window: 5
       htf_context_range_window: 5
       htf_context_zscore_window: 5
@@ -90,13 +87,29 @@ features:
       lagged_feature_names:
         - ret_1
         - ret_3
+        - ret_5
+        - ret_10
         - rv_5
+        - rv_10
         - signed_volume_1
-        - nz_volume_share_5
+        - relative_volume_5
+        - relative_volume_20
+        - volume_z_5
+        - volume_z_20
+        - low_volume_flag_share_5
+        - low_volume_flag_share_20
+        - volume_below_rolling_p20_share_5
+        - volume_below_rolling_p20_share_20
+        - stale_trade_share_5
         - flat_share_5
         - body_pct_1
         - close_location_1
-      lagged_feature_lags: [1, 2, 3]
+        - compression_score
+        - clv_1
+        - wick_pressure_1
+        - htf_ret_15m_1
+        - htf_close_z_15m
+      lagged_feature_lags: [1, 2, 3, 6, 12]
       compression_window: 20
       compression_rank_window: 100
       compression_atr_short_window: 5
@@ -124,6 +137,7 @@ features:
         - asymmetry
         - flow_proxy
         - intra_5m_structure
+        - interaction_bank
         - lagged
         - time
         - derivatives_funding
@@ -137,7 +151,7 @@ features:
       market_quality_windows: [5, 20]
       slope_windows: [3, 5]
       range_windows: [3, 5, 10]
-      htf_context_timeframes: [5, 15]
+      htf_context_timeframes: [60]
       htf_context_vol_window: 5
       htf_context_range_window: 5
       htf_context_zscore_window: 5
@@ -146,13 +160,29 @@ features:
       lagged_feature_names:
         - ret_1
         - ret_3
+        - ret_5
+        - ret_10
         - rv_5
+        - rv_10
         - signed_volume_1
-        - nz_volume_share_5
+        - relative_volume_5
+        - relative_volume_20
+        - volume_z_5
+        - volume_z_20
+        - low_volume_flag_share_5
+        - low_volume_flag_share_20
+        - volume_below_rolling_p20_share_5
+        - volume_below_rolling_p20_share_20
+        - stale_trade_share_5
         - flat_share_5
         - body_pct_1
         - close_location_1
-      lagged_feature_lags: [1, 2, 3]
+        - compression_score
+        - clv_1
+        - wick_pressure_1
+        - htf_ret_60m_1
+        - htf_close_z_60m
+      lagged_feature_lags: [1, 2, 3, 6, 12]
       compression_window: 20
       compression_rank_window: 100
       compression_atr_short_window: 5
