@@ -12,7 +12,7 @@ from scripts import train_model as train_model_script
 from src.core.config import load_settings
 from src.core.constants import DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN, DEFAULT_STAGE2_TARGET_COLUMN
 from src.data.dataset_builder import build_training_frame
-from src.model.infer import predict_frame, predict_frame_multiclass
+from src.model.infer import predict_frame, predict_frame_regression
 from src.model.train import (
     _build_stage1_training_frame,
     _build_stage2_training_frame,
@@ -42,7 +42,7 @@ def test_train_model_pipeline_and_roundtrip() -> None:
     assert "stage1" in artifacts.train_metrics
     assert "stage2" in artifacts.train_metrics
     assert "end_to_end" in artifacts.validation_metrics
-    assert "macro_f1" in artifacts.train_metrics["stage2"]
+    assert "direction_accuracy" in artifacts.train_metrics["stage2"]
     assert "class_pnl.up" in artifacts.validation_metrics["stage2"]
     assert "trade_pnl.pnl_per_sample" in artifacts.validation_metrics["stage2"]
     assert "trade_pnl.pnl_per_sample" in artifacts.validation_metrics["end_to_end"]
@@ -51,7 +51,7 @@ def test_train_model_pipeline_and_roundtrip() -> None:
     assert "stage1_threshold_search" in artifacts.threshold_search
     assert "stage2_threshold_search" in artifacts.threshold_search
     assert artifacts.threshold_search["stage1_threshold_search"]["best"]["threshold"] == artifacts.stage1_threshold
-    assert artifacts.threshold_search["stage2_threshold_search"]["best"]["up_threshold"] == artifacts.up_threshold
+    assert artifacts.threshold_search["stage2_threshold_search"]["best"]["decision_rule"] == "sign(predicted_median_return)"
     assert "train_vs_validation" in artifacts.stage1_probability_summary["stage1_prob_ks"]
     assert "stage2_direction_train" in artifacts.stage2_direction_reference
 
@@ -71,12 +71,11 @@ def test_train_model_pipeline_and_roundtrip() -> None:
     )
     stage2_frame = training.frame.tail(5).copy()
     stage2_frame["stage1_prob"] = stage1_predictions
-    stage2_predictions = predict_frame_multiclass(
+    stage2_predictions = predict_frame_regression(
         stage2_frame,
         loaded_stage2,
         feature_columns=artifacts.stage2_feature_columns,
     )
-    assert list(stage2_predictions.columns) == ["p_down", "p_flat", "p_up"]
     assert len(stage2_predictions) == 5
 
 
@@ -114,13 +113,13 @@ def test_fit_model_uses_stage_specific_lightgbm_params(monkeypatch) -> None:
     from src.data.dataset_builder import TrainingFrame
     training = TrainingFrame(frame=training_frame, feature_columns=["f1"], target_column="target", sample_weight_column="weight")
     _fit_model(training, settings, stage="stage1")
-    multiclass = training_frame.copy()
-    multiclass["target"] = [0, 1, 2, 1]
-    multi_training = TrainingFrame(frame=multiclass, feature_columns=["f1"], target_column="target")
-    _fit_model(multi_training, settings, stage="stage2")
+    regression = training_frame.copy()
+    regression["target"] = [-0.01, 0.0, 0.02, 0.01]
+    regression_training = TrainingFrame(frame=regression, feature_columns=["f1"], target_column="target")
+    _fit_model(regression_training, settings, stage="stage2")
     assert captured[0]["plugin_params"]["scale_pos_weight"] == 3.0
-    assert captured[1]["plugin_params"]["objective"] == "multiclass"
-    assert captured[1]["plugin_params"]["num_class"] == 3
+    assert captured[1]["plugin_params"]["objective"] == "quantile"
+    assert captured[1]["plugin_params"]["alpha"] == 0.5
 
 
 def test_stage2_training_frame_filters_only_on_stage1_threshold() -> None:
@@ -156,11 +155,12 @@ def test_train_model_script_writes_new_threshold_and_window_fields(tmp_path: Pat
     )
     train_model_script.main()
     manifest = json.loads((output_dir / "artifact_manifest.json").read_text(encoding="utf-8"))
-    assert manifest["up_threshold"] >= 0.3
-    assert manifest["down_threshold"] >= 0.3
+    assert manifest["stage2_objective"] == "quantile"
+    assert manifest["stage2_alpha"] == 0.5
+    assert manifest["stage2_direction_rule"] == "sign(predicted_median_return)"
     assert "buy_threshold" not in manifest
     assert "stage1_class_ratio" in manifest["train_window"]
-    assert "stage2_class_ratio" in manifest["validation_window"]
+    assert "stage2_return_direction_ratio" in manifest["validation_window"]
     assert "threshold_search_path" in manifest
     assert "stage2_direction_reference_path" in manifest
     assert (output_dir / "data_quality" / "dqc_summary.txt").exists()

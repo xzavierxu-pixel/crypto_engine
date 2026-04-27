@@ -5,7 +5,7 @@ import pandas as pd
 from src.data.dataset_builder import TrainingFrame
 from src.model.evaluation import (
     build_walk_forward_splits,
-    compute_multiclass_classification_metrics,
+    compute_return_direction_metrics,
     compute_stage1_coverage,
     compute_two_stage_end_to_end_metrics,
     purged_chronological_split,
@@ -54,52 +54,28 @@ def test_stage1_coverage_is_predicted_active_ratio_not_probability_mean() -> Non
     assert compute_stage1_coverage(probabilities, threshold=0.5) == 0.5
 
 
-def test_multiclass_metrics_report_up_and_down_scores() -> None:
-    y_true = pd.Series([0, 1, 2], dtype="int64")
-    probabilities = pd.DataFrame(
-        {
-            "p_down": [0.8, 0.1, 0.1],
-            "p_flat": [0.1, 0.8, 0.1],
-            "p_up": [0.1, 0.1, 0.8],
-        }
-    )
-    metrics = compute_multiclass_classification_metrics(
-        y_true,
-        probabilities,
-        up_threshold=0.6,
-        down_threshold=0.6,
-        margin_threshold=0.2,
-    )
-    assert metrics["sample_count"] == 3.0
-    assert metrics["multiclass_precision_up"] == 1.0
-    assert metrics["multiclass_precision_down"] == 1.0
-    assert metrics["multiclass_recall_up"] == 1.0
-    assert metrics["multiclass_recall_down"] == 1.0
-    assert metrics["up_auc"] == 1.0
-    assert metrics["down_auc"] == 1.0
-    assert metrics["macro_f1"] == 1.0
+def test_return_direction_metrics_report_up_and_down_scores() -> None:
+    y_true = pd.Series([0.01, -0.02, 0.0, 0.03], dtype="float64")
+    predicted_returns = pd.Series([0.005, -0.01, 0.0, 0.02], dtype="float64")
+    metrics = compute_return_direction_metrics(y_true, predicted_returns)
+    assert metrics["sample_count"] == 4.0
+    assert metrics["stage2_trade_count"] == 3.0
+    assert metrics["direction_accuracy"] == 1.0
+    assert metrics["trade_precision_up"] == 1.0
+    assert metrics["trade_precision_down"] == 1.0
     assert "class_pnl.up" in metrics
     assert "trade_pnl.pnl_per_trade" in metrics
 
 
-def test_end_to_end_metrics_respect_stage1_gate_and_trade_thresholds() -> None:
-    y_true = pd.Series([2, 0, 1, 2], dtype="int64")
+def test_end_to_end_metrics_respect_stage1_gate_and_return_sign() -> None:
+    y_true = pd.Series([0.02, -0.01, 0.0, 0.03], dtype="float64")
     stage1_probabilities = pd.Series([0.8, 0.75, 0.4, 0.9], dtype="float64")
-    stage2_probabilities = pd.DataFrame(
-        {
-            "p_down": [0.1, 0.8, float("nan"), 0.2],
-            "p_flat": [0.2, 0.1, float("nan"), 0.2],
-            "p_up": [0.7, 0.1, float("nan"), 0.6],
-        }
-    )
+    stage2_predictions = pd.Series([0.01, -0.02, float("nan"), 0.01], dtype="float64")
     metrics = compute_two_stage_end_to_end_metrics(
         y_true,
         stage1_probabilities,
-        stage2_probabilities,
+        stage2_predictions,
         stage1_threshold=0.5,
-        up_threshold=0.6,
-        down_threshold=0.6,
-        margin_threshold=0.2,
     )
     assert metrics["stage1_selected_count"] == 3.0
     assert metrics["stage2_trade_count"] == 3.0

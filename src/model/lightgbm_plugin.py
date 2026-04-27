@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from lightgbm import LGBMClassifier, early_stopping, log_evaluation
+from lightgbm import LGBMClassifier, LGBMRegressor, early_stopping, log_evaluation
 
+from src.core.constants import DEFAULT_STAGE2_PREDICTED_RETURN_COLUMN
 from src.model.base import ModelPlugin
 
 
@@ -26,7 +27,9 @@ class LightGBMClassifierPlugin(ModelPlugin):
             self.fit_params["eval_metric"] = eval_metric
 
         self.objective = str(model_params.get("objective", "binary"))
-        self.model = LGBMClassifier(**model_params)
+        self.is_regression = self.objective in {"regression", "regression_l1", "regression_l2", "quantile"}
+        model_cls = LGBMRegressor if self.is_regression else LGBMClassifier
+        self.model = model_cls(**model_params)
 
     def fit(
         self,
@@ -60,18 +63,14 @@ class LightGBMClassifierPlugin(ModelPlugin):
         return self
 
     def predict_proba(self, X: pd.DataFrame) -> pd.Series:
+        if self.is_regression:
+            return self.predict(X)
         probabilities = self.model.predict_proba(X)[:, 1]
         return pd.Series(probabilities, index=X.index, name="p_up")
 
-    def predict_proba_multiclass(self, X: pd.DataFrame) -> pd.DataFrame:
-        probabilities = self.model.predict_proba(X)
-        if probabilities.ndim != 2 or probabilities.shape[1] != 3:
-            raise ValueError("Expected multiclass probabilities with three columns.")
-        return pd.DataFrame(
-            probabilities,
-            index=X.index,
-            columns=["p_down", "p_flat", "p_up"],
-        )
+    def predict(self, X: pd.DataFrame) -> pd.Series:
+        predictions = self.model.predict(X)
+        return pd.Series(predictions, index=X.index, name=DEFAULT_STAGE2_PREDICTED_RETURN_COLUMN)
 
     def save(self, path: str | Path) -> None:
         with Path(path).open("wb") as handle:

@@ -185,7 +185,7 @@ def main() -> None:
             args.purge_rows,
         )
 
-    logging.info("Starting decoupled threshold search for Stage 1 filter and Stage 2 decisions")
+    logging.info("Starting Stage 1 threshold search and Stage 2 quantile median-return training")
     artifacts = train_two_stage_model_from_split(
         development=development,
         validation=validation,
@@ -259,6 +259,10 @@ def main() -> None:
         "down_threshold": artifacts.down_threshold,
         "margin_threshold": artifacts.margin_threshold,
         "base_rate": artifacts.base_rate,
+        "stage2_objective": "quantile",
+        "stage2_alpha": 0.5,
+        "stage2_target": "future_5m_return",
+        "stage2_direction_rule": "sign(predicted_median_return)",
         "threshold_selection_data": {
             "stage1": artifacts.threshold_search.get("stage1_threshold_search", {}).get("selection_data"),
             "stage2": artifacts.threshold_search.get("stage2_threshold_search", {}).get("selection_data"),
@@ -290,14 +294,11 @@ def main() -> None:
     }
     manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
     logging.info(
-        "Training finished: stage1_threshold=%.4f, up_threshold=%.4f, down_threshold=%.4f, margin_threshold=%.4f, stage1_valid_precision=%.4f, stage1_valid_recall=%.4f, stage2_valid_macro_f1=%.4f",
+        "Training finished: stage1_threshold=%.4f, stage1_valid_precision=%.4f, stage1_valid_recall=%.4f, stage2_valid_direction_accuracy=%.4f",
         artifacts.stage1_threshold,
-        artifacts.up_threshold,
-        artifacts.down_threshold,
-        artifacts.margin_threshold,
         artifacts.validation_metrics["stage1"].get("precision", 0.0),
         artifacts.validation_metrics["stage1"].get("recall", 0.0),
-        artifacts.validation_metrics["stage2"].get("macro_f1", 0.0),
+        artifacts.validation_metrics["stage2"].get("direction_accuracy", 0.0),
     )
 
 

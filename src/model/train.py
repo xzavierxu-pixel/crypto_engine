@@ -14,9 +14,7 @@ from src.core.constants import (
     DEFAULT_ABS_RETURN_COLUMN,
     DEFAULT_STAGE1_PROBABILITY_COLUMN,
     DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN,
-    DEFAULT_STAGE2_PROBABILITY_DOWN_COLUMN,
-    DEFAULT_STAGE2_PROBABILITY_FLAT_COLUMN,
-    DEFAULT_STAGE2_PROBABILITY_UP_COLUMN,
+    DEFAULT_STAGE2_PREDICTED_RETURN_COLUMN,
     DEFAULT_STAGE2_TARGET_COLUMN,
     DEFAULT_TARGET_COLUMN,
 )
@@ -26,7 +24,7 @@ from src.model.evaluation import (
     WalkForwardFoldResult,
     compute_binary_classification_metrics,
     compute_ks_distance,
-    compute_multiclass_classification_metrics,
+    compute_return_direction_metrics,
     compute_stage1_coverage,
     compute_two_stage_end_to_end_metrics,
     purged_chronological_time_window_split,
@@ -192,15 +190,6 @@ def _compute_stage1_scale_pos_weight(training: TrainingFrame) -> float:
     return float(negative_count / positive_count)
 
 
-def _resolve_stage2_class_weight(settings: Settings) -> str | dict[int, float] | None:
-    class_weight = settings.model.stage2_class_weight
-    if class_weight is None or class_weight == "balanced":
-        return class_weight
-    if isinstance(class_weight, dict):
-        return {int(key): float(value) for key, value in class_weight.items()}
-    return class_weight
-
-
 def _resolve_model_plugin_params(
     training: TrainingFrame,
     settings: Settings,
@@ -213,9 +202,8 @@ def _resolve_model_plugin_params(
     if stage == "stage1":
         return {"scale_pos_weight": _compute_stage1_scale_pos_weight(training), "objective": "binary"}
     return {
-        "objective": "multiclass",
-        "num_class": 3,
-        "class_weight": _resolve_stage2_class_weight(settings),
+        "objective": "quantile",
+        "alpha": 0.5,
     }
 
 
@@ -255,9 +243,11 @@ def _fit_model(
     model = create_model_plugin(settings, stage=stage, plugin_params=plugin_params)
     model.fit(
         training.X,
-        training.y.astype(int),
+        training.y.astype(int) if stage == "stage1" else training.y.astype(float),
         X_valid=validation.X if validation is not None and not validation.frame.empty else None,
-        y_valid=validation.y.astype(int) if validation is not None and not validation.frame.empty else None,
+        y_valid=(
+            validation.y.astype(int) if stage == "stage1" else validation.y.astype(float)
+        ) if validation is not None and not validation.frame.empty else None,
         sample_weight=training.sample_weight,
         sample_weight_valid=validation.sample_weight if validation is not None and not validation.frame.empty else None,
     )
@@ -354,89 +344,52 @@ def _tune_stage1_filter_threshold(
     }
 
 
-def _empty_stage2_probability_frame(index: pd.Index) -> pd.DataFrame:
-    return pd.DataFrame(
-        {
-            DEFAULT_STAGE2_PROBABILITY_DOWN_COLUMN: pd.Series(float("nan"), index=index, dtype="float64"),
-            DEFAULT_STAGE2_PROBABILITY_FLAT_COLUMN: pd.Series(float("nan"), index=index, dtype="float64"),
-            DEFAULT_STAGE2_PROBABILITY_UP_COLUMN: pd.Series(float("nan"), index=index, dtype="float64"),
-        }
-    )
+def _empty_stage2_prediction_series(index: pd.Index) -> pd.Series:
+    return pd.Series(float("nan"), index=index, dtype="float64", name=DEFAULT_STAGE2_PREDICTED_RETURN_COLUMN)
 
 
-def _fill_stage2_probabilities(full_index: pd.Index, subset: TrainingFrame, probabilities: pd.DataFrame) -> pd.DataFrame:
-    full = _empty_stage2_probability_frame(full_index)
+def _fill_stage2_predictions(full_index: pd.Index, subset: TrainingFrame, predictions: pd.Series) -> pd.Series:
+    full = _empty_stage2_prediction_series(full_index)
     if not subset.frame.empty:
-        full.loc[subset.frame.index, probabilities.columns] = probabilities.to_numpy()
+        full.loc[subset.frame.index] = predictions.to_numpy()
     return full
 
 
-def _tune_stage2_decision_thresholds(
+def _summarize_stage2_sign_decisions(
     *,
-    stage2_valid_target: pd.Series,
-    stage2_valid_probabilities: pd.DataFrame,
     full_validation_target: pd.Series,
     stage1_validation_probabilities: pd.Series,
-    full_validation_stage2_probabilities: pd.DataFrame,
+    full_validation_stage2_predictions: pd.Series,
     stage1_threshold: float,
     min_active_samples: int,
     min_end_to_end_coverage: float,
-) -> tuple[float, float, float, dict[str, Any]]:
-    up_candidates = [round(float(threshold), 4) for threshold in np.arange(0.30, 0.901, 0.02)]
-    down_candidates = [round(float(threshold), 4) for threshold in np.arange(0.30, 0.901, 0.02)]
-    margin_candidates = [round(float(threshold), 4) for threshold in np.arange(0.00, 0.101, 0.02)]
-    records: list[dict[str, Any]] = []
-    eligible: list[dict[str, Any]] = []
-
-    for up_threshold in up_candidates:
-        for down_threshold in down_candidates:
-            for margin_threshold in margin_candidates:
-                end_to_end = compute_two_stage_end_to_end_metrics(
-                    full_validation_target,
-                    stage1_validation_probabilities,
-                    full_validation_stage2_probabilities,
-                    stage1_threshold=stage1_threshold,
-                    up_threshold=up_threshold,
-                    down_threshold=down_threshold,
-                    margin_threshold=margin_threshold,
-                )
-                record = {
-                    "up_threshold": up_threshold,
-                    "down_threshold": down_threshold,
-                    "margin_threshold": margin_threshold,
-                    "trade_precision_up": end_to_end["trade_precision_up"],
-                    "trade_precision_down": end_to_end["trade_precision_down"],
-                    "coverage_end_to_end": end_to_end["coverage_end_to_end"],
-                    "stage2_trade_count": end_to_end["stage2_trade_count"],
-                    "pnl_per_sample": end_to_end["trade_pnl.pnl_per_sample"],
-                }
-                if not stage2_valid_probabilities.empty:
-                    stage2_only = compute_multiclass_classification_metrics(stage2_valid_target, stage2_valid_probabilities)
-                    record["macro_f1"] = stage2_only.get("macro_f1", 0.0)
-                records.append(record)
-                if (
-                    record["stage2_trade_count"] >= min_active_samples
-                    and record["coverage_end_to_end"] >= min_end_to_end_coverage
-                ):
-                    eligible.append(record)
-
-    pool = eligible if eligible else records
-    best = max(
-        pool,
-        key=lambda item: (
-            item["pnl_per_sample"],
-            item["trade_precision_up"] + item["trade_precision_down"],
-            item["coverage_end_to_end"],
-        ),
+) -> dict[str, Any]:
+    end_to_end = compute_two_stage_end_to_end_metrics(
+        full_validation_target,
+        stage1_validation_probabilities,
+        full_validation_stage2_predictions,
+        stage1_threshold=stage1_threshold,
     )
-    return best["up_threshold"], best["down_threshold"], best["margin_threshold"], {
-        "selection_data": "stage2_validation_subset",
+    record = {
+        "decision_rule": "sign(predicted_median_return)",
+        "trade_precision_up": end_to_end["trade_precision_up"],
+        "trade_precision_down": end_to_end["trade_precision_down"],
+        "coverage_end_to_end": end_to_end["coverage_end_to_end"],
+        "stage2_trade_count": end_to_end["stage2_trade_count"],
+        "pnl_per_sample": end_to_end["trade_pnl.pnl_per_sample"],
+    }
+    constraint_satisfied = (
+        record["stage2_trade_count"] >= min_active_samples
+        and record["coverage_end_to_end"] >= min_end_to_end_coverage
+    )
+    return {
+        "selection_data": "stage2_validation_sign_rule",
         "min_active_samples": min_active_samples,
         "min_end_to_end_coverage": min_end_to_end_coverage,
-        "constraint_satisfied": bool(eligible),
-        "fallback_reason": None if eligible else "no threshold satisfied stage2 hard constraints",
-        "records": eligible if eligible else records,
-        "best": best,
+        "constraint_satisfied": constraint_satisfied,
+        "fallback_reason": None if constraint_satisfied else "sign rule did not satisfy stage2 hard constraints",
+        "records": [record],
+        "best": record,
     }
 
 
@@ -465,15 +418,15 @@ def _compute_stage2_window_stats(selected_frame: pd.DataFrame) -> dict[str, Any]
     if selected_frame.empty:
         return {
             "stage2_row_count": 0,
-            "stage2_class_ratio": {"down": 0.0, "flat": 0.0, "up": 0.0},
+            "stage2_return_direction_ratio": {"down": 0.0, "flat": 0.0, "up": 0.0},
         }
-    target = selected_frame[DEFAULT_STAGE2_TARGET_COLUMN].astype(int)
+    target = selected_frame[DEFAULT_STAGE2_TARGET_COLUMN].astype(float)
     return {
         "stage2_row_count": int(len(selected_frame)),
-        "stage2_class_ratio": {
-            "down": float((target == 0).mean()),
-            "flat": float((target == 1).mean()),
-            "up": float((target == 2).mean()),
+        "stage2_return_direction_ratio": {
+            "down": float((target < 0.0).mean()),
+            "flat": float((target == 0.0).mean()),
+            "up": float((target > 0.0).mean()),
         },
     }
 
@@ -538,22 +491,23 @@ def _train_two_stage_for_split(
         validation=stage2_validation if not stage2_validation.frame.empty else None,
     )
     stage2_calibrator = NoCalibration()
-    stage2_dev_proba = stage2_model.predict_proba_multiclass(stage2_training.X)
-    stage2_valid_proba = (
-        stage2_model.predict_proba_multiclass(stage2_validation.X)
+    stage2_dev_predictions = stage2_model.predict(stage2_training.X)
+    stage2_valid_predictions = (
+        stage2_model.predict(stage2_validation.X)
         if not stage2_validation.frame.empty
-        else _empty_stage2_probability_frame(stage2_validation.frame.index)
+        else _empty_stage2_prediction_series(stage2_validation.frame.index)
     )
 
-    full_stage2_dev_proba = _fill_stage2_probabilities(development.frame.index, stage2_training, stage2_dev_proba)
-    full_stage2_valid_proba = _fill_stage2_probabilities(validation.frame.index, stage2_validation, stage2_valid_proba)
+    full_stage2_dev_predictions = _fill_stage2_predictions(development.frame.index, stage2_training, stage2_dev_predictions)
+    full_stage2_valid_predictions = _fill_stage2_predictions(validation.frame.index, stage2_validation, stage2_valid_predictions)
 
-    up_threshold, down_threshold, margin_threshold, stage2_threshold_search = _tune_stage2_decision_thresholds(
-        stage2_valid_target=stage2_validation.y.astype(int) if not stage2_validation.frame.empty else pd.Series(dtype="int64"),
-        stage2_valid_probabilities=stage2_valid_proba,
-        full_validation_target=validation.frame[DEFAULT_STAGE2_TARGET_COLUMN].astype(int),
+    up_threshold = 0.0
+    down_threshold = 0.0
+    margin_threshold = 0.0
+    stage2_threshold_search = _summarize_stage2_sign_decisions(
+        full_validation_target=validation.frame[DEFAULT_STAGE2_TARGET_COLUMN].astype(float),
         stage1_validation_probabilities=stage1_valid_proba,
-        full_validation_stage2_probabilities=full_stage2_valid_proba,
+        full_validation_stage2_predictions=full_stage2_valid_predictions,
         stage1_threshold=stage1_threshold,
         min_active_samples=threshold_settings["min_active_samples"],
         min_end_to_end_coverage=threshold_settings["min_end_to_end_coverage"],
@@ -561,42 +515,24 @@ def _train_two_stage_for_split(
 
     train_metrics = {
         "stage1": compute_binary_classification_metrics(stage1_training.y.astype(int), stage1_dev_proba, threshold=stage1_threshold),
-        "stage2": compute_multiclass_classification_metrics(
-            stage2_training.y.astype(int),
-            stage2_dev_proba,
-            up_threshold=up_threshold,
-            down_threshold=down_threshold,
-            margin_threshold=margin_threshold,
-        ),
+        "stage2": compute_return_direction_metrics(stage2_training.y.astype(float), stage2_dev_predictions),
         "end_to_end": compute_two_stage_end_to_end_metrics(
-            development.frame[DEFAULT_STAGE2_TARGET_COLUMN].astype(int),
+            development.frame[DEFAULT_STAGE2_TARGET_COLUMN].astype(float),
             stage1_dev_proba,
-            full_stage2_dev_proba,
+            full_stage2_dev_predictions,
             stage1_threshold=stage1_threshold,
-            up_threshold=up_threshold,
-            down_threshold=down_threshold,
-            margin_threshold=margin_threshold,
         ),
     }
     validation_metrics = {
         "stage1": compute_binary_classification_metrics(stage1_validation.y.astype(int), stage1_valid_proba, threshold=stage1_threshold),
-        "stage2": compute_multiclass_classification_metrics(
-            stage2_validation.y.astype(int),
-            stage2_valid_proba,
-            up_threshold=up_threshold,
-            down_threshold=down_threshold,
-            margin_threshold=margin_threshold,
-        )
+        "stage2": compute_return_direction_metrics(stage2_validation.y.astype(float), stage2_valid_predictions)
         if not stage2_validation.frame.empty
         else {"sample_count": 0.0},
         "end_to_end": compute_two_stage_end_to_end_metrics(
-            validation.frame[DEFAULT_STAGE2_TARGET_COLUMN].astype(int),
+            validation.frame[DEFAULT_STAGE2_TARGET_COLUMN].astype(float),
             stage1_valid_proba,
-            full_stage2_valid_proba,
+            full_stage2_valid_predictions,
             stage1_threshold=stage1_threshold,
-            up_threshold=up_threshold,
-            down_threshold=down_threshold,
-            margin_threshold=margin_threshold,
         ),
     }
     probability_summary = {
@@ -611,14 +547,10 @@ def _train_two_stage_for_split(
         "stage1_prob_validation": _serialize_probability_reference(stage1_valid_proba),
     }
     stage2_direction_reference = {
-        "stage2_direction_train": _serialize_probability_reference(
-            stage2_dev_proba[DEFAULT_STAGE2_PROBABILITY_UP_COLUMN] - stage2_dev_proba[DEFAULT_STAGE2_PROBABILITY_DOWN_COLUMN]
-        ),
+        "stage2_direction_train": _serialize_probability_reference(stage2_dev_predictions),
         "stage2_direction_validation": (
-            _serialize_probability_reference(
-                stage2_valid_proba[DEFAULT_STAGE2_PROBABILITY_UP_COLUMN] - stage2_valid_proba[DEFAULT_STAGE2_PROBABILITY_DOWN_COLUMN]
-            )
-            if not stage2_valid_proba.empty
+            _serialize_probability_reference(stage2_valid_predictions)
+            if not stage2_valid_predictions.empty
             else {"sample_count": 0, "sample": []}
         ),
     }
@@ -704,7 +636,7 @@ def train_two_stage_model_from_split(
     walk_forward_enabled = bool(settings.dataset.walk_forward.get("enabled", False))
     walk_forward_results: list[WalkForwardFoldResult] = []
     walk_forward_fold_details: list[dict[str, Any]] = []
-    base_rate = float((development.frame[DEFAULT_STAGE2_TARGET_COLUMN] == 2).mean()) if not development.frame.empty else 0.0
+    base_rate = float((development.frame[DEFAULT_STAGE2_TARGET_COLUMN] > 0.0).mean()) if not development.frame.empty else 0.0
     stage2_feature_columns = [*development.feature_columns, DEFAULT_STAGE1_PROBABILITY_COLUMN]
 
     return TwoStageTrainingArtifacts(

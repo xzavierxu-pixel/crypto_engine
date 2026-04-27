@@ -51,11 +51,11 @@ def test_signal_service_emits_signal_from_latest_grid_row() -> None:
         assert math.isnan(float(signal.p_up))
         assert math.isnan(float(signal.p_down))
         assert math.isnan(float(signal.p_flat))
+        assert math.isnan(float(signal.predicted_median_return))
     else:
-        assert 0.0 <= float(signal.p_up or 0.0) <= 1.0
-        assert 0.0 <= float(signal.p_down or 0.0) <= 1.0
-        assert 0.0 <= float(signal.p_flat or 0.0) <= 1.0
-    assert signal.feature_version == "v4"
+        assert math.isfinite(float(signal.predicted_median_return))
+        assert signal.decision_context["prediction_direction"] in {"YES", "NO", "NONE"}
+    assert signal.feature_version == "v5"
     assert signal.decision_context["grid_id"] == expected_grid_id
     assert signal.decision_context["stage1_drift"] is None
 
@@ -97,7 +97,7 @@ def test_signal_service_skips_stage2_when_stage1_rejects(monkeypatch) -> None:
             return pd.Series(0.0, index=X.index, dtype="float64")
 
     class FailingStage2Model:
-        def predict_proba_multiclass(self, X):
+        def predict(self, X):
             raise AssertionError("Stage 2 should not be called when Stage 1 rejects.")
 
     service = SignalService(
@@ -118,6 +118,7 @@ def test_signal_service_skips_stage2_when_stage1_rejects(monkeypatch) -> None:
     assert math.isnan(float(signal.p_up))
     assert math.isnan(float(signal.p_down))
     assert math.isnan(float(signal.p_flat))
+    assert math.isnan(float(signal.predicted_median_return))
 
 
 def test_signal_service_updates_stage2_drift_when_stage2_runs() -> None:

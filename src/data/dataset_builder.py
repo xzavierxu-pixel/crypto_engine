@@ -21,7 +21,6 @@ from src.data.preprocess import drop_incomplete_samples, filter_by_timerange
 from src.features.builder import build_feature_frame
 from src.horizons.registry import get_horizon_spec
 from src.labels.abs_return import build_abs_return_frame, compute_stage1_boundary_weight
-from src.labels.three_class_direction import build_three_class_direction_target
 from src.labels.registry import get_label_builder
 
 
@@ -120,10 +119,7 @@ def build_training_frame(
             target_column=DEFAULT_TARGET_COLUMN,
         )
     tau = float(settings.labels.two_stage.active_return_threshold)
-    training_frame[DEFAULT_STAGE2_TARGET_COLUMN] = build_three_class_direction_target(
-        training_frame[DEFAULT_SIGNED_RETURN_COLUMN],
-        tau=tau,
-    )
+    training_frame[DEFAULT_STAGE2_TARGET_COLUMN] = training_frame[DEFAULT_SIGNED_RETURN_COLUMN].astype("float64")
     boundary_weight = compute_stage1_boundary_weight(training_frame[DEFAULT_ABS_RETURN_COLUMN], tau=tau)
     training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = boundary_weight
 

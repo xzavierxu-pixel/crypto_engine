@@ -46,17 +46,15 @@ def _select_metrics(metrics: dict[str, float]) -> dict[str, float]:
         "balanced_accuracy",
         "precision",
         "recall",
-        "multiclass_precision_up",
-        "multiclass_precision_down",
-        "multiclass_recall_up",
-        "multiclass_recall_down",
+        "direction_accuracy",
         "trade_precision_up",
         "trade_precision_down",
         "trade_recall_up",
         "trade_recall_down",
         "up_auc",
         "down_auc",
-        "macro_f1",
+        "predicted_return_mean",
+        "predicted_return_p50",
         "log_loss",
         "roc_auc",
         "sample_count",
@@ -71,7 +69,6 @@ def _select_metrics(metrics: dict[str, float]) -> dict[str, float]:
         "class_pnl.down",
         "support_up",
         "support_down",
-        "support_flat",
     }
     return {key: value for key, value in metrics.items() if key in allowed}
 

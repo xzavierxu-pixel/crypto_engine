@@ -216,7 +216,6 @@ class PluginGroupConfig:
     active_plugin: str | None = None
     active_plugins: dict[str, str] = field(default_factory=dict)
     plugins: dict[str, dict[str, Any]] = field(default_factory=dict)
-    stage2_class_weight: str | dict[int, float] | None = None
 
     def resolve_plugin(self, stage: str | None = None) -> str:
         if stage is not None and stage in self.active_plugins:

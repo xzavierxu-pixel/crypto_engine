@@ -35,6 +35,7 @@ def build_order_request(
             "p_down": signal.p_down,
             "p_flat": signal.p_flat,
             "p_up": signal.p_up,
+            "predicted_median_return": signal.predicted_median_return,
             "stage1_threshold": signal.decision_context.get("stage1_threshold"),
             "up_threshold": signal.decision_context.get("up_threshold"),
             "down_threshold": signal.decision_context.get("down_threshold"),

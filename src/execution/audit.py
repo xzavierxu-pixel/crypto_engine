@@ -18,6 +18,7 @@ def signal_generated_event(signal: Signal) -> AuditEvent:
             "p_flat": signal.p_flat,
             "p_up": signal.p_up,
             "p_active": signal.p_active,
+            "predicted_median_return": signal.predicted_median_return,
             "stage1_threshold": context.get("stage1_threshold"),
             "up_threshold": context.get("up_threshold"),
             "down_threshold": context.get("down_threshold"),
@@ -54,6 +55,7 @@ def stage2_drift_alert_event(signal: Signal, drift_state: dict) -> AuditEvent:
             "p_down": signal.p_down,
             "p_flat": signal.p_flat,
             "p_up": signal.p_up,
+            "predicted_median_return": signal.predicted_median_return,
             "drift": drift_state,
         },
     )
@@ -87,6 +89,7 @@ def decision_evaluated_event(signal: Signal, quote: MarketQuote, decision: Decis
             "p_flat": signal.p_flat,
             "p_up": signal.p_up,
             "p_active": signal.p_active,
+            "predicted_median_return": signal.predicted_median_return,
             "stage1_threshold": context.get("stage1_threshold"),
             "up_threshold": context.get("up_threshold"),
             "down_threshold": context.get("down_threshold"),

@@ -338,7 +338,7 @@ model:
       verbosity: -1
       random_state: 42
       early_stopping_rounds: 60
-      eval_metric: multi_logloss
+      eval_metric: quantile
     catboost:
       iterations: 300
       learning_rate: 0.03
@@ -353,11 +353,6 @@ model:
       max_iter: 1000
       solver: lbfgs
       random_state: 42
-  stage2_class_weight:
-    0: 3.0
-    1: 1.0
-    2: 3.0
-
 calibration:
   active_plugins:
     stage1: none

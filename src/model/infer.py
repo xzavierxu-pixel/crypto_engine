@@ -20,10 +20,10 @@ def predict_frame(
     return calibrator.transform(raw)
 
 
-def predict_frame_multiclass(
+def predict_frame_regression(
     frame: pd.DataFrame,
     model: ModelPlugin,
     feature_columns: list[str] | None = None,
-) -> pd.DataFrame:
+) -> pd.Series:
     resolved_columns = feature_columns or infer_feature_columns(frame)
-    return model.predict_proba_multiclass(frame[resolved_columns])
+    return model.predict(frame[resolved_columns])

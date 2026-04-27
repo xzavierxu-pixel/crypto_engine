@@ -9,18 +9,12 @@ from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
     brier_score_loss,
-    f1_score,
     log_loss,
     precision_score,
     recall_score,
     roc_auc_score,
 )
 
-from src.core.constants import (
-    DEFAULT_STAGE2_PROBABILITY_DOWN_COLUMN,
-    DEFAULT_STAGE2_PROBABILITY_FLAT_COLUMN,
-    DEFAULT_STAGE2_PROBABILITY_UP_COLUMN,
-)
 from src.data.dataset_builder import TrainingFrame
 
 
@@ -221,172 +215,106 @@ def compute_ks_distance(left: pd.Series, right: pd.Series) -> float:
     return float(np.max(np.abs(left_cdf - right_cdf)))
 
 
-def compute_multiclass_classification_metrics(
+def evaluate_stage2_return_decisions(predicted_returns: pd.Series) -> pd.DataFrame:
+    predictions = predicted_returns.astype(float)
+    side = pd.Series("NONE", index=predictions.index, dtype="object")
+    side.loc[predictions > 0.0] = "YES"
+    side.loc[predictions < 0.0] = "NO"
+    edge = predictions.abs().rename("edge")
+    edge.loc[side == "NONE"] = 0.0
+    return pd.DataFrame({"side": side, "edge": edge}, index=predictions.index)
+
+
+def compute_return_direction_metrics(
     y_true: pd.Series,
-    probabilities: pd.DataFrame,
-    *,
-    up_threshold: float | None = None,
-    down_threshold: float | None = None,
-    margin_threshold: float | None = None,
+    predicted_returns: pd.Series,
 ) -> dict[str, float]:
-    if len(y_true) != len(probabilities):
-        raise ValueError("y_true and probabilities must have the same length.")
-    if probabilities.empty:
+    if len(y_true) != len(predicted_returns):
+        raise ValueError("y_true and predicted_returns must have the same length.")
+    if predicted_returns.empty:
         return {"sample_count": 0.0}
 
-    ordered = probabilities[
-        [
-            DEFAULT_STAGE2_PROBABILITY_DOWN_COLUMN,
-            DEFAULT_STAGE2_PROBABILITY_FLAT_COLUMN,
-            DEFAULT_STAGE2_PROBABILITY_UP_COLUMN,
-        ]
-    ].astype(float).clip(0.0, 1.0)
-    y = y_true.astype(int)
-    predictions = ordered.to_numpy().argmax(axis=1)
-    supports = y.value_counts().to_dict()
-    metrics = {
-        "sample_count": float(len(y)),
-        "accuracy": float(accuracy_score(y, predictions)),
-        "macro_f1": float(f1_score(y, predictions, average="macro", zero_division=0)),
-        "multiclass_precision_up": float(precision_score(y, predictions, labels=[2], average="macro", zero_division=0)),
-        "multiclass_precision_down": float(precision_score(y, predictions, labels=[0], average="macro", zero_division=0)),
-        "multiclass_recall_up": float(recall_score(y, predictions, labels=[2], average="macro", zero_division=0)),
-        "multiclass_recall_down": float(recall_score(y, predictions, labels=[0], average="macro", zero_division=0)),
-        "support_down": float(supports.get(0, 0)),
-        "support_flat": float(supports.get(1, 0)),
-        "support_up": float(supports.get(2, 0)),
-    }
-    down_target = (y == 0).astype(int)
-    up_target = (y == 2).astype(int)
-    if down_target.nunique() == 2:
-        metrics["down_auc"] = float(roc_auc_score(down_target, ordered[DEFAULT_STAGE2_PROBABILITY_DOWN_COLUMN]))
-    if up_target.nunique() == 2:
-        metrics["up_auc"] = float(roc_auc_score(up_target, ordered[DEFAULT_STAGE2_PROBABILITY_UP_COLUMN]))
-    if up_threshold is not None and down_threshold is not None and margin_threshold is not None:
-        metrics.update(
-            compute_stage2_subset_trade_metrics(
-                y_true,
-                probabilities,
-                up_threshold=up_threshold,
-                down_threshold=down_threshold,
-                margin_threshold=margin_threshold,
-            )
-        )
-    return metrics
-
-
-def compute_stage2_subset_trade_metrics(
-    y_true: pd.Series,
-    probabilities: pd.DataFrame,
-    *,
-    up_threshold: float,
-    down_threshold: float,
-    margin_threshold: float,
-) -> dict[str, float]:
-    if probabilities.empty:
-        return {
-            "class_pnl.up": 0.0,
-            "class_pnl.down": 0.0,
-            "trade_pnl.pnl_per_trade": 0.0,
-            "trade_pnl.pnl_per_sample": 0.0,
-            "stage2_trade_count": 0.0,
-            "coverage": 0.0,
-        }
-    y = y_true.astype(int)
-    decisions = evaluate_stage2_decisions(
-        probabilities,
-        up_threshold=up_threshold,
-        down_threshold=down_threshold,
-        margin_threshold=margin_threshold,
-    )
+    truth = y_true.astype(float)
+    predictions = predicted_returns.astype(float)
+    decisions = evaluate_stage2_return_decisions(predictions)
     trade_mask = decisions["side"] != "NONE"
     trade_count = int(trade_mask.sum())
+    support_up = int((truth > 0.0).sum())
+    support_down = int((truth < 0.0).sum())
+    metrics: dict[str, float] = {
+        "sample_count": float(len(truth)),
+        "stage2_trade_count": float(trade_count),
+        "coverage": float(trade_count / len(truth)) if len(truth) else 0.0,
+        "predicted_return_mean": float(predictions.mean()),
+        "predicted_return_p50": float(predictions.quantile(0.50)),
+        "support_up": float(support_up),
+        "support_down": float(support_down),
+    }
     if trade_count == 0:
-        return {
-            "class_pnl.up": 0.0,
-            "class_pnl.down": 0.0,
-            "trade_pnl.pnl_per_trade": 0.0,
-            "trade_pnl.pnl_per_sample": 0.0,
-            "stage2_trade_count": 0.0,
-            "coverage": 0.0,
-        }
-    traded_truth = y.loc[trade_mask]
+        metrics.update(
+            {
+                "direction_accuracy": 0.0,
+                "trade_precision_up": 0.0,
+                "trade_precision_down": 0.0,
+                "trade_recall_up": 0.0,
+                "trade_recall_down": 0.0,
+                "class_pnl.up": 0.0,
+                "class_pnl.down": 0.0,
+                "trade_pnl.pnl_per_trade": 0.0,
+                "trade_pnl.pnl_per_sample": 0.0,
+            }
+        )
+        return metrics
+
+    traded_truth = truth.loc[trade_mask]
     traded_side = decisions.loc[trade_mask, "side"]
     yes_mask = traded_side == "YES"
     no_mask = traded_side == "NO"
-    yes_correct = (traded_truth.loc[yes_mask] == 2) if yes_mask.any() else pd.Series(dtype="bool")
-    no_correct = (traded_truth.loc[no_mask] == 0) if no_mask.any() else pd.Series(dtype="bool")
-    trade_accuracy = float((yes_correct.sum() + no_correct.sum()) / trade_count)
-    pnl_per_trade = float(2.0 * trade_accuracy - 1.0)
-    return {
-        "class_pnl.up": float(2.0 * float(yes_correct.mean()) - 1.0) if len(yes_correct) else 0.0,
-        "class_pnl.down": float(2.0 * float(no_correct.mean()) - 1.0) if len(no_correct) else 0.0,
-        "trade_pnl.pnl_per_trade": pnl_per_trade,
-        "trade_pnl.pnl_per_sample": float((trade_count / len(y)) * pnl_per_trade) if len(y) else 0.0,
-        "stage2_trade_count": float(trade_count),
-        "coverage": float(trade_count / len(y)) if len(y) else 0.0,
-    }
-
-
-def evaluate_stage2_decisions(
-    probabilities: pd.DataFrame,
-    up_threshold: float,
-    down_threshold: float,
-    margin_threshold: float,
-) -> pd.DataFrame:
-    ordered = probabilities[
-        [
-            DEFAULT_STAGE2_PROBABILITY_DOWN_COLUMN,
-            DEFAULT_STAGE2_PROBABILITY_FLAT_COLUMN,
-            DEFAULT_STAGE2_PROBABILITY_UP_COLUMN,
-        ]
-    ].astype(float)
-    p_down = ordered[DEFAULT_STAGE2_PROBABILITY_DOWN_COLUMN]
-    p_up = ordered[DEFAULT_STAGE2_PROBABILITY_UP_COLUMN]
-    up_margin = p_up - p_down
-    down_margin = p_down - p_up
-    yes_ok = (p_up >= up_threshold) & (up_margin >= margin_threshold)
-    no_ok = (p_down >= down_threshold) & (down_margin >= margin_threshold)
-
-    side = pd.Series("NONE", index=ordered.index, dtype="object")
-    side.loc[yes_ok] = "YES"
-    side.loc[no_ok] = "NO"
-    both = yes_ok & no_ok
-    side.loc[both] = np.where(up_margin.loc[both] >= down_margin.loc[both], "YES", "NO")
-    edge = pd.Series(0.0, index=ordered.index, dtype="float64")
-    edge.loc[side == "YES"] = up_margin.loc[side == "YES"]
-    edge.loc[side == "NO"] = down_margin.loc[side == "NO"]
-    return pd.DataFrame({"side": side, "edge": edge}, index=ordered.index)
+    yes_correct = (traded_truth.loc[yes_mask] > 0.0) if yes_mask.any() else pd.Series(dtype="bool")
+    no_correct = (traded_truth.loc[no_mask] < 0.0) if no_mask.any() else pd.Series(dtype="bool")
+    correct_count = int(yes_correct.sum() + no_correct.sum())
+    precision_up = float(yes_correct.mean()) if len(yes_correct) else 0.0
+    precision_down = float(no_correct.mean()) if len(no_correct) else 0.0
+    recall_up = float(yes_correct.sum() / support_up) if support_up else 0.0
+    recall_down = float(no_correct.sum() / support_down) if support_down else 0.0
+    direction_accuracy = float(correct_count / trade_count)
+    pnl_per_trade = float(2.0 * direction_accuracy - 1.0)
+    metrics.update(
+        {
+            "direction_accuracy": direction_accuracy,
+            "trade_precision_up": precision_up,
+            "trade_precision_down": precision_down,
+            "trade_recall_up": recall_up,
+            "trade_recall_down": recall_down,
+            "class_pnl.up": float(2.0 * precision_up - 1.0) if len(yes_correct) else 0.0,
+            "class_pnl.down": float(2.0 * precision_down - 1.0) if len(no_correct) else 0.0,
+            "trade_pnl.pnl_per_trade": pnl_per_trade,
+            "trade_pnl.pnl_per_sample": float((trade_count / len(truth)) * pnl_per_trade) if len(truth) else 0.0,
+        }
+    )
+    return metrics
 
 
 def compute_two_stage_end_to_end_metrics(
     y_true: pd.Series,
     stage1_probabilities: pd.Series,
-    stage2_probabilities: pd.DataFrame,
+    stage2_predictions: pd.Series,
     *,
     stage1_threshold: float,
-    up_threshold: float,
-    down_threshold: float,
-    margin_threshold: float,
 ) -> dict[str, float]:
-    if not (len(y_true) == len(stage1_probabilities) == len(stage2_probabilities)):
+    if not (len(y_true) == len(stage1_probabilities) == len(stage2_predictions)):
         raise ValueError("End-to-end inputs must have the same length.")
 
-    y = y_true.astype(int)
+    y = y_true.astype(float)
     p_active = stage1_probabilities.astype(float).clip(0.0, 1.0)
     active_mask = p_active >= stage1_threshold
-    active_probabilities = stage2_probabilities.loc[active_mask]
-    decisions = evaluate_stage2_decisions(
-        active_probabilities,
-        up_threshold=up_threshold,
-        down_threshold=down_threshold,
-        margin_threshold=margin_threshold,
-    )
+    active_predictions = stage2_predictions.loc[active_mask]
+    decisions = evaluate_stage2_return_decisions(active_predictions)
     trade_mask = decisions["side"] != "NONE"
     trade_count = int(trade_mask.sum())
     total_count = len(y)
-    support_up = int((y == 2).sum())
-    support_down = int((y == 0).sum())
+    support_up = int((y > 0.0).sum())
+    support_down = int((y < 0.0).sum())
 
     metrics: dict[str, float] = {
         "sample_count": float(total_count),
@@ -395,9 +323,6 @@ def compute_two_stage_end_to_end_metrics(
         "stage2_trade_count": float(trade_count),
         "coverage_end_to_end": float(trade_count / total_count) if total_count else 0.0,
         "stage1_threshold": float(stage1_threshold),
-        "up_threshold": float(up_threshold),
-        "down_threshold": float(down_threshold),
-        "margin_threshold": float(margin_threshold),
         "support_up": float(support_up),
         "support_down": float(support_down),
     }
@@ -420,8 +345,8 @@ def compute_two_stage_end_to_end_metrics(
     traded_side = decisions.loc[trade_mask, "side"]
     yes_mask = traded_side == "YES"
     no_mask = traded_side == "NO"
-    yes_correct = (traded_truth.loc[yes_mask] == 2) if yes_mask.any() else pd.Series(dtype="bool")
-    no_correct = (traded_truth.loc[no_mask] == 0) if no_mask.any() else pd.Series(dtype="bool")
+    yes_correct = (traded_truth.loc[yes_mask] > 0.0) if yes_mask.any() else pd.Series(dtype="bool")
+    no_correct = (traded_truth.loc[no_mask] < 0.0) if no_mask.any() else pd.Series(dtype="bool")
     correct_count = int(yes_correct.sum() + no_correct.sum())
     precision_up = float(yes_correct.mean()) if len(yes_correct) else 0.0
     precision_down = float(no_correct.mean()) if len(no_correct) else 0.0

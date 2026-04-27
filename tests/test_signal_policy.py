@@ -16,14 +16,12 @@ def test_decision_engine_accepts_yes_signal_when_stage2_yes_threshold_passes() -
         p_down=0.15,
         p_flat=0.20,
         p_up=0.65,
+        predicted_median_return=0.001,
         model_version="m1",
         feature_version="v1",
         p_active=0.74,
         decision_context={
             "stage1_threshold": 0.5,
-            "up_threshold": 0.60,
-            "down_threshold": 0.60,
-            "margin_threshold": 0.10,
         },
     )
     decision = evaluate_entry(
@@ -46,14 +44,12 @@ def test_decision_engine_rejects_when_stage1_is_below_threshold() -> None:
         p_down=None,
         p_flat=None,
         p_up=None,
+        predicted_median_return=None,
         model_version="m1",
         feature_version="v1",
         p_active=0.20,
         decision_context={
             "stage1_threshold": 0.5,
-            "up_threshold": 0.60,
-            "down_threshold": 0.60,
-            "margin_threshold": 0.10,
         },
     )
     decision = evaluate_entry(

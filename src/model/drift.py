@@ -65,8 +65,12 @@ class Stage2DirectionDriftMonitor:
         self._history: deque[float] = deque(maxlen=self.window_size)
         self._consecutive_alerts = 0
 
-    def update(self, p_up: float, p_down: float) -> dict[str, float | bool | int]:
-        self._history.append(float(p_up) - float(p_down))
+    def update(self, predicted_return: float | None = None, p_up: float | None = None, p_down: float | None = None) -> dict[str, float | bool | int]:
+        if predicted_return is None:
+            if p_up is None or p_down is None:
+                raise ValueError("Provide predicted_return or both p_up and p_down.")
+            predicted_return = float(p_up) - float(p_down)
+        self._history.append(float(predicted_return))
         observed = pd.Series(list(self._history), dtype="float64")
         ks_distance = compute_ks_distance(self.reference, observed)
         threshold_breached = bool(

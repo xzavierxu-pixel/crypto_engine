@@ -24,6 +24,7 @@ class Signal:
     p_active: float | None = None
     p_down: float | None = None
     p_flat: float | None = None
+    predicted_median_return: float | None = None
     decision_context: dict[str, Any] = field(default_factory=dict)
 
 
