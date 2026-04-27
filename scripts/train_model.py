@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import subprocess
 import sys
 from pathlib import Path
 
@@ -61,6 +62,31 @@ def _write_cached_split(output_dir: Path, development, validation) -> None:
     development.frame.to_parquet(development_path, index=False)
     validation.frame.to_parquet(validation_path, index=False)
     logging.info("Cached split data written to %s and %s", development_path, validation_path)
+
+
+def _run_split_data_quality_report(output_dir: Path) -> None:
+    script_path = REPO_ROOT / "src" / "quality_check" / "data_quality_report.py"
+    if not script_path.exists():
+        logging.warning("Data quality report script not found at %s; skipping split DQC.", script_path)
+        return
+    development_path = output_dir / "development_frame.parquet"
+    validation_path = output_dir / "validation_frame.parquet"
+    if not development_path.exists() or not validation_path.exists():
+        logging.warning("Cached split parquet files are missing; skipping split DQC.")
+        return
+    dqc_output_dir = output_dir / "data_quality"
+    command = [
+        sys.executable,
+        str(script_path),
+        "--train",
+        str(development_path),
+        "--valid",
+        str(validation_path),
+        "--output-dir",
+        str(dqc_output_dir),
+    ]
+    logging.info("Generating split data quality report in %s", dqc_output_dir)
+    subprocess.run(command, check=True, cwd=str(REPO_ROOT))
 
 
 def main() -> None:
@@ -126,6 +152,7 @@ def main() -> None:
             len(development.frame),
             len(validation.frame),
         )
+        _run_split_data_quality_report(Path(args.cached_split_dir))
     else:
         logging.info("Loading input data from %s", args.input)
         source = _load_input(Path(args.input))
@@ -152,6 +179,7 @@ def main() -> None:
             purge_rows=args.purge_rows,
         )
         _write_cached_split(output_dir, development, validation)
+        _run_split_data_quality_report(output_dir)
         training_row_count = len(training.frame)
         train_start = str(training.frame["timestamp"].min()) if not training.frame.empty else None
         train_end = str(training.frame["timestamp"].max()) if not training.frame.empty else None

@@ -35,14 +35,17 @@ def test_feature_builder_uses_only_information_before_t0() -> None:
     assert "regime_vol_ratio" in feature_frame.columns
     assert "relative_volume_5" in feature_frame.columns
     assert "body_pct_1" in feature_frame.columns
-    assert "nz_volume_share_20" in feature_frame.columns
+    assert "low_volume_flag_share_20" in feature_frame.columns
+    assert "volume_below_rolling_p20_share_20" in feature_frame.columns
+    assert "stale_trade_share_20" in feature_frame.columns
     assert "flat_share_20" in feature_frame.columns
     assert "abs_ret_mean_20" in feature_frame.columns
     assert "dollar_vol_mean_20" in feature_frame.columns
-    assert "htf_ret_5m_1" in feature_frame.columns
+    assert "htf_ret_15m_1" in feature_frame.columns
     assert "bb_width_20" in feature_frame.columns
     assert "upside_rv_5" in feature_frame.columns
     assert "clv_1" in feature_frame.columns
+    assert "ret_term_spread__ret_1__ret_3" in feature_frame.columns
     assert "ret_1_lag1" in feature_frame.columns
     assert "ret_1_accel" in feature_frame.columns
     assert "momentum_reversal" in feature_frame.columns

@@ -22,11 +22,11 @@ def test_htf_context_uses_last_completed_higher_timeframe_candle() -> None:
     )
 
     features = build_feature_frame(frame, settings, horizon_name="5m", select_grid_only=False)
-    row = features.loc[features["timestamp"] == pd.Timestamp("2024-01-01T12:15:00Z")].iloc[0]
+    row = features.loc[features["timestamp"] == pd.Timestamp("2024-01-01T12:30:00Z")].iloc[0]
 
-    expected_htf_ret_5m = (114 / 109) - 1
-    current_incomplete_5m_ret = (119 / 114) - 1
+    expected_htf_ret_15m = (129 / 114) - 1
+    current_incomplete_15m_ret = (144 / 129) - 1
 
-    assert math.isclose(row["htf_ret_5m_1"], expected_htf_ret_5m, rel_tol=1e-9)
-    assert not math.isclose(row["htf_ret_5m_1"], current_incomplete_5m_ret, rel_tol=1e-9)
+    assert math.isclose(row["htf_ret_15m_1"], expected_htf_ret_15m, rel_tol=1e-9)
+    assert not math.isclose(row["htf_ret_15m_1"], current_incomplete_15m_ret, rel_tol=1e-9)
     assert "htf_regime_trend_strength_15m" in features.columns

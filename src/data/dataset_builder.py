@@ -78,11 +78,14 @@ def _apply_sample_quality_filter(frame: pd.DataFrame, settings: Settings) -> pd.
 
     filtered = frame.copy()
     mask = pd.Series(True, index=filtered.index)
-    min_nz_volume_share_20 = config.get("min_nz_volume_share_20")
+    max_low_volume_flag_share_20 = config.get("max_low_volume_flag_share_20")
+    max_stale_trade_share_20 = config.get("max_stale_trade_share_20")
     max_flat_share_20 = config.get("max_flat_share_20")
 
-    if min_nz_volume_share_20 is not None and "nz_volume_share_20" in filtered.columns:
-        mask &= filtered["nz_volume_share_20"] >= float(min_nz_volume_share_20)
+    if max_low_volume_flag_share_20 is not None and "low_volume_flag_share_20" in filtered.columns:
+        mask &= filtered["low_volume_flag_share_20"] <= float(max_low_volume_flag_share_20)
+    if max_stale_trade_share_20 is not None and "stale_trade_share_20" in filtered.columns:
+        mask &= filtered["stale_trade_share_20"] <= float(max_stale_trade_share_20)
     if max_flat_share_20 is not None and "flat_share_20" in filtered.columns:
         mask &= filtered["flat_share_20"] <= float(max_flat_share_20)
 
@@ -96,8 +99,14 @@ def _build_sample_weights(frame: pd.DataFrame, settings: Settings) -> pd.Series 
 
     weights = pd.Series(float(config.get("base_weight", 1.0)), index=frame.index, dtype="float64")
 
-    if "nz_volume_share_20" in frame.columns:
-        weights += float(config.get("nz_volume_share_20_weight", 0.0)) * frame["nz_volume_share_20"].clip(0.0, 1.0)
+    if "low_volume_flag_share_20" in frame.columns:
+        weights -= float(config.get("low_volume_flag_share_20_weight", 0.0)) * frame[
+            "low_volume_flag_share_20"
+        ].clip(0.0, 1.0)
+    if "stale_trade_share_20" in frame.columns:
+        weights -= float(config.get("stale_trade_share_20_weight", 0.0)) * frame[
+            "stale_trade_share_20"
+        ].clip(0.0, 1.0)
     if "flat_share_20" in frame.columns:
         weights -= float(config.get("flat_share_20_weight", 0.0)) * frame["flat_share_20"].clip(0.0, 1.0)
     if "abs_ret_mean_20" in frame.columns:

@@ -15,7 +15,7 @@ class LaggedFeaturePack(FeaturePack):
         settings: Settings,
         profile: FeatureProfileConfig,
     ) -> pd.DataFrame:
-        features = pd.DataFrame(index=df.index)
+        feature_map: dict[str, pd.Series] = {}
         missing = [name for name in profile.lagged_feature_names if name not in df.columns]
         if missing:
             raise ValueError(
@@ -26,6 +26,6 @@ class LaggedFeaturePack(FeaturePack):
         for column_name in profile.lagged_feature_names:
             source = df[column_name]
             for lag in profile.lagged_feature_lags:
-                features[f"{column_name}_lag{lag}"] = source.shift(lag)
+                feature_map[f"{column_name}_lag{lag}"] = source.shift(lag)
 
-        return features
+        return pd.DataFrame(feature_map, index=df.index)

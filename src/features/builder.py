@@ -4,7 +4,7 @@ import pandas as pd
 
 from src.core.config import Settings
 from src.core.constants import CORE_FEATURE_VERSION, DEFAULT_TIMESTAMP_COLUMN
-from src.core.timegrid import add_grid_columns, select_grid_rows
+from src.core.timegrid import add_grid_columns, floor_to_grid, select_grid_rows
 from src.core.validation import normalize_ohlcv_frame
 from src.data.derivatives.feature_store import DerivativesFeatureStore
 from src.features.registry import get_feature_pack
@@ -62,6 +62,8 @@ def build_feature_frame(
     normalized = normalize_ohlcv_frame(df, timestamp_column=DEFAULT_TIMESTAMP_COLUMN, require_volume=False)
     horizon = get_horizon_spec(settings, horizon_name)
     profile = settings.features.get_profile(horizon.feature_profile)
+    if select_grid_only is None:
+        select_grid_only = settings.dataset.strict_grid_only
 
     if settings.derivatives.enabled:
         feature_frame = DerivativesFeatureStore(settings).attach_to_spot(
@@ -71,8 +73,15 @@ def build_feature_frame(
     else:
         feature_frame = normalized.copy()
 
+    grid_mask = normalized[DEFAULT_TIMESTAMP_COLUMN].map(
+        lambda value: pd.Timestamp(value) == floor_to_grid(pd.Timestamp(value), horizon.grid_minutes)
+    )
+    target_feature_index = tuple(normalized.index[grid_mask])
+    feature_frame.attrs["target_feature_index"] = target_feature_index
+
     for pack_name in profile.packs:
         pack = get_feature_pack(pack_name)
+        feature_frame.attrs["target_feature_index"] = target_feature_index
         feature_values = pack.transform(feature_frame, settings, profile)
         feature_frame = pd.concat([feature_frame, feature_values], axis=1)
 
@@ -84,9 +93,6 @@ def build_feature_frame(
     feature_frame["asset"] = settings.market.pair
     feature_frame["horizon"] = horizon.name
     feature_frame["feature_version"] = CORE_FEATURE_VERSION
-
-    if select_grid_only is None:
-        select_grid_only = settings.dataset.strict_grid_only
 
     if select_grid_only:
         feature_frame = select_grid_rows(feature_frame, grid_minutes=horizon.grid_minutes)

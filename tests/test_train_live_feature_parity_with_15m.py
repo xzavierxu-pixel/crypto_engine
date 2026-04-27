@@ -11,12 +11,12 @@ def test_train_and_live_feature_paths_match_for_15m_horizon() -> None:
     settings = load_settings()
     spot = pd.DataFrame(
         {
-            "timestamp": pd.date_range("2026-01-01T00:00:00Z", periods=240, freq="1min"),
-            "open": [100 + index for index in range(240)],
-            "high": [101 + index for index in range(240)],
-            "low": [99 + index for index in range(240)],
-            "close": [100.5 + index for index in range(240)],
-            "volume": [10 + index for index in range(240)],
+            "timestamp": pd.date_range("2026-01-01T00:00:00Z", periods=960, freq="1min"),
+            "open": [100 + index for index in range(960)],
+            "high": [101 + index for index in range(960)],
+            "low": [99 + index for index in range(960)],
+            "close": [100.5 + index for index in range(960)],
+            "volume": [10 + index for index in range(960)],
         }
     )
 

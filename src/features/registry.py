@@ -11,6 +11,7 @@ from src.features.derivatives_oi import DerivativesOIFeaturePack
 from src.features.derivatives_options import DerivativesOptionsFeaturePack
 from src.features.flow_proxy import FlowProxyFeaturePack
 from src.features.htf_context import HTFContextFeaturePack
+from src.features.interaction_bank import InteractionBankFeaturePack
 from src.features.lagged import LaggedFeaturePack
 from src.features.market_quality import MarketQualityFeaturePack
 from src.features.momentum import MomentumFeaturePack
@@ -37,6 +38,7 @@ FEATURE_PACKS: dict[str, FeaturePack] = {
     "asymmetry": AsymmetryFeaturePack(),
     "flow_proxy": FlowProxyFeaturePack(),
     "intra_5m_structure": Intra5mStructureFeaturePack(),
+    "interaction_bank": InteractionBankFeaturePack(),
     "lagged": LaggedFeaturePack(),
     "time": TimeFeaturePack(),
     "derivatives_funding": DerivativesFundingFeaturePack(),

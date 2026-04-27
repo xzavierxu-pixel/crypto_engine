@@ -30,11 +30,9 @@ class VolumeFeaturePack(FeaturePack):
             rolling_mean = volume.rolling(window=window, min_periods=window).mean()
             rolling_std = volume.rolling(window=window, min_periods=window).std()
             volume_sum = volume.rolling(window=window, min_periods=window).sum()
-            dollar_volume = (past_close * volume).rolling(window=window, min_periods=window).mean()
 
             features[f"relative_volume_{window}"] = volume / rolling_mean.replace(0, np.nan)
             features[f"volume_z_{window}"] = (volume - rolling_mean) / rolling_std.replace(0, np.nan)
             features[f"volume_share_{window}"] = volume / volume_sum.replace(0, np.nan)
-            features[f"dollar_volume_{window}"] = dollar_volume
 
         return features
