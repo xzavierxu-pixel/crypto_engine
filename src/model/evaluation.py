@@ -196,6 +196,134 @@ def compute_binary_classification_metrics(
     return metrics
 
 
+def evaluate_selective_binary_decisions(
+    probabilities: pd.Series,
+    *,
+    t_up: float,
+    t_down: float,
+) -> pd.Series:
+    p_up = probabilities.astype("float64")
+    decisions = pd.Series("ABSTAIN", index=p_up.index, dtype="object")
+    decisions.loc[p_up >= t_up] = "UP"
+    decisions.loc[p_up <= t_down] = "DOWN"
+    return decisions
+
+
+def compute_selective_binary_metrics(
+    y_true: pd.Series,
+    probabilities: pd.Series,
+    *,
+    t_up: float,
+    t_down: float,
+) -> dict[str, float]:
+    if len(y_true) != len(probabilities):
+        raise ValueError("y_true and probabilities must have the same length.")
+    if t_down > t_up:
+        raise ValueError("t_down must be <= t_up.")
+
+    y = y_true.astype(int)
+    p_up = probabilities.astype(float).clip(0.0, 1.0)
+    decisions = evaluate_selective_binary_decisions(p_up, t_up=t_up, t_down=t_down)
+    accepted = decisions != "ABSTAIN"
+    up_mask = decisions == "UP"
+    down_mask = decisions == "DOWN"
+    accepted_count = int(accepted.sum())
+    up_count = int(up_mask.sum())
+    down_count = int(down_mask.sum())
+
+    precision_up = float((y.loc[up_mask] == 1).mean()) if up_count else 0.0
+    precision_down = float((y.loc[down_mask] == 0).mean()) if down_count else 0.0
+    hard_predictions = (p_up >= 0.5).astype(int)
+    accepted_correct = ((decisions.loc[accepted] == "UP") == (y.loc[accepted] == 1)) if accepted_count else pd.Series(dtype="bool")
+    metrics = {
+        "sample_count": float(len(y)),
+        "coverage": float(accepted_count / len(y)) if len(y) else 0.0,
+        "precision_up": precision_up,
+        "precision_down": precision_down,
+        "balanced_precision": float((precision_up + precision_down) / 2.0),
+        "all_sample_accuracy": float(accuracy_score(y, hard_predictions)) if len(y) else 0.0,
+        "accepted_sample_accuracy": float(accepted_correct.mean()) if accepted_count else 0.0,
+        "share_up_predictions": float(up_count / accepted_count) if accepted_count else 0.0,
+        "share_down_predictions": float(down_count / accepted_count) if accepted_count else 0.0,
+        "selected_t_up": float(t_up),
+        "selected_t_down": float(t_down),
+        "accepted_count": float(accepted_count),
+        "up_prediction_count": float(up_count),
+        "down_prediction_count": float(down_count),
+    }
+    if y.nunique() == 2:
+        metrics["roc_auc"] = float(roc_auc_score(y, p_up))
+    labels = [0, 1]
+    metrics["brier_score"] = float(brier_score_loss(y, p_up))
+    metrics["log_loss"] = float(log_loss(y, pd.concat([1.0 - p_up, p_up], axis=1), labels=labels))
+    return metrics
+
+
+def search_selective_binary_thresholds(
+    y_true: pd.Series,
+    probabilities: pd.Series,
+    *,
+    t_up_min: float,
+    t_up_max: float,
+    t_down_min: float,
+    t_down_max: float,
+    step: float,
+    min_coverage: float,
+    tie_tolerance: float,
+    enforce_min_side_share: bool = False,
+    min_side_share: float = 0.20,
+) -> tuple[float, float, pd.DataFrame, dict[str, float | bool | str | None]]:
+    if step <= 0:
+        raise ValueError("threshold search step must be > 0.")
+    records: list[dict[str, float]] = []
+    eligible: list[dict[str, float]] = []
+    up_candidates = [round(float(value), 6) for value in np.arange(t_up_min, t_up_max + step / 2.0, step)]
+    down_candidates = [round(float(value), 6) for value in np.arange(t_down_min, t_down_max + step / 2.0, step)]
+
+    for t_up in up_candidates:
+        for t_down in down_candidates:
+            if t_down > t_up:
+                continue
+            metrics = compute_selective_binary_metrics(y_true, probabilities, t_up=t_up, t_down=t_down)
+            record = {
+                "t_up": float(t_up),
+                "t_down": float(t_down),
+                **metrics,
+            }
+            records.append(record)
+            side_share_ok = (
+                not enforce_min_side_share
+                or (
+                    record["share_up_predictions"] >= min_side_share
+                    and record["share_down_predictions"] >= min_side_share
+                )
+            )
+            if record["coverage"] >= min_coverage and side_share_ok:
+                eligible.append(record)
+
+    if not records:
+        raise ValueError("threshold search produced no candidates.")
+    pool = eligible if eligible else records
+    best_precision = max(record["balanced_precision"] for record in pool)
+    tied = [
+        record
+        for record in pool
+        if record["balanced_precision"] >= best_precision - tie_tolerance
+    ]
+    best = max(tied, key=lambda record: (record["coverage"], record["balanced_precision"]))
+    best_summary: dict[str, float | bool | str | None] = {
+        "constraint_satisfied": bool(eligible),
+        "fallback_reason": None if eligible else "no threshold set satisfied coverage/side-share constraints",
+        "t_up": float(best["t_up"]),
+        "t_down": float(best["t_down"]),
+        "balanced_precision": float(best["balanced_precision"]),
+        "coverage": float(best["coverage"]),
+        "precision_up": float(best["precision_up"]),
+        "precision_down": float(best["precision_down"]),
+    }
+    return float(best["t_up"]), float(best["t_down"]), pd.DataFrame.from_records(records), best_summary
+
+
 def compute_classification_metrics(
     y_true: pd.Series,
     probabilities: pd.Series,

@@ -21,15 +21,19 @@ from src.core.constants import (
     DEFAULT_TARGET_COLUMN,
 )
 from src.data.dataset_builder import TrainingFrame
+from src.data.dataset_builder import assert_feature_schema, infer_feature_columns
 from src.model.base import ModelPlugin
 from src.model.evaluation import (
     WalkForwardFoldResult,
     compute_binary_classification_metrics,
     compute_ks_distance,
+    compute_selective_binary_metrics,
+    evaluate_selective_binary_decisions,
     compute_multiclass_classification_metrics,
     compute_stage1_coverage,
     compute_two_stage_end_to_end_metrics,
     purged_chronological_time_window_split,
+    search_selective_binary_thresholds,
     summarize_walk_forward,
 )
 from src.model.registry import create_model_plugin
@@ -61,6 +65,31 @@ class TwoStageTrainingArtifacts:
     stage2_direction_reference: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class BinarySelectiveTrainingArtifacts:
+    model: ModelPlugin
+    calibrator: CalibrationPlugin
+    feature_columns: list[str]
+    t_up: float
+    t_down: float
+    train_metrics: dict[str, Any]
+    validation_metrics: dict[str, Any]
+    train_window: dict[str, Any]
+    validation_window: dict[str, Any]
+    threshold_search: dict[str, Any]
+    threshold_frontier: pd.DataFrame
+    boundary_slices: pd.DataFrame
+    regime_slices: pd.DataFrame
+    feature_importance: pd.DataFrame
+    probability_deciles: pd.DataFrame
+    false_up_slices: pd.DataFrame
+    false_down_slices: pd.DataFrame
+    probability_summary: dict[str, dict[str, float]]
+    probability_reference: dict[str, Any]
+    base_rate: float
+    weighted: bool
+
+
 def _slice_training_frame(training: TrainingFrame, frame_slice: slice) -> TrainingFrame:
     return TrainingFrame(
         frame=training.frame.iloc[frame_slice].reset_index(drop=True),
@@ -71,36 +100,17 @@ def _slice_training_frame(training: TrainingFrame, frame_slice: slice) -> Traini
 
 
 def _make_training_frame_from_cached_split(frame: pd.DataFrame) -> TrainingFrame:
-    feature_columns = [
-        column
-        for column in frame.columns
-        if column
-        not in {
-            "timestamp",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "asset",
-            "horizon",
-            "grid_id",
-            "grid_t0",
-            "is_grid_t0",
-            "feature_version",
-            "label_version",
-            DEFAULT_TARGET_COLUMN,
-            DEFAULT_STAGE2_TARGET_COLUMN,
-            DEFAULT_ABS_RETURN_COLUMN,
-            "signed_return",
-            DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN,
-        }
-    ]
+    feature_columns = infer_feature_columns(frame)
+    assert_feature_schema(feature_columns)
     return TrainingFrame(
         frame=frame.reset_index(drop=True),
         feature_columns=feature_columns,
         target_column=DEFAULT_TARGET_COLUMN,
-        sample_weight_column=None,
+        sample_weight_column=(
+            DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN
+            if DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN in frame.columns
+            else None
+        ),
     )
 
 
@@ -129,6 +139,38 @@ def split_training_frame(
     return (
         _slice_training_frame(training, split.train_slice),
         _slice_training_frame(training, split.valid_slice),
+    )
+
+
+def split_recent_train_validation_frame(
+    training: TrainingFrame,
+    *,
+    train_days: int,
+    validation_days: int,
+    purge_rows: int = 1,
+) -> tuple[TrainingFrame, TrainingFrame]:
+    if train_days <= 0 or validation_days <= 0:
+        raise ValueError("train_days and validation_days must be > 0.")
+    if purge_rows < 0:
+        raise ValueError("purge_rows must be >= 0.")
+    frame = training.frame
+    if frame.empty:
+        raise ValueError("Training frame is empty.")
+    timestamps = pd.to_datetime(frame["timestamp"], utc=True)
+    valid_end_ts = timestamps.max()
+    valid_start_ts = valid_end_ts - pd.Timedelta(days=validation_days)
+    train_start_ts = valid_start_ts - pd.Timedelta(days=train_days)
+    train_mask = (timestamps >= train_start_ts) & (timestamps < valid_start_ts)
+    valid_mask = timestamps >= valid_start_ts
+    train_indices = frame.index[train_mask]
+    valid_indices = frame.index[valid_mask]
+    if purge_rows and len(train_indices):
+        train_indices = train_indices[:-purge_rows] if len(train_indices) > purge_rows else train_indices[:0]
+    if len(train_indices) == 0 or len(valid_indices) == 0:
+        raise ValueError("Training frame is too small for the requested recent train/validation windows.")
+    return (
+        _replace_training_columns(training, frame=frame.loc[train_indices].copy()),
+        _replace_training_columns(training, frame=frame.loc[valid_indices].copy()),
     )
 
 
@@ -210,7 +252,7 @@ def _resolve_model_plugin_params(
     plugin_name = settings.model.resolve_plugin(stage=stage)
     if not plugin_name.startswith("lightgbm"):
         return None
-    if stage == "stage1":
+    if stage in {"stage1", "binary"}:
         return {"scale_pos_weight": _compute_stage1_scale_pos_weight(training), "objective": "binary"}
     return {
         "objective": "multiclass",
@@ -287,6 +329,342 @@ def _serialize_probability_reference(probabilities: pd.Series, max_points: int =
         "sample_count": int(len(cleaned)),
         "sample": [float(value) for value in sample.to_list()],
     }
+
+
+def _with_sample_weight(training: TrainingFrame, *, weighted: bool) -> TrainingFrame:
+    return _replace_training_columns(
+        training,
+        sample_weight_column=training.sample_weight_column if weighted else None,
+    )
+
+
+def _window_summary(frame: pd.DataFrame) -> dict[str, Any]:
+    return {
+        "row_count": int(len(frame)),
+        "start": str(frame["timestamp"].min()) if not frame.empty else None,
+        "end": str(frame["timestamp"].max()) if not frame.empty else None,
+    }
+
+
+def _build_boundary_slices(
+    frame: pd.DataFrame,
+    probabilities: pd.Series,
+    *,
+    t_up: float,
+    t_down: float,
+) -> pd.DataFrame:
+    if DEFAULT_ABS_RETURN_COLUMN not in frame.columns:
+        return pd.DataFrame()
+    buckets = pd.Series("abs_return_ge_5bp", index=frame.index, dtype="object")
+    abs_return = frame[DEFAULT_ABS_RETURN_COLUMN].astype("float64")
+    buckets.loc[abs_return < 0.0001] = "abs_return_lt_1bp"
+    buckets.loc[(abs_return >= 0.0001) & (abs_return < 0.0005)] = "abs_return_1bp_to_5bp"
+    records = []
+    for bucket_name, bucket_index in buckets.groupby(buckets).groups.items():
+        y_true = frame.loc[bucket_index, DEFAULT_TARGET_COLUMN]
+        p_up = probabilities.loc[bucket_index]
+        metrics = compute_selective_binary_metrics(y_true, p_up, t_up=t_up, t_down=t_down)
+        records.append({"slice": bucket_name, **metrics})
+    return pd.DataFrame.from_records(records)
+
+
+def _quantile_slice_records(
+    *,
+    frame: pd.DataFrame,
+    probabilities: pd.Series,
+    column: str,
+    slice_name: str,
+    t_up: float,
+    t_down: float,
+) -> list[dict[str, Any]]:
+    values = frame[column].astype("float64")
+    if values.nunique(dropna=True) < 2:
+        return []
+    try:
+        buckets = pd.qcut(values.rank(method="first"), q=3, labels=["low", "mid", "high"])
+    except ValueError:
+        return []
+    records = []
+    for bucket in ["low", "mid", "high"]:
+        mask = buckets == bucket
+        if not bool(mask.any()):
+            continue
+        metrics = compute_selective_binary_metrics(
+            frame.loc[mask, DEFAULT_TARGET_COLUMN],
+            probabilities.loc[mask],
+            t_up=t_up,
+            t_down=t_down,
+        )
+        records.append({"slice": slice_name, "bucket": bucket, "feature": column, **metrics})
+    return records
+
+
+def _build_regime_slices(
+    frame: pd.DataFrame,
+    probabilities: pd.Series,
+    *,
+    t_up: float,
+    t_down: float,
+) -> pd.DataFrame:
+    candidates = {
+        "volatility_regime": ["rv_5", "rv_10", "rv_30"],
+        "trend_regime": ["ret_5", "ret_10", "trend_strength_5"],
+        "spread_regime": ["spread_bps", "book_spread_bps"],
+        "volume_regime": ["relative_volume_5", "volume_z_5", "volume"],
+    }
+    records: list[dict[str, Any]] = []
+    for slice_name, columns in candidates.items():
+        column = next((name for name in columns if name in frame.columns), None)
+        if column is None:
+            continue
+        records.extend(
+            _quantile_slice_records(
+                frame=frame,
+                probabilities=probabilities,
+                column=column,
+                slice_name=slice_name,
+                t_up=t_up,
+                t_down=t_down,
+            )
+        )
+
+    timestamps = pd.to_datetime(frame["timestamp"], utc=True)
+    sessions = pd.cut(
+        timestamps.dt.hour,
+        bins=[-1, 7, 15, 23],
+        labels=["asia", "europe", "us"],
+    )
+    for session in ["asia", "europe", "us"]:
+        mask = sessions == session
+        if bool(mask.any()):
+            metrics = compute_selective_binary_metrics(
+                frame.loc[mask, DEFAULT_TARGET_COLUMN],
+                probabilities.loc[mask],
+                t_up=t_up,
+                t_down=t_down,
+            )
+            records.append({"slice": "session", "bucket": session, "feature": "timestamp_hour", **metrics})
+    return pd.DataFrame.from_records(records)
+
+
+def _build_feature_importance(model: ModelPlugin, feature_columns: list[str]) -> pd.DataFrame:
+    wrapped_model = getattr(model, "model", None)
+    booster = getattr(wrapped_model, "booster_", None)
+    if booster is None:
+        return pd.DataFrame(columns=["feature", "gain", "split"])
+    return pd.DataFrame(
+        {
+            "feature": feature_columns,
+            "gain": booster.feature_importance(importance_type="gain"),
+            "split": booster.feature_importance(importance_type="split"),
+        }
+    ).sort_values(["gain", "split"], ascending=False).reset_index(drop=True)
+
+
+def _build_probability_deciles(frame: pd.DataFrame, probabilities: pd.Series) -> pd.DataFrame:
+    if frame.empty or probabilities.empty:
+        return pd.DataFrame()
+    working = frame[[DEFAULT_TARGET_COLUMN, DEFAULT_ABS_RETURN_COLUMN]].copy()
+    working["p_up"] = probabilities.reindex(frame.index).astype("float64")
+    working["decile"] = pd.qcut(working["p_up"].rank(method="first"), q=10, labels=False)
+    records = []
+    for decile, group in working.groupby("decile"):
+        records.append(
+            {
+                "decile": int(decile),
+                "sample_count": int(len(group)),
+                "p_min": float(group["p_up"].min()),
+                "p_max": float(group["p_up"].max()),
+                "p_mean": float(group["p_up"].mean()),
+                "up_rate": float(group[DEFAULT_TARGET_COLUMN].astype(int).mean()),
+                "abs_return_mean": float(group[DEFAULT_ABS_RETURN_COLUMN].mean()),
+            }
+        )
+    return pd.DataFrame.from_records(records)
+
+
+def _build_false_side_slices(
+    frame: pd.DataFrame,
+    probabilities: pd.Series,
+    *,
+    t_up: float,
+    t_down: float,
+    side: str,
+) -> pd.DataFrame:
+    decisions = evaluate_selective_binary_decisions(probabilities, t_up=t_up, t_down=t_down)
+    y = frame[DEFAULT_TARGET_COLUMN].astype(int)
+    if side == "UP":
+        false_mask = (decisions == "UP") & (y == 0)
+    elif side == "DOWN":
+        false_mask = (decisions == "DOWN") & (y == 1)
+    else:
+        raise ValueError("side must be UP or DOWN.")
+
+    base = frame.loc[false_mask].copy()
+    if base.empty:
+        return pd.DataFrame(columns=["slice", "bucket", "feature", "false_count", "false_share"])
+
+    total_false = len(base)
+    records: list[dict[str, Any]] = []
+    candidates = {
+        "volatility_regime": ["rv_5", "rv_10", "rv_30"],
+        "trend_regime": ["ret_5", "ret_10", "trend_strength_5"],
+        "spread_regime": ["spread_bps", "book_spread_bps"],
+        "volume_regime": ["relative_volume_5", "volume_z_5", "volume"],
+    }
+    for slice_name, columns in candidates.items():
+        column = next((name for name in columns if name in frame.columns), None)
+        if column is None or frame[column].nunique(dropna=True) < 2:
+            continue
+        buckets = pd.qcut(frame[column].astype("float64").rank(method="first"), q=3, labels=["low", "mid", "high"])
+        for bucket in ["low", "mid", "high"]:
+            mask = false_mask & (buckets == bucket)
+            count = int(mask.sum())
+            records.append(
+                {
+                    "slice": slice_name,
+                    "bucket": bucket,
+                    "feature": column,
+                    "false_count": count,
+                    "false_share": float(count / total_false) if total_false else 0.0,
+                }
+            )
+
+    timestamps = pd.to_datetime(frame["timestamp"], utc=True)
+    sessions = pd.cut(timestamps.dt.hour, bins=[-1, 7, 15, 23], labels=["asia", "europe", "us"])
+    for session in ["asia", "europe", "us"]:
+        mask = false_mask & (sessions == session)
+        count = int(mask.sum())
+        records.append(
+            {
+                "slice": "session",
+                "bucket": session,
+                "feature": "timestamp_hour",
+                "false_count": count,
+                "false_share": float(count / total_false) if total_false else 0.0,
+            }
+        )
+    return pd.DataFrame.from_records(records)
+
+
+def train_binary_selective_model_from_split(
+    *,
+    development: TrainingFrame,
+    validation: TrainingFrame,
+    settings: Settings,
+    weighted: bool = True,
+) -> BinarySelectiveTrainingArtifacts:
+    train_frame = _with_sample_weight(development, weighted=weighted)
+    valid_frame = _with_sample_weight(validation, weighted=weighted)
+    model = _fit_model(train_frame, settings, stage="binary", validation=valid_frame)
+    calibrator = NoCalibration()
+    train_proba = calibrator.transform(model.predict_proba(train_frame.X))
+    valid_proba = calibrator.transform(model.predict_proba(valid_frame.X))
+    search = settings.threshold_search
+    t_up, t_down, frontier, best = search_selective_binary_thresholds(
+        valid_frame.y.astype(int),
+        valid_proba,
+        t_up_min=search.t_up_min,
+        t_up_max=search.t_up_max,
+        t_down_min=search.t_down_min,
+        t_down_max=search.t_down_max,
+        step=search.step,
+        min_coverage=float(settings.objective.min_coverage),
+        tie_tolerance=float(settings.objective.balanced_precision_tie_tolerance),
+        enforce_min_side_share=search.enforce_min_side_share,
+        min_side_share=search.min_side_share,
+    )
+    guarded_t_up, guarded_t_down, _, guarded_best = search_selective_binary_thresholds(
+        valid_frame.y.astype(int),
+        valid_proba,
+        t_up_min=search.t_up_min,
+        t_up_max=search.t_up_max,
+        t_down_min=search.t_down_min,
+        t_down_max=search.t_down_max,
+        step=search.step,
+        min_coverage=float(settings.objective.min_coverage),
+        tie_tolerance=float(settings.objective.balanced_precision_tie_tolerance),
+        enforce_min_side_share=True,
+        min_side_share=search.min_side_share,
+    )
+    train_metrics = compute_selective_binary_metrics(train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down)
+    validation_metrics = compute_selective_binary_metrics(valid_frame.y.astype(int), valid_proba, t_up=t_up, t_down=t_down)
+    threshold_search = {
+        "selection_data": "validation",
+        "objective": settings.objective.optimize_metric,
+        "min_coverage": float(settings.objective.min_coverage),
+        "tie_tolerance": float(settings.objective.balanced_precision_tie_tolerance),
+        "grid": {
+            "t_up_min": search.t_up_min,
+            "t_up_max": search.t_up_max,
+            "t_down_min": search.t_down_min,
+            "t_down_max": search.t_down_max,
+            "step": search.step,
+        },
+        "enforce_min_side_share": search.enforce_min_side_share,
+        "min_side_share": search.min_side_share,
+        "best": best,
+        "side_guarded_best": {
+            **guarded_best,
+            "t_up": guarded_t_up,
+            "t_down": guarded_t_down,
+        },
+    }
+    probability_summary = {
+        "p_up_train": _summarize_probability_series(train_proba),
+        "p_up_validation": _summarize_probability_series(valid_proba),
+        "p_up_ks": {"train_vs_validation": float(compute_ks_distance(train_proba, valid_proba))},
+    }
+    probability_reference = {
+        "p_up_train": _serialize_probability_reference(train_proba),
+        "p_up_validation": _serialize_probability_reference(valid_proba),
+    }
+    return BinarySelectiveTrainingArtifacts(
+        model=model,
+        calibrator=calibrator,
+        feature_columns=train_frame.feature_columns,
+        t_up=t_up,
+        t_down=t_down,
+        train_metrics=train_metrics,
+        validation_metrics=validation_metrics,
+        train_window=_window_summary(train_frame.frame),
+        validation_window=_window_summary(valid_frame.frame),
+        threshold_search=threshold_search,
+        threshold_frontier=frontier,
+        boundary_slices=_build_boundary_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
+        regime_slices=_build_regime_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
+        feature_importance=_build_feature_importance(model, train_frame.feature_columns),
+        probability_deciles=_build_probability_deciles(valid_frame.frame, valid_proba),
+        false_up_slices=_build_false_side_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down, side="UP"),
+        false_down_slices=_build_false_side_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down, side="DOWN"),
+        probability_summary=probability_summary,
+        probability_reference=probability_reference,
+        base_rate=float(train_frame.y.astype(int).mean()) if not train_frame.frame.empty else 0.0,
+        weighted=weighted,
+    )
+
+
+def train_binary_selective_model(
+    training: TrainingFrame,
+    settings: Settings,
+    *,
+    train_days: int | None = None,
+    validation_days: int | None = None,
+    purge_rows: int = 1,
+    weighted: bool = True,
+) -> BinarySelectiveTrainingArtifacts:
+    development, validation = split_recent_train_validation_frame(
+        training,
+        train_days=train_days or settings.validation.train_days,
+        validation_days=validation_days or settings.validation.validation_days,
+        purge_rows=purge_rows,
+    )
+    return train_binary_selective_model_from_split(
+        development=development,
+        validation=validation,
+        settings=settings,
+        weighted=weighted,
+    )
 
 
 def _get_threshold_search_settings(settings: Settings) -> dict[str, float]:

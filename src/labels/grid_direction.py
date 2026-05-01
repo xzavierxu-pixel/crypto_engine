@@ -25,7 +25,7 @@ class GridDirectionLabelBuilder(LabelBuilder):
         future_close = labeled["close"].shift(-horizon.future_close_offset)
         label_params = horizon.label_params or {}
         label_version = str(label_params.get("label_version", CORE_LABEL_VERSION))
-        target = (future_close > labeled["open"]).astype("float64")
+        target = (future_close >= labeled["open"]).astype("float64")
         target[future_close.isna()] = pd.NA
         target[~labeled["is_grid_t0"]] = pd.NA
 

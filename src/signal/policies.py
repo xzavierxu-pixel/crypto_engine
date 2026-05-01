@@ -8,6 +8,44 @@ def get_policy_config(settings: Settings, policy_name: str):
     return settings.signal.get_two_stage_policy(policy_name)
 
 
+def evaluate_selective_binary_signal(
+    signal: Signal,
+    settings: Settings,
+    policy_name: str = "selective_binary_policy",
+) -> Decision:
+    policy = settings.signal.get_selective_binary_policy(policy_name)
+    if signal.decision_context.get("t_up") is None and policy.t_up is None:
+        raise ValueError("t_up must be provided by the artifact or signal context.")
+    if signal.decision_context.get("t_down") is None and policy.t_down is None:
+        raise ValueError("t_down must be provided by the artifact or signal context.")
+    t_up = float(signal.decision_context.get("t_up", policy.t_up))
+    t_down = float(signal.decision_context.get("t_down", policy.t_down))
+    p_up = float(signal.p_up or 0.0)
+    if p_up >= t_up:
+        return Decision(
+            should_trade=True,
+            side="YES",
+            edge=p_up - 0.5,
+            reason="selective_binary_signal_passed",
+            target_size=float(settings.execution.fixed_contract_size),
+        )
+    if p_up <= t_down:
+        return Decision(
+            should_trade=True,
+            side="NO",
+            edge=0.5 - p_up,
+            reason="selective_binary_signal_passed",
+            target_size=float(settings.execution.fixed_contract_size),
+        )
+    return Decision(
+        should_trade=False,
+        side=None,
+        edge=None,
+        reason="selective_binary_abstain",
+        target_size=0.0,
+    )
+
+
 def evaluate_two_stage_signal(
     signal: Signal,
     settings: Settings,

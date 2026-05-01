@@ -48,6 +48,14 @@ class HorizonsConfig:
 
 @dataclass(frozen=True)
 class ThresholdSearchConfig:
+    enabled: bool = True
+    t_up_min: float = 0.50
+    t_up_max: float = 0.60
+    t_down_min: float = 0.40
+    t_down_max: float = 0.50
+    step: float = 0.005
+    enforce_min_side_share: bool = False
+    min_side_share: float = 0.20
     stage1_coverage_min: float = 0.60
     stage1_coverage_max: float = 0.80
     min_active_samples: int = 25
@@ -55,10 +63,46 @@ class ThresholdSearchConfig:
 
 
 @dataclass(frozen=True)
+class ObjectiveConfig:
+    label: str = "settlement_direction"
+    optimize_metric: str = "balanced_precision"
+    min_coverage: float = 0.60
+    tie_breaker_metric: str = "coverage"
+    balanced_precision_tie_tolerance: float = 0.002
+
+
+@dataclass(frozen=True)
+class SampleWeightingConfig:
+    enabled: bool = True
+    mode: str = "linear_ramp"
+    min_abs_return: float = 0.0001
+    full_weight_abs_return: float = 0.0005
+    min_weight: float = 0.20
+    max_weight: float = 1.00
+
+
+@dataclass(frozen=True)
+class ValidationConfig:
+    mode: str = "chronological_holdout"
+    train_days: int = 30
+    validation_days: int = 30
+    report_worst_fold: bool = False
+
+
+@dataclass(frozen=True)
+class ReportingConfig:
+    include_precision_coverage_frontier: bool = True
+    include_boundary_slices: bool = True
+    include_regime_slices: bool = True
+    include_calibration_metrics: bool = False
+
+
+@dataclass(frozen=True)
 class DatasetConfig:
     train_start: str
     train_end: str
     validation_window_days: int = 30
+    train_window_days: int = 30
     strict_grid_only: bool = True
     drop_incomplete_candles: bool = True
     walk_forward: dict[str, Any] = field(default_factory=dict)
@@ -235,6 +279,12 @@ class TwoStagePolicyConfig:
 
 
 @dataclass(frozen=True)
+class SelectiveBinaryPolicyConfig:
+    t_up: float | None = None
+    t_down: float | None = None
+
+
+@dataclass(frozen=True)
 class SignalConfig:
     policies: dict[str, dict[str, Any]]
 
@@ -244,6 +294,13 @@ class SignalConfig:
         except KeyError as exc:
             raise KeyError(f"Unknown signal policy '{name}'.") from exc
         return TwoStagePolicyConfig(**payload)
+
+    def get_selective_binary_policy(self, name: str) -> SelectiveBinaryPolicyConfig:
+        try:
+            payload = self.policies[name]
+        except KeyError as exc:
+            raise KeyError(f"Unknown signal policy '{name}'.") from exc
+        return SelectiveBinaryPolicyConfig(**payload)
 
 
 @dataclass(frozen=True)
@@ -267,8 +324,12 @@ class PathsConfig:
 class Settings:
     project: ProjectConfig
     market: MarketConfig
+    objective: ObjectiveConfig
     horizons: HorizonsConfig
     dataset: DatasetConfig
+    sample_weighting: SampleWeightingConfig
+    threshold_search: ThresholdSearchConfig
+    validation: ValidationConfig
     features: FeaturesConfig
     labels: LabelsConfig
     derivatives: DerivativesConfig
@@ -279,6 +340,7 @@ class Settings:
     sizing: PluginGroupConfig
     execution: ExecutionConfig
     paths: PathsConfig
+    reporting: ReportingConfig
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "Settings":
@@ -300,17 +362,22 @@ class Settings:
         return cls(
             project=ProjectConfig(**payload["project"]),
             market=MarketConfig(**payload["market"]),
+            objective=ObjectiveConfig(**payload.get("objective", {})),
             horizons=horizons,
             dataset=DatasetConfig(
                 train_start=payload["dataset"]["train_start"],
                 train_end=payload["dataset"]["train_end"],
                 validation_window_days=payload["dataset"].get("validation_window_days", 30),
+                train_window_days=payload["dataset"].get("train_window_days", 30),
                 strict_grid_only=payload["dataset"].get("strict_grid_only", True),
                 drop_incomplete_candles=payload["dataset"].get("drop_incomplete_candles", True),
                 walk_forward=payload["dataset"].get("walk_forward", {}),
                 threshold_search=ThresholdSearchConfig(**payload["dataset"].get("threshold_search", {})),
                 sample_quality_filter=payload["dataset"].get("sample_quality_filter", {}),
             ),
+            sample_weighting=SampleWeightingConfig(**payload.get("sample_weighting", {})),
+            threshold_search=ThresholdSearchConfig(**payload.get("threshold_search", {})),
+            validation=ValidationConfig(**payload.get("validation", {})),
             features=features,
             labels=LabelsConfig(
                 two_stage=TwoStageLabelsConfig(**payload.get("labels", {}).get("two_stage", {}))
@@ -344,6 +411,7 @@ class Settings:
             sizing=PluginGroupConfig(**payload["sizing"]),
             execution=ExecutionConfig(**payload["execution"]),
             paths=PathsConfig(**payload["paths"]),
+            reporting=ReportingConfig(**payload.get("reporting", {})),
         )
 
 

@@ -32,6 +32,19 @@ class TwoStageArtifactBundle:
     training_report: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class BinarySelectiveArtifactBundle:
+    model: ModelPlugin
+    calibrator: CalibrationPlugin
+    feature_columns: list[str]
+    t_up: float
+    t_down: float
+    base_rate: float
+    reference_probabilities: list[float]
+    model_version: str | None
+    training_report: dict[str, Any]
+
+
 def discover_latest_artifact_dir(search_root: str | Path = "artifacts") -> Path | None:
     root = Path(search_root)
     if not root.exists():
@@ -150,6 +163,59 @@ def load_two_stage_artifacts(
         base_rate=float(report.get("base_rate", 0.5)),
         stage1_reference_probabilities=stage1_reference_probabilities,
         stage2_direction_reference=stage2_direction_reference,
+        model_version=report.get("config_hash"),
+        training_report=report,
+    )
+
+
+def load_binary_selective_artifacts(
+    settings: Settings,
+    *,
+    report_path: str | Path | None = None,
+    artifact_dir: str | Path | None = None,
+    model_path: str | Path | None = None,
+    calibrator_path: str | Path | None = None,
+) -> BinarySelectiveArtifactBundle:
+    resolved_report_path: Path | None = None
+    resolved_artifact_dir: Path | None = Path(artifact_dir) if artifact_dir is not None else None
+    if resolved_artifact_dir is None and report_path is None:
+        resolved_artifact_dir = discover_latest_artifact_dir()
+    if report_path is not None:
+        resolved_report_path = Path(report_path)
+    elif resolved_artifact_dir is not None:
+        manifest_candidate = resolved_artifact_dir / "artifact_manifest.json"
+        if manifest_candidate.exists():
+            resolved_report_path = manifest_candidate
+
+    report: dict[str, Any] = _read_report(resolved_report_path) if resolved_report_path is not None else {}
+    artifact_root = resolved_artifact_dir if resolved_artifact_dir is not None else (
+        resolved_report_path.parent if resolved_report_path is not None else None
+    )
+    model_name = report.get("model_plugin", settings.model.resolve_plugin(stage="binary"))
+    calibrator_name = report.get("calibration_plugin", settings.calibration.resolve_plugin(stage="binary"))
+
+    if artifact_root is not None:
+        model_path = model_path or artifact_root / f"{model_name}.binary.pkl"
+        calibrator_path = calibrator_path or artifact_root / f"{calibrator_name}.binary.pkl"
+    if model_path is None or calibrator_path is None:
+        raise ValueError("Binary artifact paths are incomplete. Provide report_path or explicit paths.")
+
+    reference = []
+    reference_path = report.get("probability_reference_path")
+    if reference_path and artifact_root is not None:
+        resolved_reference = artifact_root / reference_path
+        if resolved_reference.exists():
+            payload = _read_report(resolved_reference)
+            reference = [float(value) for value in payload.get("p_up_train", {}).get("sample", [])]
+
+    return BinarySelectiveArtifactBundle(
+        model=load_model_plugin(model_name, str(model_path)),
+        calibrator=load_calibration_plugin(calibrator_name, str(calibrator_path)),
+        feature_columns=list(report.get("feature_columns", [])),
+        t_up=float(report["t_up"]),
+        t_down=float(report["t_down"]),
+        base_rate=float(report.get("base_rate", 0.5)),
+        reference_probabilities=reference,
         model_version=report.get("config_hash"),
         training_report=report,
     )

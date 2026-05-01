@@ -20,8 +20,7 @@ from src.core.validation import normalize_ohlcv_frame
 from src.data.preprocess import drop_incomplete_samples, filter_by_timerange
 from src.features.builder import build_feature_frame
 from src.horizons.registry import get_horizon_spec
-from src.labels.abs_return import build_abs_return_frame, compute_stage1_boundary_weight
-from src.labels.three_class_direction import build_three_class_direction_target
+from src.labels.abs_return import build_abs_return_frame
 from src.labels.registry import get_label_builder
 
 
@@ -45,6 +44,49 @@ BASE_DATASET_COLUMNS = {
     DEFAULT_STAGE2_TARGET_COLUMN,
     DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN,
 }
+
+RAW_METADATA_FEATURE_COLUMNS = {
+    "raw_timestamp",
+    "date",
+    "open_time",
+    "close_time",
+    "quote_volume",
+    "quote_asset_volume",
+    "taker_buy_volume",
+    "taker_buy_base_asset_volume",
+    "taker_buy_quote_volume",
+    "taker_buy_quote_asset_volume",
+    "count",
+    "number_of_trades",
+    "ignore",
+    "symbol",
+    "market_family",
+    "data_type",
+    "interval",
+    "source_file",
+    "source_date",
+    "source_granularity",
+    "source_version",
+    "checksum_status",
+    "expected_checksum",
+    "actual_checksum",
+    "ingested_at",
+    "download_status",
+}
+
+RAW_METADATA_PREFIXES = (
+    "raw_",
+    "source_",
+    "checksum_",
+)
+
+
+def is_allowed_feature_column(column: str) -> bool:
+    if column in BASE_DATASET_COLUMNS or column in RAW_METADATA_FEATURE_COLUMNS:
+        return False
+    if any(column.startswith(prefix) for prefix in RAW_METADATA_PREFIXES):
+        return False
+    return True
 
 
 @dataclass(frozen=True)
@@ -70,7 +112,13 @@ class TrainingFrame:
 
 
 def infer_feature_columns(df: pd.DataFrame) -> list[str]:
-    return [column for column in df.columns if column not in BASE_DATASET_COLUMNS]
+    return [column for column in df.columns if is_allowed_feature_column(column)]
+
+
+def assert_feature_schema(feature_columns: list[str]) -> None:
+    forbidden = [column for column in feature_columns if not is_allowed_feature_column(column)]
+    if forbidden:
+        raise ValueError(f"Forbidden raw metadata columns selected as features: {forbidden}")
 
 
 def build_training_frame(
@@ -78,6 +126,7 @@ def build_training_frame(
     settings: Settings,
     horizon_name: str | None = None,
     derivatives_frame: pd.DataFrame | None = None,
+    second_level_features_frame: pd.DataFrame | None = None,
 ) -> TrainingFrame:
     horizon = get_horizon_spec(settings, horizon_name)
     normalized = normalize_ohlcv_frame(raw_df, timestamp_column=DEFAULT_TIMESTAMP_COLUMN, require_volume=False)
@@ -88,6 +137,7 @@ def build_training_frame(
         horizon_name=horizon.name,
         select_grid_only=True,
         derivatives_frame=derivatives_frame,
+        second_level_features_frame=second_level_features_frame,
     )
     label_builder = get_label_builder(horizon.label_builder)
     label_frame = label_builder.build(normalized, settings, horizon, select_grid_only=True)
@@ -113,23 +163,40 @@ def build_training_frame(
     )
 
     feature_columns = infer_feature_columns(training_frame)
+    assert_feature_schema(feature_columns)
     if settings.dataset.drop_incomplete_candles:
         training_frame = drop_incomplete_samples(
             training_frame,
             feature_columns=feature_columns,
             target_column=DEFAULT_TARGET_COLUMN,
         )
-    tau = float(settings.labels.two_stage.active_return_threshold)
-    training_frame[DEFAULT_STAGE2_TARGET_COLUMN] = build_three_class_direction_target(
-        training_frame[DEFAULT_SIGNED_RETURN_COLUMN],
-        tau=tau,
+    training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = compute_sample_weight(
+        training_frame[DEFAULT_ABS_RETURN_COLUMN],
+        settings=settings,
     )
-    boundary_weight = compute_stage1_boundary_weight(training_frame[DEFAULT_ABS_RETURN_COLUMN], tau=tau)
-    training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = boundary_weight
 
     return TrainingFrame(
         frame=training_frame.reset_index(drop=True),
         feature_columns=feature_columns,
         target_column=DEFAULT_TARGET_COLUMN,
-        sample_weight_column=None,
+        sample_weight_column=DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN if settings.sample_weighting.enabled else None,
     )
+
+
+def compute_sample_weight(abs_return: pd.Series, settings: Settings) -> pd.Series:
+    config = settings.sample_weighting
+    weights = pd.Series(float(config.max_weight), index=abs_return.index, dtype="float64")
+    if not config.enabled:
+        return weights
+    if config.mode != "linear_ramp":
+        raise ValueError(f"Unsupported sample weighting mode: {config.mode}")
+
+    values = abs_return.astype("float64")
+    ramp_denominator = float(config.full_weight_abs_return)
+    if ramp_denominator <= 0:
+        raise ValueError("sample_weighting.full_weight_abs_return must be > 0.")
+
+    ramp = float(config.min_weight) + (float(config.max_weight) - float(config.min_weight)) * values / ramp_denominator
+    weights = ramp.clip(lower=float(config.min_weight), upper=float(config.max_weight))
+    weights = weights.mask(values < float(config.min_abs_return), float(config.min_weight))
+    return weights.fillna(float(config.min_weight)).astype("float64")

@@ -58,6 +58,7 @@ def build_feature_frame(
     horizon_name: str | None = None,
     select_grid_only: bool | None = None,
     derivatives_frame: pd.DataFrame | None = None,
+    second_level_features_frame: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     normalized = normalize_ohlcv_frame(df, timestamp_column=DEFAULT_TIMESTAMP_COLUMN, require_volume=False)
     horizon = get_horizon_spec(settings, horizon_name)
@@ -70,6 +71,19 @@ def build_feature_frame(
         )
     else:
         feature_frame = normalized.copy()
+
+    if second_level_features_frame is not None and not second_level_features_frame.empty:
+        second_level_features = second_level_features_frame.copy()
+        second_level_features[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(
+            second_level_features[DEFAULT_TIMESTAMP_COLUMN],
+            utc=True,
+        )
+        feature_frame = feature_frame.merge(
+            second_level_features,
+            on=DEFAULT_TIMESTAMP_COLUMN,
+            how="left",
+            validate="one_to_one",
+        )
 
     for pack_name in profile.packs:
         pack = get_feature_pack(pack_name)

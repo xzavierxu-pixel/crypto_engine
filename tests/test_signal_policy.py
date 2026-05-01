@@ -7,23 +7,20 @@ from src.core.schemas import RiskState, Signal
 from src.signal.decision_engine import evaluate_entry
 
 
-def test_decision_engine_accepts_yes_signal_when_stage2_yes_threshold_passes() -> None:
+def test_decision_engine_accepts_yes_signal_when_binary_up_threshold_passes() -> None:
     settings = load_settings()
     signal = Signal(
         asset="BTC/USDT",
         horizon="5m",
         t0=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
         p_down=0.15,
-        p_flat=0.20,
+        p_flat=None,
         p_up=0.65,
         model_version="m1",
         feature_version="v1",
-        p_active=0.74,
         decision_context={
-            "stage1_threshold": 0.5,
-            "up_threshold": 0.60,
-            "down_threshold": 0.60,
-            "margin_threshold": 0.10,
+            "t_up": 0.60,
+            "t_down": 0.40,
         },
     )
     decision = evaluate_entry(
@@ -37,23 +34,20 @@ def test_decision_engine_accepts_yes_signal_when_stage2_yes_threshold_passes() -
     assert decision.target_size == 5.0
 
 
-def test_decision_engine_rejects_when_stage1_is_below_threshold() -> None:
+def test_decision_engine_rejects_when_binary_score_is_between_thresholds() -> None:
     settings = load_settings()
     signal = Signal(
         asset="BTC/USDT",
         horizon="5m",
         t0=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
-        p_down=None,
+        p_down=0.48,
         p_flat=None,
-        p_up=None,
+        p_up=0.52,
         model_version="m1",
         feature_version="v1",
-        p_active=0.20,
         decision_context={
-            "stage1_threshold": 0.5,
-            "up_threshold": 0.60,
-            "down_threshold": 0.60,
-            "margin_threshold": 0.10,
+            "t_up": 0.60,
+            "t_down": 0.40,
         },
     )
     decision = evaluate_entry(
@@ -63,4 +57,4 @@ def test_decision_engine_rejects_when_stage1_is_below_threshold() -> None:
         risk_state=RiskState(current_exposure=0.20, max_total_exposure=0.20, active_positions=1),
     )
     assert decision.should_trade is False
-    assert decision.reason == "stage1_below_threshold"
+    assert decision.reason == "selective_binary_abstain"

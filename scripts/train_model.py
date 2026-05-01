@@ -17,12 +17,18 @@ from src.core.config import load_settings
 from src.core.constants import DERIVATIVES_SCHEMA_VERSION
 from src.core.versioning import hash_config
 from src.data.dataset_builder import build_training_frame
+from src.data.dataset_builder import RAW_METADATA_FEATURE_COLUMNS
 from src.data.derivatives.feature_store import (
     load_derivatives_frame_from_settings,
     resolve_derivatives_paths,
 )
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
-from src.model.train import load_cached_training_split, split_training_frame, train_two_stage_model_from_split
+from src.data.second_level_features import build_second_level_feature_frame, load_second_level_frame
+from src.model.train import (
+    load_cached_training_split,
+    split_recent_train_validation_frame,
+    train_binary_selective_model_from_split,
+)
 
 
 def _load_input(path: Path):
@@ -86,9 +92,53 @@ def _run_split_data_quality_report(output_dir: Path) -> None:
     subprocess.run(command, check=True, cwd=str(REPO_ROOT))
 
 
+def _feature_presence(feature_columns: list[str], prefixes: tuple[str, ...], names: tuple[str, ...] = ()) -> bool:
+    feature_set = set(feature_columns)
+    return any(column in feature_set for column in names) or any(
+        column.startswith(prefix) for column in feature_columns for prefix in prefixes
+    )
+
+
+def _build_data_availability_report(feature_columns: list[str], derivatives_paths: dict) -> dict:
+    return {
+        "funding_features_available": _feature_presence(feature_columns, ("funding_",), ("funding_abs",)),
+        "basis_features_available": _feature_presence(feature_columns, ("basis_",), ("premium_index",)),
+        "book_ticker_features_available": _feature_presence(
+            feature_columns,
+            ("book_",),
+            ("spread_bps", "mid_price", "microprice", "bid_ask_qty_imbalance"),
+        ),
+        "flow_proxy_features_available": _feature_presence(
+            feature_columns,
+            ("taker_",),
+            ("signed_dollar_flow", "positive_taker_imbalance", "negative_taker_imbalance"),
+        ),
+        "funding_path_exists": bool(derivatives_paths.get("funding_path") and Path(derivatives_paths["funding_path"]).exists()),
+        "basis_path_exists": bool(derivatives_paths.get("basis_path") and Path(derivatives_paths["basis_path"]).exists()),
+        "book_ticker_path_exists": bool(
+            derivatives_paths.get("book_ticker_path") and Path(derivatives_paths["book_ticker_path"]).exists()
+        ),
+    }
+
+
+def _threshold_constraint_report(threshold_search: dict) -> dict:
+    best = threshold_search.get("best", {})
+    side_guarded = threshold_search.get("side_guarded_best", {})
+    return {
+        "threshold_constraint_satisfied": bool(best.get("constraint_satisfied", False)),
+        "threshold_fallback_reason": best.get("fallback_reason"),
+        "side_guardrail_constraint_satisfied": bool(side_guarded.get("constraint_satisfied", False)),
+        "side_guardrail_fallback_reason": side_guarded.get("fallback_reason"),
+        "side_guardrail_t_up": side_guarded.get("t_up"),
+        "side_guardrail_t_down": side_guarded.get("t_down"),
+        "side_guardrail_balanced_precision": side_guarded.get("balanced_precision"),
+        "side_guardrail_coverage": side_guarded.get("coverage"),
+    }
+
+
 def main() -> None:
     _configure_logging()
-    parser = argparse.ArgumentParser(description="Train the two-stage BTC Polymarket model.")
+    parser = argparse.ArgumentParser(description="Train the BTC 5m weighted binary selective direction model.")
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--input", help="Path to OHLCV CSV or parquet input.")
     input_group.add_argument(
@@ -103,6 +153,9 @@ def main() -> None:
     parser.add_argument("--oi-input", help="Optional OI raw input override.")
     parser.add_argument("--options-input", help="Optional options raw input override.")
     parser.add_argument("--book-ticker-input", help="Optional bookTicker raw input override.")
+    parser.add_argument("--agg-trades-input", help="Optional second-level aggregate trades input.")
+    parser.add_argument("--trades-input", help="Optional second-level raw trades input.")
+    parser.add_argument("--second-book-ticker-input", help="Optional second-level bookTicker input.")
     parser.add_argument(
         "--derivatives-path-mode",
         choices=["latest", "archive"],
@@ -113,8 +166,15 @@ def main() -> None:
         "--validation-window-days",
         type=int,
         default=None,
-        help="Validation window size in days. Defaults to the value in config/settings.yaml.",
+        help="Validation window size in days. Defaults to validation.validation_days in config/settings.yaml.",
     )
+    parser.add_argument(
+        "--train-window-days",
+        type=int,
+        default=None,
+        help="Training window size in days. Defaults to validation.train_days in config/settings.yaml.",
+    )
+    parser.add_argument("--unweighted", action="store_true", help="Disable sample weights for an unweighted control run.")
     parser.add_argument("--purge-rows", type=int, default=1, help="Grid rows removed between train and validation splits.")
     args = parser.parse_args()
     logging.info("Loading settings from %s", args.config)
@@ -135,7 +195,12 @@ def main() -> None:
     validation_window_days = (
         args.validation_window_days
         if args.validation_window_days is not None
-        else settings.dataset.validation_window_days
+        else settings.validation.validation_days
+    )
+    train_window_days = (
+        args.train_window_days
+        if args.train_window_days is not None
+        else settings.validation.train_days
     )
 
     if args.cached_split_dir:
@@ -161,16 +226,38 @@ def main() -> None:
             book_ticker_path=args.book_ticker_input,
             path_mode=args.derivatives_path_mode,
         )
+        second_level_features_frame = None
+        if args.agg_trades_input or args.trades_input or args.second_book_ticker_input:
+            trade_frames = []
+            if args.agg_trades_input:
+                logging.info("Loading second-level aggTrades from %s", args.agg_trades_input)
+                trade_frames.append(load_second_level_frame(args.agg_trades_input))
+            if args.trades_input:
+                logging.info("Loading second-level trades from %s", args.trades_input)
+                trade_frames.append(load_second_level_frame(args.trades_input))
+            book_frame = None
+            if args.second_book_ticker_input:
+                logging.info("Loading second-level bookTicker from %s", args.second_book_ticker_input)
+                book_frame = load_second_level_frame(args.second_book_ticker_input)
+            trades_frame = pd.concat(trade_frames, ignore_index=True) if trade_frames else None
+            logging.info("Aggregating second-level features to decision timestamps")
+            second_level_features_frame = build_second_level_feature_frame(
+                source,
+                trades_frame=trades_frame,
+                book_frame=book_frame,
+            )
         logging.info("Building training frame for horizon=%s", args.horizon)
         training = build_training_frame(
             source,
             settings,
             horizon_name=args.horizon,
             derivatives_frame=derivatives_frame,
+            second_level_features_frame=second_level_features_frame,
         )
-        development, validation = split_training_frame(
+        development, validation = split_recent_train_validation_frame(
             training,
-            validation_window_days=validation_window_days,
+            train_days=train_window_days,
+            validation_days=validation_window_days,
             purge_rows=args.purge_rows,
         )
         _write_cached_split(output_dir, development, validation)
@@ -179,63 +266,78 @@ def main() -> None:
         train_start = str(training.frame["timestamp"].min()) if not training.frame.empty else None
         train_end = str(training.frame["timestamp"].max()) if not training.frame.empty else None
         logging.info(
-            "Training two-stage model: rows=%s, validation_window_days=%s, purge_rows=%s",
+            "Training binary selective model: rows=%s, train_window_days=%s, validation_window_days=%s, purge_rows=%s",
             len(training.frame),
+            train_window_days,
             validation_window_days,
             args.purge_rows,
         )
 
-    logging.info("Starting decoupled threshold search for Stage 1 filter and Stage 2 decisions")
-    artifacts = train_two_stage_model_from_split(
+    logging.info("Starting asymmetric p_up threshold search")
+    artifacts = train_binary_selective_model_from_split(
         development=development,
         validation=validation,
         settings=settings,
+        weighted=not args.unweighted,
     )
 
     logging.info("Writing artifacts to %s", output_dir)
-    stage1_model_path = output_dir / f"{settings.model.resolve_plugin(stage='stage1')}.stage1.pkl"
-    stage2_model_path = output_dir / f"{settings.model.resolve_plugin(stage='stage2')}.stage2.pkl"
-    stage1_calibrator_path = output_dir / f"{artifacts.stage1_calibrator.name}.stage1.pkl"
-    stage2_calibrator_path = output_dir / f"{artifacts.stage2_calibrator.name}.stage2.pkl"
+    model_name = settings.model.resolve_plugin(stage="binary")
+    model_path = output_dir / f"{model_name}.binary.pkl"
+    calibrator_path = output_dir / f"{artifacts.calibrator.name}.binary.pkl"
     manifest_path = output_dir / "artifact_manifest.json"
+    metrics_path = output_dir / "metrics.json"
     threshold_search_path = output_dir / "threshold_search.json"
-    stage1_probability_reference_path = output_dir / "stage1_probability_reference.json"
-    stage2_direction_reference_path = output_dir / "stage2_direction_reference.json"
-    artifacts.stage1_model.save(stage1_model_path)
-    artifacts.stage2_model.save(stage2_model_path)
-    artifacts.stage1_calibrator.save(stage1_calibrator_path)
-    artifacts.stage2_calibrator.save(stage2_calibrator_path)
+    threshold_frontier_path = output_dir / "threshold_frontier.csv"
+    boundary_slices_path = output_dir / "boundary_slices.csv"
+    regime_slices_path = output_dir / "regime_slices.csv"
+    feature_importance_path = output_dir / "feature_importance.csv"
+    probability_deciles_path = output_dir / "probability_deciles.csv"
+    false_up_slices_path = output_dir / "false_up_slices.csv"
+    false_down_slices_path = output_dir / "false_down_slices.csv"
+    probability_reference_path = output_dir / "probability_reference.json"
+    artifacts.model.save(model_path)
+    artifacts.calibrator.save(calibrator_path)
     threshold_search_path.write_text(json.dumps(artifacts.threshold_search, indent=2), encoding="utf-8")
-    stage1_probability_reference_path.write_text(
-        json.dumps(artifacts.stage1_probability_reference, indent=2),
-        encoding="utf-8",
-    )
-    stage2_direction_reference_path.write_text(
-        json.dumps(artifacts.stage2_direction_reference, indent=2),
-        encoding="utf-8",
-    )
+    artifacts.threshold_frontier.to_csv(threshold_frontier_path, index=False)
+    artifacts.boundary_slices.to_csv(boundary_slices_path, index=False)
+    artifacts.regime_slices.to_csv(regime_slices_path, index=False)
+    artifacts.feature_importance.to_csv(feature_importance_path, index=False)
+    artifacts.probability_deciles.to_csv(probability_deciles_path, index=False)
+    artifacts.false_up_slices.to_csv(false_up_slices_path, index=False)
+    artifacts.false_down_slices.to_csv(false_down_slices_path, index=False)
+    probability_reference_path.write_text(json.dumps(artifacts.probability_reference, indent=2), encoding="utf-8")
+    metrics_payload = {
+        "train": artifacts.train_metrics,
+        "validation": artifacts.validation_metrics,
+        "thresholds": {"t_up": artifacts.t_up, "t_down": artifacts.t_down},
+        "threshold_search": artifacts.threshold_search["best"],
+    }
+    metrics_path.write_text(json.dumps(metrics_payload, indent=2), encoding="utf-8")
     manifest_payload = {
         "project": settings.project.name,
         "market": settings.market.pair,
         "exchange": settings.market.exchange,
         "horizon": args.horizon,
-        "feature_counts": {
-            "stage1": len(artifacts.feature_columns),
-            "stage2": len(artifacts.stage2_feature_columns),
-        },
-        "stage2_feature_columns": artifacts.stage2_feature_columns,
-        "model_plugins": {
-            "stage1": settings.model.resolve_plugin(stage="stage1"),
-            "stage2": settings.model.resolve_plugin(stage="stage2"),
-        },
-        "calibration_plugins": {
-            "stage1": artifacts.stage1_calibrator.name,
-            "stage2": artifacts.stage2_calibrator.name,
-        },
+        "objective": "weighted_binary_selective_direction",
+        "feature_count": len(artifacts.feature_columns),
+        "feature_columns": artifacts.feature_columns,
+        "raw_metadata_feature_count": sum(1 for column in artifacts.feature_columns if column in RAW_METADATA_FEATURE_COLUMNS),
+        "data_availability": _build_data_availability_report(artifacts.feature_columns, derivatives_paths),
+        "model_plugin": model_name,
+        "calibration_plugin": artifacts.calibrator.name,
         "config_hash": hash_config(settings),
         "train_row_count": training_row_count,
         "train_start": train_start,
         "train_end": train_end,
+        "second_level": {
+            "agg_trades_input": args.agg_trades_input,
+            "trades_input": args.trades_input,
+            "book_ticker_input": args.second_book_ticker_input,
+            "feature_count": sum(1 for column in artifacts.feature_columns if column.startswith("sl_")),
+        },
+        "weighted": artifacts.weighted,
+        "sample_weighting": settings.sample_weighting.__dict__,
         "sample_quality_filter": settings.dataset.sample_quality_filter,
         "derivatives": {
             "enabled": settings.derivatives.enabled,
@@ -252,52 +354,39 @@ def main() -> None:
             "options_path": derivatives_paths["options_path"],
             "book_ticker_path": derivatives_paths["book_ticker_path"],
         },
+        "train_window_days": train_window_days,
         "validation_window_days": validation_window_days,
         "purge_rows": args.purge_rows,
-        "stage1_threshold": artifacts.stage1_threshold,
-        "up_threshold": artifacts.up_threshold,
-        "down_threshold": artifacts.down_threshold,
-        "margin_threshold": artifacts.margin_threshold,
+        "t_up": artifacts.t_up,
+        "t_down": artifacts.t_down,
         "base_rate": artifacts.base_rate,
-        "threshold_selection_data": {
-            "stage1": artifacts.threshold_search.get("stage1_threshold_search", {}).get("selection_data"),
-            "stage2": artifacts.threshold_search.get("stage2_threshold_search", {}).get("selection_data"),
-        },
-        "threshold_search_constraints": {
-            "stage1": {
-                "coverage_min": artifacts.threshold_search.get("stage1_threshold_search", {}).get("coverage_min"),
-                "coverage_max": artifacts.threshold_search.get("stage1_threshold_search", {}).get("coverage_max"),
-                "constraint_satisfied": artifacts.threshold_search.get("stage1_threshold_search", {}).get("constraint_satisfied"),
-                "fallback_reason": artifacts.threshold_search.get("stage1_threshold_search", {}).get("fallback_reason"),
-            },
-            "stage2": {
-                "min_active_samples": artifacts.threshold_search.get("stage2_threshold_search", {}).get("min_active_samples"),
-                "min_end_to_end_coverage": artifacts.threshold_search.get("stage2_threshold_search", {}).get("min_end_to_end_coverage"),
-                "constraint_satisfied": artifacts.threshold_search.get("stage2_threshold_search", {}).get("constraint_satisfied"),
-                "fallback_reason": artifacts.threshold_search.get("stage2_threshold_search", {}).get("fallback_reason"),
-            },
-        },
+        "threshold_constraint_report": _threshold_constraint_report(artifacts.threshold_search),
+        "threshold_search_constraints": artifacts.threshold_search,
+        "metrics_path": metrics_path.name,
         "threshold_search_path": threshold_search_path.name,
-        "stage1_probability_summary": artifacts.stage1_probability_summary,
-        "stage1_probability_reference_path": stage1_probability_reference_path.name,
-        "stage2_direction_reference_path": stage2_direction_reference_path.name,
+        "threshold_frontier_path": threshold_frontier_path.name,
+        "boundary_slices_path": boundary_slices_path.name,
+        "regime_slices_path": regime_slices_path.name,
+        "feature_importance_path": feature_importance_path.name,
+        "probability_deciles_path": probability_deciles_path.name,
+        "false_up_slices_path": false_up_slices_path.name,
+        "false_down_slices_path": false_down_slices_path.name,
+        "probability_summary": artifacts.probability_summary,
+        "probability_reference_path": probability_reference_path.name,
         "train_metrics": artifacts.train_metrics,
         "train_window": artifacts.train_window,
         "validation_window": artifacts.validation_window,
         "validation_metrics": artifacts.validation_metrics,
-        "walk_forward_summary": artifacts.walk_forward_summary,
-        "walk_forward_folds": artifacts.walk_forward_fold_details,
     }
     manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
     logging.info(
-        "Training finished: stage1_threshold=%.4f, up_threshold=%.4f, down_threshold=%.4f, margin_threshold=%.4f, stage1_valid_precision=%.4f, stage1_valid_recall=%.4f, stage2_valid_macro_f1=%.4f",
-        artifacts.stage1_threshold,
-        artifacts.up_threshold,
-        artifacts.down_threshold,
-        artifacts.margin_threshold,
-        artifacts.validation_metrics["stage1"].get("precision", 0.0),
-        artifacts.validation_metrics["stage1"].get("recall", 0.0),
-        artifacts.validation_metrics["stage2"].get("macro_f1", 0.0),
+        "Training finished: t_up=%.4f, t_down=%.4f, coverage=%.4f, balanced_precision=%.4f, precision_up=%.4f, precision_down=%.4f",
+        artifacts.t_up,
+        artifacts.t_down,
+        artifacts.validation_metrics.get("coverage", 0.0),
+        artifacts.validation_metrics.get("balanced_precision", 0.0),
+        artifacts.validation_metrics.get("precision_up", 0.0),
+        artifacts.validation_metrics.get("precision_down", 0.0),
     )
 
 

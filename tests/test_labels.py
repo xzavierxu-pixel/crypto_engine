@@ -28,7 +28,7 @@ def test_grid_direction_label_uses_grid_open_and_future_close() -> None:
     ]
     assert labeled.loc[0, "target"] == 1.0
     assert labeled.loc[1, "target"] == 1.0
-    assert labeled.loc[0, "label_version"] == "v2"
+    assert labeled.loc[0, "label_version"] == "settlement_direction_tie_up_v1"
 
 
 def test_grid_direction_label_supports_15m_horizon() -> None:
@@ -73,5 +73,5 @@ def test_grid_direction_label_uses_pure_direction_without_threshold_multiplier()
     labeled = GridDirectionLabelBuilder().build(frame, settings, horizon)
 
     assert labeled.loc[0, "target"] == 1.0
-    assert labeled.loc[1, "target"] == 0.0
-    assert labeled.loc[0, "label_version"] == "v2"
+    assert labeled.loc[1, "target"] == 1.0
+    assert labeled.loc[0, "label_version"] == "settlement_direction_tie_up_v1"

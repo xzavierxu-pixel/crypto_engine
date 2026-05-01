@@ -17,6 +17,14 @@ from src.features.market_quality import MarketQualityFeaturePack
 from src.features.momentum import MomentumFeaturePack
 from src.features.momentum_acceleration import MomentumAccelerationFeaturePack
 from src.features.path_structure import PathStructureFeaturePack
+from src.features.prd_microstructure import (
+    BookPressureFeaturePack,
+    CompletedBarMicrostructureFeaturePack,
+    EventWindowBurstFeaturePack,
+    FlowPressureFeaturePack,
+    SecondLevelMicrostructureFeaturePack,
+    SideSpecificTransformsFeaturePack,
+)
 from src.features.regime import RegimeFeaturePack
 from src.features.time_features import TimeFeaturePack
 from src.features.intra_5m_structure import Intra5mStructureFeaturePack
@@ -46,6 +54,13 @@ FEATURE_PACKS: dict[str, FeaturePack] = {
     "derivatives_book_ticker": DerivativesBookTickerFeaturePack(),
     "derivatives_oi": DerivativesOIFeaturePack(),
     "derivatives_options": DerivativesOptionsFeaturePack(),
+    "completed_bar_microstructure": CompletedBarMicrostructureFeaturePack(),
+    "flow_pressure": FlowPressureFeaturePack(),
+    "book_pressure": BookPressureFeaturePack(),
+    "second_level_microstructure": SecondLevelMicrostructureFeaturePack(),
+    "regime_interactions": InteractionBankFeaturePack(),
+    "event_window_burst": EventWindowBurstFeaturePack(),
+    "side_specific_transforms": SideSpecificTransformsFeaturePack(),
 }
 
 
