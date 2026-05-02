@@ -83,6 +83,7 @@ def test_normalize_binance_public_history_supports_additional_types_and_checksum
     trade_path = raw_root / "spot" / "trades" / "BTCUSDT" / "daily" / "2026-04-01" / "BTCUSDT-trades-2026-04-01.csv"
     cm_kline_path = raw_root / "futures_cm" / "klines" / "BTCUSD_PERP" / "1m" / "monthly" / "2026-01" / "BTCUSD_PERP-1m-2026-01.csv"
     bvol_path = raw_root / "option" / "BVOLIndex" / "BTCBVOLUSDT" / "daily" / "2026-04-01" / "BTCBVOLUSDT-BVOLIndex-2026-04-01.csv"
+    eoh_path = raw_root / "option" / "EOHSummary" / "BTCUSDT" / "daily" / "2026-04-01" / "BTCUSDT-EOHSummary-2026-04-01.csv"
     depth_path = raw_root / "futures_um" / "bookDepth" / "BTCUSDT" / "daily" / "2026-04-01" / "BTCUSDT-bookDepth-2026-04-01.csv"
 
     _write_text(
@@ -100,6 +101,11 @@ def test_normalize_binance_public_history_supports_additional_types_and_checksum
     _write_text(
         bvol_path,
         "calc_time,symbol,base_asset,quote_asset,index_value\n1775001600002,BTCBVOLUSDT,BTCBVOL,USDT,54.0601\n",
+    )
+    _write_text(
+        eoh_path,
+        "date,hour,symbol,underlying,type,strike,mark_iv,delta,openinterest_usdt\n"
+        "2026-04-01,00,BTC-260424-90000-C,BTCUSDT,C,260424-90000,0.55,0.51,1000\n",
     )
     _write_text(
         depth_path,
@@ -138,18 +144,23 @@ def test_normalize_binance_public_history_supports_additional_types_and_checksum
     assert "aggTrades" in output_paths
     assert "trades" in output_paths
     assert "BVOLIndex" in output_paths
+    assert "EOHSummary" in output_paths
     assert "bookDepth" in output_paths
     assert any(entry["market_family"] == "futures_cm" and entry["data_type"] == "klines" for entry in manifest["normalized_outputs"])
 
     agg_frame = pd.read_parquet(output_paths["aggTrades"])
     cm_frame = pd.read_parquet(next(Path(entry["output_path"]) for entry in manifest["normalized_outputs"] if entry["market_family"] == "futures_cm"))
     bvol_frame = pd.read_parquet(output_paths["BVOLIndex"])
+    eoh_frame = pd.read_parquet(output_paths["EOHSummary"])
     depth_frame = pd.read_parquet(output_paths["bookDepth"])
 
     assert agg_frame["checksum_status"].iloc[0] == "verified"
     assert agg_frame["download_status"].iloc[0] == "downloaded"
     assert cm_frame["checksum_status"].iloc[0] == "verified"
     assert bvol_frame["index_value"].iloc[0] == 54.0601
+    assert eoh_frame["timestamp"].iloc[0].isoformat() == "2026-04-01T00:00:00+00:00"
+    assert eoh_frame["strike_price"].iloc[0] == 90000.0
+    assert eoh_frame["mark_iv"].iloc[0] == 0.55
     assert depth_frame["percentage"].iloc[0] == -5.0
 
 
@@ -218,3 +229,22 @@ def test_normalize_binance_public_history_handles_chunked_event_streams_across_m
     assert trade_frame["timestamp"].is_monotonic_increasing
     assert agg_frame["price"].dtype == "float64"
     assert trade_frame["trade_id"].dtype.name == "Int64"
+
+
+def test_normalize_binance_public_history_normalizes_futures_trade_headers(tmp_path: Path) -> None:
+    raw_root = tmp_path / "raw"
+    _write_text(
+        raw_root / "futures_um" / "trades" / "BTCUSDT" / "daily" / "2026-04-01" / "BTCUSDT-trades-2026-04-01.csv",
+        "id,price,qty,quote_qty,time,is_buyer_maker\n"
+        "1,100.0,0.5,50.0,1775001600062762,False\n",
+    )
+
+    manifest = normalize_binance_public_history(tmp_path)
+
+    output = next(Path(entry["output_path"]) for entry in manifest["normalized_outputs"] if entry["data_type"] == "trades")
+    frame = pd.read_parquet(output)
+
+    assert frame["trade_id"].iloc[0] == 1
+    assert frame["quantity"].iloc[0] == 0.5
+    assert frame["quote_quantity"].iloc[0] == 50.0
+    assert frame["timestamp"].iloc[0].isoformat() == "2026-04-01T00:00:00.062762+00:00"

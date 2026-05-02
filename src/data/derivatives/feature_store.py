@@ -262,9 +262,15 @@ def _load_archive_frame(
         configured_symbols = settings.data_backfill.option.symbols.get("BVOLIndex", [])
         if configured_symbols:
             options_symbol = configured_symbols[0]
-        return load_archive_options_frame(resolved_archive_path, symbol=options_symbol)
+        try:
+            return load_archive_options_frame(resolved_archive_path, symbol=options_symbol)
+        except FileNotFoundError:
+            return None
     if source_name == "book_ticker":
-        return load_archive_book_ticker_frame(resolved_archive_path, symbol=symbol)
+        try:
+            return load_archive_book_ticker_frame(resolved_archive_path, symbol=symbol)
+        except FileNotFoundError:
+            return None
     return None
 
 

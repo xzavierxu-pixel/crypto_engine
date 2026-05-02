@@ -5,13 +5,21 @@ from dataclasses import replace
 import pandas as pd
 
 from src.core.config import DatasetConfig, load_settings
-from src.data.dataset_builder import TrainingFrame, build_training_frame
+from src.data.dataset_builder import TrainingFrame, build_training_frame, is_allowed_feature_column
 from src.model.train import _build_stage1_training_frame
 
 
 def test_build_training_frame_drops_incomplete_rows_and_exposes_feature_columns() -> None:
     base_settings = load_settings()
-    settings = replace(base_settings, derivatives=replace(base_settings.derivatives, enabled=False))
+    settings = replace(
+        base_settings,
+        dataset=replace(
+            base_settings.dataset,
+            train_start="2024-01-01T12:00:00Z",
+            train_end="2024-01-01T23:59:00Z",
+        ),
+        derivatives=replace(base_settings.derivatives, enabled=False),
+    )
     frame = pd.DataFrame(
         {
             "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=720, freq="1min"),
@@ -94,3 +102,8 @@ def test_stage1_training_frame_uses_boundary_weight_only() -> None:
     stage1_training = _build_stage1_training_frame(custom_training, settings)
 
     assert stage1_training.frame["stage1_sample_weight"].tolist() == frame["stage1_sample_weight"].tolist()
+
+
+def test_metadata_merge_suffix_columns_are_not_features() -> None:
+    assert not is_allowed_feature_column("interval_y")
+    assert not is_allowed_feature_column("source_file_x")

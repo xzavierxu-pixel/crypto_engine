@@ -244,6 +244,41 @@ def test_load_archive_options_frame_downsamples_bvolindex_to_minute_and_scales_p
     assert loaded["atm_iv_near"].tolist() == [0.45, 0.46]
 
 
+def test_load_archive_options_frame_uses_eoh_summary_when_available(tmp_path: Path) -> None:
+    from src.data.binance_public.derivatives_archive import load_archive_options_frame
+
+    normalized_root = tmp_path / "normalized"
+    path = normalized_root / "option" / "EOHSummary" / "BTCUSDT.parquet"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                [
+                    "2026-01-01T00:00:00Z",
+                    "2026-01-01T00:00:00Z",
+                    "2026-01-01T01:00:00Z",
+                ],
+                utc=True,
+            ),
+            "expiry": ["260131", "260228", "260131"],
+            "mark_iv": [0.40, 0.55, 0.42],
+            "delta": [0.49, 0.80, 0.50],
+            "openinterest_usdt": [100.0, 500.0, 200.0],
+            "symbol": ["BTCUSDT"] * 3,
+            "source_version": ["v1"] * 3,
+        }
+    ).to_parquet(path, index=False)
+
+    loaded = load_archive_options_frame(normalized_root, symbol="BTCBVOLUSDT")
+
+    assert loaded["timestamp"].dt.strftime("%Y-%m-%dT%H:%M:%SZ").tolist() == [
+        "2026-01-01T00:00:00Z",
+        "2026-01-01T01:00:00Z",
+    ]
+    assert loaded["atm_iv_near"].tolist() == [0.40, 0.42]
+    assert round(float(loaded["iv_term_slope"].iloc[0]), 2) == 0.15
+
+
 def test_load_derivatives_frame_from_settings_reads_archive_book_ticker(tmp_path: Path) -> None:
     settings = _build_archive_settings(tmp_path)
     settings = replace(

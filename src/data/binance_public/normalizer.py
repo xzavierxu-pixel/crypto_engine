@@ -109,6 +109,23 @@ FLOAT_LIKE_COLUMNS = {
     "depth",
     "notional",
     "index_value",
+    "strike_price",
+    "volume_contracts",
+    "volume_usdt",
+    "best_bid_price",
+    "best_ask_price",
+    "best_bid_qty",
+    "best_ask_qty",
+    "best_buy_iv",
+    "best_sell_iv",
+    "mark_price",
+    "mark_iv",
+    "delta",
+    "gamma",
+    "vega",
+    "theta",
+    "openinterest_contracts",
+    "openinterest_usdt",
 }
 
 INT_LIKE_COLUMNS = {
@@ -291,8 +308,26 @@ def _read_agg_trades_frame(descriptor: RawFileDescriptor) -> pd.DataFrame:
     return frame
 
 
+def _standardize_trade_columns(frame: pd.DataFrame) -> pd.DataFrame:
+    standardized = frame.rename(
+        columns={
+            "id": "trade_id",
+            "qty": "quantity",
+            "quote_qty": "quote_quantity",
+            "time": "transact_time",
+        }
+    )
+    if "quote_quantity" not in standardized.columns and {"price", "quantity"}.issubset(standardized.columns):
+        standardized["quote_quantity"] = (
+            pd.to_numeric(standardized["price"], errors="coerce")
+            * pd.to_numeric(standardized["quantity"], errors="coerce")
+        )
+    return standardized
+
+
 def _read_trades_frame(descriptor: RawFileDescriptor) -> pd.DataFrame:
     frame = _read_csv_with_optional_header(descriptor.file_path, TRADES_COLUMNS)
+    frame = _standardize_trade_columns(frame)
     frame = _coerce_numeric_columns(
         frame,
         ("trade_id", "price", "quantity", "quote_quantity", "transact_time"),
@@ -326,6 +361,46 @@ def _read_bvol_index_frame(descriptor: RawFileDescriptor) -> pd.DataFrame:
     frame["timestamp"] = _parse_timestamp_series(frame["calc_time"])
     frame["raw_timestamp"] = frame["calc_time"].astype(str)
     return _coerce_numeric_columns(frame, ("index_value",))
+
+
+def _read_eoh_summary_frame(descriptor: RawFileDescriptor) -> pd.DataFrame:
+    frame = pd.read_csv(descriptor.file_path)
+    if "date" not in frame.columns or "hour" not in frame.columns:
+        return _read_generic_timestamped_frame(descriptor, ["timestamp", "calc_time", "create_time"])
+
+    hour = pd.to_numeric(frame["hour"], errors="coerce").fillna(0).astype("int64").astype(str).str.zfill(2)
+    frame["timestamp"] = pd.to_datetime(frame["date"].astype(str) + " " + hour + ":00:00", utc=True)
+    frame["raw_timestamp"] = frame["date"].astype(str) + "T" + hour + ":00:00Z"
+    if "strike" in frame.columns and "strike_price" not in frame.columns:
+        strike_parts = frame["strike"].astype(str).str.extract(r"(?P<expiry>\d{6})-(?P<strike_price>[0-9.]+)")
+        frame["expiry"] = strike_parts["expiry"]
+        frame["strike_price"] = pd.to_numeric(strike_parts["strike_price"], errors="coerce")
+    return _coerce_numeric_columns(
+        frame,
+        (
+            "strike_price",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume_contracts",
+            "volume_usdt",
+            "best_bid_price",
+            "best_ask_price",
+            "best_bid_qty",
+            "best_ask_qty",
+            "best_buy_iv",
+            "best_sell_iv",
+            "mark_price",
+            "mark_iv",
+            "delta",
+            "gamma",
+            "vega",
+            "theta",
+            "openinterest_contracts",
+            "openinterest_usdt",
+        ),
+    )
 
 
 def _read_generic_timestamped_frame(
@@ -440,7 +515,7 @@ def _normalize_file(
     elif descriptor.data_type == "BVOLIndex":
         frame = _read_bvol_index_frame(descriptor)
     elif descriptor.data_type == "EOHSummary":
-        frame = _read_generic_timestamped_frame(descriptor, ["timestamp", "calc_time", "create_time"])
+        frame = _read_eoh_summary_frame(descriptor)
     elif descriptor.data_type == "liquidationSnapshot":
         frame = _read_generic_timestamped_frame(descriptor, ["timestamp", "time", "update_time"])
     elif descriptor.data_type == "aggTrades":
@@ -469,6 +544,7 @@ def _normalize_file_chunks(
         return
     if descriptor.data_type == "trades":
         for chunk in _read_csv_chunks_with_optional_header(descriptor.file_path, TRADES_COLUMNS, CSV_CHUNK_SIZE):
+            chunk = _standardize_trade_columns(chunk)
             chunk = _coerce_numeric_columns(
                 chunk,
                 ("trade_id", "price", "quantity", "quote_quantity", "transact_time"),

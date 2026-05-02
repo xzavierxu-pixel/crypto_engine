@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 
 COMMON_REQUIRED_COLUMNS = {
@@ -27,7 +28,6 @@ REQUIRED_COLUMNS_BY_DATA_TYPE: dict[str, set[str]] = {
     "klines": {"open", "high", "low", "close", "volume"},
     "markPriceKlines": {"open", "high", "low", "close"},
     "indexPriceKlines": {"open", "high", "low", "close"},
-    "premiumIndexKlines": {"open", "high", "low", "close"},
     "fundingRate": {"last_funding_rate", "funding_interval_hours"},
     "metrics": {"timestamp"},
     "bookTicker": {"bid_price", "bid_qty", "ask_price", "ask_qty"},
@@ -43,7 +43,6 @@ NON_NEGATIVE_COLUMNS_BY_DATA_TYPE: dict[str, set[str]] = {
     "klines": {"open", "high", "low", "close", "volume"},
     "markPriceKlines": {"open", "high", "low", "close"},
     "indexPriceKlines": {"open", "high", "low", "close"},
-    "premiumIndexKlines": {"open", "high", "low", "close"},
     "fundingRate": {"funding_interval_hours"},
     "bookTicker": {"bid_price", "bid_qty", "ask_price", "ask_qty"},
     "aggTrades": {"price", "quantity"},
@@ -54,6 +53,7 @@ NON_NEGATIVE_COLUMNS_BY_DATA_TYPE: dict[str, set[str]] = {
 
 EVENT_STREAM_TYPES = {"bookTicker", "aggTrades", "trades", "bookDepth", "liquidationSnapshot"}
 KLINE_TYPES = {"klines", "markPriceKlines", "indexPriceKlines", "premiumIndexKlines"}
+DUPLICATE_EXACT_CHECK_ROW_LIMIT = 2_000_000
 
 
 @dataclass(frozen=True)
@@ -112,9 +112,142 @@ def _has_non_negative_violations(frame: pd.DataFrame, data_type: str) -> bool:
     return False
 
 
-def _table_checks(file_path: Path) -> QaTableResult:
+def _empty_series(dtype: str = "object") -> pd.Series:
+    return pd.Series([], dtype=dtype)
+
+
+def _table_checks_streaming(file_path: Path) -> QaTableResult:
     market_family = file_path.parent.parent.name
     data_type = file_path.parent.name
+    symbol, interval = _infer_symbol_and_interval(file_path)
+    parquet_file = pq.ParquetFile(file_path)
+    columns = set(parquet_file.schema.names)
+    row_count = int(parquet_file.metadata.num_rows)
+
+    required_columns = _required_columns_for(data_type)
+    missing_required_columns = sorted(required_columns - columns)
+    if data_type in EVENT_STREAM_TYPES and row_count > DUPLICATE_EXACT_CHECK_ROW_LIMIT:
+        checks: dict[str, Any] = {
+            "required_columns_present": not missing_required_columns,
+            "missing_required_columns": missing_required_columns,
+            "non_empty": row_count > 0,
+            "timestamp_monotonic_increasing": None,
+            "duplicate_timestamp_symbol_rows": None,
+            "no_duplicate_timestamp_symbol_rows": None,
+            "has_negative_value_violation": None,
+            "no_negative_value_violation": None,
+            "event_stream_aggregatable": row_count > 0 and not missing_required_columns,
+            "large_event_stream_checks_skipped_reason": "row_count_exceeds_metadata_only_check_limit",
+        }
+        return QaTableResult(
+            market_family=market_family,
+            data_type=data_type,
+            symbol=symbol,
+            interval=interval,
+            file_path=str(file_path.resolve()),
+            row_count=row_count,
+            checks=checks,
+        )
+
+    if data_type == "bookDepth" and {"timestamp", "symbol", "percentage"}.issubset(columns):
+        duplicate_subset = ["timestamp", "symbol", "percentage"]
+    else:
+        duplicate_subset = ["timestamp", "symbol"] if {"timestamp", "symbol"}.issubset(columns) else ["timestamp"]
+    duplicate_rows: int | None = 0 if "timestamp" in columns and row_count <= DUPLICATE_EXACT_CHECK_ROW_LIMIT else None
+    seen_keys: set[object] = set()
+    monotonic = True
+    previous_timestamp: pd.Timestamp | None = None
+    continuity_ok: bool | None = True if interval == "1m" and data_type in KLINE_TYPES else None
+    gap_count: int | None = 0 if continuity_ok is not None else None
+    negative_violation = False
+
+    needed_columns = {"timestamp"} & columns
+    needed_columns.update((NON_NEGATIVE_COLUMNS_BY_DATA_TYPE.get(data_type, set()) & columns))
+    if duplicate_rows is not None:
+        needed_columns.update(set(duplicate_subset) & columns)
+
+    if needed_columns:
+        for row_group_index in range(parquet_file.num_row_groups):
+            frame = parquet_file.read_row_group(row_group_index, columns=sorted(needed_columns)).to_pandas()
+            if "timestamp" in frame.columns:
+                frame["timestamp"] = pd.to_datetime(frame["timestamp"], utc=True)
+                timestamps = frame["timestamp"]
+                if not timestamps.is_monotonic_increasing:
+                    monotonic = False
+                if previous_timestamp is not None and not timestamps.empty and timestamps.iloc[0] < previous_timestamp:
+                    monotonic = False
+                if continuity_ok is not None:
+                    diffs = timestamps.diff().dropna()
+                    if previous_timestamp is not None and not timestamps.empty:
+                        boundary_diff = timestamps.iloc[0] - previous_timestamp
+                        if boundary_diff > pd.Timedelta(minutes=1):
+                            gap_count += 1
+                        if boundary_diff != pd.Timedelta(minutes=1):
+                            continuity_ok = False
+                    if not diffs.empty:
+                        gap_count += int((diffs > pd.Timedelta(minutes=1)).sum())
+                        if not (diffs == pd.Timedelta(minutes=1)).all():
+                            continuity_ok = False
+                if not timestamps.empty:
+                    previous_timestamp = timestamps.iloc[-1]
+            else:
+                monotonic = False
+
+            if duplicate_rows is not None and set(duplicate_subset).issubset(frame.columns):
+                for key in frame[duplicate_subset].itertuples(index=False, name=None):
+                    if key in seen_keys:
+                        duplicate_rows += 1
+                    else:
+                        seen_keys.add(key)
+
+            for column in NON_NEGATIVE_COLUMNS_BY_DATA_TYPE.get(data_type, set()):
+                if column not in frame.columns:
+                    continue
+                values = pd.to_numeric(frame[column], errors="coerce")
+                if (values.dropna() < 0).any():
+                    negative_violation = True
+
+    non_empty = row_count > 0
+    event_stream_ready = None
+    if data_type in EVENT_STREAM_TYPES:
+        event_stream_ready = non_empty and monotonic and not missing_required_columns
+
+    no_duplicate_rows = duplicate_rows == 0 if duplicate_rows is not None else None
+    checks: dict[str, Any] = {
+        "required_columns_present": not missing_required_columns,
+        "missing_required_columns": missing_required_columns,
+        "non_empty": non_empty,
+        "timestamp_monotonic_increasing": monotonic,
+        "duplicate_timestamp_symbol_rows": duplicate_rows,
+        "no_duplicate_timestamp_symbol_rows": no_duplicate_rows,
+        "has_negative_value_violation": negative_violation,
+        "no_negative_value_violation": not negative_violation,
+    }
+    if row_count > DUPLICATE_EXACT_CHECK_ROW_LIMIT:
+        checks["duplicate_check_skipped_reason"] = "row_count_exceeds_streaming_exact_check_limit"
+    if continuity_ok is not None:
+        checks["strict_1m_continuity"] = continuity_ok
+        checks["gap_count_gt_1m"] = gap_count
+    if event_stream_ready is not None:
+        checks["event_stream_aggregatable"] = event_stream_ready
+
+    return QaTableResult(
+        market_family=market_family,
+        data_type=data_type,
+        symbol=symbol,
+        interval=interval,
+        file_path=str(file_path.resolve()),
+        row_count=row_count,
+        checks=checks,
+    )
+
+
+def _table_checks(file_path: Path) -> QaTableResult:
+    data_type = file_path.parent.name
+    row_count = int(pq.ParquetFile(file_path).metadata.num_rows)
+    if row_count > DUPLICATE_EXACT_CHECK_ROW_LIMIT:
+        return _table_checks_streaming(file_path)
+    market_family = file_path.parent.parent.name
     symbol, interval = _infer_symbol_and_interval(file_path)
     frame = pd.read_parquet(file_path)
     if "timestamp" in frame.columns:
@@ -122,7 +255,10 @@ def _table_checks(file_path: Path) -> QaTableResult:
 
     required_columns = _required_columns_for(data_type)
     missing_required_columns = sorted(required_columns - set(frame.columns))
-    duplicate_subset = ["timestamp", "symbol"] if {"timestamp", "symbol"}.issubset(frame.columns) else ["timestamp"]
+    if data_type == "bookDepth" and {"timestamp", "symbol", "percentage"}.issubset(frame.columns):
+        duplicate_subset = ["timestamp", "symbol", "percentage"]
+    else:
+        duplicate_subset = ["timestamp", "symbol"] if {"timestamp", "symbol"}.issubset(frame.columns) else ["timestamp"]
     duplicate_rows = int(frame.duplicated(subset=duplicate_subset).sum()) if "timestamp" in frame.columns else len(frame)
     monotonic = bool(frame["timestamp"].is_monotonic_increasing) if "timestamp" in frame.columns else False
     continuity_ok, gap_count = _strict_1m_continuity(frame, interval=interval, data_type=data_type)

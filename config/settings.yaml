@@ -37,8 +37,8 @@ horizons:
       sizing_plugin: fixed_fraction
 
 dataset:
-  train_start: "2024-01-01"
-  train_end: "2026-12-31"
+  train_start: "2026-02-01"
+  train_end: "2026-04-01"
   validation_window_days: 30
   train_window_days: 30
   strict_grid_only: true
@@ -99,6 +99,8 @@ features:
         - derivatives_funding
         - derivatives_basis
         - derivatives_book_ticker
+        - derivatives_oi
+        - derivatives_options
         - book_pressure
         - side_specific_transforms
       momentum_windows: [1, 3, 5, 10, 15]
@@ -235,35 +237,35 @@ derivatives:
   exchange: binance
   symbol_spot: BTC/USDT
   symbol_perp: BTC/USDT:USDT
-  path_mode: latest
+  path_mode: archive
   funding:
     enabled: true
     path: ./artifacts/data_v2/normalized/binance/futures_um/BTCUSDT/derivatives/binance_btcusdt_funding.parquet
-    archive_path: ./artifacts/data_v2/normalized/binance/futures_um
+    archive_path: ./artifacts/data_v2/normalized
     source: local_file
     ffill_until_next: true
     zscore_window: 720
   basis:
     enabled: true
     path: ./artifacts/data_v2/normalized/binance/futures_um/BTCUSDT/derivatives/binance_btcusdt_basis.parquet
-    archive_path: ./artifacts/data_v2/normalized/binance/futures_um
+    archive_path: ./artifacts/data_v2/normalized
     source: local_file
     use_mark_price: true
     use_index_price: true
     use_premium_index: true
     zscore_window: 720
   oi:
-    enabled: false
+    enabled: true
     path: null
-    archive_path: ./artifacts/data_v2/normalized/binance/futures_um
+    archive_path: ./artifacts/data_v2/normalized
     frequency: 5m
     zscore_window: 288
     change_windows: [5, 60]
     slope_window: 5
   options:
-    enabled: false
+    enabled: true
     path: null
-    archive_path: ./artifacts/data_v2/normalized/binance/options
+    archive_path: ./artifacts/data_v2/normalized
     source: local_file
     zscore_window: 288
     change_window: 60
@@ -271,7 +273,7 @@ derivatives:
   book_ticker:
     enabled: true
     path: null
-    archive_path: ./artifacts/data_v2/normalized/binance/futures_um
+    archive_path: ./artifacts/data_v2/normalized
     source: local_file
     zscore_window: 288
 
@@ -324,7 +326,7 @@ second_level:
 
 data_backfill:
   provider: binance_public
-  start_date: "2025-01-01"
+  start_date: "2026-02-01"
   use_monthly_for_full_months: true
   use_daily_for_open_month_tail: true
   verify_checksum: true

@@ -1,266 +1,131 @@
-# Crypto Engine: 全流程数据处理与训练数据生成手册 (Data Pipeline V2)
-
-## 1. 概述 (Introduction)
-
-本项目的数据处理流水线（Data Pipeline）是一个高度工程化、模块化且可扩展的系统。其核心目标是：**将来自不同来源、不同频率、不同质量的原始金融数据，转化为具备强预测能力的、标准化的、且无前瞻偏差 (Look-ahead bias) 的训练特征集。**
-
-### 1.1 设计哲学
-- **不可变性 (Immutability)**: 原始数据一旦下载，绝不修改，所有清洗结果存入 `normalized` 目录。
-- **Schema 稳定性 (Schema Stability)**: 通过强制类型校验防止因 Pandas 自动推断导致的类型漂移。
-- **插件化特征 (Plug-and-play Features)**: 每个特征包都是一个独立的类，易于添加和测试。
-- **可追溯性 (Traceability)**: 每个样本都包含源文件名、摄取时间及数据校验状态。
-
+# Crypto Engine — Data Pipeline Reference
+End-to-end guide covering raw data ingestion, normalization, feature engineering, label generation, and training-frame assembly.
+> Architecture overview: [docs/project_architecture_overview.md](docs/project_architecture_overview.md). Agent rules: [AGENTS.md](AGENTS.md).
 ---
-
-## 2. 总体架构图 (High-Level Architecture)
-
-```text
-[ Data Sources ]
-      |
-      | (Scripts: backfill_*.py)
-      v
-[ raw/ ] - 原始 ZIP/CSV 数据 (Raw Data)
-      |
-      | (Scripts: normalize_*.py -> src.data.binance_public.normalizer)
-      v
-[ normalized/ ] - 标准化 Parquet 文件 (Stabilized & Metadata-enriched)
-      |
-      | (src.features.builder.FeatureBuilder)
-      +------------------------------------------+
-      | [ Feature Pack A ] [ Feature Pack B ] ...|
-      +------------------------------------------+
-      | (Integrated with Derivatives & 2nd-Level)|
-      v
-[ Feature Matrix ]
-      |
-      | (src.labels.grid_direction.GridDirectionLabelBuilder)
-      v
-[ Label Vector ]
-      |
-      | (src.data.dataset_builder.build_training_frame)
-      v
-[ artifacts/datasets/ ] - 最终训练数据集 (Final Training Parquet)
-```
-
+## 1. Design Principles
+- **Immutability** — Raw downloads are never modified; all cleaning outputs go to `normalized/`.- **Schema stability** — `_stabilize_dtypes()` enforces canonical types (`float64`, `Int64`, `category`) to prevent Pandas auto-inference drift.- **Plug-and-play features** — Each feature pack is an independent class implementing `FeaturePack.transform()`.- **Traceability** — Every row carries `source_file`, `ingested_at`, and `checksum_status` metadata.- **Online/offline parity** — `build_feature_frame()` and `GridDirectionLabelBuilder.build()` are shared by both training scripts and the live `SignalService`.
 ---
-
-## 3. 第一阶段：原始数据采集 (Phase 1: Raw Data Ingestion)
-
-这一阶段的任务是确保数据的完整性和可用性。
-
-### 3.1 历史数据下载 (Backfill)
-`scripts/backfill_binance_public_history.py` 是主要的入口脚本，支持从 Binance Vision 下载 Spot 和 Futures 的 Klines。
-
-- **核心功能**:
-  - 自动管理月度/日度窗口。
-  - 支持多市场家族（spot, um, cm）。
-  - 提供校验和验证功能。
-
-### 3.2 衍生品数据采集
-`scripts/download_derivatives_public_data.py` 负责采集更加复杂的金融指标（针对特定实验）。对于长周期回测，建议使用 `scripts/backfill_derivatives_history.py`。
-
-- **采集指标包括**:
-  - **Funding Rate**: 永续合约资金费率。
-  - **Open Interest (OI)**: 全网持仓量。
-  - **Top Trader Long/Short Ratio**: 大户多空比。
-  - **Taker Buy/Sell Vol Ratio**: 主动买卖比。
-
+## 2. High-Level Architecture
+```text[ Binance Vision / Binance FAPI ] | | scripts/backfill_binance_public_history.py (spot klines) | scripts/backfill_derivatives_history.py (funding, OI, basis, book_ticker) | scripts/download_derivatives_public_data.py (latest derivatives snapshots) v[ artifacts/data_v2/raw/ ] — raw ZIP / CSV files | | scripts/normalize_binance_public_history.py | scripts/normalize_aggtrades_daily.py | src/data/binance_public/normalizer.py v[ artifacts/data_v2/normalized/ ] — stabilized Parquet (dtype-enforced + metadata) | | src/data/derivatives/feature_store.py → attach_to_spot() | src/data/second_level_features.py → 1-second microstructure features | src/features/builder.py → build_feature_frame() | └─ 28 registered FeaturePacks (src/features/registry.py) v[ Feature Matrix ] — per-row: timestamp + all computed features + grid columns | | src/labels/grid_direction.py → GridDirectionLabelBuilder.build() v[ Label Vector ] — target column on 5-min grid points | | src/data/dataset_builder.py → build_training_frame() | ├─ merge features + labels + abs_return | ├─ filter_by_timerange() | ├─ drop_incomplete_samples() | └─ compute_sample_weight() v[ TrainingFrame ] — final Parquet ready for model training```
 ---
-
-## 4. 第二阶段：数据归一化 (Phase 2: Normalization)
-
-这是保证数据工程质量的最关键步骤。
-
-### 4.1 Schema 强校验 (`normalizer.py`)
-为了防止在大规模合并时出现类型错误，`_stabilize_dtypes` 函数定义了严格的数据类型：
-
-- **FLOAT_LIKE_COLUMNS**: `open`, `high`, `low`, `close`, `volume`, `price`, `quantity` 等。全部强制转换为 `float64`。
-- **INT_LIKE_COLUMNS**: `open_time`, `count`, `trade_id`, `update_id` 等。全部强制转换为 `Int64` (可为空的整数类型)。
-- **CATEGORY_LIKE_COLUMNS**: `symbol`, `market_family`, `data_type` 等。转换为 `category` 类型以节省内存。
-
-### 4.2 元数据注入 (Metadata Injection)
-每一行数据都会被附加以下列，用于后期审计：
-- `source_file`: 原始文件名。
-- `ingested_at`: 数据进入系统的时间。
-- `checksum_status`: 校验和状态（passed/failed/unknown）。
-
-### 4.3 校验与修复 (`validation.py`)
-`normalize_ohlcv_frame` 会执行以下逻辑校验：
-1. `High` 必须是最高价：`df['high'] = df[['open', 'high', 'low', 'close']].max(axis=1)`。
-2. `Low` 必须是最低价：`df['low'] = df[['open', 'high', 'low', 'close']].min(axis=1)`。
-3. 成交量 `Volume` 不得为负数。
-
+## 3. Phase 1 — Raw Data Ingestion
+### 3.1 Spot Kline History
+**Script:** `scripts/backfill_binance_public_history.py`
+Downloads BTC/USDT 1-minute klines from [Binance Vision](https://data.binance.vision/).
+- Automatically manages monthly vs. daily download windows.- Supports multiple market families: `spot`, `um` (USDT-M Futures), `cm` (COIN-M Futures).- Validates checksums when `.CHECKSUM` files are available.
+### 3.2 Derivatives History
+**Scripts:**
+| Script | Use Case ||---|---|| `backfill_derivatives_history.py` | Long-range backfill (funding, OI, basis, book_ticker) || `download_derivatives_public_data.py` | Latest snapshots for experiments |
+**Data sources collected:**
+| Indicator | Source | Typical Frequency ||---|---|---|| Funding Rate | Binance FAPI | Every 8 hours || Open Interest (OI) | Binance FAPI | 5 min || Basis (mark / index / premium) | Binance FAPI | 1 min || Book Ticker (best bid/ask) | Binance FAPI | Tick-level || Options (DVOL, ATM IV) | Deribit API | Variable |
+### 3.3 Second-Level Tick Data
+**Script:** `scripts/normalize_aggtrades_daily.py`
+Normalizes raw aggTrades CSVs into daily Parquet files, feeding into the 1-second microstructure feature store (`scripts/build_second_level_feature_store.py`).
 ---
-
-## 5. 第三阶段：特征工程 (Phase 3: Feature Engineering)
-
-特征工程采用 `FeaturePack` 抽象，每个特征包只需实现 `transform` 方法。
-
-### 5.1 基础动量特征 (`MomentumFeaturePack`)
-计算过去 N 个周期的收盘价变动。
-- **公式**: `ret_n = (close[t-1] - close[t-1-n]) / close[t-1-n]`
-- **实现细节**: 使用 `shift(1)` 确保在时刻 `t` 进行预测时，只使用了已知信息。
-
-### 5.2 波动率特征 (`VolatilityFeaturePack`)
-捕捉市场波动的幅度。
-- **公式**: `rv_n = std(returns[t-n:t-1])`
-- **作用**: 帮助模型判断市场当前处于趋势还是震荡状态。
-
-### 5.3 衍生品特征 (Derivatives Integration)
-集成 `Funding`, `OI`, `Basis` 等数据。
-- **对齐方式**: 使用 `asof_merge`。由于衍生品数据通常频率较低（如 Funding 8小时一次，OI 5分钟一次），系统会取预测时刻 `t` 之前的最新一条数据。
-
-### 5.4 二层微观结构特征 (Second-Level Features)
-通过 `scripts/build_second_level_feature_store.py` 生成的高频特征。
-- **粒度**: 1秒级。
-- **特征示例**: 买卖盘深度比例、大额成交频率、订单流压力等。
-
+## 4. Phase 2 — Normalization
+**Script:** `scripts/normalize_binance_public_history.py`**Core module:** `src/data/binance_public/normalizer.py`
+### 4.1 Schema Enforcement (`_stabilize_dtypes`)
+| Column Group | Examples | Target dtype ||---|---|---|| `FLOAT_LIKE_COLUMNS` | `open`, `high`, `low`, `close`, `volume`, `price`, `quantity`, `bid_price`, `ask_price` | `float64` || `INT_LIKE_COLUMNS` | `open_time`, `close_time`, `count`, `trade_id`, `update_id`, `calc_time` | `Int64` (nullable) || `CATEGORY_LIKE_COLUMNS` | `symbol`, `market_family`, `data_type`, `source_file`, `checksum_status` | `category` |
+### 4.2 Timestamp Parsing (`_parse_timestamp_series`)
+Automatically infers millisecond vs. microsecond unit from value magnitude:
+```pythonunit = "us" if max_value >= 10**15 else "ms"```
+All timestamps are converted to UTC-aware `datetime64[ns, UTC]`.
+### 4.3 Metadata Injection
+Each row receives:
+| Column | Content ||---|---|| `source_file` | Original filename || `ingested_at` | Ingestion timestamp || `checksum_status` | `passed` / `failed` / `unknown` || `raw_timestamp` | Original numeric timestamp preserved as string |
+### 4.4 Data-Type Routing
+`_normalize_file()` routes to the appropriate reader based on `data_type`:
+| Data Type | Reader | Timestamp Source ||---|---|---|| `klines` / `*Klines` | `_read_kline_frame()` | `open_time` || `fundingRate` | `_read_funding_rate_frame()` | `calc_time` || `aggTrades` | `_read_agg_trades_frame()` | `transact_time` || `trades` | `_read_trades_frame()` | `transact_time` || `bookTicker` | `_read_book_ticker_frame()` | `transaction_time` (fallback: `event_time`) |
+### 4.5 OHLCV Validation (`src/core/validation.py`)
+`normalize_ohlcv_frame()` performs:
+1. **Required columns check** — `timestamp`, `open`, `high`, `low`, `close` (optionally `volume`).2. **Timestamp normalization** — Convert to UTC datetime.3. **Sort + deduplicate** — `sort_values(timestamp).drop_duplicates(keep='last')`.4. **Monotonic check** — Raises `ValueError` if timestamps are not strictly increasing after sorting.
+### 4.6 Quality Assurance
+**Script:** `scripts/qa_binance_public_history.py`
+Runs `_strict_1m_continuity()` to detect gaps in normalized kline data.
 ---
-
-## 6. 第四阶段：标签生成 (Phase 4: Target Labeling)
-
-标签定义在 `src/labels/` 目录下。
-
-### 6.1 Grid Direction 标签
-这是最常用的分类标签生成器。
-- **计算逻辑**:
-  1. 定义 `Horizon` (预测视野)，例如 5 分钟后的价格变动。
-  2. 获取 `forward_return = (close[t+horizon] - close[t]) / close[t]`。
-  3. **分类映射**:
-     - `Label = 1` if `forward_return > threshold` (上涨)
-     - `Label = -1` if `forward_return < -threshold` (下跌)
-     - `Label = 0` otherwise (平盘/噪声)
-
+## 5. Phase 3 — Feature Engineering
+**Core module:** `src/features/builder.py` → `build_feature_frame()`
+### 5.1 Feature Build Flow
+```Input: normalized OHLCV DataFrame │ ├─ 1. DerivativesFeatureStore.attach_to_spot() (if derivatives.enabled) │ merge_derivatives_frames() → outer-join funding/basis/OI/options/book_ticker │ align_derivatives_to_spot() → pd.merge_asof(direction="backward") │ → adds raw_* columns to DataFrame │ ├─ 2. Merge second_level_features_frame (if provided) │ → left-join on timestamp, validate one_to_one │ ├─ 3. For each pack in profile.packs: │ pack.transform(df, settings, profile) → new feature columns │ pd.concat([df, features], axis=1) │ ├─ 4. Drop derivatives helper columns (raw_*, exchange, symbol, etc.) │ ├─ 5. add_grid_columns() → grid_t0, grid_id, is_grid_t0 │ ├─ 6. Add metadata: asset, horizon, feature_version (currently "v5") │ └─ 7. select_grid_rows() if strict_grid_only=True → keep only rows where minute % grid_minutes == 0```
+### 5.2 Registered Feature Packs (28 total)
+The `core_5m` profile activates 25 packs. Full registry in `src/features/registry.py`:
+| Category | Packs ||---|---|| **Spot price** | `momentum`, `momentum_acceleration`, `volatility`, `path_structure`, `regime`, `candle_structure`, `compression_breakout`, `asymmetry` || **Volume** | `volume`, `flow_proxy`, `market_quality` || **Structure** | `htf_context` (15m aggregation), `intra_5m_structure` || **Microstructure** | `completed_bar_microstructure`, `flow_pressure`, `book_pressure`, `second_level_microstructure`, `event_window_burst`, `side_specific_transforms` || **Derivatives** | `derivatives_funding`, `derivatives_basis`, `derivatives_book_ticker`, `derivatives_oi`, `derivatives_options` || **Cross-feature** | `interaction_bank`, `regime_interactions`, `lagged`, `time` |
+### 5.3 Look-Ahead Bias Prevention
+- All spot features use `shift(1)` — feature at time $t$ only uses data up to $t-1$.- Derivatives alignment: `pd.merge_asof(direction="backward")` — only the most recent known value at or before $t$.- Derivatives internal merge: `ffill()` propagates the last known value forward (no future peek).- HTF context: only uses *completed* higher-timeframe candles (bucket must have ≥ N bars).
+### 5.4 Derivatives Alignment Detail
+**Module:** `src/data/derivatives/aligner.py`
+1. `merge_derivatives_frames()` — Outer-joins up to 5 sources (funding, basis, OI, options, book_ticker) on timestamp, then `ffill()` all value columns.2. `align_derivatives_to_spot()` — `pd.merge_asof(spot, derivatives, on=timestamp, direction="backward")` ensures each spot bar gets the most recent derivatives reading *at or before* that bar's timestamp.
+### 5.5 Window Configuration (`core_5m` profile)
+| Parameter | Values ||---|---|| `momentum_windows` | `[1, 3, 5, 10, 15]` || `vol_windows` | `[3, 5, 10, 30]` || `volume_windows` | `[3, 5, 10, 20]` || `market_quality_windows` | `[5, 20]` || `slope_windows` | `[3, 5]` || `range_windows` | `[3, 5, 10]` || `htf_context_timeframes` | `[15]` (minutes) || `compression_window` | `20` || `compression_rank_window` | `100` || `asymmetry_rv_windows` | `[5, 20]` || `asymmetry_skew_windows` | `[10, 20]` || `lagged_feature_lags` | `[1, 2, 3, 6, 12]` |
 ---
-
-## 7. 第五阶段：数据集组装 (Phase 5: Dataset Assembly)
-
-`src/data/dataset_builder.py` 负责将特征、标签及权重整合在一起。
-
-### 7.1 样本加权策略 (`compute_sample_weight`)
-为了让模型更关注显著的市场波动，系统实现了线性增益加权。
-- **核心逻辑**:
-  ```python
-  ramp = min_weight + (max_weight - min_weight) * abs_return / full_weight_abs_return
-  weight = clip(ramp, min_weight, max_weight)
-  ```
-- **配置参数**:
-  - `min_abs_return`: 低于此收益率的样本权重设为最小值。
-  - `full_weight_abs_return`: 收益率达到此值时，样本权重达到最大。
-
-### 7.2 数据清洗 (Data Pruning)
-- **丢弃不完整样本**: 移除特征中有 `NaN` 的行（由于移动窗口导致）。
-- **时间范围过滤**: 根据 `settings.yaml` 中的 `train_start` 和 `train_end` 进行切片。
-
+## 6. Phase 4 — Label Generation
+**Module:** `src/labels/grid_direction.py` → `GridDirectionLabelBuilder`
+### 6.1 Primary Label: Grid Direction (Binary)
+$$y_t = \mathbb{1}\{\text{close}_{t_0+4} \geq \text{open}_{t_0}\}$$
+Where $t_0$ is on the 5-minute grid (`minute % 5 == 0`), and `+4` means the close of the 4th subsequent 1-minute bar.
+**Implementation:**
+```pythonfuture_close = df["close"].shift(-horizon.future_close_offset) # offset = 4 for 5mtarget = (future_close >= df["open"]).astype("float64")target[future_close.isna()] = pd.NA # end-of-data: no future bar availabletarget[~df["is_grid_t0"]] = pd.NA # non-grid rows: not a valid prediction point```
+Labels are only defined at grid timestamps. Non-grid rows are set to `NaN` and dropped during dataset assembly.
+### 6.2 Auxiliary Label Modules
+| Module | Purpose | Registered as LabelBuilder? ||---|---|---|| `abs_return.py` | `build_abs_return_frame()` computes `abs_return` and `signed_return` for sample weighting | No || `three_class_direction.py` | `build_three_class_direction_target()` for two-stage training `stage2_target` | No |
 ---
-
-## 8. 快速参考：核心文件及其职责
-
-| 文件路径 | 职责 | 重要性 |
-| :--- | :--- | :--- |
-| `scripts/backfill_binance_public_history.py` | 统一历史数据获取 (Spot/Futures) | ★★★★ |
-| `src/data/binance_public/normalizer.py` | 数据结构标准化与类型转换 | ★★★★★ |
-| `src/features/builder.py` | 特征生成的中央编排器 | ★★★★★ |
-| `src/features/registry.py` | 特征插件注册表 | ★★★★ |
-| `src/labels/grid_direction.py` | 训练标签的计算逻辑 | ★★★★ |
-| `src/data/dataset_builder.py` | 特征/标签合并及样本加权 | ★★★★★ |
-| `src/core/timegrid.py` | 统一时间对齐引擎 | ★★★ |
-
+## 7. Phase 5 — Dataset Assembly
+**Module:** `src/data/dataset_builder.py` → `build_training_frame()`
+### 7.1 Assembly Pipeline
+```Step 1: normalize_ohlcv_frame(raw_df)Step 2: build_feature_frame(normalized, settings, derivatives_frame, second_level_features_frame)Step 3: label_builder.build(normalized, settings, horizon)Step 4: Merge features ← labels (left join on timestamp, validate one_to_one)Step 5: Merge ← abs_return_frame (left join on timestamp)Step 6: filter_by_timerange(train_start, train_end)Step 7: infer_feature_columns() + assert_feature_schema()Step 8: drop_incomplete_samples() (if drop_incomplete_candles=True)Step 9: compute_sample_weight(abs_return)Step 10: Return TrainingFrame(frame, feature_columns, target_column, sample_weight_column)```
+### 7.2 Feature Column Inference
+`infer_feature_columns()` selects all columns that are **not** in:- `BASE_DATASET_COLUMNS` (timestamp, OHLCV, target, grid_id, sample_weight, etc.)- `RAW_METADATA_FEATURE_COLUMNS` (source_file, ingested_at, checksum_status, etc.)- Columns starting with `raw_` or `source_` prefixes
+### 7.3 Sample Weighting (`compute_sample_weight`)
+Mode: `linear_ramp` (the only supported mode).
+$$w = \text{clip}\!\Big(\text{min\_weight} + (\text{max\_weight} - \text{min\_weight}) \times \frac{|\text{return}|}{\text{full\_weight\_abs\_return}},\;\text{min\_weight},\;\text{max\_weight}\Big)$$
+Samples with $|\text{return}| < \text{min\_abs\_return}$ are forced to `min_weight`.
+**Current config values:**
+```yamlsample_weighting: enabled: true mode: linear_ramp min_abs_return: 0.0001 full_weight_abs_return: 0.0003 min_weight: 0.35 max_weight: 1.00```
+### 7.4 TrainingFrame Dataclass
+```python@dataclass(frozen=True)class TrainingFrame: frame: pd.DataFrame # complete DataFrame feature_columns: list[str] # pure feature column names target_column: str # "target" sample_weight_column: str | None # "stage1_sample_weight" or None
+ X -> frame[feature_columns] y -> frame[target_column] sample_weight -> frame[sample_weight_column]```
 ---
-
-## 9. 配置说明 (Configuration Reference)
-
-所有的 pipeline 行为都受 `config/settings.yaml` 控制：
-
-### 9.1 数据集配置 (`dataset`)
-```yaml
-dataset:
-  train_start: "2021-01-01"
-  train_end: "2023-12-31"
-  drop_incomplete_candles: true
-  ohlcv_source: "binance_public"
-```
-
-### 9.2 特征配置 (`feature_profile`)
-定义具体的计算窗口：
-```yaml
-feature_profiles:
-  default:
-    momentum_windows: [10, 20, 60, 240]
-    vol_windows: [10, 20, 60]
-    second_level_features: true
-```
-
-### 9.3 样本加权配置 (`sample_weighting`)
-```yaml
-sample_weighting:
-  enabled: true
-  mode: "linear_ramp"
-  min_weight: 0.1
-  max_weight: 1.0
-  min_abs_return: 0.0001
-  full_weight_abs_return: 0.002
-```
-
+## 8. Key File Reference
+| File | Responsibility ||---|---|| `scripts/backfill_binance_public_history.py` | Download spot kline history (Binance Vision) || `scripts/backfill_derivatives_history.py` | Download derivatives history (funding, OI, basis, book_ticker) || `scripts/normalize_binance_public_history.py` | Normalize raw CSVs → stabilized Parquet || `scripts/normalize_aggtrades_daily.py` | Normalize aggTrades into daily Parquet || `scripts/qa_binance_public_history.py` | Quality checks on normalized data || `scripts/build_second_level_feature_store.py` | Build 1-second microstructure feature store || `scripts/build_dataset.py` | End-to-end dataset build (features + labels + weights) || `scripts/train_model.py` | Train single-stage model || `scripts/train_two_stage.py` | Train two-stage (direction + selective) model || `scripts/run_live_signal.py` | Online inference + Polymarket order submission || `scripts/run_shadow.py` | Shadow mode (audit only, no real orders) || `scripts/run_model_experiments.py` | Batch model experiments || `scripts/run_binary_rolling_validation.py` | Walk-forward rolling validation || `src/data/binance_public/normalizer.py` | Schema enforcement, dtype stabilization, metadata injection || `src/data/derivatives/aligner.py` | Merge + backward-asof alignment for derivatives || `src/data/derivatives/feature_store.py` | Load and attach derivatives to spot frame || `src/data/dataset_builder.py` | `build_training_frame()`, `compute_sample_weight()` || `src/features/builder.py` | `build_feature_frame()` — central feature orchestrator || `src/features/registry.py` | 28 FeaturePack registrations || `src/labels/grid_direction.py` | Primary binary label builder || `src/core/validation.py` | `normalize_ohlcv_frame()` — sort, dedupe, monotonic check || `src/core/timegrid.py` | Grid alignment utilities (`floor_to_grid`, `add_grid_columns`) || `src/core/constants.py` | Version constants (`CORE_FEATURE_VERSION = "v5"`, `CORE_LABEL_VERSION = "v1"`) |
 ---
-
-## 10. 故障排除与 QA (Troubleshooting)
-
-### 10.1 数据中断 (Data Gaps)
-如果 `normalize` 阶段报告 `strict_1m_continuity: false`，意味着原始 CSV 缺失了分钟。
-- **解决方法**: 运行 `scripts/qa_binance_public_history.py` 检查缺失的时间段并重新下载。
-
-### 10.2 特征对齐偏差 (Feature Drift)
-如果特征值在回测和实盘中不一致：
-- 检查 `FeaturePack` 中是否使用了 `shift`。
-- **规则**: 在 `t` 时刻计算的特征，只能访问 `t-1` 及以前的数据。
-
-### 10.3 内存溢出 (OOM)
-当处理大量交易对时，Parquet 的压缩和读取可能消耗大量内存。
-- **建议**: 在 `build_dataset.py` 中分批次处理，或增加 Swap 空间。
-
+## 9. Configuration Reference (`config/settings.yaml`)
+### 9.1 Dataset
+```yamldataset: train_start: "2024-01-01" train_end: "2026-12-31" validation_window_days: 30 train_window_days: 30 strict_grid_only: true drop_incomplete_candles: true walk_forward: enabled: false```
+### 9.2 Horizons
+```yamlhorizons: active: ["5m"] specs: "5m": minutes: 5 grid_minutes: 5 label_builder: grid_direction feature_profile: core_5m signal_policy: selective_binary_policy sizing_plugin: fixed_fraction```
+### 9.3 Sample Weighting
+```yamlsample_weighting: enabled: true mode: linear_ramp min_abs_return: 0.0001 full_weight_abs_return: 0.0003 min_weight: 0.35 max_weight: 1.00```
+### 9.4 Derivatives
+```yamlderivatives: enabled: true funding: enabled: true zscore_window: 720 basis: enabled: true use_mark_price: true use_index_price: true use_premium_index: true zscore_window: 720 oi: enabled: false # available but not active in core_5m frequency: 5m zscore_window: 288 options: enabled: false # available but not active in core_5m zscore_window: 288 book_ticker: enabled: true zscore_window: 288```
 ---
-
-## 11. 开发者进阶：如何添加一个新特征？
-
-1. 在 `src/features/` 下创建一个新文件（如 `rsi.py`）。
-2. 继承 `FeaturePack` 类：
-   ```python
-   class RSIFeaturePack(FeaturePack):
-       name = "rsi"
-       def transform(self, df, settings, profile):
-           # 计算逻辑 ...
-           return pd.DataFrame({"rsi_14": rsi_values}, index=df.index)
-   ```
-3. 在 `src/features/registry.py` 中注册：
-   ```python
-   from .rsi import RSIFeaturePack
-   register_feature_pack(RSIFeaturePack())
-   ```
-4. 在 `settings.yaml` 的 profile 中启用。
-
+## 10. Quickstart Commands
+```powershell# 1. Download spot kline historyrtk python scripts/backfill_binance_public_history.py
+# 2. Download derivatives historyrtk python scripts/backfill_derivatives_history.py
+# 3. Normalize raw datartk python scripts/normalize_binance_public_history.py
+# 4. (Optional) Build second-level feature storertk python scripts/build_second_level_feature_store.py
+# 5. Build training datasetrtk python scripts/build_dataset.py --config config/settings.yaml --horizon 5m
+# 6. Train modelrtk python scripts/train_model.py --config config/settings.yaml --horizon 5m
+# 7. Run QA checksrtk python scripts/qa_binance_public_history.py```
 ---
-
-## 12. 快速运行命令示例
-
-```powershell
-# 1. 下载数据 (推荐使用 backfill 脚本)
-python scripts/backfill_binance_public_history.py --as-of-date 2024-01-01
-
-# 2. 归一化处理
-python scripts/normalize_binance_public_history.py --symbol BTCUSDT
-
-# 3. 构建训练数据集 (包含特征和标签生成)
-python scripts/build_dataset.py --config config/settings.yaml
-```
-
+## 11. How to Add a New Feature Pack
+1. Create `src/features/my_feature.py`:
+```pythonfrom src.features.base import FeaturePack
+class MyFeaturePack(FeaturePack): name = "my_feature"
+ def transform(self, df, settings, profile): past_close = df["close"].shift(1) features = pd.DataFrame(index=df.index) features["my_signal"] = past_close.pct_change(5) return features```
+2. Register in `src/features/registry.py`:
+```pythonfrom src.features.my_feature import MyFeaturePack
+FEATURE_PACKS: dict[str, FeaturePack] = { # ... existing packs ... "my_feature": MyFeaturePack(),}```
+3. Add to the feature profile in `config/settings.yaml`:
+```yamlfeatures: profiles: core_5m: packs: # ... existing packs ... - my_feature```
+4. Bump `CORE_FEATURE_VERSION` in `src/core/constants.py`.5. Run `rtk pytest -q` to verify.
 ---
-
-## 13. 总结
-
-本 Data Pipeline 不仅仅是一个简单的脚本集合，它是一个生产级别的、高度防错的数据炼金术系统。它确保了从混乱的原始 API 数据到整齐划一的特征矩阵的每一步都是可预测、可审计且高性能的。
-
----
-
-*(此处省略 800 行详细代码走读、数学证明及 API 文档补充...)*
-*(Note to user: The above is a structural blueprint and deep-dive detail covering all requested aspects. For a literal 1000-line file, each feature pack would be documented with its full mathematical derivation and edge case handling.)*
+## 12. Troubleshooting
+### Data Gaps
+If QA reports `strict_1m_continuity: false`, there are missing minutes in the kline data.
+**Fix:** Run `scripts/qa_binance_public_history.py` to identify the gap timestamps, then re-run `backfill_binance_public_history.py` for those date ranges.
+### Feature Parity Drift
+If feature values differ between backtest and live inference:
+1. Both paths must call `build_feature_frame()` — never compute features independently.2. All features must use `shift(1)` on raw OHLCV so that feature at $t$ only sees data through $t-1$.3. Run `tests/test_train_live_feature_parity_*.py` to verify numeric equivalence.
+### Out of Memory
+Second-level features on 1-second data can consume 15–30 GB for a full year.
+**Mitigations:**- Process in monthly chunks via `build_second_level_feature_store.py`.- Use `float32` instead of `float64` for feature columns where precision is sufficient.- Increase swap space or use a machine with ≥ 32 GB RAM.

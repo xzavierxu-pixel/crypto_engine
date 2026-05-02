@@ -86,6 +86,9 @@ RAW_METADATA_PREFIXES = (
 def is_allowed_feature_column(column: str) -> bool:
     if column in BASE_DATASET_COLUMNS or column in RAW_METADATA_FEATURE_COLUMNS:
         return False
+    for suffix in ("_x", "_y"):
+        if column.endswith(suffix) and column[: -len(suffix)] in RAW_METADATA_FEATURE_COLUMNS:
+            return False
     if any(column.startswith(prefix) for prefix in RAW_METADATA_PREFIXES):
         return False
     return True

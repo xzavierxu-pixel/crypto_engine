@@ -6,7 +6,7 @@ Agent-oriented overview for the `crypto_engine` repo.
 
 The repo is intentionally narrow in V1: one asset, one base timeframe, one horizon, one primary label, one shared feature pipeline, one model family baseline. The point is not to be a generic trading framework. The point is to keep training, backtesting, and live inference on the same logic so model behavior stays explainable and operationally safe.
 
-> Full design: [docs/workflow_guide.md](docs/workflow_guide.md). Architecture context: [docs/project_architecture_overview.md](docs/project_architecture_overview.md). Working rules: [AGENTS.md](AGENTS.md). This file is the fast orientation guide for coding agents.
+> Architecture context: [docs/project_architecture_overview.md](docs/project_architecture_overview.md). Data pipeline details: [DATA_PIPELINE.md](DATA_PIPELINE.md). Working rules: [AGENTS.md](AGENTS.md). This file is the fast orientation guide for coding agents.
 
 ---
 
@@ -67,8 +67,8 @@ config/settings.yaml              ← single source of business parameters
         │
         ▼
 src/core/        schemas / timegrid / versioning / validation   (zero deps)
-src/features/    13 FeaturePacks + registry
-src/labels/      grid_direction (only implementation of y)
+src/features/    28 FeaturePacks + registry (spot, derivatives, microstructure, interactions)
+src/labels/      grid_direction (primary), abs_return, three_class_direction helpers
 src/horizons/    HorizonSpec (metadata for "5m")
 src/data/        loaders → preprocess → dataset_builder.TrainingFrame
 src/model/       plugin arch: lightgbm / catboost / logreg + train.py
@@ -101,14 +101,22 @@ Dependency direction is strictly one-way:
 
 | Script | Purpose |
 |---|---|
-| `download_binance_vision_data.py` | Pull historical 1m data from Binance Vision |
+| `backfill_binance_public_history.py` | Pull historical spot 1m data from Binance Vision |
+| `backfill_derivatives_history.py` | Backfill derivatives (funding, OI, basis) history |
+| `download_derivatives_public_data.py` | Download latest derivatives snapshots |
+| `normalize_binance_public_history.py` | Normalize raw spot data → stabilized Parquet |
+| `normalize_aggtrades_daily.py` | Normalize raw aggTrades into daily Parquet |
+| `qa_binance_public_history.py` | Quality checks on normalized spot data |
+| `build_second_level_feature_store.py` | Build 1-second microstructure feature store |
 | `build_dataset.py` | OHLCV → features + labels + sample weights (`TrainingFrame`) |
 | `train_model.py` | Train and persist model artifacts |
+| `train_two_stage.py` | Two-stage (direction + selective) training pipeline |
 | `run_live_signal.py` | Online inference + Polymarket order submission |
 | `run_shadow.py` | Shadow mode (no orders, audit only) |
 | `run_model_experiments.py` | Batch experiments |
+| `run_binary_rolling_validation.py` | Walk-forward rolling validation |
 
-All scripts share: `--input`, `--output/--output-dir`, `--config config/settings.yaml`, `--horizon 5m`.
+All scripts share: `--config config/settings.yaml`, `--horizon 5m`. Most accept `--input` / `--output` or `--output-dir`.
 
 ## Dev quickstart
 
@@ -131,7 +139,7 @@ rtk python scripts/train_model.py \
 
 ## Before you change code
 
-- Add/modify a **feature** → edit [src/features/base.py](src/features/base.py) + register in [src/features/registry.py](src/features/registry.py); bump `CORE_FEATURE_VERSION` in [src/core/versioning.py](src/core/versioning.py).
+- Add/modify a **feature** → edit [src/features/base.py](src/features/base.py) + register in [src/features/registry.py](src/features/registry.py); bump `CORE_FEATURE_VERSION` in [src/core/constants.py](src/core/constants.py).
 - Modify a **label** → edit [src/labels/grid_direction.py](src/labels/grid_direction.py); bump `CORE_LABEL_VERSION`.
 - Add a **model** → implement the [src/model/base.py](src/model/base.py) interface and register in [src/model/registry.py](src/model/registry.py).
 - Add a **calibrator / horizon / label / execution adapter** → use the matching `*/registry.py`.

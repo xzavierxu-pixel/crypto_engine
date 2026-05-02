@@ -52,6 +52,86 @@ def _downsample_to_minute_last(frame: pd.DataFrame) -> pd.DataFrame:
     return downsampled.reset_index(drop=True)
 
 
+def _load_optional_normalized_frame(path: Path) -> pd.DataFrame | None:
+    if not path.exists():
+        return None
+    return pd.read_parquet(path)
+
+
+def _normalize_bvol_options_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    normalized = frame.copy()
+    if "index_value" in normalized.columns and "atm_iv_near" not in normalized.columns:
+        normalized = normalized.rename(columns={"index_value": "atm_iv_near"})
+        atm_iv = pd.to_numeric(normalized["atm_iv_near"], errors="coerce")
+        if atm_iv.dropna().median() > 5.0:
+            normalized["atm_iv_near"] = atm_iv / 100.0
+    normalized = _downsample_to_minute_last(normalized)
+    normalized["exchange"] = normalized.get("exchange", "binance")
+    if "iv_term_slope" not in normalized.columns:
+        normalized["iv_term_slope"] = 0.0
+    return normalize_options_frame(normalized)
+
+
+def _normalize_eoh_summary_options_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return pd.DataFrame(columns=["timestamp", "atm_iv_near", "iv_term_slope", "exchange", "symbol", "source_version"])
+
+    normalized = frame.copy()
+    normalized["timestamp"] = pd.to_datetime(normalized["timestamp"], utc=True).dt.floor("1h")
+    normalized["mark_iv"] = pd.to_numeric(normalized["mark_iv"], errors="coerce")
+    normalized["delta"] = pd.to_numeric(normalized.get("delta"), errors="coerce")
+    normalized["openinterest_usdt"] = pd.to_numeric(normalized.get("openinterest_usdt"), errors="coerce").fillna(0.0)
+    if "expiry" not in normalized.columns and "strike" in normalized.columns:
+        normalized["expiry"] = normalized["strike"].astype(str).str.extract(r"(\d{6})", expand=False)
+
+    normalized = normalized.dropna(subset=["timestamp", "mark_iv"])
+    if normalized.empty:
+        return pd.DataFrame(columns=["timestamp", "atm_iv_near", "iv_term_slope", "exchange", "symbol", "source_version"])
+
+    near_atm = normalized.copy()
+    near_atm["delta_distance"] = (near_atm["delta"].abs() - 0.5).abs()
+    near_atm = near_atm.sort_values(
+        ["timestamp", "delta_distance", "openinterest_usdt"],
+        ascending=[True, True, False],
+    )
+    atm = near_atm.groupby("timestamp", as_index=False).first()[["timestamp", "mark_iv"]].rename(
+        columns={"mark_iv": "atm_iv_near"}
+    )
+
+    expiry_iv = (
+        normalized.dropna(subset=["expiry"])
+        .groupby(["timestamp", "expiry"], as_index=False)["mark_iv"]
+        .median()
+        .sort_values(["timestamp", "expiry"])
+    )
+    slopes: list[dict[str, object]] = []
+    for timestamp, group in expiry_iv.groupby("timestamp", sort=True):
+        if len(group) < 2:
+            slope = 0.0
+        else:
+            slope = float(group["mark_iv"].iloc[-1] - group["mark_iv"].iloc[0])
+        slopes.append({"timestamp": timestamp, "iv_term_slope": slope})
+    slope_frame = pd.DataFrame(slopes)
+    result = atm.merge(slope_frame, on="timestamp", how="left")
+    result["iv_term_slope"] = result["iv_term_slope"].fillna(0.0)
+    result["exchange"] = "binance"
+    result["symbol"] = "BTCUSDT"
+    result["source_version"] = "binance_public_eoh_summary_options_v1"
+    return normalize_options_frame(result)
+
+
+def _merge_options_sources(primary: pd.DataFrame | None, fallback: pd.DataFrame | None) -> pd.DataFrame:
+    frames = [frame for frame in (primary, fallback) if frame is not None and not frame.empty]
+    if not frames:
+        raise FileNotFoundError("No normalized options archive files were found.")
+    merged = pd.concat(frames, ignore_index=True)
+    merged["timestamp"] = pd.to_datetime(merged["timestamp"], utc=True)
+    source_rank = merged["source_version"].astype("string").str.contains("eoh_summary", na=False).astype(int)
+    merged = merged.assign(_source_rank=source_rank).sort_values(["timestamp", "_source_rank"])
+    merged = merged.drop_duplicates(subset=["timestamp"], keep="last").drop(columns=["_source_rank"])
+    return normalize_options_frame(merged)
+
+
 def load_archive_funding_frame(
     normalized_root: str | Path,
     *,
@@ -151,18 +231,13 @@ def load_archive_options_frame(
     symbol: str,
 ) -> pd.DataFrame:
     root = _resolve_normalized_root(normalized_root)
-    path = root / "option" / "BVOLIndex" / f"{symbol}.parquet"
-    frame = _load_normalized_frame(path).copy()
-    if "index_value" in frame.columns and "atm_iv_near" not in frame.columns:
-        frame = frame.rename(columns={"index_value": "atm_iv_near"})
-        atm_iv = pd.to_numeric(frame["atm_iv_near"], errors="coerce")
-        if atm_iv.dropna().median() > 5.0:
-            frame["atm_iv_near"] = atm_iv / 100.0
-    frame = _downsample_to_minute_last(frame)
-    frame["exchange"] = frame.get("exchange", "binance")
-    if "iv_term_slope" not in frame.columns:
-        frame["iv_term_slope"] = 0.0
-    return normalize_options_frame(frame)
+    bvol_path = root / "option" / "BVOLIndex" / f"{symbol}.parquet"
+    eoh_path = root / "option" / "EOHSummary" / "BTCUSDT.parquet"
+    bvol_frame = _load_optional_normalized_frame(bvol_path)
+    eoh_frame = _load_optional_normalized_frame(eoh_path)
+    normalized_bvol = _normalize_bvol_options_frame(bvol_frame) if bvol_frame is not None else None
+    normalized_eoh = _normalize_eoh_summary_options_frame(eoh_frame) if eoh_frame is not None else None
+    return _merge_options_sources(normalized_eoh, normalized_bvol)
 
 
 def load_archive_book_ticker_frame(

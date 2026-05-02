@@ -14,6 +14,11 @@ def test_train_and_live_feature_paths_match_with_options() -> None:
     settings = load_settings()
     settings = replace(
         settings,
+        dataset=replace(
+            settings.dataset,
+            train_start="2026-01-01T00:00:00Z",
+            train_end="2026-01-01T09:59:00Z",
+        ),
         derivatives=replace(
         settings.derivatives,
         enabled=True,
