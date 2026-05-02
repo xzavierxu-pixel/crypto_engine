@@ -11,10 +11,10 @@ from src.model.train import split_recent_train_validation_frame
 def test_linear_ramp_sample_weight_matches_prd_boundaries() -> None:
     settings = load_settings()
     weights = compute_sample_weight(
-        pd.Series([0.0, 0.0001, 0.00025, 0.0005, 0.001], dtype="float64"),
+        pd.Series([0.0, 0.0001, 0.0002, 0.0003, 0.001], dtype="float64"),
         settings=settings,
     )
-    assert list(weights.round(2)) == [0.20, 0.36, 0.60, 1.00, 1.00]
+    assert list(weights.round(2)) == [0.35, 0.57, 0.78, 1.00, 1.00]
 
 
 def test_selective_binary_metrics_reports_prd_fields() -> None:
@@ -116,5 +116,10 @@ def test_completed_bar_microstructure_features_are_legal_features() -> None:
 
     assert features.loc[2, "prev_bar_taker_buy_ratio"] == 0.75
     assert features.loc[2, "prev_bar_taker_imbalance"] == 0.5
+    assert "legal_prev_trade_count" not in features.columns
+    assert "legal_prev_taker_buy_base_volume" not in features.columns
+    assert "legal_prev_taker_buy_base_volume_share" not in features.columns
+    assert features.loc[3, "legal_prev_trade_count_sum_3"] == 30.0
+    assert features.loc[3, "legal_prev_relative_taker_buy_base_volume_3"] == 12.0 / 11.0
     assert "prev_bar_return" in features.columns
     assert infer_feature_columns(features) == list(features.columns)

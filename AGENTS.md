@@ -30,7 +30,7 @@ Implement a BTC/USDT 5-minute direction prediction system using Freqtrade/FreqAI
 - BTC/USDT only
 - 1m data
 - 5m horizon only
-- label: y = 1{close[t0+5m] > open[t0]}
+- label: y = 1{close[t0+4m] >= open[t0]}
 - LightGBM baseline
 - unified settings file
 - shared core + model + thin strategy + execution stubs + tests

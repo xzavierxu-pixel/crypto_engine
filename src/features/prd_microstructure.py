@@ -62,29 +62,62 @@ class CompletedBarMicrostructureFeaturePack(FeaturePack):
             features["prev_bar_log_quote_volume"] = np.log1p(quote_volume.clip(lower=0.0))
             features["prev_bar_vwap_proxy"] = quote_volume / safe_volume
 
-        trade_count = None
         if count_column is not None:
             trade_count = pd.to_numeric(df[count_column], errors="coerce").shift(1)
-            safe_trade_count = trade_count.replace(0, np.nan)
-            features["prev_bar_trade_count"] = trade_count
-            features["prev_bar_log_trade_count"] = np.log1p(trade_count.clip(lower=0.0))
-            features["prev_bar_avg_trade_size"] = volume / safe_trade_count
-            if quote_volume is not None:
-                features["prev_bar_avg_quote_per_trade"] = quote_volume / safe_trade_count
+        else:
+            trade_count = pd.Series(0.0, index=df.index, dtype="float64")
+        safe_trade_count = trade_count.replace(0, np.nan)
+        features["prev_bar_trade_count"] = trade_count
+        features["prev_bar_log_trade_count"] = np.log1p(trade_count.clip(lower=0.0))
+        features["prev_bar_avg_trade_size"] = (volume / safe_trade_count).fillna(0.0)
+        for window in (3, 5, 10, 20):
+            rolling_count_mean = trade_count.rolling(window, min_periods=window).mean()
+            rolling_count_std = trade_count.rolling(window, min_periods=window).std().replace(0, np.nan)
+            rolling_count_sum = trade_count.rolling(window, min_periods=window).sum()
+            features[f"legal_prev_trade_count_sum_{window}"] = rolling_count_sum.fillna(0.0)
+            features[f"legal_prev_relative_trade_count_{window}"] = (
+                trade_count / rolling_count_mean.replace(0, np.nan)
+            ).fillna(0.0)
+            features[f"legal_prev_trade_count_z_{window}"] = (
+                (trade_count - rolling_count_mean) / rolling_count_std
+            ).fillna(0.0)
+        if quote_volume is not None:
+            features["prev_bar_avg_quote_per_trade"] = (quote_volume / safe_trade_count).fillna(0.0)
 
-        if taker_base_column is not None:
+        has_taker_base = taker_base_column is not None
+        if has_taker_base:
             taker_buy_volume = pd.to_numeric(df[taker_base_column], errors="coerce").shift(1)
-            taker_buy_ratio = (taker_buy_volume / safe_volume).clip(0.0, 1.0)
-            features["prev_bar_taker_buy_volume"] = taker_buy_volume
-            features["prev_bar_taker_buy_ratio"] = taker_buy_ratio
-            features["prev_bar_taker_sell_ratio"] = (1.0 - taker_buy_ratio).clip(0.0, 1.0)
-            features["prev_bar_taker_imbalance"] = (2.0 * taker_buy_ratio - 1.0).clip(-1.0, 1.0)
-            features["prev_bar_taker_net_volume"] = 2.0 * taker_buy_volume - volume
-            features["prev_bar_taker_buy_ratio_delta_1"] = taker_buy_ratio.diff(1)
-            features["prev_bar_taker_buy_ratio_mean_5"] = taker_buy_ratio.rolling(5, min_periods=5).mean()
-            taker_ratio_std = taker_buy_ratio.rolling(20, min_periods=20).std().replace(0, np.nan)
-            taker_ratio_mean = taker_buy_ratio.rolling(20, min_periods=20).mean()
-            features["prev_bar_taker_buy_ratio_zscore_20"] = ((taker_buy_ratio - taker_ratio_mean) / taker_ratio_std).fillna(0.0)
+            taker_buy_ratio = (taker_buy_volume / safe_volume).clip(0.0, 1.0).fillna(0.0)
+            taker_sell_volume = (volume - taker_buy_volume).clip(lower=0.0).fillna(0.0)
+            taker_net_volume = 2.0 * taker_buy_volume - volume
+        else:
+            taker_buy_volume = pd.Series(0.0, index=df.index, dtype="float64")
+            taker_buy_ratio = pd.Series(0.5, index=df.index, dtype="float64")
+            taker_sell_volume = pd.Series(0.0, index=df.index, dtype="float64")
+            taker_net_volume = pd.Series(0.0, index=df.index, dtype="float64")
+        features["prev_bar_taker_buy_volume"] = taker_buy_volume
+        features["prev_bar_taker_buy_ratio"] = taker_buy_ratio
+        features["prev_bar_taker_sell_ratio"] = (1.0 - taker_buy_ratio).clip(0.0, 1.0)
+        features["prev_bar_taker_imbalance"] = (2.0 * taker_buy_ratio - 1.0).clip(-1.0, 1.0)
+        features["prev_bar_taker_net_volume"] = taker_net_volume
+        features["prev_bar_taker_buy_ratio_delta_1"] = taker_buy_ratio.diff(1).fillna(0.0)
+        features["prev_bar_taker_buy_ratio_mean_5"] = taker_buy_ratio.rolling(5, min_periods=5).mean().fillna(0.0)
+        taker_ratio_std = taker_buy_ratio.rolling(20, min_periods=20).std().replace(0, np.nan)
+        taker_ratio_mean = taker_buy_ratio.rolling(20, min_periods=20).mean()
+        features["prev_bar_taker_buy_ratio_zscore_20"] = ((taker_buy_ratio - taker_ratio_mean) / taker_ratio_std).fillna(0.0)
+        features["legal_prev_log_taker_buy_base_volume"] = np.log1p(taker_buy_volume.clip(lower=0.0))
+        features["legal_prev_taker_sell_base_volume"] = taker_sell_volume
+        for window in (3, 5, 10, 20):
+            rolling_buy_mean = taker_buy_volume.rolling(window, min_periods=window).mean()
+            rolling_buy_std = taker_buy_volume.rolling(window, min_periods=window).std().replace(0, np.nan)
+            rolling_buy_sum = taker_buy_volume.rolling(window, min_periods=window).sum()
+            features[f"legal_prev_taker_buy_base_volume_sum_{window}"] = rolling_buy_sum.fillna(0.0)
+            features[f"legal_prev_relative_taker_buy_base_volume_{window}"] = (
+                taker_buy_volume / rolling_buy_mean.replace(0, np.nan)
+            ).fillna(0.0)
+            features[f"legal_prev_taker_buy_base_volume_z_{window}"] = (
+                (taker_buy_volume - rolling_buy_mean) / rolling_buy_std
+            ).fillna(0.0)
 
         if taker_quote_column is not None and quote_volume is not None:
             taker_buy_quote_volume = pd.to_numeric(df[taker_quote_column], errors="coerce").shift(1)

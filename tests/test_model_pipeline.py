@@ -10,7 +10,11 @@ import pandas as pd
 
 from scripts import train_model as train_model_script
 from src.core.config import load_settings
-from src.core.constants import DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN
+from src.core.constants import (
+    DEFAULT_ABS_RETURN_COLUMN,
+    DEFAULT_SIGNED_RETURN_COLUMN,
+    DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN,
+)
 from src.data.dataset_builder import build_training_frame
 from src.model.infer import predict_frame
 from src.model.train import _fit_model, train_binary_selective_model
@@ -82,6 +86,26 @@ def test_training_frame_uses_prd_sample_weight() -> None:
     assert training.sample_weight.equals(training.frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN])
 
 
+def test_training_frame_uses_t4_close_for_target_and_returns() -> None:
+    settings = _unit_settings()
+    frame = _build_frame(500)
+    t0_index = 300
+    t0_open = float(frame.loc[t0_index, "open"])
+    frame.loc[t0_index + 4, "close"] = t0_open * 1.01
+    frame.loc[t0_index + 5, "close"] = t0_open * 0.99
+    frame.loc[t0_index + 4, "high"] = max(float(frame.loc[t0_index + 4, "high"]), t0_open * 1.02)
+    frame.loc[t0_index + 5, "low"] = min(float(frame.loc[t0_index + 5, "low"]), t0_open * 0.98)
+
+    training = build_training_frame(frame, settings, horizon_name="5m")
+    row = training.frame.loc[
+        training.frame["timestamp"] == pd.Timestamp("2024-01-01T17:00:00Z")
+    ].iloc[0]
+
+    assert row["target"] == 1.0
+    assert round(float(row[DEFAULT_SIGNED_RETURN_COLUMN]), 10) == 0.01
+    assert round(float(row[DEFAULT_ABS_RETURN_COLUMN]), 10) == 0.01
+
+
 def test_fit_model_uses_binary_lightgbm_params(monkeypatch) -> None:
     settings = _unit_settings()
     captured: list[dict] = []
@@ -110,6 +134,9 @@ def test_fit_model_uses_binary_lightgbm_params(monkeypatch) -> None:
     _fit_model(training, settings, stage="binary")
     assert captured[0]["plugin_params"]["scale_pos_weight"] == 3.0
     assert captured[0]["plugin_params"]["objective"] == "binary"
+    assert settings.model.plugins["lightgbm"]["num_leaves"] == 20
+    assert settings.model.plugins["lightgbm"]["min_child_samples"] == 300
+    assert settings.model.plugins["lightgbm"]["colsample_bytree"] == 0.8
 
 
 def test_train_model_script_writes_binary_artifacts_and_reports(tmp_path: Path, monkeypatch) -> None:

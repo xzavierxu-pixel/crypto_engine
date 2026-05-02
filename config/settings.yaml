@@ -22,7 +22,7 @@ horizons:
       grid_minutes: 5
       label_builder: grid_direction
       label_params:
-        label_version: settlement_direction_tie_up_v1
+        label_version: settlement_direction_t0_open_to_t4_close_tie_up_v2
       feature_profile: core_5m
       signal_policy: selective_binary_policy
       sizing_plugin: fixed_fraction
@@ -50,8 +50,8 @@ sample_weighting:
   enabled: true
   mode: linear_ramp
   min_abs_return: 0.0001
-  full_weight_abs_return: 0.0005
-  min_weight: 0.20
+  full_weight_abs_return: 0.0003
+  min_weight: 0.35
   max_weight: 1.00
 
 threshold_search:
@@ -136,6 +136,11 @@ features:
         - compression_score
         - clv_1
         - wick_pressure_1
+        - prev_bar_trade_count
+        - prev_bar_log_trade_count
+        - prev_bar_taker_buy_volume
+        - legal_prev_log_taker_buy_base_volume
+        - prev_bar_taker_buy_ratio
         - htf_ret_15m_1
         - htf_close_z_15m
       lagged_feature_lags: [1, 2, 3, 6, 12]
@@ -349,13 +354,13 @@ model:
     lightgbm:
       n_estimators: 400
       learning_rate: 0.03
-      num_leaves: 30
-      min_child_samples: 500
-      subsample: 1
+      num_leaves: 20
+      min_child_samples: 300
+      subsample: 0.9
       subsample_freq: 1
-      colsample_bytree: 1
+      colsample_bytree: 0.8
       reg_alpha: 0.8
-      reg_lambda: 2.0
+      reg_lambda: 5.0
       max_depth: 6
       scale_pos_weight: null
       verbosity: -1

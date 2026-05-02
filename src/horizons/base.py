@@ -17,4 +17,5 @@ class HorizonSpec:
 
     @property
     def future_close_offset(self) -> int:
+        # A 5m market settles on the close of the fifth 1m candle: t0 + 4 rows.
         return self.minutes - 1
