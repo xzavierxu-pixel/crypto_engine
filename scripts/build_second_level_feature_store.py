@@ -50,6 +50,11 @@ def main() -> None:
         default=300,
         help="Lookback seconds prepended to each partition before trimming the output chunk.",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Reuse readable existing partition outputs when partition-frequency is not none.",
+    )
     args = parser.parse_args()
 
     settings = load_settings(args.config)
@@ -146,6 +151,7 @@ def main() -> None:
             large_trade_window_seconds=settings.second_level.large_trade_window_seconds,
             feature_profile=feature_profile,
             manifest=source_manifest,
+            resume=args.resume,
         )
         output_path = str(partition_output)
     print(json.dumps({"output": str(Path(output_path).resolve()), "source_tables": source_table_outputs, **manifest}, indent=2))

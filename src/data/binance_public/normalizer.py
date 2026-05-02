@@ -156,10 +156,13 @@ CATEGORY_LIKE_COLUMNS = {
     "source_version",
     "checksum_status",
     "download_status",
-    "expected_checksum",
-    "actual_checksum",
     "base_asset",
     "quote_asset",
+}
+
+STRING_LIKE_COLUMNS = {
+    "expected_checksum",
+    "actual_checksum",
 }
 
 
@@ -458,6 +461,8 @@ def _stabilize_dtypes(frame: pd.DataFrame) -> pd.DataFrame:
         elif column in INT_LIKE_COLUMNS:
             if str(frame[column].dtype) != "Int64":
                 frame[column] = pd.to_numeric(frame[column], errors="coerce").astype("Int64")
+        elif column in STRING_LIKE_COLUMNS:
+            frame[column] = frame[column].astype("string")
         elif column in CATEGORY_LIKE_COLUMNS:
             if not isinstance(frame[column].dtype, CategoricalDtype):
                 frame[column] = frame[column].astype("category")
@@ -565,6 +570,25 @@ def _descriptor_sort_key(descriptor: RawFileDescriptor) -> tuple[int, str, str, 
     return (granularity_rank, descriptor.source_date, descriptor.interval or "", str(descriptor.file_path))
 
 
+def _filter_redundant_daily_descriptors(file_group: list[RawFileDescriptor]) -> list[RawFileDescriptor]:
+    monthly_periods = {
+        descriptor.source_date
+        for descriptor in file_group
+        if descriptor.source_granularity == "monthly"
+    }
+    if not monthly_periods:
+        return file_group
+    filtered: list[RawFileDescriptor] = []
+    for descriptor in file_group:
+        if (
+            descriptor.source_granularity == "daily"
+            and descriptor.source_date[:7] in monthly_periods
+        ):
+            continue
+        filtered.append(descriptor)
+    return filtered
+
+
 def _group_output_path(normalized_root: Path, key: tuple[str, str, str, str | None]) -> Path:
     market_family, data_type, symbol, interval = key
     filename = f"{symbol}"
@@ -589,6 +613,35 @@ class FrameAccumulator:
     gap_count_gt_1m: int | None = None
     previous_last_timestamp: pd.Timestamp | None = None
     checksum_statuses: set[str] | None = None
+
+
+@dataclass
+class EventDedupeState:
+    max_seen_id: int | None = None
+    dropped_duplicate_or_out_of_order_rows: int = 0
+
+
+def _drop_duplicate_event_ids(
+    frame: pd.DataFrame,
+    *,
+    data_type: str,
+    state: EventDedupeState,
+) -> pd.DataFrame:
+    id_column = "agg_trade_id" if data_type == "aggTrades" else "trade_id" if data_type == "trades" else None
+    if id_column is None or id_column not in frame.columns or frame.empty:
+        return frame
+    ids = pd.to_numeric(frame[id_column], errors="coerce")
+    keep = ids.notna()
+    if state.max_seen_id is not None:
+        keep &= ids > state.max_seen_id
+    keep &= ~ids.duplicated()
+    dropped = int((~keep).sum())
+    if dropped:
+        state.dropped_duplicate_or_out_of_order_rows += dropped
+    kept = frame.loc[keep].copy()
+    if not kept.empty:
+        state.max_seen_id = int(pd.to_numeric(kept[id_column], errors="coerce").max())
+    return kept
 
 
 def _update_accumulator(
@@ -700,14 +753,19 @@ def normalize_binance_public_history(output_root: Path) -> dict[str, Any]:
 
     outputs: list[dict[str, Any]] = []
     for key, file_group in sorted(grouped_descriptors.items(), key=lambda item: item[0]):
-        file_group = sorted(file_group, key=_descriptor_sort_key)
+        original_source_file_count = len(file_group)
+        file_group = _filter_redundant_daily_descriptors(sorted(file_group, key=_descriptor_sort_key))
         output_path = _group_output_path(normalized_root, key)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         writer: pq.ParquetWriter | None = None
         accumulator = FrameAccumulator()
+        dedupe_state = EventDedupeState()
         try:
             for descriptor in file_group:
                 for frame in _normalize_file_chunks(descriptor, ingested_at=ingested_at, checksum_map=checksum_map):
+                    frame = _drop_duplicate_event_ids(frame, data_type=key[1], state=dedupe_state)
+                    if frame.empty:
+                        continue
                     frame = _sort_by_timestamp_if_needed(frame)
                     _update_accumulator(accumulator, frame, interval=key[3], data_type=key[1])
                     table = pa.Table.from_pandas(frame, preserve_index=False)
@@ -725,6 +783,9 @@ def normalize_binance_public_history(output_root: Path) -> dict[str, Any]:
                 "interval": key[3],
                 "output_path": str(output_path.resolve()),
                 "source_files": [str(descriptor.file_path.resolve()) for descriptor in file_group],
+                "source_file_count": len(file_group),
+                "skipped_redundant_daily_source_file_count": original_source_file_count - len(file_group),
+                "dropped_duplicate_or_out_of_order_event_rows": dedupe_state.dropped_duplicate_or_out_of_order_rows,
                 "schema": _accumulator_summary(accumulator),
                 "checksum_statuses": sorted((accumulator.checksum_statuses or set())),
             }

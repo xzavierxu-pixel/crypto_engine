@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -9,7 +11,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.core.config import load_settings
-from src.data.dataset_builder import build_training_frame
+from src.data.dataset_builder import build_feature_schema_qa, build_training_frame
 from src.data.derivatives.feature_store import load_derivatives_frame_from_settings
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
 from src.data.second_level_features import load_sampled_second_level_features
@@ -84,6 +86,27 @@ def main() -> None:
     output_path = Path(args.output) if args.output else _default_dataset_output(data_root, settings.second_level.market, args.horizon)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     training.frame.to_parquet(output_path, index=False)
+    qa_payload = build_feature_schema_qa(training.frame, training.feature_columns)
+    summary_payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "input": str(Path(args.input).resolve()),
+        "output": str(output_path.resolve()),
+        "config": str(Path(args.config).resolve()),
+        "horizon": args.horizon,
+        "row_count": int(len(training.frame)),
+        "column_count": int(len(training.frame.columns)),
+        "feature_count": int(len(training.feature_columns)),
+        "target_column": training.target_column,
+        "sample_weight_column": training.sample_weight_column,
+        "timestamp_start": str(training.frame["timestamp"].min()) if not training.frame.empty else None,
+        "timestamp_end": str(training.frame["timestamp"].max()) if not training.frame.empty else None,
+        "feature_schema_qa": qa_payload,
+    }
+    output_path.with_name("training_frame_qa.json").write_text(json.dumps(qa_payload, indent=2), encoding="utf-8")
+    output_path.with_name("training_frame_summary.json").write_text(
+        json.dumps(summary_payload, indent=2),
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":

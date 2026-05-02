@@ -196,6 +196,7 @@ def _plan_periods_for_supported_granularities(
     supported_granularities: tuple[str, ...],
     use_monthly: bool,
     use_daily_tail: bool,
+    use_daily_full_month_fallback: bool = False,
 ) -> list[PeriodSpec]:
     latest_daily = _latest_daily_available_date(as_of_date)
     if latest_daily < start_date:
@@ -207,7 +208,7 @@ def _plan_periods_for_supported_granularities(
     if supports_daily and not supports_monthly:
         return _daily_periods(start_date, latest_daily)
 
-    return [
+    periods = [
         period
         for period in _plan_periods(
             start_date=start_date,
@@ -217,6 +218,15 @@ def _plan_periods_for_supported_granularities(
         )
         if period.granularity in supported_granularities
     ]
+    if use_daily_full_month_fallback and supports_daily:
+        full_month_days: list[PeriodSpec] = []
+        for monthly_period in [period for period in periods if period.granularity == "monthly"]:
+            month_start = date.fromisoformat(f"{monthly_period.label}-01")
+            month_end = _next_month(month_start) - timedelta(days=1)
+            full_month_days.extend(_daily_periods(max(start_date, month_start), min(month_end, latest_daily)))
+        periods.extend(full_month_days)
+    unique_periods = {(period.granularity, period.label): period for period in periods}
+    return sorted(unique_periods.values(), key=lambda item: (item.label, item.granularity))
 
 
 def _build_filename(market_family: str, symbol: str, data_type: str, period_label: str, interval: str | None) -> str:
@@ -280,6 +290,7 @@ def _build_market_requests(
     as_of_date: date,
     use_monthly: bool,
     use_daily_tail: bool,
+    use_daily_full_month_fallback: bool,
 ) -> list[DownloadRequest]:
     if not market_config.enabled:
         return []
@@ -295,6 +306,7 @@ def _build_market_requests(
             supported_granularities=support["granularities"],
             use_monthly=use_monthly,
             use_daily_tail=use_daily_tail,
+            use_daily_full_month_fallback=use_daily_full_month_fallback,
         )
         intervals = list(data_type_config.get("intervals", [])) if support["interval_required"] else [None]
         if support["interval_required"] and not intervals:
@@ -339,6 +351,7 @@ def _build_option_requests(
             supported_granularities=support["granularities"],
             use_monthly=use_monthly,
             use_daily_tail=use_daily_tail,
+            use_daily_full_month_fallback=False,
         )
         for symbol in symbols:
             for period in periods:
@@ -373,6 +386,7 @@ def build_download_requests(
             as_of_date,
             backfill_config.use_monthly_for_full_months,
             backfill_config.use_daily_for_open_month_tail,
+            backfill_config.use_daily_for_full_month_fallback,
         )
     )
     requests_to_run.extend(
@@ -384,6 +398,7 @@ def build_download_requests(
             as_of_date,
             backfill_config.use_monthly_for_full_months,
             backfill_config.use_daily_for_open_month_tail,
+            backfill_config.use_daily_for_full_month_fallback,
         )
     )
     requests_to_run.extend(
@@ -395,6 +410,7 @@ def build_download_requests(
             as_of_date,
             backfill_config.use_monthly_for_full_months,
             backfill_config.use_daily_for_open_month_tail,
+            backfill_config.use_daily_for_full_month_fallback,
         )
     )
     requests_to_run.extend(
@@ -430,6 +446,13 @@ def _extract_archive(content: bytes, target_dir: Path) -> list[str]:
     if not extracted_files:
         raise ValueError("Archive did not contain any files.")
     return extracted_files
+
+
+def _existing_extracted_files(target_dir: Path) -> list[str]:
+    if not target_dir.exists():
+        return []
+    files = sorted(path for path in target_dir.rglob("*.csv") if path.is_file())
+    return [str(path.resolve()) for path in files]
 
 
 def _download_content(session: requests.Session, url: str) -> bytes:
@@ -491,6 +514,15 @@ def execute_request(
     request: DownloadRequest,
     verify_checksum: bool,
 ) -> DownloadResult:
+    existing_files = _existing_extracted_files(request.raw_dir)
+    if existing_files:
+        return DownloadResult(
+            request=request,
+            status="skipped",
+            checksum_status="not_rechecked_existing_extract",
+            extracted_files=existing_files,
+            message="raw csv already extracted",
+        )
     zip_content: bytes
     try:
         zip_content = _download_content(session, request.url)

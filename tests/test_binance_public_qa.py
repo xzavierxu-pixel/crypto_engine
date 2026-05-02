@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+import src.data.binance_public.qa as qa_module
 from src.data.binance_public.qa import run_binance_public_qa
 
 
@@ -202,3 +203,40 @@ def test_run_binance_public_qa_flags_kline_gaps_and_event_stream_schema_issues(t
     assert book_entry["checks"]["required_columns_present"] is False
     assert "bid_qty" in book_entry["checks"]["missing_required_columns"]
     assert book_entry["checks"]["event_stream_aggregatable"] is False
+
+
+def test_large_event_stream_qa_uses_streaming_bounded_memory_checks(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(qa_module, "DUPLICATE_EXACT_CHECK_ROW_LIMIT", 1)
+    timestamps = pd.to_datetime(
+        [
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T00:00:01Z",
+            "2026-01-01T00:00:01Z",
+        ],
+        utc=True,
+    )
+    _write_parquet(
+        tmp_path / "normalized" / "spot" / "bookTicker" / "BTCUSDT.parquet",
+        _base_metadata(
+            pd.DataFrame(
+                {
+                    "timestamp": timestamps,
+                    "bid_price": [100.0, 101.0, 101.0],
+                    "bid_qty": [10.0, 11.0, 11.0],
+                    "ask_price": [100.2, 101.2, 101.2],
+                    "ask_qty": [9.0, 10.0, 10.0],
+                }
+            ),
+            symbol="BTCUSDT",
+            market_family="spot",
+            data_type="bookTicker",
+            interval=None,
+        ),
+    )
+
+    manifest = run_binance_public_qa(tmp_path)
+
+    entry = manifest["tables"][0]
+    assert entry["checks"]["large_table_check_mode"] == "streaming_bounded_memory"
+    assert entry["checks"]["duplicate_timestamp_symbol_rows"] == 1
+    assert entry["checks"]["no_duplicate_timestamp_symbol_rows"] is False

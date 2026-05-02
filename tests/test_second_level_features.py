@@ -309,3 +309,39 @@ def test_partitioned_second_level_feature_store_writes_trimmed_chunks(tmp_path) 
     assert loaded["timestamp"].max() == kline["timestamp"].max()
     assert len(sampled) == 2
     assert "sl_return_1s" in sampled.columns
+
+
+def test_partitioned_second_level_feature_store_resume_reuses_existing_partition(tmp_path) -> None:
+    kline = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T00:00:00Z", periods=4, freq="1s"),
+            "open": [100, 101, 102, 103],
+            "high": [100, 101, 102, 103],
+            "low": [100, 101, 102, 103],
+            "close": [100, 101, 102, 103],
+            "volume": [1.0] * 4,
+            "quote_volume": [100.0] * 4,
+            "trade_count": [1] * 4,
+            "taker_buy_base_volume": [0.5] * 4,
+            "taker_buy_quote_volume": [50.0] * 4,
+        }
+    )
+    output_dir = tmp_path / "second_features"
+    write_partitioned_second_level_feature_store(
+        kline_frame=kline,
+        output_dir=output_dir,
+        partition_frequency="daily",
+        warmup_seconds=1,
+    )
+
+    manifest = write_partitioned_second_level_feature_store(
+        kline_frame=kline,
+        output_dir=output_dir,
+        partition_frequency="daily",
+        warmup_seconds=1,
+        resume=True,
+    )
+
+    assert manifest["resume_enabled"] is True
+    assert manifest["partitions"][0]["status"] == "reused_existing"
+    assert manifest["row_count"] == len(kline)

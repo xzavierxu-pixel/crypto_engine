@@ -5,7 +5,13 @@ from dataclasses import replace
 import pandas as pd
 
 from src.core.config import DatasetConfig, load_settings
-from src.data.dataset_builder import TrainingFrame, build_training_frame, is_allowed_feature_column
+from src.data.dataset_builder import (
+    TrainingFrame,
+    assert_feature_quality,
+    build_feature_schema_qa,
+    build_training_frame,
+    is_allowed_feature_column,
+)
 from src.model.train import _build_stage1_training_frame
 
 
@@ -107,3 +113,28 @@ def test_stage1_training_frame_uses_boundary_weight_only() -> None:
 def test_metadata_merge_suffix_columns_are_not_features() -> None:
     assert not is_allowed_feature_column("interval_y")
     assert not is_allowed_feature_column("source_file_x")
+
+
+def test_feature_schema_qa_rejects_all_null_or_leakage_features() -> None:
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T00:00:00Z", periods=2, freq="1min"),
+            "good_feature": [1.0, 2.0],
+            "empty_feature": [None, None],
+            "future_close": [101.0, 102.0],
+            "target": [1, 0],
+        }
+    )
+    feature_columns = ["good_feature", "empty_feature", "future_close"]
+
+    qa = build_feature_schema_qa(frame, feature_columns)
+
+    assert qa["passed"] is False
+    assert qa["all_null_features"] == ["empty_feature"]
+    assert qa["leakage_features"] == ["future_close"]
+    try:
+        assert_feature_quality(frame, feature_columns)
+    except ValueError as exc:
+        assert "Feature schema QA failed" in str(exc)
+    else:
+        raise AssertionError("Expected feature schema QA failure.")

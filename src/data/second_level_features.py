@@ -8,6 +8,7 @@ from collections.abc import Iterator
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 
 from src.core.constants import DEFAULT_TIMESTAMP_COLUMN
 from src.data.second_level_feature_packs import (
@@ -296,6 +297,37 @@ def _partition_label(start: pd.Timestamp, frequency: str) -> str:
     if freq == "MS":
         return start.strftime("%Y-%m")
     return start.strftime("%Y-%m-%d")
+
+
+def _existing_partition_metadata(
+    partition_path: Path,
+    *,
+    label: str,
+    warmup_seconds: int,
+) -> dict[str, Any] | None:
+    if not partition_path.exists():
+        return None
+    try:
+        parquet_file = pq.ParquetFile(partition_path)
+        schema = parquet_file.schema.names
+        if DEFAULT_TIMESTAMP_COLUMN not in schema:
+            return None
+        timestamps = pd.read_parquet(partition_path, columns=[DEFAULT_TIMESTAMP_COLUMN])
+    except Exception:
+        return None
+    if timestamps.empty:
+        return None
+    timestamps[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(timestamps[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+    return {
+        "label": label,
+        "path": str(partition_path),
+        "start": str(timestamps[DEFAULT_TIMESTAMP_COLUMN].min()),
+        "end": str(timestamps[DEFAULT_TIMESTAMP_COLUMN].max()),
+        "row_count": int(parquet_file.metadata.num_rows),
+        "warmup_seconds": int(warmup_seconds),
+        "status": "reused_existing",
+        "schema": schema,
+    }
 
 
 def _asof_to_decisions(features: pd.DataFrame, decision_timestamps: pd.Series) -> pd.DataFrame:
@@ -1360,6 +1392,7 @@ def write_partitioned_second_level_feature_store(
     large_trade_window_seconds: int = 300,
     feature_profile: SecondLevelFeatureProfile | dict[str, Any] | None = None,
     manifest: dict[str, Any] | None = None,
+    resume: bool = False,
 ) -> dict[str, Any]:
     output_root = Path(output_dir)
     output_root.mkdir(parents=True, exist_ok=True)
@@ -1370,6 +1403,21 @@ def write_partitioned_second_level_feature_store(
     feature_count = 0
     schema: list[str] = []
     for chunk_start, chunk_end in _iter_time_partitions(start, end, partition_frequency):
+        label = _partition_label(chunk_start, partition_frequency)
+        partition_dir = output_root / f"date={label}"
+        partition_path = partition_dir / "second_features.parquet"
+        if resume:
+            existing = _existing_partition_metadata(
+                partition_path,
+                label=label,
+                warmup_seconds=warmup_seconds,
+            )
+            if existing is not None:
+                total_rows += int(existing["row_count"])
+                schema = list(existing.pop("schema"))
+                feature_count = int(sum(column.startswith("sl_") for column in schema))
+                partitions.append(existing)
+                continue
         warm_start = chunk_start - pd.Timedelta(seconds=warmup_seconds)
         warm_end = chunk_end
         chunk_kline = _slice_frame_by_time(kline, warm_start, warm_end)
@@ -1394,10 +1442,7 @@ def write_partitioned_second_level_feature_store(
         chunk_store = chunk_store.loc[(timestamps >= chunk_start) & (timestamps <= chunk_end)].reset_index(drop=True)
         if chunk_store.empty:
             continue
-        label = _partition_label(chunk_start, partition_frequency)
-        partition_dir = output_root / f"date={label}"
         partition_dir.mkdir(parents=True, exist_ok=True)
-        partition_path = partition_dir / "second_features.parquet"
         chunk_store.to_parquet(partition_path, index=False)
         total_rows += len(chunk_store)
         feature_count = int(sum(column.startswith("sl_") for column in chunk_store.columns))
@@ -1410,6 +1455,7 @@ def write_partitioned_second_level_feature_store(
                 "end": str(chunk_store[DEFAULT_TIMESTAMP_COLUMN].max()),
                 "row_count": int(len(chunk_store)),
                 "warmup_seconds": int(warmup_seconds),
+                "status": "built",
             }
         )
     if not partitions:
@@ -1422,6 +1468,7 @@ def write_partitioned_second_level_feature_store(
         "partitioned": True,
         "partition_frequency": partition_frequency,
         "warmup_seconds": int(warmup_seconds),
+        "resume_enabled": bool(resume),
         "row_count": int(total_rows),
         "start": partitions[0]["start"],
         "end": partitions[-1]["end"],

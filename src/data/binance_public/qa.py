@@ -85,7 +85,11 @@ def _infer_symbol_and_interval(path: Path) -> tuple[str, str | None]:
 
 
 def _iter_normalized_files(normalized_root: Path) -> list[Path]:
-    return sorted(normalized_root.rglob("*.parquet"))
+    return sorted(
+        path
+        for path in normalized_root.rglob("*.parquet")
+        if path.relative_to(normalized_root).parts[0] != "binance"
+    )
 
 
 def _required_columns_for(data_type: str) -> set[str]:
@@ -116,6 +120,16 @@ def _empty_series(dtype: str = "object") -> pd.Series:
     return pd.Series([], dtype=dtype)
 
 
+def _duplicate_subset_for(data_type: str, columns: set[str]) -> list[str]:
+    if data_type == "aggTrades" and "agg_trade_id" in columns:
+        return ["agg_trade_id"]
+    if data_type == "trades" and "trade_id" in columns:
+        return ["trade_id"]
+    if data_type == "bookDepth" and {"timestamp", "symbol", "percentage"}.issubset(columns):
+        return ["timestamp", "symbol", "percentage"]
+    return ["timestamp", "symbol"] if {"timestamp", "symbol"}.issubset(columns) else ["timestamp"]
+
+
 def _table_checks_streaming(file_path: Path) -> QaTableResult:
     market_family = file_path.parent.parent.name
     data_type = file_path.parent.name
@@ -126,35 +140,10 @@ def _table_checks_streaming(file_path: Path) -> QaTableResult:
 
     required_columns = _required_columns_for(data_type)
     missing_required_columns = sorted(required_columns - columns)
-    if data_type in EVENT_STREAM_TYPES and row_count > DUPLICATE_EXACT_CHECK_ROW_LIMIT:
-        checks: dict[str, Any] = {
-            "required_columns_present": not missing_required_columns,
-            "missing_required_columns": missing_required_columns,
-            "non_empty": row_count > 0,
-            "timestamp_monotonic_increasing": None,
-            "duplicate_timestamp_symbol_rows": None,
-            "no_duplicate_timestamp_symbol_rows": None,
-            "has_negative_value_violation": None,
-            "no_negative_value_violation": None,
-            "event_stream_aggregatable": row_count > 0 and not missing_required_columns,
-            "large_event_stream_checks_skipped_reason": "row_count_exceeds_metadata_only_check_limit",
-        }
-        return QaTableResult(
-            market_family=market_family,
-            data_type=data_type,
-            symbol=symbol,
-            interval=interval,
-            file_path=str(file_path.resolve()),
-            row_count=row_count,
-            checks=checks,
-        )
-
-    if data_type == "bookDepth" and {"timestamp", "symbol", "percentage"}.issubset(columns):
-        duplicate_subset = ["timestamp", "symbol", "percentage"]
-    else:
-        duplicate_subset = ["timestamp", "symbol"] if {"timestamp", "symbol"}.issubset(columns) else ["timestamp"]
-    duplicate_rows: int | None = 0 if "timestamp" in columns and row_count <= DUPLICATE_EXACT_CHECK_ROW_LIMIT else None
-    seen_keys: set[object] = set()
+    duplicate_subset = _duplicate_subset_for(data_type, columns)
+    duplicate_rows: int | None = 0 if "timestamp" in columns else None
+    current_duplicate_timestamp: pd.Timestamp | None = None
+    seen_keys_for_timestamp: set[object] = set()
     monotonic = True
     previous_timestamp: pd.Timestamp | None = None
     continuity_ok: bool | None = True if interval == "1m" and data_type in KLINE_TYPES else None
@@ -195,10 +184,14 @@ def _table_checks_streaming(file_path: Path) -> QaTableResult:
 
             if duplicate_rows is not None and set(duplicate_subset).issubset(frame.columns):
                 for key in frame[duplicate_subset].itertuples(index=False, name=None):
-                    if key in seen_keys:
+                    timestamp_key = key[0]
+                    if current_duplicate_timestamp is None or timestamp_key != current_duplicate_timestamp:
+                        current_duplicate_timestamp = timestamp_key
+                        seen_keys_for_timestamp.clear()
+                    if key in seen_keys_for_timestamp:
                         duplicate_rows += 1
                     else:
-                        seen_keys.add(key)
+                        seen_keys_for_timestamp.add(key)
 
             for column in NON_NEGATIVE_COLUMNS_BY_DATA_TYPE.get(data_type, set()):
                 if column not in frame.columns:
@@ -224,7 +217,7 @@ def _table_checks_streaming(file_path: Path) -> QaTableResult:
         "no_negative_value_violation": not negative_violation,
     }
     if row_count > DUPLICATE_EXACT_CHECK_ROW_LIMIT:
-        checks["duplicate_check_skipped_reason"] = "row_count_exceeds_streaming_exact_check_limit"
+        checks["large_table_check_mode"] = "streaming_bounded_memory"
     if continuity_ok is not None:
         checks["strict_1m_continuity"] = continuity_ok
         checks["gap_count_gt_1m"] = gap_count

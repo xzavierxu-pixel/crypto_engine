@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import pandas as pd
 
@@ -82,6 +83,15 @@ RAW_METADATA_PREFIXES = (
     "checksum_",
 )
 
+LEAKAGE_FEATURE_COLUMNS = {
+    DEFAULT_TARGET_COLUMN,
+    "future_close",
+    DEFAULT_ABS_RETURN_COLUMN,
+    DEFAULT_SIGNED_RETURN_COLUMN,
+    "stage1_target",
+    DEFAULT_STAGE2_TARGET_COLUMN,
+}
+
 
 def is_allowed_feature_column(column: str) -> bool:
     if column in BASE_DATASET_COLUMNS or column in RAW_METADATA_FEATURE_COLUMNS:
@@ -124,6 +134,56 @@ def assert_feature_schema(feature_columns: list[str]) -> None:
     forbidden = [column for column in feature_columns if not is_allowed_feature_column(column)]
     if forbidden:
         raise ValueError(f"Forbidden raw metadata columns selected as features: {forbidden}")
+    leakage = sorted(set(feature_columns).intersection(LEAKAGE_FEATURE_COLUMNS))
+    if leakage:
+        raise ValueError(f"Forbidden label-derived columns selected as features: {leakage}")
+
+
+def build_feature_schema_qa(
+    frame: pd.DataFrame,
+    feature_columns: list[str],
+    *,
+    high_missing_threshold: float = 0.95,
+) -> dict[str, Any]:
+    present_features = [column for column in feature_columns if column in frame.columns]
+    missing_ratio = frame[present_features].isna().mean() if present_features else pd.Series(dtype="float64")
+    all_null_features = sorted(column for column, value in missing_ratio.items() if value >= 1.0)
+    high_missing_features = sorted(column for column, value in missing_ratio.items() if value >= high_missing_threshold)
+    forbidden_metadata_features = sorted(
+        column for column in present_features if not is_allowed_feature_column(column)
+    )
+    leakage_features = sorted(set(present_features).intersection(LEAKAGE_FEATURE_COLUMNS))
+    qa = {
+        "row_count": int(len(frame)),
+        "column_count": int(len(frame.columns)),
+        "feature_count": int(len(present_features)),
+        "target_present": DEFAULT_TARGET_COLUMN in frame.columns,
+        "target_non_null_count": int(frame[DEFAULT_TARGET_COLUMN].notna().sum()) if DEFAULT_TARGET_COLUMN in frame.columns else 0,
+        "all_null_feature_count": len(all_null_features),
+        "all_null_features": all_null_features,
+        "high_missing_threshold": float(high_missing_threshold),
+        "high_missing_feature_count": len(high_missing_features),
+        "high_missing_features": high_missing_features,
+        "forbidden_metadata_feature_count": len(forbidden_metadata_features),
+        "forbidden_metadata_features": forbidden_metadata_features,
+        "leakage_feature_count": len(leakage_features),
+        "leakage_features": leakage_features,
+        "passed": not all_null_features and not forbidden_metadata_features and not leakage_features,
+    }
+    return qa
+
+
+def assert_feature_quality(frame: pd.DataFrame, feature_columns: list[str]) -> None:
+    qa = build_feature_schema_qa(frame, feature_columns)
+    if not qa["passed"]:
+        problems: list[str] = []
+        if qa["all_null_features"]:
+            problems.append(f"all-null features: {qa['all_null_features']}")
+        if qa["forbidden_metadata_features"]:
+            problems.append(f"raw metadata features: {qa['forbidden_metadata_features']}")
+        if qa["leakage_features"]:
+            problems.append(f"label-derived features: {qa['leakage_features']}")
+        raise ValueError("Feature schema QA failed before drop_incomplete_candles: " + "; ".join(problems))
 
 
 def build_training_frame(
@@ -169,6 +229,7 @@ def build_training_frame(
 
     feature_columns = infer_feature_columns(training_frame)
     assert_feature_schema(feature_columns)
+    assert_feature_quality(training_frame, feature_columns)
     if settings.dataset.drop_incomplete_candles:
         training_frame = drop_incomplete_samples(
             training_frame,

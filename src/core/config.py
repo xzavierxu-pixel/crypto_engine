@@ -264,6 +264,7 @@ class DataBackfillConfig:
     start_date: str = ""
     use_monthly_for_full_months: bool = True
     use_daily_for_open_month_tail: bool = True
+    use_daily_for_full_month_fallback: bool = False
     verify_checksum: bool = True
     spot: DataBackfillMarketConfig = field(default_factory=DataBackfillMarketConfig)
     futures_um: DataBackfillMarketConfig = field(default_factory=DataBackfillMarketConfig)
@@ -429,6 +430,7 @@ class Settings:
                 start_date=data_backfill_payload.get("start_date", ""),
                 use_monthly_for_full_months=data_backfill_payload.get("use_monthly_for_full_months", True),
                 use_daily_for_open_month_tail=data_backfill_payload.get("use_daily_for_open_month_tail", True),
+                use_daily_for_full_month_fallback=data_backfill_payload.get("use_daily_for_full_month_fallback", False),
                 verify_checksum=data_backfill_payload.get("verify_checksum", True),
                 spot=DataBackfillMarketConfig(**data_backfill_payload.get("spot", {})),
                 futures_um=DataBackfillMarketConfig(**data_backfill_payload.get("futures_um", {})),
