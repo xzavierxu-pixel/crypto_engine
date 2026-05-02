@@ -139,6 +139,37 @@ def test_fit_model_uses_binary_lightgbm_params(monkeypatch) -> None:
     assert settings.model.plugins["lightgbm"]["colsample_bytree"] == 0.8
 
 
+def test_fit_model_honors_configured_scale_pos_weight(monkeypatch) -> None:
+    settings = _unit_settings()
+    settings.model.plugins["lightgbm"]["scale_pos_weight"] = 0.5
+    captured: list[dict] = []
+
+    class DummyModel:
+        def fit(
+            self,
+            X_train,
+            y_train,
+            X_valid=None,
+            y_valid=None,
+            sample_weight=None,
+            sample_weight_valid=None,
+        ):
+            return self
+
+    def fake_create_model_plugin(_settings, plugin_name=None, plugin_params=None, stage=None):
+        captured.append({"stage": stage, "plugin_params": plugin_params})
+        return DummyModel()
+
+    monkeypatch.setattr("src.model.train.create_model_plugin", fake_create_model_plugin)
+    from src.data.dataset_builder import TrainingFrame
+
+    training_frame = pd.DataFrame({"f1": [0.1, 0.2, 0.3, 0.4], "target": [0, 1, 0, 0]})
+    training = TrainingFrame(frame=training_frame, feature_columns=["f1"], target_column="target")
+    _fit_model(training, settings, stage="binary")
+    assert captured[0]["plugin_params"]["scale_pos_weight"] == 0.5
+    assert captured[0]["plugin_params"]["objective"] == "binary"
+
+
 def test_train_model_script_writes_binary_artifacts_and_reports(tmp_path: Path, monkeypatch) -> None:
     input_path = tmp_path / "input.csv"
     output_dir = tmp_path / "output"

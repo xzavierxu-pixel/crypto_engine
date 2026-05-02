@@ -234,6 +234,13 @@ def _compute_stage1_scale_pos_weight(training: TrainingFrame) -> float:
     return float(negative_count / positive_count)
 
 
+def _resolve_binary_scale_pos_weight(training: TrainingFrame, settings: Settings, plugin_name: str) -> float:
+    configured = settings.model.plugins.get(plugin_name, {}).get("scale_pos_weight")
+    if configured is not None:
+        return float(configured)
+    return _compute_stage1_scale_pos_weight(training)
+
+
 def _resolve_stage2_class_weight(settings: Settings) -> str | dict[int, float] | None:
     class_weight = settings.model.stage2_class_weight
     if class_weight is None or class_weight == "balanced":
@@ -253,7 +260,10 @@ def _resolve_model_plugin_params(
     if not plugin_name.startswith("lightgbm"):
         return None
     if stage in {"stage1", "binary"}:
-        return {"scale_pos_weight": _compute_stage1_scale_pos_weight(training), "objective": "binary"}
+        return {
+            "scale_pos_weight": _resolve_binary_scale_pos_weight(training, settings, plugin_name),
+            "objective": "binary",
+        }
     return {
         "objective": "multiclass",
         "num_class": 3,
