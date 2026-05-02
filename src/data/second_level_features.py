@@ -10,19 +10,32 @@ import numpy as np
 import pandas as pd
 
 from src.core.constants import DEFAULT_TIMESTAMP_COLUMN
+from src.data.second_level_feature_packs import (
+    DEFAULT_SECOND_LEVEL_PACKS,
+    SecondLevelFeatureProfile,
+    build_second_level_pack_features,
+)
 
 
 SECOND_LEVEL_WINDOWS = (1, 3, 5, 10, 15, 30, 60, 120, 300)
 COMPACT_WINDOWS = (5, 10, 30, 60, 300)
 BOOK_DYNAMICS_WINDOWS = (5, 10, 30)
-SECOND_LEVEL_FEATURE_STORE_VERSION = "second_level_v1"
+SECOND_LEVEL_FEATURE_STORE_VERSION = "second_level_v2"
 DEFAULT_FEATURE_STORE_WARMUP_SECONDS = max(SECOND_LEVEL_WINDOWS)
+
+
+def resolve_second_level_feature_profile(payload: dict[str, Any] | None = None) -> SecondLevelFeatureProfile:
+    return SecondLevelFeatureProfile(**(payload or {}))
 
 
 def load_second_level_frame(path: str | Path) -> pd.DataFrame:
     resolved = Path(path)
     if resolved.is_dir():
-        parquet_files = sorted(resolved.rglob("*.parquet"))
+        parquet_files = sorted(
+            file
+            for file in resolved.rglob("*.parquet")
+            if "source_tables" not in file.parts
+        )
         if not parquet_files:
             raise FileNotFoundError(f"No parquet files found under second-level input directory: {resolved}")
         return pd.concat((pd.read_parquet(file) for file in parquet_files), ignore_index=True)
@@ -1079,6 +1092,7 @@ def build_second_level_feature_store(
     source_manifest_id: str = "",
     large_trade_quantile: float = 0.95,
     large_trade_window_seconds: int = 300,
+    feature_profile: SecondLevelFeatureProfile | dict[str, Any] | None = None,
 ) -> pd.DataFrame:
     kline = normalize_second_kline_frame(kline_frame)
     if kline.empty:
@@ -1181,6 +1195,12 @@ def build_second_level_feature_store(
     store = _add_cross_market_features(store, cross_market_frame, cross_market_book_frame, eth_kline_frame)
     store = _add_depth_features(store, depth_frame)
     store = _add_cross_source_qa(store, kline, agg_trades_frame)
+    resolved_profile = (
+        feature_profile
+        if isinstance(feature_profile, SecondLevelFeatureProfile)
+        else resolve_second_level_feature_profile(feature_profile)
+    )
+    store = build_second_level_pack_features(store, resolved_profile)
     return store.reset_index(drop=True)
 
 
@@ -1196,6 +1216,9 @@ def sample_second_level_feature_store(decision_frame: pd.DataFrame, feature_stor
         on=DEFAULT_TIMESTAMP_COLUMN,
         direction="backward",
     )
+    sl_columns = [column for column in sampled.columns if column.startswith("sl_")]
+    if sl_columns:
+        sampled[sl_columns] = sampled[sl_columns].replace([np.inf, -np.inf], np.nan).fillna(0.0)
     return sampled.set_index(decision_frame.index).reset_index(drop=True)
 
 
@@ -1206,6 +1229,8 @@ def load_sampled_second_level_features(decision_frame: pd.DataFrame, feature_sto
         decisions[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(decisions[DEFAULT_TIMESTAMP_COLUMN], utc=True)
         sampled_parts: list[pd.DataFrame] = []
         for parquet_path in sorted(resolved.rglob("*.parquet")):
+            if "source_tables" in parquet_path.parts or parquet_path.name != "second_features.parquet":
+                continue
             partition = pd.read_parquet(parquet_path)
             if DEFAULT_TIMESTAMP_COLUMN not in partition.columns:
                 continue
@@ -1278,6 +1303,8 @@ def write_second_level_feature_store(
     feature_store.to_parquet(resolved, index=False)
     payload = {
         "feature_version": SECOND_LEVEL_FEATURE_STORE_VERSION,
+        "feature_profile": "expanded_v2",
+        "feature_packs": list(DEFAULT_SECOND_LEVEL_PACKS),
         "generation_timestamp": datetime.now(timezone.utc).isoformat(),
         "row_count": int(len(feature_store)),
         "start": str(feature_store[DEFAULT_TIMESTAMP_COLUMN].min()) if not feature_store.empty else None,
@@ -1331,6 +1358,7 @@ def write_partitioned_second_level_feature_store(
     source_manifest_id: str = "",
     large_trade_quantile: float = 0.95,
     large_trade_window_seconds: int = 300,
+    feature_profile: SecondLevelFeatureProfile | dict[str, Any] | None = None,
     manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     output_root = Path(output_dir)
@@ -1360,6 +1388,7 @@ def write_partitioned_second_level_feature_store(
             source_manifest_id=source_manifest_id,
             large_trade_quantile=large_trade_quantile,
             large_trade_window_seconds=large_trade_window_seconds,
+            feature_profile=feature_profile,
         )
         timestamps = pd.to_datetime(chunk_store[DEFAULT_TIMESTAMP_COLUMN], utc=True)
         chunk_store = chunk_store.loc[(timestamps >= chunk_start) & (timestamps <= chunk_end)].reset_index(drop=True)
@@ -1387,6 +1416,8 @@ def write_partitioned_second_level_feature_store(
         raise ValueError("Partitioned feature-store build produced no partitions.")
     payload = {
         "feature_version": SECOND_LEVEL_FEATURE_STORE_VERSION,
+        "feature_profile": "expanded_v2",
+        "feature_packs": list(DEFAULT_SECOND_LEVEL_PACKS),
         "generation_timestamp": datetime.now(timezone.utc).isoformat(),
         "partitioned": True,
         "partition_frequency": partition_frequency,

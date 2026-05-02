@@ -31,6 +31,15 @@ from src.model.train import (
 )
 
 
+def _default_experiment_output(data_root: str, name: str | None = None) -> Path:
+    run_name = name or "latest"
+    return Path(data_root) / "experiments" / run_name
+
+
+def _default_second_level_store(data_root: str, version: str, market: str) -> Path:
+    return Path(data_root) / "second_level" / f"version={version}" / f"market={market}" / "second_features.parquet"
+
+
 def _load_input(path: Path):
     if path.suffix.lower() == ".csv":
         return load_ohlcv_csv(path)
@@ -145,7 +154,9 @@ def main() -> None:
         "--cached-split-dir",
         help="Directory containing development_frame.parquet and validation_frame.parquet.",
     )
-    parser.add_argument("--output-dir", required=True, help="Directory for model artifacts.")
+    parser.add_argument("--output-dir", help="Directory for model artifacts. Defaults to data-root/experiments/<run-name>.")
+    parser.add_argument("--data-root", help="Unified data root for new outputs. Defaults to settings.second_level.data_root.")
+    parser.add_argument("--run-name", help="Experiment directory name when --output-dir is omitted.")
     parser.add_argument("--config", default="config/settings.yaml", help="Path to settings YAML.")
     parser.add_argument("--horizon", default="5m", help="Horizon name to train.")
     parser.add_argument("--funding-input", help="Optional funding raw input override.")
@@ -181,7 +192,8 @@ def main() -> None:
     logging.info("Loading settings from %s", args.config)
 
     settings = load_settings(args.config)
-    output_dir = Path(args.output_dir)
+    data_root = args.data_root or settings.second_level.data_root
+    output_dir = Path(args.output_dir) if args.output_dir else _default_experiment_output(data_root, args.run_name)
     output_dir.mkdir(parents=True, exist_ok=True)
     logging.info("Resolving derivatives inputs")
     derivatives_paths = resolve_derivatives_paths(
@@ -229,11 +241,22 @@ def main() -> None:
         )
         second_level_features_frame = None
         second_level_store_path = args.second_level_feature_store or settings.second_level.feature_store_path
+        if args.second_level_feature_store is None and second_level_store_path is None:
+            second_level_store_path = _default_second_level_store(
+                data_root,
+                settings.second_level.feature_store_version,
+                settings.second_level.market,
+            )
         if settings.second_level.enabled:
             if second_level_store_path is None:
                 raise ValueError("settings.second_level.enabled requires a second-level feature store path.")
-            logging.info("Loading materialized second-level feature store from %s", second_level_store_path)
-            second_level_features_frame = load_sampled_second_level_features(source, second_level_store_path)
+            if Path(second_level_store_path).exists():
+                logging.info("Loading materialized second-level feature store from %s", second_level_store_path)
+                second_level_features_frame = load_sampled_second_level_features(source, second_level_store_path)
+            elif args.second_level_feature_store:
+                raise FileNotFoundError(f"Second-level feature store does not exist: {second_level_store_path}")
+            else:
+                logging.warning("Skipping second-level features because the default store does not exist: %s", second_level_store_path)
         logging.info("Building training frame for horizon=%s", args.horizon)
         training = build_training_frame(
             source,

@@ -14,10 +14,15 @@ from src.data.second_level_features import (
     build_second_level_source_tables,
     build_second_level_feature_store,
     load_second_level_frame,
+    resolve_second_level_feature_profile,
     write_partitioned_second_level_feature_store,
     write_second_level_source_tables,
     write_second_level_feature_store,
 )
+
+
+def _default_second_level_output(data_root: str, version: str, market: str) -> Path:
+    return Path(data_root) / "second_level" / f"version={version}" / f"market={market}" / "second_features.parquet"
 
 
 def main() -> None:
@@ -30,7 +35,8 @@ def main() -> None:
     parser.add_argument("--perp-kline-1s-input", help="Optional perp 1s kline input for cross-market features.")
     parser.add_argument("--perp-book-ticker-input", help="Optional perp bookTicker input for cross-market quote-state features.")
     parser.add_argument("--eth-kline-1s-input", help="Optional ETH 1s kline input for crypto beta residual features.")
-    parser.add_argument("--output", help="Output parquet path. Defaults to settings.second_level.feature_store_path.")
+    parser.add_argument("--data-root", help="Unified data root for new outputs. Defaults to settings.second_level.data_root.")
+    parser.add_argument("--output", help="Output parquet path. Defaults to data-root/second_level/version=.../market=.../second_features.parquet.")
     parser.add_argument("--write-source-tables", action="store_true", help="Write source-normalized 1s tables next to the feature store.")
     parser.add_argument(
         "--partition-frequency",
@@ -47,9 +53,16 @@ def main() -> None:
     args = parser.parse_args()
 
     settings = load_settings(args.config)
-    output_path = args.output or settings.second_level.feature_store_path
+    data_root = args.data_root or settings.second_level.data_root
+    output_path = args.output or _default_second_level_output(
+        data_root,
+        settings.second_level.feature_store_version,
+        settings.second_level.market,
+    )
     if output_path is None:
         raise ValueError("Second-level feature store output path is required.")
+    feature_profile_payload = settings.second_level.get_profile_payload()
+    feature_profile = resolve_second_level_feature_profile(feature_profile_payload)
 
     kline_frame = load_second_level_frame(args.kline_1s_input)
     use_partitioned_inputs = args.partition_frequency != "none"
@@ -77,15 +90,23 @@ def main() -> None:
             "cross_market": "perp 1s klines",
             "crypto_beta": "ETH 1s klines",
         },
+        "data_root": str(Path(data_root).resolve()),
+        "feature_profile": settings.second_level.feature_profile,
+        "feature_packs": list(feature_profile.packs),
     }
     source_table_outputs = {}
     if args.write_source_tables:
-        source_tables = build_second_level_source_tables(
-            kline_frame=kline_frame,
-            agg_trades_frame=agg_trades_frame,
-            book_frame=book_frame,
-        )
-        source_table_outputs = write_second_level_source_tables(source_tables, Path(output_path).with_name("source_tables"))
+        if use_partitioned_inputs:
+            source_manifest["source_tables_note"] = (
+                "Source tables were not materialized because partitioned raw inputs are streamed by partition."
+            )
+        else:
+            source_tables = build_second_level_source_tables(
+                kline_frame=kline_frame,
+                agg_trades_frame=agg_trades_frame,
+                book_frame=book_frame,
+            )
+            source_table_outputs = write_second_level_source_tables(source_tables, Path(output_path).with_name("source_tables"))
     if args.partition_frequency == "none":
         store = build_second_level_feature_store(
             kline_frame=kline_frame,
@@ -100,6 +121,7 @@ def main() -> None:
             source_manifest_id="local_cli",
             large_trade_quantile=settings.second_level.large_trade_quantile,
             large_trade_window_seconds=settings.second_level.large_trade_window_seconds,
+            feature_profile=feature_profile,
         )
         manifest = write_second_level_feature_store(store, output_path, manifest=source_manifest)
     else:
@@ -122,6 +144,7 @@ def main() -> None:
             source_manifest_id="local_cli",
             large_trade_quantile=settings.second_level.large_trade_quantile,
             large_trade_window_seconds=settings.second_level.large_trade_window_seconds,
+            feature_profile=feature_profile,
             manifest=source_manifest,
         )
         output_path = str(partition_output)

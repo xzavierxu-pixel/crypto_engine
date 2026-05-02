@@ -221,13 +221,25 @@ class DerivativesConfig:
 @dataclass(frozen=True)
 class SecondLevelFeatureStoreConfig:
     enabled: bool = True
-    feature_store_path: str | None = None
-    artifact_root: str = "./artifacts/second_level"
+    data_root: str = "./artifacts/data_v2"
+    feature_store_version: str = "second_level_v2"
+    feature_profile: str = "expanded_v2"
+    feature_store_path: str | None = "./artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT/second_features.parquet"
+    artifact_root: str = "./artifacts/data_v2/second_level"
     market: str = "BTCUSDT"
     exchange: str = "binance"
     large_trade_quantile: float = 0.95
     large_trade_window_seconds: int = 300
     optimize_metric: str = "balanced_precision"
+    profiles: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def get_profile_payload(self) -> dict[str, Any]:
+        if not self.profiles:
+            return {}
+        try:
+            return self.profiles[self.feature_profile]
+        except KeyError as exc:
+            raise KeyError(f"Unknown second-level feature profile '{self.feature_profile}'.") from exc
 
 
 @dataclass(frozen=True)

@@ -228,14 +228,15 @@ def main() -> None:
     parser.add_argument("--end-month", required=True, help="End month in YYYY-MM.")
     parser.add_argument("--start-date", help="Optional inclusive UTC date filter in YYYY-MM-DD.")
     parser.add_argument("--end-date", help="Optional inclusive UTC date filter in YYYY-MM-DD.")
+    parser.add_argument("--data-root", default="artifacts/data_v2", help="Unified data root for new outputs.")
     parser.add_argument(
         "--freqtrade-output",
-        default="artifacts/freqtrade_user_data/data/binance/BTC_USDT-1m.feather",
+        default=None,
         help="Output feather path in Freqtrade format.",
     )
     parser.add_argument(
         "--parquet-output",
-        default="artifacts/datasets/binance_btc_usdt_1m.parquet",
+        default=None,
         help="Optional parquet copy for shared training pipeline.",
     )
     args = parser.parse_args()
@@ -243,6 +244,14 @@ def main() -> None:
     start_month = _parse_month(args.start_month)
     end_month = _parse_month(args.end_month)
     symbol = _pair_to_binance_symbol(args.pair)
+    market_dir = symbol
+    timeframe = args.timeframe
+    freqtrade_output = args.freqtrade_output or str(
+        Path(args.data_root) / "normalized" / "binance" / "spot" / market_dir / f"{symbol}-{timeframe}.feather"
+    )
+    parquet_output = args.parquet_output or str(
+        Path(args.data_root) / "normalized" / "binance" / "spot" / market_dir / f"{symbol}-{timeframe}.parquet"
+    )
     start_date = date.fromisoformat(args.start_date) if args.start_date else None
     end_date = date.fromisoformat(args.end_date) if args.end_date else None
 
@@ -268,14 +277,14 @@ def main() -> None:
     combined = combined.sort_values("date").reset_index(drop=True)
     combined = _filter_timerange(combined, start_date=start_date, end_date=end_date)
 
-    _save_freqtrade_feather(combined, Path(args.freqtrade_output))
-    if args.parquet_output:
-        _save_parquet_copy(combined, Path(args.parquet_output))
+    _save_freqtrade_feather(combined, Path(freqtrade_output))
+    if parquet_output:
+        _save_parquet_copy(combined, Path(parquet_output))
 
     print(f"rows={len(combined)}")
-    print(f"freqtrade_output={Path(args.freqtrade_output).resolve()}")
-    if args.parquet_output:
-        print(f"parquet_output={Path(args.parquet_output).resolve()}")
+    print(f"freqtrade_output={Path(freqtrade_output).resolve()}")
+    if parquet_output:
+        print(f"parquet_output={Path(parquet_output).resolve()}")
 
 
 if __name__ == "__main__":

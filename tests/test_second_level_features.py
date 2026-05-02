@@ -15,6 +15,10 @@ from src.data.second_level_features import (
     sample_second_level_feature_store,
     write_partitioned_second_level_feature_store,
 )
+from src.data.second_level_feature_packs import (
+    SecondLevelFeatureProfile,
+    get_second_level_feature_pack,
+)
 
 
 def test_second_level_trade_features_use_only_events_at_or_before_decision() -> None:
@@ -219,6 +223,54 @@ def test_second_level_feature_store_uses_kline_backbone_and_samples_backward() -
     assert sampled.loc[0, "timestamp"] == pd.Timestamp("2024-01-01T00:00:04.500Z")
 
 
+def test_second_level_v2_pack_profile_expands_mirror_features() -> None:
+    kline = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T00:00:00Z", periods=20, freq="1s"),
+            "open": [100 + index for index in range(20)],
+            "high": [101 + index for index in range(20)],
+            "low": [99 + index for index in range(20)],
+            "close": [100 + index for index in range(20)],
+            "volume": [10.0 + index for index in range(20)],
+            "quote_volume": [1000.0 + index for index in range(20)],
+            "trade_count": [2 + index for index in range(20)],
+            "taker_buy_base_volume": [5.0 + index for index in range(20)],
+            "taker_buy_quote_volume": [500.0 + index for index in range(20)],
+        }
+    )
+    profile = SecondLevelFeatureProfile(
+        packs=[
+            "second_level_momentum",
+            "second_level_volatility",
+            "second_level_volume",
+            "second_level_candle_structure",
+            "second_level_path_structure",
+            "second_level_lagged",
+        ],
+        windows=[1, 5, 10],
+        compact_windows=[5, 10],
+        slope_windows=[5],
+        range_windows=[5],
+        lagged_feature_names=["sl_mirror_ret_5s"],
+        lagged_feature_lags=[1, 3],
+    )
+
+    store = build_second_level_feature_store(kline_frame=kline, feature_profile=profile)
+    sampled = sample_second_level_feature_store(
+        pd.DataFrame({"timestamp": pd.to_datetime(["2024-01-01T00:00:15Z"], utc=True)}),
+        store,
+    )
+
+    assert get_second_level_feature_pack("second_level_momentum").name == "second_level_momentum"
+    assert "sl_mirror_ret_5s" in store.columns
+    assert "sl_mirror_rv_5s" in store.columns
+    assert "sl_mirror_relative_volume_5s" in store.columns
+    assert "sl_mirror_body_pct_1s" in store.columns
+    assert "sl_mirror_ret_5s_lag1s" in store.columns
+    assert "sec_close" not in sampled.columns
+    assert "sl_mirror_ret_5s" in sampled.columns
+
+
 def test_partitioned_second_level_feature_store_writes_trimmed_chunks(tmp_path) -> None:
     kline = pd.DataFrame(
         {
@@ -236,16 +288,19 @@ def test_partitioned_second_level_feature_store_writes_trimmed_chunks(tmp_path) 
     )
     manifest = write_partitioned_second_level_feature_store(
         kline_frame=kline,
-        output_dir=tmp_path / "second_features",
+        output_dir=tmp_path / "data_v2" / "second_level" / "version=second_level_v2" / "market=BTCUSDT" / "second_features",
         partition_frequency="daily",
         warmup_seconds=5,
     )
-    loaded = load_second_level_frame(tmp_path / "second_features")
+    loaded = load_second_level_frame(tmp_path / "data_v2" / "second_level" / "version=second_level_v2" / "market=BTCUSDT" / "second_features")
     sampled = load_sampled_second_level_features(
         pd.DataFrame({"timestamp": pd.to_datetime(["2024-01-01T23:59:59Z", "2024-01-02T00:00:04Z"], utc=True)}),
-        tmp_path / "second_features",
+        tmp_path / "data_v2" / "second_level" / "version=second_level_v2" / "market=BTCUSDT" / "second_features",
     )
 
+    assert manifest["feature_version"] == "second_level_v2"
+    assert manifest["feature_profile"] == "expanded_v2"
+    assert "second_level_momentum" in manifest["feature_packs"]
     assert manifest["partitioned"] is True
     assert manifest["row_count"] == len(kline)
     assert len(manifest["partitions"]) == 2

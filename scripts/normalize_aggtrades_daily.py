@@ -80,13 +80,16 @@ def _date_label(timestamp: pd.Timestamp) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Normalize raw Binance Spot aggTrades CSVs into daily event parquet partitions.")
     parser.add_argument("--input", action="append", required=True, help="Raw aggTrades CSV path. Can be provided multiple times.")
-    parser.add_argument("--output-dir", required=True, help="Output partition directory.")
+    parser.add_argument("--data-root", default="artifacts/data_v2", help="Unified data root for new outputs.")
+    parser.add_argument("--output-dir", help="Output partition directory. Defaults to data-root/normalized/binance/spot/BTCUSDT/aggTrades.")
     parser.add_argument("--start", help="Inclusive UTC start timestamp/date.")
     parser.add_argument("--end", help="Exclusive UTC end timestamp/date.")
     parser.add_argument("--chunksize", type=int, default=1_000_000)
     args = parser.parse_args()
 
-    output_root = Path(args.output_dir)
+    output_root = Path(args.output_dir) if args.output_dir else (
+        Path(args.data_root) / "normalized" / "binance" / "spot" / "BTCUSDT" / "aggTrades"
+    )
     output_root.mkdir(parents=True, exist_ok=True)
     start = pd.Timestamp(args.start, tz="UTC") if args.start else None
     end = pd.Timestamp(args.end, tz="UTC") if args.end else None

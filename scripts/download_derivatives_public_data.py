@@ -265,7 +265,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Download public BTC derivatives datasets for ablation experiments.")
     parser.add_argument("--start-date", required=True, help="Inclusive UTC start date in YYYY-MM-DD.")
     parser.add_argument("--end-date", required=True, help="Inclusive UTC end date in YYYY-MM-DD.")
-    parser.add_argument("--output-dir", default="artifacts/data/derivatives", help="Directory for parquet outputs.")
+    parser.add_argument("--data-root", default="artifacts/data_v2", help="Unified data root for new outputs.")
+    parser.add_argument("--output-dir", help="Directory for parquet outputs. Defaults to data-root/normalized/binance/futures_um/BTCUSDT/derivatives.")
     parser.add_argument("--basis-period", default="5m", help="Binance basis period.")
     parser.add_argument("--oi-period", default="5m", help="Binance open interest statistics period.")
     parser.add_argument("--options-resolution-seconds", type=int, default=3600, help="Deribit volatility index resolution in seconds.")
@@ -275,7 +276,9 @@ def main() -> None:
     end_dt = _parse_utc_date(args.end_date) + timedelta(days=1) - timedelta(milliseconds=1)
     start_ms = _to_milliseconds(start_dt)
     end_ms = _to_milliseconds(end_dt)
-    output_dir = Path(args.output_dir)
+    output_dir = Path(args.output_dir) if args.output_dir else (
+        Path(args.data_root) / "normalized" / "binance" / "futures_um" / "BTCUSDT" / "derivatives"
+    )
 
     session = requests.Session()
     funding = _fetch_binance_funding(session, start_ms=start_ms, end_ms=end_ms)

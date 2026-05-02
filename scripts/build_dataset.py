@@ -12,6 +12,12 @@ from src.core.config import load_settings
 from src.data.dataset_builder import build_training_frame
 from src.data.derivatives.feature_store import load_derivatives_frame_from_settings
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
+from src.data.second_level_features import load_sampled_second_level_features
+
+
+def _default_dataset_output(data_root: str, market: str, horizon: str) -> Path:
+    market_label = market.replace("/", "")
+    return Path(data_root) / "datasets" / f"market={market_label}" / f"horizon={horizon}" / "training_frame.parquet"
 
 
 def _load_input(path: Path):
@@ -27,13 +33,18 @@ def _load_input(path: Path):
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build a BTC Polymarket training frame.")
     parser.add_argument("--input", required=True, help="Path to OHLCV CSV or parquet input.")
-    parser.add_argument("--output", required=True, help="Path to parquet output.")
+    parser.add_argument("--output", help="Path to parquet output. Defaults to data-root/datasets/market=.../horizon=.../training_frame.parquet.")
+    parser.add_argument("--data-root", help="Unified data root for new outputs. Defaults to settings.second_level.data_root.")
     parser.add_argument("--config", default="config/settings.yaml", help="Path to settings YAML.")
     parser.add_argument("--horizon", default="5m", help="Horizon name to build.")
     parser.add_argument("--funding-input", help="Optional funding raw input override.")
     parser.add_argument("--basis-input", help="Optional basis raw input override.")
     parser.add_argument("--oi-input", help="Optional OI raw input override.")
     parser.add_argument("--options-input", help="Optional options raw input override.")
+    parser.add_argument(
+        "--second-level-feature-store",
+        help="Materialized second-level feature store parquet or partitioned directory. Defaults to settings.second_level.feature_store_path.",
+    )
     parser.add_argument(
         "--derivatives-path-mode",
         choices=["latest", "archive"],
@@ -52,14 +63,25 @@ def main() -> None:
         options_path=args.options_input,
         path_mode=args.derivatives_path_mode,
     )
+    second_level_features_frame = None
+    second_level_store_path = args.second_level_feature_store or settings.second_level.feature_store_path
+    if settings.second_level.enabled:
+        if second_level_store_path is None:
+            raise ValueError("settings.second_level.enabled requires a second-level feature store path.")
+        if Path(second_level_store_path).exists():
+            second_level_features_frame = load_sampled_second_level_features(source, second_level_store_path)
+        elif args.second_level_feature_store:
+            raise FileNotFoundError(f"Second-level feature store does not exist: {second_level_store_path}")
     training = build_training_frame(
         source,
         settings,
         horizon_name=args.horizon,
         derivatives_frame=derivatives_frame,
+        second_level_features_frame=second_level_features_frame,
     )
 
-    output_path = Path(args.output)
+    data_root = args.data_root or settings.second_level.data_root
+    output_path = Path(args.output) if args.output else _default_dataset_output(data_root, settings.second_level.market, args.horizon)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     training.frame.to_parquet(output_path, index=False)
 
