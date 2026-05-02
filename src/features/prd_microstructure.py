@@ -28,12 +28,22 @@ class CompletedBarMicrostructureFeaturePack(FeaturePack):
         features["prev_bar_lower_wick_bps"] = ((pd.concat([open_, close], axis=1).min(axis=1) - low) / safe_close) * 10000.0
         features["prev_bar_log_volume"] = np.log1p(volume.clip(lower=0.0))
         quote_column = "quote_volume" if "quote_volume" in df.columns else "quote_asset_volume" if "quote_asset_volume" in df.columns else None
-        count_column = "count" if "count" in df.columns else "number_of_trades" if "number_of_trades" in df.columns else None
+        count_column = (
+            "count"
+            if "count" in df.columns
+            else "number_of_trades"
+            if "number_of_trades" in df.columns
+            else "trade_count"
+            if "trade_count" in df.columns
+            else None
+        )
         taker_base_column = (
             "taker_buy_volume"
             if "taker_buy_volume" in df.columns
             else "taker_buy_base_asset_volume"
             if "taker_buy_base_asset_volume" in df.columns
+            else "taker_buy_base_volume"
+            if "taker_buy_base_volume" in df.columns
             else None
         )
         taker_quote_column = (
@@ -48,6 +58,7 @@ class CompletedBarMicrostructureFeaturePack(FeaturePack):
         if quote_column is not None:
             quote_volume = pd.to_numeric(df[quote_column], errors="coerce").shift(1)
             safe_quote_volume = quote_volume.replace(0, np.nan)
+            features["prev_bar_quote_volume"] = quote_volume
             features["prev_bar_log_quote_volume"] = np.log1p(quote_volume.clip(lower=0.0))
             features["prev_bar_vwap_proxy"] = quote_volume / safe_volume
 
@@ -55,6 +66,7 @@ class CompletedBarMicrostructureFeaturePack(FeaturePack):
         if count_column is not None:
             trade_count = pd.to_numeric(df[count_column], errors="coerce").shift(1)
             safe_trade_count = trade_count.replace(0, np.nan)
+            features["prev_bar_trade_count"] = trade_count
             features["prev_bar_log_trade_count"] = np.log1p(trade_count.clip(lower=0.0))
             features["prev_bar_avg_trade_size"] = volume / safe_trade_count
             if quote_volume is not None:
@@ -63,6 +75,7 @@ class CompletedBarMicrostructureFeaturePack(FeaturePack):
         if taker_base_column is not None:
             taker_buy_volume = pd.to_numeric(df[taker_base_column], errors="coerce").shift(1)
             taker_buy_ratio = (taker_buy_volume / safe_volume).clip(0.0, 1.0)
+            features["prev_bar_taker_buy_volume"] = taker_buy_volume
             features["prev_bar_taker_buy_ratio"] = taker_buy_ratio
             features["prev_bar_taker_sell_ratio"] = (1.0 - taker_buy_ratio).clip(0.0, 1.0)
             features["prev_bar_taker_imbalance"] = (2.0 * taker_buy_ratio - 1.0).clip(-1.0, 1.0)
@@ -76,6 +89,7 @@ class CompletedBarMicrostructureFeaturePack(FeaturePack):
         if taker_quote_column is not None and quote_volume is not None:
             taker_buy_quote_volume = pd.to_numeric(df[taker_quote_column], errors="coerce").shift(1)
             taker_buy_quote_ratio = (taker_buy_quote_volume / safe_quote_volume).clip(0.0, 1.0)
+            features["prev_bar_taker_buy_quote_volume"] = taker_buy_quote_volume
             features["prev_bar_taker_buy_quote_ratio"] = taker_buy_quote_ratio
             features["prev_bar_taker_quote_imbalance"] = (2.0 * taker_buy_quote_ratio - 1.0).clip(-1.0, 1.0)
             features["prev_bar_taker_net_quote_volume"] = 2.0 * taker_buy_quote_volume - quote_volume

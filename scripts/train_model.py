@@ -23,7 +23,7 @@ from src.data.derivatives.feature_store import (
     resolve_derivatives_paths,
 )
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
-from src.data.second_level_features import build_second_level_feature_frame, load_second_level_frame
+from src.data.second_level_features import load_sampled_second_level_features
 from src.model.train import (
     load_cached_training_split,
     split_recent_train_validation_frame,
@@ -153,9 +153,10 @@ def main() -> None:
     parser.add_argument("--oi-input", help="Optional OI raw input override.")
     parser.add_argument("--options-input", help="Optional options raw input override.")
     parser.add_argument("--book-ticker-input", help="Optional bookTicker raw input override.")
-    parser.add_argument("--agg-trades-input", help="Optional second-level aggregate trades input.")
-    parser.add_argument("--trades-input", help="Optional second-level raw trades input.")
-    parser.add_argument("--second-book-ticker-input", help="Optional second-level bookTicker input.")
+    parser.add_argument(
+        "--second-level-feature-store",
+        help="Materialized second-level feature store parquet. Defaults to settings.second_level.feature_store_path.",
+    )
     parser.add_argument(
         "--derivatives-path-mode",
         choices=["latest", "archive"],
@@ -227,25 +228,12 @@ def main() -> None:
             path_mode=args.derivatives_path_mode,
         )
         second_level_features_frame = None
-        if args.agg_trades_input or args.trades_input or args.second_book_ticker_input:
-            trade_frames = []
-            if args.agg_trades_input:
-                logging.info("Loading second-level aggTrades from %s", args.agg_trades_input)
-                trade_frames.append(load_second_level_frame(args.agg_trades_input))
-            if args.trades_input:
-                logging.info("Loading second-level trades from %s", args.trades_input)
-                trade_frames.append(load_second_level_frame(args.trades_input))
-            book_frame = None
-            if args.second_book_ticker_input:
-                logging.info("Loading second-level bookTicker from %s", args.second_book_ticker_input)
-                book_frame = load_second_level_frame(args.second_book_ticker_input)
-            trades_frame = pd.concat(trade_frames, ignore_index=True) if trade_frames else None
-            logging.info("Aggregating second-level features to decision timestamps")
-            second_level_features_frame = build_second_level_feature_frame(
-                source,
-                trades_frame=trades_frame,
-                book_frame=book_frame,
-            )
+        second_level_store_path = args.second_level_feature_store or settings.second_level.feature_store_path
+        if settings.second_level.enabled:
+            if second_level_store_path is None:
+                raise ValueError("settings.second_level.enabled requires a second-level feature store path.")
+            logging.info("Loading materialized second-level feature store from %s", second_level_store_path)
+            second_level_features_frame = load_sampled_second_level_features(source, second_level_store_path)
         logging.info("Building training frame for horizon=%s", args.horizon)
         training = build_training_frame(
             source,
@@ -331,9 +319,9 @@ def main() -> None:
         "train_start": train_start,
         "train_end": train_end,
         "second_level": {
-            "agg_trades_input": args.agg_trades_input,
-            "trades_input": args.trades_input,
-            "book_ticker_input": args.second_book_ticker_input,
+            "enabled": settings.second_level.enabled,
+            "feature_store_path": args.second_level_feature_store or settings.second_level.feature_store_path,
+            "feature_store_version": getattr(settings.second_level, "feature_store_version", None),
             "feature_count": sum(1 for column in artifacts.feature_columns if column.startswith("sl_")),
         },
         "weighted": artifacts.weighted,

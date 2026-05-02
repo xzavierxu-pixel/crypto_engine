@@ -219,6 +219,18 @@ class DerivativesConfig:
 
 
 @dataclass(frozen=True)
+class SecondLevelFeatureStoreConfig:
+    enabled: bool = True
+    feature_store_path: str | None = None
+    artifact_root: str = "./artifacts/second_level"
+    market: str = "BTCUSDT"
+    exchange: str = "binance"
+    large_trade_quantile: float = 0.95
+    large_trade_window_seconds: int = 300
+    optimize_metric: str = "balanced_precision"
+
+
+@dataclass(frozen=True)
 class DataBackfillMarketConfig:
     enabled: bool = False
     symbols: list[str] = field(default_factory=list)
@@ -333,6 +345,7 @@ class Settings:
     features: FeaturesConfig
     labels: LabelsConfig
     derivatives: DerivativesConfig
+    second_level: SecondLevelFeatureStoreConfig
     data_backfill: DataBackfillConfig
     model: PluginGroupConfig
     calibration: PluginGroupConfig
@@ -358,6 +371,7 @@ class Settings:
             }
         )
         derivatives_payload = payload.get("derivatives", {})
+        second_level_payload = payload.get("second_level", {})
         data_backfill_payload = payload.get("data_backfill", {})
         return cls(
             project=ProjectConfig(**payload["project"]),
@@ -394,6 +408,7 @@ class Settings:
                 options=DerivativesOptionsConfig(**derivatives_payload.get("options", {})),
                 book_ticker=DerivativesBookTickerConfig(**derivatives_payload.get("book_ticker", {})),
             ),
+            second_level=SecondLevelFeatureStoreConfig(**second_level_payload),
             data_backfill=DataBackfillConfig(
                 provider=data_backfill_payload.get("provider", ""),
                 start_date=data_backfill_payload.get("start_date", ""),

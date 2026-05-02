@@ -37,6 +37,7 @@ SUPPORTED_DATA_TYPES: dict[str, dict[str, dict[str, Any]]] = {
         "klines": {"granularities": ("monthly", "daily"), "interval_required": True},
         "aggTrades": {"granularities": ("monthly", "daily"), "interval_required": False},
         "trades": {"granularities": ("monthly", "daily"), "interval_required": False},
+        "bookTicker": {"granularities": ("monthly", "daily"), "interval_required": False},
     },
     "futures_um": {
         "klines": {"granularities": ("monthly", "daily"), "interval_required": True},

@@ -89,17 +89,54 @@ def _download_zip_frame(session: requests.Session, url: str) -> pd.DataFrame:
         with archive.open(csv_members[0]) as handle:
             frame = pd.read_csv(handle, header=None, names=KLINE_COLUMNS)
 
-    frame = frame[["open_time", "open", "high", "low", "close", "volume"]].copy()
+    frame = frame[
+        [
+            "open_time",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "quote_asset_volume",
+            "number_of_trades",
+            "taker_buy_base_asset_volume",
+            "taker_buy_quote_asset_volume",
+        ]
+    ].copy()
     frame["date"] = pd.to_numeric(frame["open_time"], errors="raise").astype("int64")
 
     # Official Binance archive uses microseconds for spot data from 2025-01-01 onward.
     if frame["date"].max() > 10**13:
         frame["date"] = (frame["date"] // 1000).astype("int64")
 
-    for column in ["open", "high", "low", "close", "volume"]:
+    numeric_columns = [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "quote_asset_volume",
+        "number_of_trades",
+        "taker_buy_base_asset_volume",
+        "taker_buy_quote_asset_volume",
+    ]
+    for column in numeric_columns:
         frame[column] = pd.to_numeric(frame[column], errors="raise").astype("float64")
 
-    return frame[["date", "open", "high", "low", "close", "volume"]]
+    return frame[
+        [
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "quote_asset_volume",
+            "number_of_trades",
+            "taker_buy_base_asset_volume",
+            "taker_buy_quote_asset_volume",
+        ]
+    ]
 
 
 def _download_month_frame(session: requests.Session, symbol: str, timeframe: str, month: MonthSpec) -> pd.DataFrame:
@@ -150,13 +187,35 @@ def _filter_timerange(frame: pd.DataFrame, start_date: date | None, end_date: da
 
 def _save_freqtrade_feather(frame: pd.DataFrame, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    frame.to_feather(output_path, compression="lz4", compression_level=9)
+    freqtrade_columns = ["date", "open", "high", "low", "close", "volume"]
+    frame[freqtrade_columns].to_feather(output_path, compression="lz4", compression_level=9)
 
 
 def _save_parquet_copy(frame: pd.DataFrame, output_path: Path) -> None:
     parquet_frame = frame.copy()
     parquet_frame["timestamp"] = pd.to_datetime(parquet_frame["date"], unit="ms", utc=True)
-    parquet_frame = parquet_frame[["timestamp", "open", "high", "low", "close", "volume"]]
+    parquet_frame = parquet_frame.rename(
+        columns={
+            "quote_asset_volume": "quote_volume",
+            "number_of_trades": "trade_count",
+            "taker_buy_base_asset_volume": "taker_buy_base_volume",
+            "taker_buy_quote_asset_volume": "taker_buy_quote_volume",
+        }
+    )
+    parquet_frame = parquet_frame[
+        [
+            "timestamp",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "quote_volume",
+            "trade_count",
+            "taker_buy_base_volume",
+            "taker_buy_quote_volume",
+        ]
+    ]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     parquet_frame.to_parquet(output_path, index=False)
 

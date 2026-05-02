@@ -58,6 +58,8 @@ RAW_METADATA_FEATURE_COLUMNS = {
     "taker_buy_quote_asset_volume",
     "count",
     "number_of_trades",
+    "trade_count",
+    "taker_buy_base_volume",
     "ignore",
     "symbol",
     "market_family",

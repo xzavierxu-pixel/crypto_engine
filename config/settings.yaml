@@ -270,6 +270,16 @@ derivatives:
     source: local_file
     zscore_window: 288
 
+second_level:
+  enabled: true
+  feature_store_path: ./artifacts/second_level/version=second_level_v1/market=BTCUSDT/second_features.parquet
+  artifact_root: ./artifacts/second_level
+  market: BTCUSDT
+  exchange: binance
+  large_trade_quantile: 0.95
+  large_trade_window_seconds: 300
+  optimize_metric: balanced_precision
+
 data_backfill:
   provider: binance_public
   start_date: "2025-01-01"
@@ -282,7 +292,8 @@ data_backfill:
     symbols: ["BTCUSDT"]
     data_types:
       klines:
-        intervals: ["1m"]
+        intervals: ["1s", "1m"]
+      bookTicker: {}
       aggTrades: {}
       trades: {}
 
