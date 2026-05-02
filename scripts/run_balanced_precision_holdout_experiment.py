@@ -17,14 +17,9 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.core.config import load_settings
-from src.data.dataset_builder import TrainingFrame, infer_feature_columns
+from src.data.dataset_builder import TrainingFrame, compute_sample_weight, infer_feature_columns
 from src.model.evaluation import compute_selective_binary_metrics
 from src.model.train import train_binary_selective_model_from_split
-
-
-MIN_UP_SIGNALS = 50
-MIN_DOWN_SIGNALS = 50
-MIN_TOTAL_SIGNALS = 150
 
 
 def _slice_frame(frame: TrainingFrame, df: pd.DataFrame) -> TrainingFrame:
@@ -42,7 +37,7 @@ def _split_by_time(
     dev_days: int,
     validation_days: int,
     purge_rows: int,
-) -> tuple[TrainingFrame, TrainingFrame, TrainingFrame, dict[str, Any]]:
+) -> tuple[TrainingFrame, TrainingFrame, dict[str, Any]]:
     df = frame.frame.sort_values("timestamp").reset_index(drop=True)
     start = pd.Timestamp(df["timestamp"].min())
     dev_end = start + pd.Timedelta(days=dev_days)
@@ -50,17 +45,15 @@ def _split_by_time(
 
     dev = df[df["timestamp"] < dev_end]
     validation = df[(df["timestamp"] >= dev_end) & (df["timestamp"] < validation_end)]
-    holdout = df[df["timestamp"] >= validation_end]
 
     if purge_rows > 0:
         dev = dev.iloc[:-purge_rows] if len(dev) > purge_rows else dev.iloc[0:0]
         validation = validation.iloc[purge_rows:-purge_rows] if len(validation) > purge_rows * 2 else validation.iloc[0:0]
-        holdout = holdout.iloc[purge_rows:] if len(holdout) > purge_rows else holdout.iloc[0:0]
 
-    if dev.empty or validation.empty or holdout.empty:
+    if dev.empty or validation.empty:
         raise ValueError(
             "Time split produced an empty split: "
-            f"dev={len(dev)}, validation={len(validation)}, holdout={len(holdout)}"
+            f"dev={len(dev)}, validation={len(validation)}"
         )
 
     split_info = {
@@ -71,9 +64,8 @@ def _split_by_time(
         "purge_rows": purge_rows,
         "development": _range_info(dev),
         "validation": _range_info(validation),
-        "holdout": _range_info(holdout),
     }
-    return _slice_frame(frame, dev), _slice_frame(frame, validation), _slice_frame(frame, holdout), split_info
+    return _slice_frame(frame, dev), _slice_frame(frame, validation), split_info
 
 
 def _range_info(df: pd.DataFrame) -> dict[str, Any]:
@@ -90,7 +82,14 @@ def _predict_proba(artifacts: Any, frame: TrainingFrame) -> Any:
     return artifacts.calibrator.transform(raw_proba)
 
 
-def _metric_dict(y_true: Any, proba: Any, *, t_up: float, t_down: float) -> dict[str, Any]:
+def _metric_dict(
+    y_true: Any,
+    proba: Any,
+    *,
+    t_up: float,
+    t_down: float,
+    settings: Any,
+) -> dict[str, Any]:
     metrics = compute_selective_binary_metrics(y_true, proba, t_up=t_up, t_down=t_down)
     return {
         "precision_up": metrics["precision_up"],
@@ -103,16 +102,17 @@ def _metric_dict(y_true: Any, proba: Any, *, t_up: float, t_down: float) -> dict
         "overall_signal_accuracy": metrics["accepted_sample_accuracy"],
         "sample_count": int(metrics["sample_count"]),
         "all_sample_accuracy": metrics["all_sample_accuracy"],
-        "constraints_satisfied": _constraints_satisfied(metrics),
+        "constraints_satisfied": _constraints_satisfied(metrics, settings=settings),
     }
 
 
-def _constraints_satisfied(metrics: Any) -> bool:
+def _constraints_satisfied(metrics: Any, *, settings: Any) -> bool:
+    threshold_cfg = settings.threshold_search
     return (
-        metrics["up_prediction_count"] >= MIN_UP_SIGNALS
-        and metrics["down_prediction_count"] >= MIN_DOWN_SIGNALS
-        and metrics["accepted_count"] >= MIN_TOTAL_SIGNALS
-        and metrics["coverage"] >= 0.60
+        metrics["up_prediction_count"] >= threshold_cfg.min_up_signals
+        and metrics["down_prediction_count"] >= threshold_cfg.min_down_signals
+        and metrics["accepted_count"] >= threshold_cfg.min_total_signals
+        and metrics["coverage"] >= settings.objective.min_coverage
     )
 
 
@@ -138,7 +138,7 @@ def _search_thresholds(settings: Any, y_true: Any, proba: Any) -> tuple[dict[str
                 "signal_coverage": metrics["coverage"],
                 "overall_signal_accuracy": metrics["accepted_sample_accuracy"],
                 "side_count_gap": int(abs(metrics["up_prediction_count"] - metrics["down_prediction_count"])),
-                "constraints_satisfied": _constraints_satisfied(metrics),
+                "constraints_satisfied": _constraints_satisfied(metrics, settings=settings),
                 "objective_min_coverage_satisfied": metrics["coverage"] >= objective_cfg.min_coverage,
             }
             rows.append(row)
@@ -193,7 +193,7 @@ def _write_summary(path: Path, report: dict[str, Any]) -> None:
     metrics = report["metrics"]
     thresholds = report["thresholds"]
     lines = [
-        "# Balanced Precision Holdout Experiment",
+        "# Balanced Precision Validation Experiment",
         "",
         f"- experiment_id: `{report['experiment_id']}`",
         f"- thresholds: `t_up={thresholds['t_up']:.4f}`, `t_down={thresholds['t_down']:.4f}`",
@@ -203,16 +203,16 @@ def _write_summary(path: Path, report: dict[str, Any]) -> None:
         f"- git_dirty: `{report['git']['dirty']}`",
         f"- config_path: `{report['config_copy']}`",
         f"- report_path: `{report['artifacts']['report']}`",
-        f"- primary_metric: `holdout.balanced_precision={metrics['holdout']['balanced_precision']:.6f}`",
-        f"- signal_coverage: `holdout={metrics['holdout']['signal_coverage']:.6f}`",
-        f"- coverage_constraint_satisfied: `{metrics['holdout']['signal_coverage'] >= 0.60}`",
+        f"- primary_metric: `validation.balanced_precision={metrics['validation']['balanced_precision']:.6f}`",
+        f"- signal_coverage: `validation={metrics['validation']['signal_coverage']:.6f}`",
+        f"- coverage_constraint_satisfied: `{metrics['validation']['signal_coverage'] >= 0.60}`",
         "",
         "## Metrics",
         "",
         "| split | balanced_precision | precision_up | precision_down | signal_coverage | up_signals | down_signals | total_signals | overall_signal_accuracy | constraints |",
         "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
-    for split in ("development", "validation", "holdout"):
+    for split in ("development", "validation"):
         m = metrics[split]
         lines.append(
             "| {split} | {balanced_precision:.6f} | {precision_up:.6f} | {precision_down:.6f} | "
@@ -254,11 +254,14 @@ def main() -> int:
     parser.add_argument("--dev-days", type=int, default=30)
     parser.add_argument("--validation-days", type=int, default=15)
     parser.add_argument("--purge-rows", type=int, default=1)
-    parser.add_argument("--experiment-id", default="20260502_balanced_precision_holdout")
+    parser.add_argument("--experiment-id", default="validation_balanced_precision")
     args = parser.parse_args()
 
     settings = load_settings(args.config)
     df = pd.read_parquet(args.training_frame)
+    if "abs_return" in df.columns and "stage1_sample_weight" in df.columns:
+        df = df.copy()
+        df["stage1_sample_weight"] = compute_sample_weight(df["abs_return"], settings=settings)
     feature_columns = infer_feature_columns(df)
     sample_weight_column = "stage1_sample_weight" if "stage1_sample_weight" in df.columns else None
     frame = TrainingFrame(
@@ -268,7 +271,7 @@ def main() -> int:
         sample_weight_column=sample_weight_column,
     )
 
-    development, validation, holdout, split_info = _split_by_time(
+    development, validation, split_info = _split_by_time(
         frame,
         dev_days=args.dev_days,
         validation_days=args.validation_days,
@@ -279,7 +282,7 @@ def main() -> int:
         development=development,
         validation=validation,
         settings=settings,
-        weighted=sample_weight_column is not None,
+        weighted=sample_weight_column is not None and settings.sample_weighting.enabled,
     )
     validation_proba = _predict_proba(artifacts, validation)
     selected, frontier = _search_thresholds(settings, validation.y, validation_proba)
@@ -287,9 +290,20 @@ def main() -> int:
     t_down = float(selected["t_down"])
 
     metrics = {
-        "development": _metric_dict(development.y, _predict_proba(artifacts, development), t_up=t_up, t_down=t_down),
-        "validation": _metric_dict(validation.y, validation_proba, t_up=t_up, t_down=t_down),
-        "holdout": _metric_dict(holdout.y, _predict_proba(artifacts, holdout), t_up=t_up, t_down=t_down),
+        "development": _metric_dict(
+            development.y,
+            _predict_proba(artifacts, development),
+            t_up=t_up,
+            t_down=t_down,
+            settings=settings,
+        ),
+        "validation": _metric_dict(
+            validation.y,
+            validation_proba,
+            t_up=t_up,
+            t_down=t_down,
+            settings=settings,
+        ),
     }
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -304,9 +318,8 @@ def main() -> int:
     with model_path.open("wb") as fh:
         pickle.dump(artifacts, fh)
 
-    if hasattr(artifacts.model, "feature_importance"):
-        importance = artifacts.model.feature_importance(list(feature_columns))
-        importance.to_csv(args.output_dir / "feature_importance.csv", index=False)
+    if not artifacts.feature_importance.empty:
+        artifacts.feature_importance.to_csv(args.output_dir / "feature_importance.csv", index=False)
 
     report_path = args.output_dir / "report.json"
     report = {
@@ -319,10 +332,10 @@ def main() -> int:
         "objective_settings": asdict(settings.objective),
         "threshold_search_settings": asdict(settings.threshold_search),
         "required_constraints": {
-            "min_up_signals": MIN_UP_SIGNALS,
-            "min_down_signals": MIN_DOWN_SIGNALS,
-            "min_total_signals": MIN_TOTAL_SIGNALS,
-            "min_signal_coverage": 0.60,
+            "min_up_signals": settings.threshold_search.min_up_signals,
+            "min_down_signals": settings.threshold_search.min_down_signals,
+            "min_total_signals": settings.threshold_search.min_total_signals,
+            "min_signal_coverage": settings.objective.min_coverage,
         },
         "split_info": split_info,
         "thresholds": {

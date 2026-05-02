@@ -56,6 +56,9 @@ class ThresholdSearchConfig:
     step: float = 0.005
     enforce_min_side_share: bool = False
     min_side_share: float = 0.20
+    min_up_signals: int = 50
+    min_down_signals: int = 50
+    min_total_signals: int = 150
     stage1_coverage_min: float = 0.60
     stage1_coverage_max: float = 0.80
     min_active_samples: int = 25
@@ -83,7 +86,7 @@ class SampleWeightingConfig:
 
 @dataclass(frozen=True)
 class ValidationConfig:
-    mode: str = "chronological_holdout"
+    mode: str = "chronological_validation"
     train_days: int = 30
     validation_days: int = 30
     report_worst_fold: bool = False

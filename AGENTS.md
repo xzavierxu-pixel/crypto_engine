@@ -64,22 +64,23 @@ overall_signal_accuracy
 Minimum valid result:
 
 ```yaml
-evaluation:
+objective:
+  min_coverage: 0.60
+
+threshold_search:
   min_up_signals: 50
   min_down_signals: 50
   min_total_signals: 150
-  min_signal_coverage: 0.60
 ```
 
 Optimization ranking:
 
-1. holdout balanced_precision with coverage >= 0.60
-2. validation balanced_precision with coverage >= 0.60
-3. balance between precision_up and precision_down
-4. signal_count and coverage
-5. stability across time splits
-6. leakage risk and implementation simplicity
-7. AUC / logloss / Brier as diagnostics only
+1. validation balanced_precision with coverage >= objective.min_coverage
+2. balance between precision_up and precision_down
+3. signal_count and coverage
+4. stability across time splits
+5. leakage risk and implementation simplicity
+6. AUC / logloss / Brier as diagnostics only
 
 ---
 
@@ -92,7 +93,6 @@ Optimization ranking:
 - Keep Freqtrade strategy thin.
 - Execution must not recompute BTC features.
 - Do not silently change label, horizon, timestamp alignment, or feature semantics.
-- Do not optimize on holdout data.
 - Do not introduce future-looking features.
 - Prefer small, local, testable changes.
 - Do not add advanced models before the LightGBM baseline is clean, tested, and evaluated.
@@ -117,6 +117,26 @@ The project already supports:
 - tests and training reports
 
 Codex should focus on controlled optimization, validation, leakage checks, threshold tuning, reporting, and ablation.
+
+Current validation baseline:
+
+```yaml
+experiment_id: 20260502_balanced_precision_holdout
+config_path: experiments/configs/20260502_balanced_precision_holdout.yaml
+report_path: artifacts/data_v2/experiments/20260502_balanced_precision_holdout/report.json
+split_used_for_baseline: validation
+t_up: 0.56
+t_down: 0.50
+precision_up: 0.6060606061
+precision_down: 0.5193929174
+balanced_precision: 0.5627267617
+up_signal_count: 165
+down_signal_count: 2372
+total_signal_count: 2537
+signal_coverage: 0.6108836985
+overall_signal_accuracy: 0.5250295625
+coverage_constraint_satisfied: true
+```
 
 ---
 
@@ -150,8 +170,10 @@ Example:
 
 ```yaml
 signal:
-  up_threshold: null
-  down_threshold: null
+  policies:
+    selective_binary_policy:
+      t_up: null
+      t_down: null
 ```
 
 If null, load thresholds from the artifact.
@@ -163,10 +185,10 @@ If null, load thresholds from the artifact.
 Threshold search must maximize balanced_precision subject to all validity constraints:
 
 ```text
-up_signal_count >= min_up_signals
-down_signal_count >= min_down_signals
-total_signal_count >= min_total_signals
-signal_coverage >= 0.60
+up_signal_count >= threshold_search.min_up_signals
+down_signal_count >= threshold_search.min_down_signals
+total_signal_count >= threshold_search.min_total_signals
+signal_coverage >= objective.min_coverage
 ```
 
 For each candidate, report:
@@ -199,17 +221,16 @@ Preferred structure:
 
 ```text
 train / development
-validation / threshold tuning
-holdout / final evaluation
+validation / threshold tuning and final acceptance
 ```
 
 Rules:
 
 - Tune thresholds on validation only.
-- Report final performance on holdout.
-- Never tune on holdout.
+- Use validation as the acceptance set for the current project workflow.
+- Do not keep or add a separate holdout unless explicitly requested.
 - Clearly mark validation metrics as threshold-tuned and optimistic.
-- If no holdout exists, add one only when the change is simple, local, and tested.
+- Compare future experiments against the current validation baseline recorded in this file.
 
 ---
 
@@ -222,8 +243,8 @@ Before claiming improvement, verify:
 - no `target`, `future_close`, `abs_return`, `signed_return`, `stage1_target`, or `stage2_target` in features
 - rolling features do not include future bars
 - joins use only data available at prediction time
-- scalers, imputers, encoders, selectors are not fitted on validation or holdout
-- offline, validation, holdout, inference, and signal generation use the same shared feature builder
+- scalers, imputers, encoders, selectors are not fitted on validation
+- offline, validation, inference, and signal generation use the same shared feature builder
 
 If a feature cannot be built online at decision time, it must not be used offline.
 
@@ -234,7 +255,7 @@ If a feature cannot be built online at decision time, it must not be used offlin
 Prefer these before adding complex models:
 
 - threshold tuning for balanced_precision with coverage >= 0.60
-- validation / holdout discipline
+- validation discipline
 - feature ablation
 - feature importance review
 - leakage removal
@@ -309,6 +330,8 @@ coverage_constraint_satisfied
 
 A result is not considered complete unless the corresponding config and commit can reproduce it.
 
+Use an experiment-specific commit for each completed experiment. Do not mix unrelated user edits into that commit.
+
 ---
 
 ## Config rules
@@ -318,24 +341,39 @@ All business parameters must live in the unified settings file.
 Example:
 
 ```yaml
-label:
-  horizon_minutes: 5
-  rule: "close_t0_plus_4m_gte_open_t0"
+objective:
+  label: settlement_direction
+  optimize_metric: balanced_precision
+  min_coverage: 0.60
+  tie_breaker_metric: coverage
+  balanced_precision_tie_tolerance: 0.002
 
-evaluation:
-  primary_metric: "balanced_precision"
+threshold_search:
+  enabled: true
+  t_up_min: 0.50
+  t_up_max: 0.60
+  t_down_min: 0.40
+  t_down_max: 0.50
+  step: 0.005
+  enforce_min_side_share: false
+  min_side_share: 0.20
   min_up_signals: 50
   min_down_signals: 50
   min_total_signals: 150
-  min_signal_coverage: 0.60
+
+validation:
+  mode: chronological_validation
+  train_days: 30
+  validation_days: 30
 
 signal:
-  up_threshold: null
-  down_threshold: null
+  policies:
+    selective_binary_policy:
+      t_up: null
+      t_down: null
 
 model:
-  type: "lightgbm"
-  class_weight: null
+  active_plugin: lightgbm
 ```
 
 Do not hardcode thresholds, horizons, feature lists, coverage limits, or label rules.
