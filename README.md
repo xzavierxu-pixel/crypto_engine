@@ -30,7 +30,7 @@ The repo is intentionally narrow in V1: one asset, one base timeframe, one horiz
 
 ## Prediction target
 
-$$y_t = \mathbb{1}\{\text{close}_{t_0+5m} > \text{open}_{t_0}\}$$
+$$y_t = \mathbb{1}\{\text{close}_{t_0+4m} >= \text{open}_{t_0}\}$$
 
 - Asset: `BTC/USDT`, base timeframe `1m`, horizon `5m`.
 - `t₀` must sit on the 5-minute grid (`minute % 5 == 0`).

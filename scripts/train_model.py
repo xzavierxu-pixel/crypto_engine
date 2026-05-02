@@ -80,7 +80,7 @@ def _write_cached_split(output_dir: Path, development, validation) -> None:
 
 
 def _run_split_data_quality_report(output_dir: Path) -> None:
-    script_path = REPO_ROOT / "src" / "quality check" / "data_quality_report.py"
+    script_path = REPO_ROOT / "src" / "quality_check" / "data_quality_report.py"
     if not script_path.exists():
         logging.warning("Data quality report script not found at %s; skipping split DQC.", script_path)
         return

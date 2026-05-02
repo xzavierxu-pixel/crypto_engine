@@ -1,0 +1,13 @@
+slice,bucket,feature,false_count,false_share
+volatility_regime,low,rv_5,149,0.28932038834951457
+volatility_regime,mid,rv_5,201,0.39029126213592236
+volatility_regime,high,rv_5,165,0.32038834951456313
+trend_regime,low,ret_5,64,0.12427184466019417
+trend_regime,mid,ret_5,161,0.312621359223301
+trend_regime,high,ret_5,290,0.5631067961165048
+volume_regime,low,relative_volume_5,133,0.258252427184466
+volume_regime,mid,relative_volume_5,164,0.31844660194174756
+volume_regime,high,relative_volume_5,218,0.42330097087378643
+session,asia,timestamp_hour,170,0.3300970873786408
+session,europe,timestamp_hour,179,0.34757281553398056
+session,us,timestamp_hour,166,0.32233009708737864

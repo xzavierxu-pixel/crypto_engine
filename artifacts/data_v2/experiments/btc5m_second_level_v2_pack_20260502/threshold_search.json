@@ -1,0 +1,35 @@
+{
+  "selection_data": "validation",
+  "objective": "balanced_precision",
+  "min_coverage": 0.6,
+  "tie_tolerance": 0.002,
+  "grid": {
+    "t_up_min": 0.5,
+    "t_up_max": 0.6,
+    "t_down_min": 0.4,
+    "t_down_max": 0.5,
+    "step": 0.005
+  },
+  "enforce_min_side_share": false,
+  "min_side_share": 0.2,
+  "best": {
+    "constraint_satisfied": true,
+    "fallback_reason": null,
+    "t_up": 0.5,
+    "t_down": 0.46,
+    "balanced_precision": 0.5465497483889561,
+    "coverage": 0.6221411192214112,
+    "precision_up": 0.5229826353421859,
+    "precision_down": 0.5701168614357263
+  },
+  "side_guarded_best": {
+    "constraint_satisfied": true,
+    "fallback_reason": null,
+    "t_up": 0.5,
+    "t_down": 0.46,
+    "balanced_precision": 0.5465497483889561,
+    "coverage": 0.6221411192214112,
+    "precision_up": 0.5229826353421859,
+    "precision_down": 0.5701168614357263
+  }
+}
