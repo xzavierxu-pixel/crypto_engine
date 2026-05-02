@@ -1,0 +1,591 @@
+project:
+  name: btc-polymarket-v1
+  timezone: UTC
+market:
+  exchange: binance
+  pair: BTC/USDT
+  timeframe: 1m
+objective:
+  label: settlement_direction
+  optimize_metric: balanced_precision
+  min_coverage: 0.6
+  tie_breaker_metric: coverage
+  balanced_precision_tie_tolerance: 0.002
+horizons:
+  active:
+  - 5m
+  specs:
+    5m:
+      minutes: 5
+      grid_minutes: 5
+      label_builder: grid_direction
+      label_params:
+        label_version: settlement_direction_t0_open_to_t4_close_tie_up_v2
+      feature_profile: core_5m
+      signal_policy: selective_binary_policy
+      sizing_plugin: fixed_fraction
+    15m:
+      minutes: 15
+      grid_minutes: 15
+      label_builder: grid_direction
+      label_params:
+        label_version: v1
+      feature_profile: core_15m
+      signal_policy: default_edge_policy_15m
+      sizing_plugin: fixed_fraction
+dataset:
+  train_start: '2026-02-01'
+  train_end: '2026-05-01'
+  validation_window_days: 30
+  train_window_days: 30
+  strict_grid_only: true
+  drop_incomplete_candles: true
+  walk_forward:
+    enabled: false
+sample_weighting:
+  enabled: true
+  mode: linear_ramp
+  min_abs_return: 0.00015
+  full_weight_abs_return: 0.0005
+  min_weight: 0.25
+  max_weight: 1.0
+threshold_search:
+  enabled: true
+  t_up_min: 0.5
+  t_up_max: 0.6
+  t_down_min: 0.4
+  t_down_max: 0.5
+  step: 0.005
+  enforce_min_side_share: false
+  min_side_share: 0.2
+  min_up_signals: 100
+  min_down_signals: 50
+  min_total_signals: 150
+validation:
+  mode: chronological_validation
+  train_days: 30
+  validation_days: 30
+  report_worst_fold: false
+labels: {}
+features:
+  profiles:
+    core_5m:
+      packs:
+      - momentum
+      - momentum_acceleration
+      - volatility
+      - path_structure
+      - regime
+      - volume
+      - candle_structure
+      - market_quality
+      - htf_context
+      - compression_breakout
+      - asymmetry
+      - flow_proxy
+      - intra_5m_structure
+      - completed_bar_microstructure
+      - flow_pressure
+      - second_level_microstructure
+      - event_window_burst
+      - regime_interactions
+      - lagged
+      - time
+      - derivatives_funding
+      - derivatives_basis
+      - derivatives_book_ticker
+      - derivatives_oi
+      - derivatives_options
+      - book_pressure
+      - side_specific_transforms
+      momentum_windows:
+      - 1
+      - 3
+      - 5
+      - 10
+      - 15
+      vol_windows:
+      - 3
+      - 5
+      - 10
+      - 30
+      volume_windows:
+      - 3
+      - 5
+      - 10
+      - 20
+      market_quality_windows:
+      - 5
+      - 20
+      slope_windows:
+      - 3
+      - 5
+      range_windows:
+      - 3
+      - 5
+      - 10
+      htf_context_timeframes:
+      - 15
+      htf_context_vol_window: 5
+      htf_context_range_window: 5
+      htf_context_zscore_window: 5
+      htf_context_efficiency_window: 5
+      htf_context_trend_strength_window: 5
+      lagged_feature_names:
+      - ret_1
+      - ret_3
+      - ret_5
+      - ret_10
+      - rv_5
+      - rv_10
+      - signed_volume_1
+      - relative_volume_5
+      - relative_volume_20
+      - volume_z_5
+      - volume_z_20
+      - low_volume_flag_share_5
+      - low_volume_flag_share_20
+      - volume_below_rolling_p20_share_5
+      - volume_below_rolling_p20_share_20
+      - stale_trade_share_5
+      - flat_share_5
+      - body_pct_1
+      - close_location_1
+      - compression_score
+      - clv_1
+      - wick_pressure_1
+      - prev_bar_trade_count
+      - prev_bar_log_trade_count
+      - prev_bar_taker_buy_volume
+      - legal_prev_log_taker_buy_base_volume
+      - prev_bar_taker_buy_ratio
+      - htf_ret_15m_1
+      - htf_close_z_15m
+      lagged_feature_lags:
+      - 1
+      - 2
+      - 3
+      - 6
+      - 12
+      compression_window: 20
+      compression_rank_window: 100
+      compression_atr_short_window: 5
+      compression_atr_long_window: 20
+      compression_nr_windows:
+      - 4
+      - 7
+      asymmetry_rv_windows:
+      - 5
+      - 20
+      asymmetry_skew_windows:
+      - 10
+      - 20
+      asymmetry_imbalance_windows:
+      - 3
+      - 5
+      flow_volume_window: 3
+      use_vwap_distance: true
+      use_regime_features: true
+      use_time_features: true
+    core_15m:
+      packs:
+      - momentum
+      - momentum_acceleration
+      - volatility
+      - path_structure
+      - regime
+      - volume
+      - candle_structure
+      - market_quality
+      - htf_context
+      - compression_breakout
+      - asymmetry
+      - flow_proxy
+      - intra_5m_structure
+      - interaction_bank
+      - lagged
+      - time
+      - derivatives_funding
+      - derivatives_basis
+      - derivatives_book_ticker
+      - derivatives_oi
+      - derivatives_options
+      momentum_windows:
+      - 1
+      - 3
+      - 5
+      - 10
+      - 15
+      vol_windows:
+      - 3
+      - 5
+      - 10
+      - 30
+      volume_windows:
+      - 3
+      - 5
+      - 10
+      - 20
+      market_quality_windows:
+      - 5
+      - 20
+      slope_windows:
+      - 3
+      - 5
+      range_windows:
+      - 3
+      - 5
+      - 10
+      htf_context_timeframes:
+      - 60
+      htf_context_vol_window: 5
+      htf_context_range_window: 5
+      htf_context_zscore_window: 5
+      htf_context_efficiency_window: 5
+      htf_context_trend_strength_window: 5
+      lagged_feature_names:
+      - ret_1
+      - ret_3
+      - ret_5
+      - ret_10
+      - rv_5
+      - rv_10
+      - signed_volume_1
+      - relative_volume_5
+      - relative_volume_20
+      - volume_z_5
+      - volume_z_20
+      - low_volume_flag_share_5
+      - low_volume_flag_share_20
+      - volume_below_rolling_p20_share_5
+      - volume_below_rolling_p20_share_20
+      - stale_trade_share_5
+      - flat_share_5
+      - body_pct_1
+      - close_location_1
+      - compression_score
+      - clv_1
+      - wick_pressure_1
+      - htf_ret_60m_1
+      - htf_close_z_60m
+      lagged_feature_lags:
+      - 1
+      - 2
+      - 3
+      - 6
+      - 12
+      compression_window: 20
+      compression_rank_window: 100
+      compression_atr_short_window: 5
+      compression_atr_long_window: 20
+      compression_nr_windows:
+      - 4
+      - 7
+      asymmetry_rv_windows:
+      - 5
+      - 20
+      asymmetry_skew_windows:
+      - 10
+      - 20
+      asymmetry_imbalance_windows:
+      - 3
+      - 5
+      flow_volume_window: 3
+      use_vwap_distance: true
+      use_regime_features: true
+      use_time_features: true
+derivatives:
+  enabled: true
+  exchange: binance
+  symbol_spot: BTC/USDT
+  symbol_perp: BTC/USDT:USDT
+  path_mode: archive
+  funding:
+    enabled: true
+    path: ./artifacts/data_v2/normalized/binance/futures_um/BTCUSDT/derivatives/binance_btcusdt_funding.parquet
+    archive_path: ./artifacts/data_v2/normalized
+    source: local_file
+    ffill_until_next: true
+    zscore_window: 720
+  basis:
+    enabled: true
+    path: ./artifacts/data_v2/normalized/binance/futures_um/BTCUSDT/derivatives/binance_btcusdt_basis.parquet
+    archive_path: ./artifacts/data_v2/normalized
+    source: local_file
+    use_mark_price: true
+    use_index_price: true
+    use_premium_index: true
+    zscore_window: 720
+  oi:
+    enabled: true
+    path: null
+    archive_path: ./artifacts/data_v2/normalized
+    frequency: 5m
+    zscore_window: 288
+    change_windows:
+    - 5
+    - 60
+    slope_window: 5
+  options:
+    enabled: true
+    path: null
+    archive_path: ./artifacts/data_v2/normalized
+    source: local_file
+    zscore_window: 288
+    change_window: 60
+    regime_zscore_threshold: 1.0
+  book_ticker:
+    enabled: true
+    path: null
+    archive_path: ./artifacts/data_v2/normalized
+    source: local_file
+    zscore_window: 288
+second_level:
+  enabled: true
+  data_root: ./artifacts/data_v2
+  feature_store_version: second_level_v2
+  feature_profile: expanded_v2
+  feature_store_path: ./artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT/second_features_extended
+  artifact_root: ./artifacts/data_v2/second_level
+  market: BTCUSDT
+  exchange: binance
+  large_trade_quantile: 0.95
+  large_trade_window_seconds: 300
+  optimize_metric: balanced_precision
+  profiles:
+    expanded_v2:
+      packs:
+      - second_level_momentum
+      - second_level_volatility
+      - second_level_volume
+      - second_level_candle_structure
+      - second_level_path_structure
+      - second_level_trade_microstructure
+      - second_level_book_microstructure
+      - second_level_depth
+      - second_level_cross_market
+      - second_level_interaction_bank
+      - second_level_lagged
+      windows:
+      - 1
+      - 3
+      - 5
+      - 10
+      - 15
+      - 30
+      - 60
+      - 120
+      - 300
+      compact_windows:
+      - 5
+      - 10
+      - 30
+      - 60
+      - 300
+      slope_windows:
+      - 5
+      - 10
+      - 30
+      - 60
+      range_windows:
+      - 5
+      - 10
+      - 30
+      - 60
+      - 300
+      lagged_feature_names:
+      - sl_return_5s
+      - sl_return_10s
+      - sl_return_30s
+      - sl_return_60s
+      - sl_rv_30s
+      - sl_taker_imbalance_30s
+      - sl_signed_dollar_flow_30s
+      - sl_trade_count_30s
+      - sl_total_volume_30s
+      - sl_spread_bps
+      - sl_bid_ask_qty_imbalance
+      - sl_microprice_premium
+      - sl_mirror_ret_30s
+      - sl_mirror_relative_volume_30s
+      lagged_feature_lags:
+      - 1
+      - 3
+      - 5
+      - 10
+      - 30
+      - 60
+data_backfill:
+  provider: binance_public
+  start_date: '2026-02-01'
+  use_monthly_for_full_months: true
+  use_daily_for_open_month_tail: true
+  use_daily_for_full_month_fallback: true
+  verify_checksum: true
+  spot:
+    enabled: true
+    symbols:
+    - BTCUSDT
+    data_types:
+      klines:
+        intervals:
+        - 1s
+        - 1m
+      bookTicker: {}
+      aggTrades: {}
+  futures_um:
+    enabled: true
+    symbols:
+    - BTCUSDT
+    data_types:
+      klines:
+        intervals:
+        - 1m
+      markPriceKlines:
+        intervals:
+        - 1m
+      indexPriceKlines:
+        intervals:
+        - 1m
+      premiumIndexKlines:
+        intervals:
+        - 1m
+      fundingRate: {}
+      bookTicker: {}
+      metrics: {}
+      bookDepth: {}
+  futures_cm:
+    enabled: false
+    symbols:
+    - BTCUSD_PERP
+    data_types:
+      klines:
+        intervals:
+        - 1m
+      markPriceKlines:
+        intervals:
+        - 1m
+      indexPriceKlines:
+        intervals:
+        - 1m
+      premiumIndexKlines:
+        intervals:
+        - 1m
+      fundingRate: {}
+      bookTicker: {}
+      metrics: {}
+      aggTrades: {}
+      trades: {}
+      bookDepth: {}
+      liquidationSnapshot: {}
+  option:
+    enabled: true
+    symbols:
+      BVOLIndex:
+      - BTCBVOLUSDT
+      EOHSummary:
+      - BTCUSDT
+model:
+  active_plugin: lightgbm
+  plugins:
+    lightgbm:
+      n_estimators: 700
+      learning_rate: 0.02
+      num_leaves: 20
+      min_child_samples: 600
+      subsample: 0.9
+      subsample_freq: 1
+      colsample_bytree: 0.8
+      reg_alpha: 5.0
+      reg_lambda: 20.0
+      max_depth: 6
+      scale_pos_weight: 1.44
+      verbosity: -1
+      random_state: 42
+      early_stopping_rounds: 60
+      eval_metric: binary_logloss
+    catboost:
+      iterations: 300
+      learning_rate: 0.03
+      depth: 10
+      l2_leaf_reg: 5.0
+      random_seed: 42
+      loss_function: Logloss
+      eval_metric: Logloss
+      verbose: false
+    logistic:
+      C: 0.5
+      max_iter: 1000
+      solver: lbfgs
+      random_state: 42
+calibration:
+  active_plugin: none
+  plugins: {}
+signal:
+  policies:
+    selective_binary_policy:
+      t_up: null
+      t_down: null
+    default_edge_policy_15m:
+      yes_price_min: 0.4
+      yes_price_max: 0.6
+      edge_threshold: 0.03
+sizing:
+  active_plugin: fixed_fraction
+  plugins:
+    fixed_fraction:
+      single_position_cap: 0.02
+      max_total_exposure: 0.2
+execution:
+  mode: paper
+  active_adapter: polymarket
+  active_mapper: btc_5m_polymarket
+  fixed_contract_size: 5.0
+  safeguards:
+    min_liquidity_clob: 1000.0
+    max_spread: 0.1
+    require_best_ask: true
+    enforce_idempotency_in_paper: false
+    idempotency_store_path: ./artifacts/state/live_orders.json
+  polymarket:
+    host: https://clob.polymarket.com
+    gamma_base_url: https://gamma-api.polymarket.com
+    chain_id: 137
+    signature_type: null
+    funder: null
+    private_key_env: POLYMARKET_PRIVATE_KEY
+    api_key_env: POLYMARKET_API_KEY
+    api_secret_env: POLYMARKET_API_SECRET
+    api_passphrase_env: POLYMARKET_API_PASSPHRASE
+    max_pages: 3
+    gamma_timeout_seconds: 5
+paths:
+  artifacts_dir: ./artifacts
+  model_dir: ./artifacts/models
+  logs_dir: ./artifacts/logs
+reporting:
+  include_precision_coverage_frontier: true
+  include_boundary_slices: true
+  include_regime_slices: true
+  include_calibration_metrics: false
+experiment:
+  variant:
+    name: conservative_top1220_spw1p44
+    category: sample_feature_model_narrow
+    overrides:
+      model.plugins.lightgbm.num_leaves: 20
+      model.plugins.lightgbm.max_depth: 6
+      model.plugins.lightgbm.min_child_samples: 600
+      model.plugins.lightgbm.reg_alpha: 5.0
+      model.plugins.lightgbm.reg_lambda: 20.0
+      model.plugins.lightgbm.learning_rate: 0.02
+      model.plugins.lightgbm.n_estimators: 700
+      model.plugins.lightgbm.scale_pos_weight: 1.44
+      model.plugins.lightgbm.subsample: 0.9
+      model.plugins.lightgbm.colsample_bytree: 0.8
+      sample_weighting.enabled: true
+      sample_weighting.min_abs_return: 0.00015
+      sample_weighting.full_weight_abs_return: 0.0005
+      sample_weighting.min_weight: 0.25
+    drop_packs: []
+    top_n_features: 1220
