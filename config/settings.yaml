@@ -63,9 +63,9 @@ threshold_search:
   step: 0.005
   enforce_min_side_share: false
   min_side_share: 0.20
-  min_up_signals: 50
-  min_down_signals: 50
-  min_total_signals: 150
+  min_up_signals: 1000
+  min_down_signals: 1000
+  min_total_signals: 4000
 
 validation:
   mode: chronological_validation

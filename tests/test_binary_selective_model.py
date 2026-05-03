@@ -49,6 +49,45 @@ def test_threshold_search_prefers_higher_coverage_inside_precision_tie() -> None
     assert not frontier.empty
 
 
+def test_threshold_search_enforces_min_signal_counts() -> None:
+    y_true = pd.Series([1, 1, 0, 0], dtype="int64")
+    probabilities = pd.Series([0.61, 0.56, 0.39, 0.44], dtype="float64")
+    t_up, t_down, _, best = search_selective_binary_thresholds(
+        y_true,
+        probabilities,
+        t_up_min=0.55,
+        t_up_max=0.60,
+        t_down_min=0.40,
+        t_down_max=0.45,
+        step=0.05,
+        min_coverage=0.50,
+        tie_tolerance=0.002,
+        min_up_signals=2,
+        min_down_signals=2,
+        min_total_signals=4,
+    )
+    assert t_up == 0.55
+    assert t_down == 0.45
+    assert best["constraint_satisfied"] is True
+
+    _, _, _, impossible_best = search_selective_binary_thresholds(
+        y_true,
+        probabilities,
+        t_up_min=0.55,
+        t_up_max=0.60,
+        t_down_min=0.40,
+        t_down_max=0.45,
+        step=0.05,
+        min_coverage=0.50,
+        tie_tolerance=0.002,
+        min_up_signals=3,
+        min_down_signals=2,
+        min_total_signals=4,
+    )
+    assert impossible_best["constraint_satisfied"] is False
+    assert "signal-count" in str(impossible_best["fallback_reason"])
+
+
 def test_recent_split_uses_30_day_train_and_30_day_validation_windows() -> None:
     frame = pd.DataFrame(
         {

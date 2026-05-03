@@ -272,6 +272,9 @@ def search_selective_binary_thresholds(
     tie_tolerance: float,
     enforce_min_side_share: bool = False,
     min_side_share: float = 0.20,
+    min_up_signals: int = 0,
+    min_down_signals: int = 0,
+    min_total_signals: int = 0,
 ) -> tuple[float, float, pd.DataFrame, dict[str, float | bool | str | None]]:
     if step <= 0:
         raise ValueError("threshold search step must be > 0.")
@@ -298,7 +301,12 @@ def search_selective_binary_thresholds(
                     and record["share_down_predictions"] >= min_side_share
                 )
             )
-            if record["coverage"] >= min_coverage and side_share_ok:
+            signal_counts_ok = (
+                record["up_prediction_count"] >= min_up_signals
+                and record["down_prediction_count"] >= min_down_signals
+                and record["accepted_count"] >= min_total_signals
+            )
+            if record["coverage"] >= min_coverage and side_share_ok and signal_counts_ok:
                 eligible.append(record)
 
     if not records:
@@ -313,13 +321,19 @@ def search_selective_binary_thresholds(
     best = max(tied, key=lambda record: (record["coverage"], record["balanced_precision"]))
     best_summary: dict[str, float | bool | str | None] = {
         "constraint_satisfied": bool(eligible),
-        "fallback_reason": None if eligible else "no threshold set satisfied coverage/side-share constraints",
+        "fallback_reason": None if eligible else "no threshold set satisfied coverage/side-share/signal-count constraints",
         "t_up": float(best["t_up"]),
         "t_down": float(best["t_down"]),
         "balanced_precision": float(best["balanced_precision"]),
         "coverage": float(best["coverage"]),
         "precision_up": float(best["precision_up"]),
         "precision_down": float(best["precision_down"]),
+        "up_prediction_count": float(best["up_prediction_count"]),
+        "down_prediction_count": float(best["down_prediction_count"]),
+        "accepted_count": float(best["accepted_count"]),
+        "min_up_signals": float(min_up_signals),
+        "min_down_signals": float(min_down_signals),
+        "min_total_signals": float(min_total_signals),
     }
     return float(best["t_up"]), float(best["t_down"]), pd.DataFrame.from_records(records), best_summary
 

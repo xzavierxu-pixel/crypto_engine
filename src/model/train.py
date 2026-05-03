@@ -583,6 +583,9 @@ def train_binary_selective_model_from_split(
         tie_tolerance=float(settings.objective.balanced_precision_tie_tolerance),
         enforce_min_side_share=search.enforce_min_side_share,
         min_side_share=search.min_side_share,
+        min_up_signals=search.min_up_signals,
+        min_down_signals=search.min_down_signals,
+        min_total_signals=search.min_total_signals,
     )
     guarded_t_up, guarded_t_down, _, guarded_best = search_selective_binary_thresholds(
         valid_frame.y.astype(int),
@@ -596,6 +599,9 @@ def train_binary_selective_model_from_split(
         tie_tolerance=float(settings.objective.balanced_precision_tie_tolerance),
         enforce_min_side_share=True,
         min_side_share=search.min_side_share,
+        min_up_signals=search.min_up_signals,
+        min_down_signals=search.min_down_signals,
+        min_total_signals=search.min_total_signals,
     )
     train_metrics = compute_selective_binary_metrics(train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down)
     validation_metrics = compute_selective_binary_metrics(valid_frame.y.astype(int), valid_proba, t_up=t_up, t_down=t_down)
@@ -613,6 +619,9 @@ def train_binary_selective_model_from_split(
         },
         "enforce_min_side_share": search.enforce_min_side_share,
         "min_side_share": search.min_side_share,
+        "min_up_signals": search.min_up_signals,
+        "min_down_signals": search.min_down_signals,
+        "min_total_signals": search.min_total_signals,
         "best": best,
         "side_guarded_best": {
             **guarded_best,
