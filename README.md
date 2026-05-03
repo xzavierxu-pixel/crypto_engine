@@ -87,9 +87,9 @@ Dependency direction is strictly one-way:
 
 - Feature engineering: [src/features/base.py](src/features/base.py), [src/features/registry.py](src/features/registry.py), then the specific feature pack file.
 - Label logic: [src/labels/grid_direction.py](src/labels/grid_direction.py).
-- Dataset assembly: [src/data/](src/data/) and [scripts/build_dataset.py](scripts/build_dataset.py).
-- Model training and artifact persistence: [src/model/](src/model/) and [scripts/train_model.py](scripts/train_model.py).
-- Shared online inference path: [src/services/](src/services/) and [scripts/run_live_signal.py](scripts/run_live_signal.py).
+- Dataset assembly: [src/data/](src/data/) and [scripts/data/step4_features/build_dataset.py](scripts/data/step4_features/build_dataset.py).
+- Model training and artifact persistence: [src/model/](src/model/) and [scripts/model/train_model.py](scripts/model/train_model.py).
+- Shared online inference path: [src/services/](src/services/) and [scripts/runtime/run_live_signal.py](scripts/runtime/run_live_signal.py).
 - Execution and order routing: [src/execution/](src/execution/).
 - Tests to read first: [tests/](tests/), especially the closest `test_*.py` file for the area you are touching.
 
@@ -99,22 +99,19 @@ Dependency direction is strictly one-way:
 
 ## Script entry points ([scripts/](scripts/))
 
-| Script | Purpose |
+The script directory is grouped by workflow stage. See [scripts/README.md](scripts/README.md) for the full map.
+
+| Path | Purpose |
 |---|---|
-| `backfill_binance_public_history.py` | Pull historical spot 1m data from Binance Vision |
-| `backfill_derivatives_history.py` | Backfill derivatives (funding, OI, basis) history |
-| `download_derivatives_public_data.py` | Download latest derivatives snapshots |
-| `normalize_binance_public_history.py` | Normalize raw spot data → stabilized Parquet |
-| `normalize_aggtrades_daily.py` | Normalize raw aggTrades into daily Parquet |
-| `qa_binance_public_history.py` | Quality checks on normalized spot data |
-| `build_second_level_feature_store.py` | Build 1-second microstructure feature store |
-| `build_dataset.py` | OHLCV → features + labels + sample weights (`TrainingFrame`) |
-| `train_model.py` | Train and persist model artifacts |
-| `train_two_stage.py` | Two-stage (direction + selective) training pipeline |
-| `run_live_signal.py` | Online inference + Polymarket order submission |
-| `run_shadow.py` | Shadow mode (no orders, audit only) |
-| `run_model_experiments.py` | Batch experiments |
-| `run_binary_rolling_validation.py` | Walk-forward rolling validation |
+| `scripts/data/step1_acquire/` | Download or backfill raw market and derivatives data |
+| `scripts/data/step2_normalize/` | Normalize raw archives into stable Parquet datasets |
+| `scripts/data/step3_quality/` | Run data quality checks |
+| `scripts/data/step4_features/` | Build second-level stores and final training frames |
+| `scripts/model/train_model.py` | Train and persist model artifacts |
+| `scripts/model/run_binary_rolling_validation.py` | Walk-forward rolling validation |
+| `scripts/runtime/run_live_signal.py` | Online inference + Polymarket order submission |
+| `scripts/runtime/run_shadow.py` | Shadow mode (no orders, audit only) |
+| `scripts/experiments/` | One-off and research experiment runners |
 
 All scripts share: `--config config/settings.yaml`, `--horizon 5m`. Most accept `--input` / `--output` or `--output-dir`.
 
@@ -125,13 +122,13 @@ All scripts share: `--config config/settings.yaml`, `--horizon 5m`. Most accept 
 rtk pytest -q
 
 # Build dataset locally
-rtk python scripts/build_dataset.py \
+rtk python scripts/data/step4_features/build_dataset.py \
     --input data/raw/BTCUSDT_1m.parquet \
     --output data/training/BTCUSDT_5m.parquet \
     --config config/settings.yaml --horizon 5m
 
 # Train
-rtk python scripts/train_model.py \
+rtk python scripts/model/train_model.py \
     --input data/training/BTCUSDT_5m.parquet \
     --output-dir artifacts/models/local \
     --config config/settings.yaml --horizon 5m

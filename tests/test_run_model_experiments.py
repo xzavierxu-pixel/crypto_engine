@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.run_model_experiments import (
+from scripts.experiments.run_model_experiments import (
     _available_derivatives_sources,
     _collect_existing_results,
     _build_derivatives_progression,

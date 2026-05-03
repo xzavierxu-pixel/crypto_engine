@@ -8,7 +8,7 @@ from dataclasses import replace
 import numpy as np
 import pandas as pd
 
-from scripts import train_model as train_model_script
+from scripts.model import train_model as train_model_script
 from src.core.config import load_settings
 from src.core.constants import (
     DEFAULT_ABS_RETURN_COLUMN,

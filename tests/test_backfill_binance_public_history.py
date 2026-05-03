@@ -4,7 +4,7 @@ import json
 from datetime import date
 from pathlib import Path
 
-from scripts.backfill_binance_public_history import (
+from scripts.data.step1_acquire.backfill_binance_public_history import (
     DownloadRequest,
     DownloadResult,
     _determine_exit_code,

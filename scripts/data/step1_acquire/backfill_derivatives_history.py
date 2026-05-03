@@ -10,11 +10,11 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = next(parent for parent in Path(__file__).resolve().parents if (parent / 'src').is_dir())
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.download_derivatives_public_data import (  # noqa: E402
+from scripts.data.step1_acquire.download_derivatives_public_data import (  # noqa: E402
     _fetch_binance_basis,
     _fetch_binance_funding,
     _fetch_binance_oi,

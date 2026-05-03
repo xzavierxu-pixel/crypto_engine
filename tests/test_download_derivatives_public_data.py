@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scripts.download_derivatives_public_data import (
+from scripts.data.step1_acquire.download_derivatives_public_data import (
     _normalize_basis_records,
     _normalize_deribit_vol_rows,
     _normalize_funding_records,

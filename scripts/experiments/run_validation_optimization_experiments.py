@@ -15,7 +15,7 @@ from typing import Any
 import pandas as pd
 import yaml
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = next(parent for parent in Path(__file__).resolve().parents if (parent / 'src').is_dir())
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -24,7 +24,7 @@ from src.data.dataset_builder import TrainingFrame, compute_sample_weight, infer
 from src.model.evaluation import compute_selective_binary_metrics
 from src.model.train import train_binary_selective_model_from_split
 
-from scripts.run_balanced_precision_holdout_experiment import (
+from scripts.experiments.run_balanced_precision_holdout_experiment import (
     _git_info,
     _metric_dict,
     _predict_proba,

@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from src.core.schemas import Decision, MarketQuote, Signal
-from scripts.run_shadow import (
+from scripts.runtime.run_shadow import (
     _build_shadow_summary,
     _build_stage1_drift_monitor,
     _merge_quote_metadata,

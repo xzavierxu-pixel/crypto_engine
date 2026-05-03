@@ -9,13 +9,13 @@ from typing import Any
 
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = next(parent for parent in Path(__file__).resolve().parents if (parent / 'src').is_dir())
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.data.dataset_builder import infer_feature_columns
 
-from scripts.run_validation_optimization_experiments import (
+from scripts.experiments.run_validation_optimization_experiments import (
     _read_yaml,
     _run_variant,
     _write_leaderboard,

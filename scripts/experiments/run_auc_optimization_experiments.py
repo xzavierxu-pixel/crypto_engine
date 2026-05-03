@@ -9,13 +9,13 @@ from typing import Any
 
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = next(parent for parent in Path(__file__).resolve().parents if (parent / 'src').is_dir())
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.run_bp_feature_sample_model_experiments import _variants as _feature_sample_model_variants
-from scripts.run_bp_targeted_experiments import _variants as _targeted_variants
-from scripts.run_validation_optimization_experiments import (
+from scripts.experiments.run_bp_feature_sample_model_experiments import _variants as _feature_sample_model_variants
+from scripts.experiments.run_bp_targeted_experiments import _variants as _targeted_variants
+from scripts.experiments.run_validation_optimization_experiments import (
     _read_yaml,
     _run_variant,
     _variant_matrix,

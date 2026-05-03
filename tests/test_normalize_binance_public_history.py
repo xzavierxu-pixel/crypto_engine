@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from scripts.normalize_binance_public_history import run_normalize
+from scripts.data.step2_normalize.normalize_binance_public_history import run_normalize
 from src.data.binance_public import normalizer
 from src.data.binance_public.normalizer import normalize_binance_public_history
 

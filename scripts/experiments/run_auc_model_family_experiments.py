@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = next(parent for parent in Path(__file__).resolve().parents if (parent / 'src').is_dir())
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.run_auc_optimization_experiments import _write_auc_leaderboard
-from scripts.run_validation_optimization_experiments import _read_yaml, _run_variant
+from scripts.experiments.run_auc_optimization_experiments import _write_auc_leaderboard
+from scripts.experiments.run_validation_optimization_experiments import _read_yaml, _run_variant
 from src.data.dataset_builder import infer_feature_columns
 
 

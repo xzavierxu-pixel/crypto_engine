@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from scripts.run_balanced_precision_holdout_experiment import _metric_dict, _window_dict
+from scripts.experiments.run_balanced_precision_holdout_experiment import _metric_dict, _window_dict
 from src.core.config import load_settings
 
 
