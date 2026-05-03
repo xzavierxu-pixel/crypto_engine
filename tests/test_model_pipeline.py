@@ -216,3 +216,29 @@ def test_train_model_script_writes_binary_artifacts_and_reports(tmp_path: Path, 
     assert (output_dir / "false_up_slices.csv").exists()
     assert (output_dir / "false_down_slices.csv").exists()
     assert (output_dir / "data_quality" / "dqc_summary.txt").exists()
+
+
+def test_cached_split_dqc_uses_cached_split_source_and_current_output(tmp_path: Path, monkeypatch) -> None:
+    split_dir = tmp_path / "cached_split"
+    output_dir = tmp_path / "output"
+    split_dir.mkdir()
+    output_dir.mkdir()
+    pd.DataFrame({"f1": [1.0], "target": [1]}).to_parquet(split_dir / "development_frame.parquet", index=False)
+    pd.DataFrame({"f1": [2.0], "target": [0]}).to_parquet(split_dir / "validation_frame.parquet", index=False)
+    captured: dict[str, object] = {}
+
+    def fake_run(command: list[str], *, check: bool, cwd: str) -> None:
+        captured["command"] = command
+        captured["check"] = check
+        captured["cwd"] = cwd
+
+    monkeypatch.setattr(train_model_script.subprocess, "run", fake_run)
+
+    train_model_script._run_split_data_quality_report(split_dir=split_dir, output_dir=output_dir)
+
+    command = captured["command"]
+    assert isinstance(command, list)
+    assert str(split_dir / "development_frame.parquet") in command
+    assert str(split_dir / "validation_frame.parquet") in command
+    assert str(output_dir / "data_quality") in command
+    assert captured["check"] is True

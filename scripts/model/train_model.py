@@ -79,13 +79,13 @@ def _write_cached_split(output_dir: Path, development, validation) -> None:
     logging.info("Cached split data written to %s and %s", development_path, validation_path)
 
 
-def _run_split_data_quality_report(output_dir: Path) -> None:
+def _run_split_data_quality_report(*, split_dir: Path, output_dir: Path) -> None:
     script_path = REPO_ROOT / "src" / "quality_check" / "data_quality_report.py"
     if not script_path.exists():
         logging.warning("Data quality report script not found at %s; skipping split DQC.", script_path)
         return
-    development_path = output_dir / "development_frame.parquet"
-    validation_path = output_dir / "validation_frame.parquet"
+    development_path = split_dir / "development_frame.parquet"
+    validation_path = split_dir / "validation_frame.parquet"
     dqc_output_dir = output_dir / "data_quality"
     command = [
         sys.executable,
@@ -217,7 +217,8 @@ def main() -> None:
     )
 
     if args.cached_split_dir:
-        development, validation = _load_cached_split(Path(args.cached_split_dir))
+        cached_split_dir = Path(args.cached_split_dir)
+        development, validation = _load_cached_split(cached_split_dir)
         training_row_count = len(development.frame) + len(validation.frame)
         train_start = str(development.frame["timestamp"].min()) if not development.frame.empty else None
         train_end = str(validation.frame["timestamp"].max()) if not validation.frame.empty else None
@@ -226,6 +227,7 @@ def main() -> None:
             len(development.frame),
             len(validation.frame),
         )
+        _run_split_data_quality_report(split_dir=cached_split_dir, output_dir=output_dir)
     else:
         logging.info("Loading input data from %s", args.input)
         source = _load_input(Path(args.input))
@@ -272,7 +274,7 @@ def main() -> None:
             purge_rows=args.purge_rows,
         )
         _write_cached_split(output_dir, development, validation)
-        _run_split_data_quality_report(output_dir)
+        _run_split_data_quality_report(split_dir=output_dir, output_dir=output_dir)
         training_row_count = len(training.frame)
         train_start = str(training.frame["timestamp"].min()) if not training.frame.empty else None
         train_end = str(training.frame["timestamp"].max()) if not training.frame.empty else None

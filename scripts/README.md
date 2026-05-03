@@ -12,6 +12,7 @@ Run these groups in order when rebuilding data from raw sources.
 | 2 | `data/step2_normalize/` | `normalize_binance_public_history.py`, `normalize_aggtrades_daily.py` | Convert raw archives into normalized Parquet datasets. |
 | 3 | `data/step3_quality/` | `qa_binance_public_history.py` | Validate normalized data before feature generation. |
 | 4 | `data/step4_features/` | `build_second_level_feature_store.py`, `build_dataset.py` | Build reusable feature stores and final training frames. |
+| 5 | `src/quality_check/data_quality_report.py` | called by `model/train_model.py` | Generate train/validation DQC after feature frames are built or loaded from a cached split. |
 
 ## Model Workflow
 
