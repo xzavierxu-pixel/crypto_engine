@@ -15,9 +15,7 @@ from src.data.binance_public.qa import run_binance_public_qa
 
 def run_normalize(settings_path: str | Path, output_root: str | Path | None = None) -> dict[str, object]:
     settings = load_settings(settings_path)
-    resolved_output_root = (
-        Path(output_root) if output_root else Path(settings.second_level.data_root) / "binance_public"
-    )
+    resolved_output_root = Path(output_root) if output_root else Path(settings.second_level.data_root)
     normalize_manifest = normalize_binance_public_history(resolved_output_root)
     qa_manifest = run_binance_public_qa(resolved_output_root)
     return {
@@ -32,7 +30,7 @@ def main() -> None:
         description="Normalize Binance public raw history into parquet outputs and run QA."
     )
     parser.add_argument("--settings", default="config/settings.yaml", help="Path to settings YAML.")
-    parser.add_argument("--output-root", help="Binance public output root. Defaults to artifacts/data_v2/binance_public.")
+    parser.add_argument("--output-root", help="Binance public output root. Defaults to artifacts/data_v2.")
     args = parser.parse_args()
 
     result = run_normalize(args.settings, output_root=args.output_root)

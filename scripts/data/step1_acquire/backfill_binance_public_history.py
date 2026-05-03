@@ -703,7 +703,7 @@ def _determine_exit_code(results: list[DownloadResult]) -> int:
 def run_backfill(settings_path: Path, output_root: Path | None, as_of_date: date) -> int:
     settings = load_settings(settings_path)
     backfill_config = settings.data_backfill
-    resolved_output_root = output_root or Path(settings.second_level.data_root) / "binance_public"
+    resolved_output_root = output_root or Path(settings.second_level.data_root)
 
     requests_to_run = build_download_requests(
         output_root=resolved_output_root,
