@@ -51,15 +51,86 @@ Reject any result where one side nearly disappears.
 Every training, validation, threshold search, or optimization run must report:
 
 ```text
+sample_count
+coverage
 precision_up
 precision_down
 balanced_precision
+all_sample_accuracy
+accepted_sample_accuracy
+share_up_predictions
+share_down_predictions
+selected_t_up
+selected_t_down
+accepted_count
+up_prediction_count
+down_prediction_count
+roc_auc
+brier_score
+log_loss
 up_signal_count
 down_signal_count
 total_signal_count
 signal_coverage
 overall_signal_accuracy
 ```
+
+Every experiment `report.json` must include top-level train and validation sections with these fields:
+
+```json
+{
+  "train_metrics": {
+    "sample_count": 0.0,
+    "coverage": 0.0,
+    "precision_up": 0.0,
+    "precision_down": 0.0,
+    "balanced_precision": 0.0,
+    "all_sample_accuracy": 0.0,
+    "accepted_sample_accuracy": 0.0,
+    "share_up_predictions": 0.0,
+    "share_down_predictions": 0.0,
+    "selected_t_up": 0.0,
+    "selected_t_down": 0.0,
+    "accepted_count": 0.0,
+    "up_prediction_count": 0.0,
+    "down_prediction_count": 0.0,
+    "roc_auc": 0.0,
+    "brier_score": 0.0,
+    "log_loss": 0.0
+  },
+  "train_window": {
+    "row_count": 0,
+    "start": "ISO-8601 timestamp",
+    "end": "ISO-8601 timestamp"
+  },
+  "validation_metrics": {
+    "sample_count": 0.0,
+    "coverage": 0.0,
+    "precision_up": 0.0,
+    "precision_down": 0.0,
+    "balanced_precision": 0.0,
+    "all_sample_accuracy": 0.0,
+    "accepted_sample_accuracy": 0.0,
+    "share_up_predictions": 0.0,
+    "share_down_predictions": 0.0,
+    "selected_t_up": 0.0,
+    "selected_t_down": 0.0,
+    "accepted_count": 0.0,
+    "up_prediction_count": 0.0,
+    "down_prediction_count": 0.0,
+    "roc_auc": 0.0,
+    "brier_score": 0.0,
+    "log_loss": 0.0
+  },
+  "validation_window": {
+    "row_count": 0,
+    "start": "ISO-8601 timestamp",
+    "end": "ISO-8601 timestamp"
+  }
+}
+```
+
+The legacy aliases `up_signal_count`, `down_signal_count`, `total_signal_count`, `signal_coverage`, and `overall_signal_accuracy` may also be reported for compatibility, but they must not replace the explicit `*_prediction_count`, `accepted_count`, `coverage`, and `accepted_sample_accuracy` fields above.
 
 Minimum valid result:
 

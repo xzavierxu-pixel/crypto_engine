@@ -30,6 +30,7 @@ from scripts.run_balanced_precision_holdout_experiment import (
     _predict_proba,
     _search_thresholds,
     _split_by_time,
+    _window_dict,
 )
 
 
@@ -488,6 +489,10 @@ def _run_variant(
             "validation_selected_row": selected,
         },
         "metrics": metrics,
+        "train_metrics": metrics["development"],
+        "train_window": _window_dict(split_info, "development"),
+        "validation_metrics": metrics["validation"],
+        "validation_window": _window_dict(split_info, "validation"),
         "validation_delta_vs_baseline": {
             "balanced_precision": validation_metrics["balanced_precision"] - BASELINE["balanced_precision"],
             "precision_up": validation_metrics["precision_up"] - BASELINE["precision_up"],

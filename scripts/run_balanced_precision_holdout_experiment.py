@@ -92,17 +92,38 @@ def _metric_dict(
 ) -> dict[str, Any]:
     metrics = compute_selective_binary_metrics(y_true, proba, t_up=t_up, t_down=t_down)
     return {
+        "sample_count": metrics["sample_count"],
+        "coverage": metrics["coverage"],
         "precision_up": metrics["precision_up"],
         "precision_down": metrics["precision_down"],
         "balanced_precision": metrics["balanced_precision"],
+        "all_sample_accuracy": metrics["all_sample_accuracy"],
+        "accepted_sample_accuracy": metrics["accepted_sample_accuracy"],
+        "share_up_predictions": metrics["share_up_predictions"],
+        "share_down_predictions": metrics["share_down_predictions"],
+        "selected_t_up": metrics["selected_t_up"],
+        "selected_t_down": metrics["selected_t_down"],
+        "accepted_count": metrics["accepted_count"],
+        "up_prediction_count": metrics["up_prediction_count"],
+        "down_prediction_count": metrics["down_prediction_count"],
+        "roc_auc": metrics.get("roc_auc"),
+        "brier_score": metrics["brier_score"],
+        "log_loss": metrics["log_loss"],
         "up_signal_count": int(metrics["up_prediction_count"]),
         "down_signal_count": int(metrics["down_prediction_count"]),
         "total_signal_count": int(metrics["accepted_count"]),
         "signal_coverage": metrics["coverage"],
         "overall_signal_accuracy": metrics["accepted_sample_accuracy"],
-        "sample_count": int(metrics["sample_count"]),
-        "all_sample_accuracy": metrics["all_sample_accuracy"],
         "constraints_satisfied": _constraints_satisfied(metrics, settings=settings),
+    }
+
+
+def _window_dict(split_info: dict[str, Any], split_name: str) -> dict[str, Any]:
+    split = split_info[split_name]
+    return {
+        "row_count": int(split["rows"]),
+        "start": split["start"],
+        "end": split["end"],
     }
 
 
@@ -345,6 +366,10 @@ def main() -> int:
             "validation_selected_row": selected,
         },
         "metrics": metrics,
+        "train_metrics": metrics["development"],
+        "train_window": _window_dict(split_info, "development"),
+        "validation_metrics": metrics["validation"],
+        "validation_window": _window_dict(split_info, "validation"),
         "git": _git_info(),
         "artifacts": {
             "report": str(report_path),
