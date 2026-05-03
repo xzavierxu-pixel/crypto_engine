@@ -10,7 +10,7 @@ For detailed inputs and outputs for every data script, see `data/DATA_SCRIPTS.md
 
 | Order | Directory | Scripts | Purpose |
 |---|---|---|---|
-| 1 | `data/step1_acquire/` | `backfill_binance_public_history.py`, `backfill_derivatives_history.py`, `download_derivatives_public_data.py` | Download or backfill raw Binance and derivatives inputs. |
+| 1 | `data/step1_acquire/` | `backfill_binance_public_history.py`, `backfill_derivatives_history.py` | Download or backfill raw Binance and derivatives inputs. |
 | 2 | `data/step2_normalize/` | `normalize_binance_public_history.py`, `normalize_aggtrades_daily.py` | Convert raw archives into normalized Parquet datasets. |
 | 3 | `data/step3_quality/` | `qa_binance_public_history.py` | Validate normalized data before feature generation. |
 | 4 | `data/step4_features/` | `build_second_level_feature_store.py`, `build_dataset.py` | Build reusable feature stores and final training frames. |

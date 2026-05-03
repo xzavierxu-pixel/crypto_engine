@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from dataclasses import replace
 from pathlib import Path
 
 from scripts.data.step1_acquire.backfill_binance_public_history import (
@@ -12,6 +13,10 @@ from scripts.data.step1_acquire.backfill_binance_public_history import (
     build_download_requests,
 )
 from src.core.config import load_settings
+
+
+def _january_backfill_config():
+    return replace(load_settings().data_backfill, start_date="2026-01-01")
 
 
 def _sample_request(tmp_path: Path, **overrides: object) -> DownloadRequest:
@@ -34,11 +39,9 @@ def _sample_request(tmp_path: Path, **overrides: object) -> DownloadRequest:
 
 
 def test_build_download_requests_uses_monthly_for_full_months_and_daily_for_open_month_tail(tmp_path: Path) -> None:
-    settings = load_settings()
-
     requests_to_run = build_download_requests(
         output_root=tmp_path,
-        backfill_config=settings.data_backfill,
+        backfill_config=_january_backfill_config(),
         as_of_date=date(2026, 4, 11),
     )
 
@@ -47,6 +50,7 @@ def test_build_download_requests_uses_monthly_for_full_months_and_daily_for_open
         for request in requests_to_run
         if request.market_family == "spot"
         and request.data_type == "klines"
+        and request.interval == "1m"
         and request.granularity == "monthly"
     ]
     spot_daily = [
@@ -54,6 +58,7 @@ def test_build_download_requests_uses_monthly_for_full_months_and_daily_for_open
         for request in requests_to_run
         if request.market_family == "spot"
         and request.data_type == "klines"
+        and request.interval == "1m"
         and request.granularity == "daily"
     ]
 
@@ -63,11 +68,9 @@ def test_build_download_requests_uses_monthly_for_full_months_and_daily_for_open
 
 
 def test_build_download_requests_generates_expected_paths_for_um_metrics_and_option(tmp_path: Path) -> None:
-    settings = load_settings()
-
     requests_to_run = build_download_requests(
         output_root=tmp_path,
-        backfill_config=settings.data_backfill,
+        backfill_config=_january_backfill_config(),
         as_of_date=date(2026, 4, 11),
     )
 
@@ -94,6 +97,7 @@ def test_build_download_requests_generates_expected_paths_for_um_metrics_and_opt
         for request in requests_to_run
         if request.market_family == "spot"
         and request.data_type == "klines"
+        and request.interval == "1m"
         and request.period_label == "2026-01"
     )
     um_mark_request = next(
@@ -112,11 +116,9 @@ def test_build_download_requests_generates_expected_paths_for_um_metrics_and_opt
 
 
 def test_build_download_requests_uses_daily_history_for_daily_only_sources(tmp_path: Path) -> None:
-    settings = load_settings()
-
     requests_to_run = build_download_requests(
         output_root=tmp_path,
-        backfill_config=settings.data_backfill,
+        backfill_config=_january_backfill_config(),
         as_of_date=date(2026, 4, 11),
     )
 

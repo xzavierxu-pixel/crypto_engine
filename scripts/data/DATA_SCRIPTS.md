@@ -12,10 +12,13 @@ Run the scripts in this order when rebuilding data from raw public sources:
 4. `step4_features/`: build second-level feature stores and final model training frames.
 5. `src/quality_check/data_quality_report.py`: called by `scripts/model/train_model.py` after feature frames are built or loaded as cached splits.
 
-There are two data roots in current usage:
+Current data outputs are rooted under `artifacts/data_v2`.
 
-- `artifacts/data/binance_public`: default root for Binance public archive download, normalization, and QA scripts.
-- `artifacts/data_v2`: default unified data root for normalized derivatives, second-level feature stores, datasets, and experiments.
+- `artifacts/data_v2/binance_public`: default root for Binance public archive download, normalization, and QA scripts.
+- `artifacts/data_v2/normalized`: normalized derivatives and other normalized source tables.
+- `artifacts/data_v2/second_level`: second-level feature stores.
+- `artifacts/data_v2/datasets`: model training frames.
+- `artifacts/data_v2/experiments`: training/evaluation outputs.
 
 ## Step 1: Acquire
 
@@ -28,7 +31,7 @@ Typical command:
 ```powershell
 rtk python scripts/data/step1_acquire/backfill_binance_public_history.py `
   --settings config/settings.yaml `
-  --output-root artifacts/data/binance_public `
+  --output-root artifacts/data_v2/binance_public `
   --as-of-date 2026-05-03
 ```
 
@@ -37,7 +40,7 @@ Inputs:
 | Input | Required | Default | Meaning |
 |---|---:|---|---|
 | `--settings` | no | `config/settings.yaml` | Reads `data_backfill` for enabled market families, symbols, data types, intervals, start date, and checksum behavior. |
-| `--output-root` | no | `settings.paths.artifacts_dir/data/binance_public` | Root where raw extracted files and manifests are written. |
+| `--output-root` | no | `settings.second_level.data_root/binance_public` | Root where raw extracted files and manifests are written. |
 | `--as-of-date` | no | current UTC date | Determines which months are complete monthly downloads and which open-month days should be downloaded daily. |
 
 Main config inputs:
@@ -60,11 +63,11 @@ Outputs:
 Important output examples:
 
 ```text
-artifacts/data/binance_public/raw/spot/klines/BTCUSDT/1m/monthly/2026-02/BTCUSDT-1m-2026-02.csv
-artifacts/data/binance_public/raw/spot/klines/BTCUSDT/1s/daily/2026-04-30/BTCUSDT-1s-2026-04-30.csv
-artifacts/data/binance_public/raw/futures_um/fundingRate/BTCUSDT/daily/2026-04-30/BTCUSDT-fundingRate-2026-04-30.csv
-artifacts/data/binance_public/manifests/download_manifest.json
-artifacts/data/binance_public/manifests/file_checksums.json
+artifacts/data_v2/binance_public/raw/spot/klines/BTCUSDT/1m/monthly/2026-02/BTCUSDT-1m-2026-02.csv
+artifacts/data_v2/binance_public/raw/spot/klines/BTCUSDT/1s/daily/2026-04-30/BTCUSDT-1s-2026-04-30.csv
+artifacts/data_v2/binance_public/raw/futures_um/fundingRate/BTCUSDT/daily/2026-04-30/BTCUSDT-fundingRate-2026-04-30.csv
+artifacts/data_v2/binance_public/manifests/download_manifest.json
+artifacts/data_v2/binance_public/manifests/file_checksums.json
 ```
 
 Primary role of each output:
@@ -123,54 +126,6 @@ Primary role of each output:
 - Final merged Parquet files are intended as canonical derivative inputs for feature generation.
 - The manifest records provenance and date coverage.
 
-### `step1_acquire/download_derivatives_public_data.py`
-
-Purpose: Download a single date range of public derivatives datasets for experiments or one-off refreshes.
-
-Typical command:
-
-```powershell
-rtk python scripts/data/step1_acquire/download_derivatives_public_data.py `
-  --start-date 2026-02-01 `
-  --end-date 2026-05-01 `
-  --data-root artifacts/data_v2
-```
-
-Inputs:
-
-| Input | Required | Default | Meaning |
-|---|---:|---|---|
-| `--start-date` | yes | none | Inclusive UTC start date. |
-| `--end-date` | yes | none | Inclusive UTC end date. |
-| `--data-root` | no | `artifacts/data_v2` | Root used when `--output-dir` is omitted. |
-| `--output-dir` | no | `<data-root>/normalized/binance/futures_um/BTCUSDT/derivatives` | Output directory for Parquet files. |
-| `--basis-period` | no | script default | Binance basis period. |
-| `--oi-period` | no | script default | Binance OI statistics period. |
-| `--options-resolution-seconds` | no | script default | Options proxy sampling resolution. |
-
-Outputs:
-
-| Output path | File type | Purpose |
-|---|---|---|
-| `<output-dir>/binance_btcusdt_funding.parquet` | Parquet | Funding-rate records normalized to repo schema. |
-| `<output-dir>/binance_btcusdt_basis.parquet` | Parquet | Mark/index/premium/basis records normalized to repo schema. |
-| `<output-dir>/binance_btcusdt_oi.parquet` | Parquet | Open-interest records normalized to repo schema. |
-| `<output-dir>/deribit_btc_volatility_index.parquet` | Parquet | Options volatility index proxy normalized to repo schema. |
-
-Default output examples:
-
-```text
-artifacts/data_v2/normalized/binance/futures_um/BTCUSDT/derivatives/binance_btcusdt_funding.parquet
-artifacts/data_v2/normalized/binance/futures_um/BTCUSDT/derivatives/binance_btcusdt_basis.parquet
-artifacts/data_v2/normalized/binance/futures_um/BTCUSDT/derivatives/binance_btcusdt_oi.parquet
-artifacts/data_v2/normalized/binance/futures_um/BTCUSDT/derivatives/deribit_btc_volatility_index.parquet
-```
-
-Primary role of each output:
-
-- These files are direct inputs to derivative feature packs through `config/settings.yaml` or CLI overrides.
-- This script does not write a manifest; use `backfill_derivatives_history.py` when chunk provenance is required.
-
 ## Step 2: Normalize
 
 ### `step2_normalize/normalize_binance_public_history.py`
@@ -182,7 +137,7 @@ Typical command:
 ```powershell
 rtk python scripts/data/step2_normalize/normalize_binance_public_history.py `
   --settings config/settings.yaml `
-  --output-root artifacts/data/binance_public
+  --output-root artifacts/data_v2/binance_public
 ```
 
 Inputs:
@@ -190,7 +145,7 @@ Inputs:
 | Input | Required | Default | Meaning |
 |---|---:|---|---|
 | `--settings` | no | `config/settings.yaml` | Used to resolve default artifact root. |
-| `--output-root` | no | `settings.paths.artifacts_dir/data/binance_public` | Root containing `raw/`; also receives `normalized/` and `manifests/`. |
+| `--output-root` | no | `settings.second_level.data_root/binance_public` | Root containing `raw/`; also receives `normalized/` and `manifests/`. |
 
 Expected input layout:
 
@@ -212,12 +167,12 @@ Outputs:
 Output examples:
 
 ```text
-artifacts/data/binance_public/normalized/spot/klines/BTCUSDT-1m.parquet
-artifacts/data/binance_public/normalized/spot/klines/BTCUSDT-1s.parquet
-artifacts/data/binance_public/normalized/futures_um/markPriceKlines/BTCUSDT-1m.parquet
-artifacts/data/binance_public/normalized/futures_um/fundingRate/BTCUSDT.parquet
-artifacts/data/binance_public/manifests/schema_manifest.json
-artifacts/data/binance_public/manifests/qa_manifest.json
+artifacts/data_v2/binance_public/normalized/spot/klines/BTCUSDT-1m.parquet
+artifacts/data_v2/binance_public/normalized/spot/klines/BTCUSDT-1s.parquet
+artifacts/data_v2/binance_public/normalized/futures_um/markPriceKlines/BTCUSDT-1m.parquet
+artifacts/data_v2/binance_public/normalized/futures_um/fundingRate/BTCUSDT.parquet
+artifacts/data_v2/binance_public/manifests/schema_manifest.json
+artifacts/data_v2/binance_public/manifests/qa_manifest.json
 ```
 
 Primary role of each output:
@@ -234,7 +189,7 @@ Typical command:
 
 ```powershell
 rtk python scripts/data/step2_normalize/normalize_aggtrades_daily.py `
-  --input artifacts/data/binance_public/raw/spot/aggTrades/BTCUSDT/daily/2026-04-30/BTCUSDT-aggTrades-2026-04-30.csv `
+  --input artifacts/data_v2/binance_public/raw/spot/aggTrades/BTCUSDT/daily/2026-04-30/BTCUSDT-aggTrades-2026-04-30.csv `
   --data-root artifacts/data_v2 `
   --start 2026-04-01 `
   --end 2026-05-01
@@ -281,7 +236,7 @@ Typical command:
 ```powershell
 rtk python scripts/data/step3_quality/qa_binance_public_history.py `
   --settings config/settings.yaml `
-  --output-root artifacts/data/binance_public
+  --output-root artifacts/data_v2/binance_public
 ```
 
 Inputs:
@@ -289,7 +244,7 @@ Inputs:
 | Input | Required | Default | Meaning |
 |---|---:|---|---|
 | `--settings` | no | `config/settings.yaml` | Used to resolve default artifact root. |
-| `--output-root` | no | `settings.paths.artifacts_dir/data/binance_public` | Root containing `normalized/`. |
+| `--output-root` | no | `settings.second_level.data_root/binance_public` | Root containing `normalized/`. |
 
 Expected input layout:
 
@@ -319,7 +274,7 @@ Typical single-file command:
 ```powershell
 rtk python scripts/data/step4_features/build_second_level_feature_store.py `
   --config config/settings.yaml `
-  --kline-1s-input artifacts/data/binance_public/normalized/spot/klines/BTCUSDT-1s.parquet `
+  --kline-1s-input artifacts/data_v2/binance_public/normalized/spot/klines/BTCUSDT-1s.parquet `
   --agg-trades-input artifacts/data_v2/normalized/binance/spot/BTCUSDT/aggTrades `
   --data-root artifacts/data_v2
 ```
@@ -329,7 +284,7 @@ Typical partitioned command:
 ```powershell
 rtk python scripts/data/step4_features/build_second_level_feature_store.py `
   --config config/settings.yaml `
-  --kline-1s-input artifacts/data/binance_public/normalized/spot/klines/BTCUSDT-1s.parquet `
+  --kline-1s-input artifacts/data_v2/binance_public/normalized/spot/klines/BTCUSDT-1s.parquet `
   --agg-trades-input artifacts/data_v2/normalized/binance/spot/BTCUSDT/aggTrades `
   --data-root artifacts/data_v2 `
   --partition-frequency daily `
@@ -405,7 +360,7 @@ Typical command:
 
 ```powershell
 rtk python scripts/data/step4_features/build_dataset.py `
-  --input artifacts/data/binance_public/normalized/spot/klines/BTCUSDT-1m.parquet `
+  --input artifacts/data_v2/binance_public/normalized/spot/klines/BTCUSDT-1m.parquet `
   --output artifacts/data_v2/datasets/market=BTCUSDT/horizon=5m/training_frame.parquet `
   --config config/settings.yaml `
   --horizon 5m
@@ -513,12 +468,12 @@ For the current project, a typical full rebuild looks like this:
 # 1. Download Binance public raw archives.
 rtk python scripts/data/step1_acquire/backfill_binance_public_history.py `
   --settings config/settings.yaml `
-  --output-root artifacts/data/binance_public
+  --output-root artifacts/data_v2/binance_public
 
 # 2. Normalize Binance public raw archives and run QA.
 rtk python scripts/data/step2_normalize/normalize_binance_public_history.py `
   --settings config/settings.yaml `
-  --output-root artifacts/data/binance_public
+  --output-root artifacts/data_v2/binance_public
 
 # 3. Optionally normalize aggTrades into daily partitions.
 rtk python scripts/data/step2_normalize/normalize_aggtrades_daily.py `
@@ -528,13 +483,13 @@ rtk python scripts/data/step2_normalize/normalize_aggtrades_daily.py `
 # 4. Build second-level feature store.
 rtk python scripts/data/step4_features/build_second_level_feature_store.py `
   --config config/settings.yaml `
-  --kline-1s-input artifacts/data/binance_public/normalized/spot/klines/BTCUSDT-1s.parquet `
+  --kline-1s-input artifacts/data_v2/binance_public/normalized/spot/klines/BTCUSDT-1s.parquet `
   --agg-trades-input artifacts/data_v2/normalized/binance/spot/BTCUSDT/aggTrades `
   --data-root artifacts/data_v2
 
 # 5. Build final training frame.
 rtk python scripts/data/step4_features/build_dataset.py `
-  --input artifacts/data/binance_public/normalized/spot/klines/BTCUSDT-1m.parquet `
+  --input artifacts/data_v2/binance_public/normalized/spot/klines/BTCUSDT-1m.parquet `
   --config config/settings.yaml `
   --horizon 5m `
   --data-root artifacts/data_v2
@@ -546,4 +501,3 @@ rtk python scripts/model/train_model.py `
   --config config/settings.yaml `
   --horizon 5m
 ```
-

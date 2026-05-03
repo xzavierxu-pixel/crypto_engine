@@ -15,11 +15,11 @@ from src.data.binance_public.qa import run_binance_public_qa
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run QA checks over normalized Binance public history outputs.")
     parser.add_argument("--settings", default="config/settings.yaml", help="Path to settings YAML.")
-    parser.add_argument("--output-root", help="Binance public output root. Defaults to artifacts/data/binance_public.")
+    parser.add_argument("--output-root", help="Binance public output root. Defaults to artifacts/data_v2/binance_public.")
     args = parser.parse_args()
 
     settings = load_settings(args.settings)
-    output_root = Path(args.output_root) if args.output_root else Path(settings.paths.artifacts_dir) / "data" / "binance_public"
+    output_root = Path(args.output_root) if args.output_root else Path(settings.second_level.data_root) / "binance_public"
     manifest = run_binance_public_qa(output_root)
 
     print(f"output_root={output_root.resolve()}")

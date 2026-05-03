@@ -14,7 +14,7 @@ REPO_ROOT = next(parent for parent in Path(__file__).resolve().parents if (paren
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.data.step1_acquire.download_derivatives_public_data import (  # noqa: E402
+from src.data.derivatives.public_data import (  # noqa: E402
     _fetch_binance_basis,
     _fetch_binance_funding,
     _fetch_binance_oi,
@@ -216,7 +216,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Backfill full-history BTC derivatives archives.")
     parser.add_argument("--start-date", default="2024-01-01", help="Inclusive UTC start date in YYYY-MM-DD.")
     parser.add_argument("--end-date", required=True, help="Inclusive UTC end date in YYYY-MM-DD.")
-    parser.add_argument("--output-root", default="artifacts/data/derivatives", help="Output root directory.")
+    parser.add_argument(
+        "--output-root",
+        default="artifacts/data_v2/normalized/binance/futures_um/BTCUSDT/derivatives",
+        help="Output root directory.",
+    )
     parser.add_argument("--chunk-days", type=int, default=30, help="Chunk size in days for backfill windows.")
     parser.add_argument("--basis-period", default="5m", help="Binance basis period.")
     parser.add_argument("--oi-period", default="5m", help="Binance OI period.")

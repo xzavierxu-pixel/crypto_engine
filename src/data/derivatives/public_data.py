@@ -1,18 +1,10 @@
 from __future__ import annotations
 
-import argparse
-import sys
 import time
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from datetime import datetime, timezone
 
 import pandas as pd
 import requests
-
-REPO_ROOT = next(parent for parent in Path(__file__).resolve().parents if (parent / 'src').is_dir())
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
 
 BINANCE_FAPI_BASE_URL = "https://fapi.binance.com"
 DERIBIT_BASE_URL = "https://www.deribit.com/api/v2"
@@ -254,58 +246,3 @@ def _fetch_deribit_options_proxy(
     )
     result = payload.get("result", {}) if isinstance(payload, dict) else {}
     return _normalize_deribit_vol_rows(result.get("data", []))
-
-
-def _save_frame(frame: pd.DataFrame, output_path: Path) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    frame.to_parquet(output_path, index=False)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Download public BTC derivatives datasets for ablation experiments.")
-    parser.add_argument("--start-date", required=True, help="Inclusive UTC start date in YYYY-MM-DD.")
-    parser.add_argument("--end-date", required=True, help="Inclusive UTC end date in YYYY-MM-DD.")
-    parser.add_argument("--data-root", default="artifacts/data_v2", help="Unified data root for new outputs.")
-    parser.add_argument("--output-dir", help="Directory for parquet outputs. Defaults to data-root/normalized/binance/futures_um/BTCUSDT/derivatives.")
-    parser.add_argument("--basis-period", default="5m", help="Binance basis period.")
-    parser.add_argument("--oi-period", default="5m", help="Binance open interest statistics period.")
-    parser.add_argument("--options-resolution-seconds", type=int, default=3600, help="Deribit volatility index resolution in seconds.")
-    args = parser.parse_args()
-
-    start_dt = _parse_utc_date(args.start_date)
-    end_dt = _parse_utc_date(args.end_date) + timedelta(days=1) - timedelta(milliseconds=1)
-    start_ms = _to_milliseconds(start_dt)
-    end_ms = _to_milliseconds(end_dt)
-    output_dir = Path(args.output_dir) if args.output_dir else (
-        Path(args.data_root) / "normalized" / "binance" / "futures_um" / "BTCUSDT" / "derivatives"
-    )
-
-    session = requests.Session()
-    funding = _fetch_binance_funding(session, start_ms=start_ms, end_ms=end_ms)
-    basis = _fetch_binance_basis(session, start_ms=start_ms, end_ms=end_ms, period=args.basis_period)
-    oi = _fetch_binance_oi(session, start_ms=start_ms, end_ms=end_ms, period=args.oi_period)
-    options = _fetch_deribit_options_proxy(
-        session,
-        start_ms=start_ms,
-        end_ms=end_ms,
-        resolution_seconds=args.options_resolution_seconds,
-    )
-
-    funding_path = output_dir / "binance_btcusdt_funding.parquet"
-    basis_path = output_dir / "binance_btcusdt_basis.parquet"
-    oi_path = output_dir / "binance_btcusdt_oi.parquet"
-    options_path = output_dir / "deribit_btc_volatility_index.parquet"
-
-    _save_frame(funding, funding_path)
-    _save_frame(basis, basis_path)
-    _save_frame(oi, oi_path)
-    _save_frame(options, options_path)
-
-    print(f"funding_rows={len(funding)} funding_path={funding_path.resolve()}")
-    print(f"basis_rows={len(basis)} basis_path={basis_path.resolve()}")
-    print(f"oi_rows={len(oi)} oi_path={oi_path.resolve()}")
-    print(f"options_rows={len(options)} options_path={options_path.resolve()}")
-
-
-if __name__ == "__main__":
-    main()
