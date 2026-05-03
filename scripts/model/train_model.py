@@ -37,7 +37,7 @@ def _default_experiment_output(data_root: str, name: str | None = None) -> Path:
 
 
 def _default_second_level_store(data_root: str, version: str, market: str) -> Path:
-    return Path(data_root) / "second_level" / f"version={version}" / f"market={market}" / "second_features.parquet"
+    return Path(data_root) / "second_level" / f"version={version}" / f"market={market}"
 
 
 def _load_input(path: Path):

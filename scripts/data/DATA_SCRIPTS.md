@@ -280,7 +280,7 @@ rtk python scripts/data/step4_features/build_second_level_feature_store.py `
   --data-root artifacts/data_v2
 ```
 
-Typical partitioned command:
+Typical split-store partitioned command:
 
 ```powershell
 rtk python scripts/data/step4_features/build_second_level_feature_store.py `
@@ -289,6 +289,7 @@ rtk python scripts/data/step4_features/build_second_level_feature_store.py `
   --agg-trades-input artifacts/data_v2/normalized/binance/spot/BTCUSDT/aggTrades `
   --data-root artifacts/data_v2 `
   --partition-frequency daily `
+  --split-only `
   --resume
 ```
 
@@ -305,8 +306,10 @@ Inputs:
 | `--perp-book-ticker-input` | no | none | Optional perp bookTicker input for cross-market quote-state features. |
 | `--eth-kline-1s-input` | no | none | Optional ETH 1s kline input for beta/residual features. |
 | `--data-root` | no | `settings.second_level.data_root` | Root used for default output. |
-| `--output` | no | `<data-root>/second_level/version=<version>/market=<market>/second_features.parquet` | Output path or partition base path. |
+| `--output` | no | `<data-root>/second_level/version=<version>/market=<market>` | Output path or partition base path. |
 | `--write-source-tables` | no | false | Write source-normalized 1s tables next to the feature store when using non-partitioned inputs. |
+| `--write-split-stores` | no | false | Also write sibling `second_features_kline` and `second_features_agg` stores when building a composed partitioned store. |
+| `--split-only` | no | false | Write only split stores. This is the default project storage mode for 90-day second-level features. |
 | `--partition-frequency` | no | `none` | `none`, `daily`, or `monthly`. |
 | `--warmup-seconds` | no | script default | Lookback prepended to each partition before trimming. |
 | `--resume` | no | false | Reuse readable existing partition outputs. |
@@ -338,17 +341,29 @@ Outputs when partitioned:
 | `<output-without-.parquet>/manifest.json` | JSON | Partition manifest with partition paths, date coverage, row counts, schema, and source metadata. |
 | `<output-without-.parquet>/qa_report.json` | JSON | Partition count, row count, and duplicate-label checks. |
 
+Outputs when `--split-only`:
+
+| Output path pattern | File type | Purpose |
+|---|---|---|
+| `<output>/second_features_kline/date=YYYY-MM-DD/second_features.parquet` | Parquet | Daily kline-source second-level features. |
+| `<output>/second_features_agg/date=YYYY-MM-DD/second_features.parquet` | Parquet | Daily aggTrades-only event-structure features. |
+| `<output>/manifest.json` | JSON | Split-store manifest used by training loaders. |
+| `<output>/second_features_kline/manifest.json` | JSON | Kline split-store manifest. |
+| `<output>/second_features_agg/manifest.json` | JSON | Agg split-store manifest. |
+
 Partitioned output examples:
 
 ```text
 artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT/second_features/date=2026-04-30/second_features.parquet
 artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT/second_features/manifest.json
 artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT/second_features/qa_report.json
+artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT/second_features_kline/date=2026-04-30/second_features.parquet
+artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT/second_features_agg/date=2026-04-30/second_features.parquet
 ```
 
 Primary role of each output:
 
-- `second_features.parquet` or partitioned `second_features.parquet` files are sampled later onto the 5-minute decision grid by `build_dataset.py`.
+- `second_features_kline` and `second_features_agg` are sampled separately and joined on timestamp by the training/data loaders when `settings.second_level.feature_store_path` points at the market root.
 - `manifest.json` records schema, feature version, source paths, and partition coverage.
 - `qa_report.json` identifies missingness and partition quality issues.
 - `source_tables/*.parquet` is for debugging source alignment, not required for training.

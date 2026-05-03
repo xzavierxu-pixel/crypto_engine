@@ -227,7 +227,7 @@ class SecondLevelFeatureStoreConfig:
     data_root: str = "./artifacts/data_v2"
     feature_store_version: str = "second_level_v2"
     feature_profile: str = "expanded_v2"
-    feature_store_path: str | None = "./artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT/second_features.parquet"
+    feature_store_path: str | None = "./artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT"
     artifact_root: str = "./artifacts/data_v2/second_level"
     market: str = "BTCUSDT"
     exchange: str = "binance"

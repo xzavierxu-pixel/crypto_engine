@@ -16,13 +16,14 @@ from src.data.second_level_features import (
     load_second_level_frame,
     resolve_second_level_feature_profile,
     write_partitioned_second_level_feature_store,
+    write_partitioned_split_second_level_feature_stores,
     write_second_level_source_tables,
     write_second_level_feature_store,
 )
 
 
 def _default_second_level_output(data_root: str, version: str, market: str) -> Path:
-    return Path(data_root) / "second_level" / f"version={version}" / f"market={market}" / "second_features.parquet"
+    return Path(data_root) / "second_level" / f"version={version}" / f"market={market}"
 
 
 def main() -> None:
@@ -36,8 +37,18 @@ def main() -> None:
     parser.add_argument("--perp-book-ticker-input", help="Optional perp bookTicker input for cross-market quote-state features.")
     parser.add_argument("--eth-kline-1s-input", help="Optional ETH 1s kline input for crypto beta residual features.")
     parser.add_argument("--data-root", help="Unified data root for new outputs. Defaults to settings.second_level.data_root.")
-    parser.add_argument("--output", help="Output parquet path. Defaults to data-root/second_level/version=.../market=.../second_features.parquet.")
+    parser.add_argument("--output", help="Output parquet path or partition directory. Defaults to data-root/second_level/version=.../market=....")
     parser.add_argument("--write-source-tables", action="store_true", help="Write source-normalized 1s tables next to the feature store.")
+    parser.add_argument(
+        "--write-split-stores",
+        action="store_true",
+        help="When writing partitioned output, also write sibling second_features_kline and second_features_agg stores.",
+    )
+    parser.add_argument(
+        "--split-only",
+        action="store_true",
+        help="When writing partitioned output, write only second_features_kline and second_features_agg stores.",
+    )
     parser.add_argument(
         "--partition-frequency",
         choices=["none", "daily", "monthly"],
@@ -112,6 +123,8 @@ def main() -> None:
                 book_frame=book_frame,
             )
             source_table_outputs = write_second_level_source_tables(source_tables, Path(output_path).with_name("source_tables"))
+    if args.split_only and args.partition_frequency == "none":
+        raise ValueError("--split-only requires --partition-frequency daily or monthly.")
     if args.partition_frequency == "none":
         store = build_second_level_feature_store(
             kline_frame=kline_frame,
@@ -133,26 +146,44 @@ def main() -> None:
         partition_output = Path(output_path)
         if partition_output.suffix:
             partition_output = partition_output.with_suffix("")
-        manifest = write_partitioned_second_level_feature_store(
-            kline_frame=kline_frame,
-            output_dir=partition_output,
-            partition_frequency=args.partition_frequency,
-            warmup_seconds=args.warmup_seconds,
-            agg_trades_frame=agg_trades_frame,
-            book_frame=book_frame,
-            depth_frame=depth_frame,
-            cross_market_frame=cross_market_frame,
-            cross_market_book_frame=cross_market_book_frame,
-            eth_kline_frame=eth_kline_frame,
-            market=settings.second_level.market,
-            exchange=settings.second_level.exchange,
-            source_manifest_id="local_cli",
-            large_trade_quantile=settings.second_level.large_trade_quantile,
-            large_trade_window_seconds=settings.second_level.large_trade_window_seconds,
-            feature_profile=feature_profile,
-            manifest=source_manifest,
-            resume=args.resume,
-        )
+        if args.split_only:
+            manifest = write_partitioned_split_second_level_feature_stores(
+                kline_frame=kline_frame,
+                output_root=partition_output,
+                partition_frequency=args.partition_frequency,
+                warmup_seconds=args.warmup_seconds,
+                agg_trades_frame=agg_trades_frame,
+                market=settings.second_level.market,
+                exchange=settings.second_level.exchange,
+                source_manifest_id="local_cli",
+                large_trade_quantile=settings.second_level.large_trade_quantile,
+                large_trade_window_seconds=settings.second_level.large_trade_window_seconds,
+                feature_profile=feature_profile,
+                manifest=source_manifest,
+                resume=args.resume,
+            )
+        else:
+            manifest = write_partitioned_second_level_feature_store(
+                kline_frame=kline_frame,
+                output_dir=partition_output,
+                partition_frequency=args.partition_frequency,
+                warmup_seconds=args.warmup_seconds,
+                agg_trades_frame=agg_trades_frame,
+                book_frame=book_frame,
+                depth_frame=depth_frame,
+                cross_market_frame=cross_market_frame,
+                cross_market_book_frame=cross_market_book_frame,
+                eth_kline_frame=eth_kline_frame,
+                market=settings.second_level.market,
+                exchange=settings.second_level.exchange,
+                source_manifest_id="local_cli",
+                large_trade_quantile=settings.second_level.large_trade_quantile,
+                large_trade_window_seconds=settings.second_level.large_trade_window_seconds,
+                feature_profile=feature_profile,
+                manifest=source_manifest,
+                resume=args.resume,
+                split_output_root=partition_output.parent if args.write_split_stores else None,
+            )
         output_path = str(partition_output)
     print(json.dumps({"output": str(Path(output_path).resolve()), "source_tables": source_table_outputs, **manifest}, indent=2))
 

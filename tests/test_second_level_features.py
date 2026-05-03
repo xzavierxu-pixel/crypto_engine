@@ -7,13 +7,16 @@ import pandas as pd
 from src.core.config import load_settings
 from src.data.dataset_builder import build_training_frame
 from src.data.second_level_features import (
+    build_second_level_agg_feature_store,
     build_second_level_feature_frame,
     build_second_level_feature_store,
+    build_second_level_kline_feature_store,
     build_second_level_source_tables,
     load_second_level_frame,
     load_sampled_second_level_features,
     sample_second_level_feature_store,
     write_partitioned_second_level_feature_store,
+    write_partitioned_split_second_level_feature_stores,
 )
 from src.data.second_level_feature_packs import (
     SecondLevelFeatureProfile,
@@ -200,13 +203,13 @@ def test_second_level_feature_store_uses_kline_backbone_and_samples_backward() -
 
     assert "sec_close" in store.columns
     assert "decision_grid_name" in store.columns
-    assert "sec_median_trade_size" in store.columns
+    assert "sec_median_trade_size" not in store.columns
     assert "sec_bid_price" in store.columns
     assert "sl_ofi_5s" in sampled.columns
-    assert "sl_large_trade_count_10s" in sampled.columns
-    assert "sl_last_n_trades_buy_share" in sampled.columns
-    assert "sl_buy_run_length_10s" in sampled.columns
-    assert "sl_intrasecond_flow_concentration_10s" in sampled.columns
+    assert "sl_agg_large_trade_count_10s" in sampled.columns
+    assert "sl_agg_last_10_trades_buy_share" in sampled.columns
+    assert "sl_agg_buy_run_length_10s" in sampled.columns
+    assert "sl_agg_intrasecond_flow_concentration_10s" in sampled.columns
     assert "sl_price_minus_vwap_30s" in sampled.columns
     assert "sl_quote_update_asymmetry_10s" in sampled.columns
     assert "sl_shock_continuation_flag" in sampled.columns
@@ -221,6 +224,86 @@ def test_second_level_feature_store_uses_kline_backbone_and_samples_backward() -
     assert "book_ticker_1s_quote_state" in source_tables
     assert "sec_close" not in sampled.columns
     assert sampled.loc[0, "timestamp"] == pd.Timestamp("2024-01-01T00:00:04.500Z")
+
+
+def test_split_second_level_stores_isolate_kline_and_agg_features() -> None:
+    kline = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T00:00:00Z", periods=8, freq="1s"),
+            "open": [100 + index for index in range(8)],
+            "high": [101 + index for index in range(8)],
+            "low": [99 + index for index in range(8)],
+            "close": [100 + index for index in range(8)],
+            "volume": [10.0] * 8,
+            "quote_volume": [1000.0] * 8,
+            "trade_count": [2] * 8,
+            "taker_buy_base_volume": [5.0] * 8,
+            "taker_buy_quote_volume": [500.0] * 8,
+        }
+    )
+    agg = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                [
+                    "2024-01-01T00:00:01.100Z",
+                    "2024-01-01T00:00:01.150Z",
+                    "2024-01-01T00:00:05.000Z",
+                ],
+                utc=True,
+            ),
+            "price": [101.0, 101.1, 105.0],
+            "quantity": [0.1, 5.0, 0.2],
+            "is_buyer_maker": [False, False, True],
+        }
+    )
+
+    kline_store = build_second_level_kline_feature_store(kline_frame=kline)
+    agg_store = build_second_level_agg_feature_store(kline_frame=kline, agg_trades_frame=agg)
+
+    assert not any(column.startswith("sl_agg_") for column in kline_store.columns)
+    assert any(column.startswith("sl_agg_") for column in agg_store.columns)
+    assert "sl_return_1s" not in agg_store.columns
+    assert "sec_volume" not in agg_store.columns
+    assert "sl_agg_large_trade_count_1s" in agg_store.columns
+
+
+def test_load_sampled_second_level_features_joins_split_stores(tmp_path) -> None:
+    kline = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T00:00:00Z", periods=8, freq="1s"),
+            "open": [100 + index for index in range(8)],
+            "high": [101 + index for index in range(8)],
+            "low": [99 + index for index in range(8)],
+            "close": [100 + index for index in range(8)],
+            "volume": [10.0] * 8,
+            "quote_volume": [1000.0] * 8,
+            "trade_count": [2] * 8,
+            "taker_buy_base_volume": [5.0] * 8,
+            "taker_buy_quote_volume": [500.0] * 8,
+        }
+    )
+    agg = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2024-01-01T00:00:01.100Z", "2024-01-01T00:00:05.000Z"], utc=True),
+            "price": [101.0, 105.0],
+            "quantity": [0.1, 5.0],
+            "is_buyer_maker": [False, True],
+        }
+    )
+    write_partitioned_split_second_level_feature_stores(
+        kline_frame=kline,
+        agg_trades_frame=agg,
+        output_root=tmp_path,
+        partition_frequency="daily",
+        warmup_seconds=1,
+    )
+    decisions = pd.DataFrame({"timestamp": pd.to_datetime(["2024-01-01T00:00:04Z", "2024-01-01T00:00:07Z"], utc=True)})
+
+    sampled = load_sampled_second_level_features(decisions, tmp_path)
+
+    assert "sl_return_1s" in sampled.columns
+    assert "sl_agg_large_trade_count_1s" in sampled.columns
+    assert len(sampled) == len(decisions)
 
 
 def test_second_level_v2_pack_profile_expands_mirror_features() -> None:
@@ -288,14 +371,14 @@ def test_partitioned_second_level_feature_store_writes_trimmed_chunks(tmp_path) 
     )
     manifest = write_partitioned_second_level_feature_store(
         kline_frame=kline,
-        output_dir=tmp_path / "data_v2" / "second_level" / "version=second_level_v2" / "market=BTCUSDT" / "second_features",
+        output_dir=tmp_path / "data_v2" / "second_level" / "version=second_level_v2" / "market=BTCUSDT" / "second_features_extended",
         partition_frequency="daily",
         warmup_seconds=5,
     )
-    loaded = load_second_level_frame(tmp_path / "data_v2" / "second_level" / "version=second_level_v2" / "market=BTCUSDT" / "second_features")
+    loaded = load_second_level_frame(tmp_path / "data_v2" / "second_level" / "version=second_level_v2" / "market=BTCUSDT" / "second_features_extended")
     sampled = load_sampled_second_level_features(
         pd.DataFrame({"timestamp": pd.to_datetime(["2024-01-01T23:59:59Z", "2024-01-02T00:00:04Z"], utc=True)}),
-        tmp_path / "data_v2" / "second_level" / "version=second_level_v2" / "market=BTCUSDT" / "second_features",
+        tmp_path / "data_v2" / "second_level" / "version=second_level_v2" / "market=BTCUSDT" / "second_features_extended",
     )
 
     assert manifest["feature_version"] == "second_level_v2"
@@ -326,7 +409,7 @@ def test_partitioned_second_level_feature_store_resume_reuses_existing_partition
             "taker_buy_quote_volume": [50.0] * 4,
         }
     )
-    output_dir = tmp_path / "second_features"
+    output_dir = tmp_path / "second_features_extended"
     write_partitioned_second_level_feature_store(
         kline_frame=kline,
         output_dir=output_dir,

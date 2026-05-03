@@ -20,6 +20,7 @@ from src.data.second_level_feature_packs import (
 
 SECOND_LEVEL_WINDOWS = (1, 3, 5, 10, 15, 30, 60, 120, 300)
 COMPACT_WINDOWS = (5, 10, 30, 60, 300)
+AGG_EVENT_WINDOWS = (1, 3, 5, 10, 30, 60, 300)
 BOOK_DYNAMICS_WINDOWS = (5, 10, 30)
 SECOND_LEVEL_FEATURE_STORE_VERSION = "second_level_v2"
 DEFAULT_FEATURE_STORE_WARMUP_SECONDS = max(SECOND_LEVEL_WINDOWS)
@@ -689,7 +690,7 @@ def build_agg_trade_enrichment_features(
     )
 
     feature_columns: dict[str, pd.Series] = {}
-    for window in (10, 30, 60):
+    for window in AGG_EVENT_WINDOWS:
         large_count = per_second["sec_large_trade_count"].rolling(window, min_periods=1).sum()
         large_buy_count = per_second["sec_large_buy_trade_count"].rolling(window, min_periods=1).sum()
         large_sell_count = per_second["sec_large_sell_trade_count"].rolling(window, min_periods=1).sum()
@@ -700,32 +701,40 @@ def build_agg_trade_enrichment_features(
         mean_interarrival = per_second["sec_mean_interarrival_ms"].rolling(window, min_periods=1).mean()
         feature_columns.update(
             {
-                f"sl_median_trade_size_{window}s": per_second["sec_median_trade_size"].rolling(window, min_periods=1).median(),
-                f"sl_large_trade_count_{window}s": large_count,
-                f"sl_large_trade_volume_share_{window}s": _safe_divide(large_notional, total_notional),
-                f"sl_large_buy_trade_count_{window}s": large_buy_count,
-                f"sl_large_sell_trade_count_{window}s": large_sell_count,
-                f"sl_large_buy_volume_share_{window}s": _safe_divide(large_buy_notional, total_notional),
-                f"sl_large_sell_volume_share_{window}s": _safe_divide(large_sell_notional, total_notional),
-                f"sl_large_trade_imbalance_{window}s": _safe_divide(large_buy_notional - large_sell_notional, large_buy_notional + large_sell_notional),
-                f"sl_mean_interarrival_ms_{window}s": mean_interarrival,
-                f"sl_min_interarrival_ms_{window}s": per_second["sec_min_interarrival_ms"].rolling(window, min_periods=1).min(),
-                f"sl_interarrival_cv_{window}s": _safe_divide(
-            per_second["sec_interarrival_std_ms"].rolling(window, min_periods=1).mean(),
-            mean_interarrival,
+                f"sl_agg_median_trade_size_{window}s": per_second["sec_median_trade_size"].rolling(window, min_periods=1).median(),
+                f"sl_agg_p90_trade_size_{window}s": per_second["sec_p90_trade_size"].rolling(window, min_periods=1).median(),
+                f"sl_agg_p95_trade_size_{window}s": per_second["sec_p95_trade_size"].rolling(window, min_periods=1).median(),
+                f"sl_agg_max_trade_notional_{window}s": per_second["sec_max_trade_notional"].rolling(window, min_periods=1).max(),
+                f"sl_agg_top_trade_notional_share_{window}s": per_second["sec_top_trade_notional_share"].rolling(window, min_periods=1).mean(),
+                f"sl_agg_trade_notional_hhi_{window}s": per_second["sec_trade_notional_hhi"].rolling(window, min_periods=1).mean(),
+                f"sl_agg_large_trade_count_{window}s": large_count,
+                f"sl_agg_large_trade_volume_share_{window}s": _safe_divide(large_notional, total_notional),
+                f"sl_agg_large_buy_trade_count_{window}s": large_buy_count,
+                f"sl_agg_large_sell_trade_count_{window}s": large_sell_count,
+                f"sl_agg_large_buy_volume_share_{window}s": _safe_divide(large_buy_notional, total_notional),
+                f"sl_agg_large_sell_volume_share_{window}s": _safe_divide(large_sell_notional, total_notional),
+                f"sl_agg_large_trade_imbalance_{window}s": _safe_divide(large_buy_notional - large_sell_notional, large_buy_notional + large_sell_notional),
+                f"sl_agg_signed_large_notional_{window}s": per_second["sec_signed_large_notional"].rolling(window, min_periods=1).sum(),
+                f"sl_agg_mean_interarrival_ms_{window}s": mean_interarrival,
+                f"sl_agg_min_interarrival_ms_{window}s": per_second["sec_min_interarrival_ms"].rolling(window, min_periods=1).min(),
+                f"sl_agg_interarrival_cv_{window}s": _safe_divide(
+                    per_second["sec_interarrival_std_ms"].rolling(window, min_periods=1).mean(),
+                    mean_interarrival,
                 ),
-                f"sl_trade_cluster_score_{window}s": per_second["sec_trade_cluster_score"].rolling(window, min_periods=1).mean(),
-                f"sl_buy_run_length_{window}s": per_second["sec_buy_run_length"].rolling(window, min_periods=1).max(),
-                f"sl_sell_run_length_{window}s": per_second["sec_sell_run_length"].rolling(window, min_periods=1).max(),
-                f"sl_intrasecond_flow_concentration_{window}s": per_second["sec_intrasecond_flow_concentration"].rolling(window, min_periods=1).mean(),
-                f"sl_trade_arrival_burst_flag_{window}s": (per_second["sec_trade_cluster_score"].rolling(window, min_periods=1).mean() > 0.5).astype(float),
+                f"sl_agg_trade_cluster_score_{window}s": per_second["sec_trade_cluster_score"].rolling(window, min_periods=1).mean(),
+                f"sl_agg_buy_trade_cluster_score_{window}s": per_second["sec_buy_trade_cluster_score"].rolling(window, min_periods=1).mean(),
+                f"sl_agg_sell_trade_cluster_score_{window}s": per_second["sec_sell_trade_cluster_score"].rolling(window, min_periods=1).mean(),
+                f"sl_agg_side_switch_count_{window}s": per_second["sec_side_switch_count"].rolling(window, min_periods=1).sum(),
+                f"sl_agg_buy_run_length_{window}s": per_second["sec_buy_run_length"].rolling(window, min_periods=1).max(),
+                f"sl_agg_sell_run_length_{window}s": per_second["sec_sell_run_length"].rolling(window, min_periods=1).max(),
+                f"sl_agg_intrasecond_flow_concentration_{window}s": per_second["sec_intrasecond_flow_concentration"].rolling(window, min_periods=1).mean(),
+                f"sl_agg_trade_arrival_burst_flag_{window}s": (per_second["sec_trade_cluster_score"].rolling(window, min_periods=1).mean() > 0.5).astype(float),
+                f"sl_agg_end_second_buy_pressure_{window}s": per_second["sec_end_second_buy_pressure"].rolling(window, min_periods=1).mean(),
+                f"sl_agg_end_second_sell_pressure_{window}s": per_second["sec_end_second_sell_pressure"].rolling(window, min_periods=1).mean(),
             }
         )
-    for window in (10, 30):
-        feature_columns[f"sl_buy_trade_cluster_score_{window}s"] = per_second["sec_buy_trade_cluster_score"].rolling(window, min_periods=1).mean()
-        feature_columns[f"sl_sell_trade_cluster_score_{window}s"] = per_second["sec_sell_trade_cluster_score"].rolling(window, min_periods=1).mean()
-    feature_columns["sl_last_n_trades_buy_share"] = per_second["sec_last_trades_buy_share"]
-    feature_columns["sl_last_n_trades_sell_share"] = per_second["sec_last_trades_sell_share"]
+    feature_columns["sl_agg_last_10_trades_buy_share"] = per_second["sec_last_trades_buy_share"]
+    feature_columns["sl_agg_last_10_trades_sell_share"] = per_second["sec_last_trades_sell_share"]
     features = pd.DataFrame(feature_columns, index=one_second_index)
     return _asof_to_decisions(features, decision_timestamps)
 
@@ -795,6 +804,9 @@ def _build_agg_trade_second_summary(
     clustered = interarrival_ms < cluster_threshold_ms
     signed_large_notional = notional.where(is_taker_buy, -notional).where(is_large, 0.0)
     side_group = (is_taker_buy != is_taker_buy.shift(fill_value=is_taker_buy.iloc[0])).cumsum()
+    side_switch = (is_taker_buy != is_taker_buy.shift()).astype(float)
+    if not side_switch.empty:
+        side_switch.iloc[0] = 0.0
     run_length = is_taker_buy.groupby(side_group).cumcount() + 1
     second_bucket = events.index.floor("s")
     per_event = pd.DataFrame(
@@ -812,6 +824,7 @@ def _build_agg_trade_second_summary(
             "clustered": clustered.astype(float),
             "buy_clustered": (clustered & is_taker_buy).astype(float),
             "sell_clustered": (clustered & ~is_taker_buy).astype(float),
+            "side_switch": side_switch,
             "buy_run_length": run_length.where(is_taker_buy, 0.0).astype(float),
             "sell_run_length": run_length.where(~is_taker_buy, 0.0).astype(float),
         },
@@ -822,11 +835,21 @@ def _build_agg_trade_second_summary(
         .groupby("second")["is_buy"]
         .apply(lambda values: values.tail(10).mean())
     )
+    end_pressure = (
+        pd.DataFrame({"second": second_bucket, "is_buy": is_taker_buy.astype(float)})
+        .groupby("second")["is_buy"]
+        .apply(lambda values: values.tail(3).mean())
+    )
     max_notional = per_event["notional"].resample("1s").max()
     total_notional_second = per_event["notional"].resample("1s").sum()
+    notional_square_sum = per_event["notional"].pow(2).resample("1s").sum()
     per_second = pd.DataFrame(
         {
             "sec_median_trade_size": per_event["trade_size"].resample("1s").median(),
+            "sec_p90_trade_size": per_event["trade_size"].resample("1s").quantile(0.90),
+            "sec_p95_trade_size": per_event["trade_size"].resample("1s").quantile(0.95),
+            "sec_max_trade_size": per_event["trade_size"].resample("1s").max(),
+            "sec_max_trade_notional": max_notional,
             "sec_large_trade_count": per_event["is_large"].resample("1s").sum(),
             "sec_large_buy_trade_count": per_event["large_buy"].resample("1s").sum(),
             "sec_large_sell_trade_count": per_event["large_sell"].resample("1s").sum(),
@@ -841,14 +864,19 @@ def _build_agg_trade_second_summary(
             "sec_trade_cluster_score": per_event["clustered"].resample("1s").mean(),
             "sec_buy_trade_cluster_score": per_event["buy_clustered"].resample("1s").mean(),
             "sec_sell_trade_cluster_score": per_event["sell_clustered"].resample("1s").mean(),
+            "sec_side_switch_count": per_event["side_switch"].resample("1s").sum(),
             "sec_buy_run_length": per_event["buy_run_length"].resample("1s").max(),
             "sec_sell_run_length": per_event["sell_run_length"].resample("1s").max(),
             "sec_intrasecond_flow_concentration": _safe_divide(max_notional, total_notional_second),
             "sec_last_trades_buy_share": last_n_share,
             "sec_last_trades_sell_share": 1.0 - last_n_share,
+            "sec_end_second_buy_pressure": end_pressure,
+            "sec_end_second_sell_pressure": 1.0 - end_pressure,
         },
         index=one_second_index,
     ).fillna(0.0)
+    per_second["sec_top_trade_notional_share"] = _safe_divide(max_notional, total_notional_second)
+    per_second["sec_trade_notional_hhi"] = _safe_divide(notional_square_sum, total_notional_second.pow(2))
     per_second["sec_large_trade_volume_share"] = _safe_divide(
         per_second["sec_large_trade_notional"],
         per_second["sec_trade_notional"],
@@ -1149,30 +1177,6 @@ def build_second_level_feature_store(
         pieces.append(build_book_second_level_features(decisions[DEFAULT_TIMESTAMP_COLUMN], book_frame))
     source_state_pieces: list[pd.DataFrame] = []
     one_second_index = pd.DatetimeIndex(kline[DEFAULT_TIMESTAMP_COLUMN])
-    if has_agg:
-        agg_second_summary = _build_agg_trade_second_summary(
-            agg_trades_frame,
-            one_second_index,
-            large_trade_quantile=large_trade_quantile,
-            large_trade_window_seconds=large_trade_window_seconds,
-        )
-        agg_store_columns = [
-            "sec_median_trade_size",
-            "sec_large_trade_count",
-            "sec_large_trade_volume_share",
-            "sec_large_buy_trade_count",
-            "sec_large_sell_trade_count",
-            "sec_buy_run_length",
-            "sec_sell_run_length",
-            "sec_mean_interarrival_ms",
-            "sec_min_interarrival_ms",
-            "sec_interarrival_cv",
-            "sec_trade_cluster_score",
-            "sec_intrasecond_flow_concentration",
-            "sec_last_trades_buy_share",
-            "sec_last_trades_sell_share",
-        ]
-        source_state_pieces.append(agg_second_summary[agg_store_columns].reset_index(drop=True))
     if has_book:
         source_state_pieces.append(_build_book_second_summary(book_frame, one_second_index).reset_index(drop=True))
     metadata = pd.DataFrame(
@@ -1236,6 +1240,67 @@ def build_second_level_feature_store(
     return store.reset_index(drop=True)
 
 
+def build_second_level_kline_feature_store(
+    *,
+    kline_frame: pd.DataFrame,
+    market: str = "BTCUSDT",
+    exchange: str = "binance",
+    source_manifest_id: str = "",
+    feature_profile: SecondLevelFeatureProfile | dict[str, Any] | None = None,
+) -> pd.DataFrame:
+    return build_second_level_feature_store(
+        kline_frame=kline_frame,
+        agg_trades_frame=None,
+        book_frame=None,
+        depth_frame=None,
+        cross_market_frame=None,
+        cross_market_book_frame=None,
+        eth_kline_frame=None,
+        market=market,
+        exchange=exchange,
+        source_manifest_id=source_manifest_id,
+        feature_profile=feature_profile,
+    )
+
+
+def build_second_level_agg_feature_store(
+    *,
+    kline_frame: pd.DataFrame,
+    agg_trades_frame: pd.DataFrame,
+    market: str = "BTCUSDT",
+    exchange: str = "binance",
+    source_manifest_id: str = "",
+    large_trade_quantile: float = 0.95,
+    large_trade_window_seconds: int = 300,
+) -> pd.DataFrame:
+    kline = normalize_second_kline_frame(kline_frame)
+    if kline.empty:
+        raise ValueError("Cannot build agg second-level feature store from an empty 1s kline frame.")
+    if agg_trades_frame is None or agg_trades_frame.empty:
+        raise ValueError("Cannot build agg second-level feature store without aggTrades input.")
+    decisions = pd.DataFrame({DEFAULT_TIMESTAMP_COLUMN: kline[DEFAULT_TIMESTAMP_COLUMN]})
+    features = build_agg_trade_enrichment_features(
+        decisions[DEFAULT_TIMESTAMP_COLUMN],
+        agg_trades_frame,
+        large_trade_quantile=large_trade_quantile,
+        large_trade_window_seconds=large_trade_window_seconds,
+    )
+    metadata = pd.DataFrame(
+        {
+            DEFAULT_TIMESTAMP_COLUMN: decisions[DEFAULT_TIMESTAMP_COLUMN].to_numpy(),
+            "market": market,
+            "exchange": exchange,
+            "second_level_feature_version": SECOND_LEVEL_FEATURE_STORE_VERSION,
+            "source_manifest_id": source_manifest_id,
+            "decision_grid_name": "1s_agg_event_structure",
+            "has_agg_trade_enrichment": True,
+        }
+    )
+    return pd.concat([metadata, features.drop(columns=[DEFAULT_TIMESTAMP_COLUMN], errors="ignore")], axis=1).replace(
+        [np.inf, -np.inf], np.nan
+    ).reset_index(drop=True)
+
+
 def sample_second_level_feature_store(decision_frame: pd.DataFrame, feature_store: pd.DataFrame) -> pd.DataFrame:
     if DEFAULT_TIMESTAMP_COLUMN not in feature_store.columns:
         raise ValueError("Second-level feature store requires a timestamp column.")
@@ -1257,6 +1322,29 @@ def sample_second_level_feature_store(decision_frame: pd.DataFrame, feature_stor
 def load_sampled_second_level_features(decision_frame: pd.DataFrame, feature_store_path: str | Path) -> pd.DataFrame:
     resolved = Path(feature_store_path)
     if resolved.is_dir():
+        split_store_dirs = [
+            child
+            for child in (resolved / "second_features_kline", resolved / "second_features_agg")
+            if child.exists() and child.is_dir()
+        ]
+        if split_store_dirs:
+            sampled_stores = [load_sampled_second_level_features(decision_frame, store_dir) for store_dir in split_store_dirs]
+            combined = sampled_stores[0]
+            for sampled in sampled_stores[1:]:
+                join_columns = [column for column in sampled.columns if column != DEFAULT_TIMESTAMP_COLUMN]
+                combined = combined.merge(
+                    sampled[[DEFAULT_TIMESTAMP_COLUMN, *join_columns]],
+                    on=DEFAULT_TIMESTAMP_COLUMN,
+                    how="left",
+                    suffixes=("", "_duplicate"),
+                )
+                duplicate_columns = [column for column in combined.columns if column.endswith("_duplicate")]
+                if duplicate_columns:
+                    combined = combined.drop(columns=duplicate_columns)
+            sl_columns = [column for column in combined.columns if column.startswith("sl_")]
+            if sl_columns:
+                combined[sl_columns] = combined[sl_columns].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+            return combined.reset_index(drop=True)
         decisions = decision_frame[[DEFAULT_TIMESTAMP_COLUMN]].copy()
         decisions[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(decisions[DEFAULT_TIMESTAMP_COLUMN], utc=True)
         sampled_parts: list[pd.DataFrame] = []
@@ -1285,6 +1373,167 @@ def load_sampled_second_level_features(decision_frame: pd.DataFrame, feature_sto
             combined = pd.concat([combined, missing], axis=0).sort_index()
         return combined.reset_index(drop=True)
     return sample_second_level_feature_store(decision_frame, load_second_level_frame(feature_store_path))
+
+
+def write_partitioned_split_second_level_feature_stores(
+    *,
+    kline_frame: pd.DataFrame,
+    output_root: str | Path,
+    partition_frequency: str = "daily",
+    warmup_seconds: int = DEFAULT_FEATURE_STORE_WARMUP_SECONDS,
+    agg_trades_frame: pd.DataFrame | str | Path | None = None,
+    market: str = "BTCUSDT",
+    exchange: str = "binance",
+    source_manifest_id: str = "",
+    large_trade_quantile: float = 0.95,
+    large_trade_window_seconds: int = 300,
+    feature_profile: SecondLevelFeatureProfile | dict[str, Any] | None = None,
+    manifest: dict[str, Any] | None = None,
+    resume: bool = False,
+) -> dict[str, Any]:
+    split_root = Path(output_root)
+    split_root.mkdir(parents=True, exist_ok=True)
+    kline = normalize_second_kline_frame(kline_frame)
+    start, end = _timestamp_bounds(kline)
+    kline_partitions: list[dict[str, Any]] = []
+    agg_partitions: list[dict[str, Any]] = []
+    kline_schema: list[str] = []
+    agg_schema: list[str] = []
+
+    for chunk_start, chunk_end in _iter_time_partitions(start, end, partition_frequency):
+        label = _partition_label(chunk_start, partition_frequency)
+        warm_start = chunk_start - pd.Timedelta(seconds=warmup_seconds)
+        warm_end = chunk_end
+        chunk_kline = _slice_frame_by_time(kline, warm_start, warm_end)
+        if chunk_kline is None or chunk_kline.empty:
+            continue
+
+        kline_path = split_root / "second_features_kline" / f"date={label}" / "second_features.parquet"
+        if resume:
+            existing = _existing_partition_metadata(kline_path, label=label, warmup_seconds=warmup_seconds)
+            if existing is not None:
+                kline_schema = list(existing.pop("schema"))
+                kline_partitions.append(existing)
+            else:
+                kline_store = build_second_level_kline_feature_store(
+                    kline_frame=chunk_kline,
+                    market=market,
+                    exchange=exchange,
+                    source_manifest_id=source_manifest_id,
+                    feature_profile=feature_profile,
+                )
+                kline_timestamps = pd.to_datetime(kline_store[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+                kline_store = kline_store.loc[(kline_timestamps >= chunk_start) & (kline_timestamps <= chunk_end)].reset_index(drop=True)
+                if not kline_store.empty:
+                    kline_schema = list(kline_store.columns)
+                    kline_partitions.append(
+                        _write_split_partition(
+                            output_root=split_root / "second_features_kline",
+                            label=label,
+                            frame=kline_store,
+                            store_name="second_features_kline",
+                            warmup_seconds=warmup_seconds,
+                        )
+                    )
+        else:
+            kline_store = build_second_level_kline_feature_store(
+                kline_frame=chunk_kline,
+                market=market,
+                exchange=exchange,
+                source_manifest_id=source_manifest_id,
+                feature_profile=feature_profile,
+            )
+            kline_timestamps = pd.to_datetime(kline_store[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+            kline_store = kline_store.loc[(kline_timestamps >= chunk_start) & (kline_timestamps <= chunk_end)].reset_index(drop=True)
+            if not kline_store.empty:
+                kline_schema = list(kline_store.columns)
+                kline_partitions.append(
+                    _write_split_partition(
+                        output_root=split_root / "second_features_kline",
+                        label=label,
+                        frame=kline_store,
+                        store_name="second_features_kline",
+                        warmup_seconds=warmup_seconds,
+                    )
+                )
+
+        chunk_agg = _slice_frame_by_time(agg_trades_frame, warm_start, warm_end)
+        if chunk_agg is None or chunk_agg.empty:
+            continue
+        agg_path = split_root / "second_features_agg" / f"date={label}" / "second_features.parquet"
+        if resume:
+            existing = _existing_partition_metadata(agg_path, label=label, warmup_seconds=warmup_seconds)
+            if existing is not None:
+                agg_schema = list(existing.pop("schema"))
+                agg_partitions.append(existing)
+                continue
+        agg_store = build_second_level_agg_feature_store(
+            kline_frame=chunk_kline,
+            agg_trades_frame=chunk_agg,
+            market=market,
+            exchange=exchange,
+            source_manifest_id=source_manifest_id,
+            large_trade_quantile=large_trade_quantile,
+            large_trade_window_seconds=large_trade_window_seconds,
+        )
+        agg_timestamps = pd.to_datetime(agg_store[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+        agg_store = agg_store.loc[(agg_timestamps >= chunk_start) & (agg_timestamps <= chunk_end)].reset_index(drop=True)
+        if not agg_store.empty:
+            agg_schema = list(agg_store.columns)
+            agg_partitions.append(
+                _write_split_partition(
+                    output_root=split_root / "second_features_agg",
+                    label=label,
+                    frame=agg_store,
+                    store_name="second_features_agg",
+                    warmup_seconds=warmup_seconds,
+                )
+            )
+
+    if not kline_partitions:
+        raise ValueError("Split feature-store build produced no kline partitions.")
+    split_payloads: dict[str, Any] = {
+        "second_features_kline": _write_partitioned_manifest(
+            output_root=split_root / "second_features_kline",
+            store_name="second_features_kline",
+            partition_frequency=partition_frequency,
+            warmup_seconds=warmup_seconds,
+            resume=resume,
+            partitions=kline_partitions,
+            schema=kline_schema,
+            manifest=manifest,
+        )
+    }
+    if agg_partitions:
+        split_payloads["second_features_agg"] = _write_partitioned_manifest(
+            output_root=split_root / "second_features_agg",
+            store_name="second_features_agg",
+            partition_frequency=partition_frequency,
+            warmup_seconds=warmup_seconds,
+            resume=resume,
+            partitions=agg_partitions,
+            schema=agg_schema,
+            manifest=manifest,
+        )
+    payload = {
+        "store_name": "second_features_split",
+        "version": SECOND_LEVEL_FEATURE_STORE_VERSION,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "partition_frequency": partition_frequency,
+        "warmup_seconds": int(warmup_seconds),
+        "row_count": int(max(store["row_count"] for store in split_payloads.values())),
+        "split_stores": {
+            name: {
+                "path": str((split_root / name).resolve()),
+                "row_count": split_payload["row_count"],
+                "feature_count": split_payload["feature_count"],
+            }
+            for name, split_payload in split_payloads.items()
+        },
+        "source_manifest": manifest or {},
+    }
+    (split_root / "manifest.json").write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return payload
 
 
 def build_second_level_source_tables(
@@ -1373,6 +1622,74 @@ def write_second_level_feature_store(
     return payload
 
 
+def _write_split_partition(
+    *,
+    output_root: Path,
+    label: str,
+    frame: pd.DataFrame,
+    store_name: str,
+    warmup_seconds: int,
+) -> dict[str, Any]:
+    partition_dir = output_root / f"date={label}"
+    partition_path = partition_dir / "second_features.parquet"
+    partition_dir.mkdir(parents=True, exist_ok=True)
+    frame.to_parquet(partition_path, index=False)
+    return {
+        "label": label,
+        "path": str(partition_path),
+        "start": str(frame[DEFAULT_TIMESTAMP_COLUMN].min()),
+        "end": str(frame[DEFAULT_TIMESTAMP_COLUMN].max()),
+        "row_count": int(len(frame)),
+        "feature_count": int(sum(column.startswith("sl_") for column in frame.columns)),
+        "warmup_seconds": int(warmup_seconds),
+        "store_name": store_name,
+        "status": "built",
+    }
+
+
+def _write_partitioned_manifest(
+    *,
+    output_root: Path,
+    store_name: str,
+    partition_frequency: str,
+    warmup_seconds: int,
+    resume: bool,
+    partitions: list[dict[str, Any]],
+    schema: list[str],
+    manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if not partitions:
+        raise ValueError(f"Partitioned {store_name} build produced no partitions.")
+    payload = {
+        "feature_version": SECOND_LEVEL_FEATURE_STORE_VERSION,
+        "feature_profile": "expanded_v2",
+        "feature_packs": list(DEFAULT_SECOND_LEVEL_PACKS),
+        "store_name": store_name,
+        "generation_timestamp": datetime.now(timezone.utc).isoformat(),
+        "partitioned": True,
+        "partition_frequency": partition_frequency,
+        "warmup_seconds": int(warmup_seconds),
+        "resume_enabled": bool(resume),
+        "row_count": int(sum(item["row_count"] for item in partitions)),
+        "start": partitions[0]["start"],
+        "end": partitions[-1]["end"],
+        "feature_count": int(sum(column.startswith("sl_") for column in schema)),
+        "schema": schema,
+        "partitions": partitions,
+    }
+    if manifest:
+        payload.update(manifest)
+    output_root.mkdir(parents=True, exist_ok=True)
+    (output_root / "manifest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    qa_payload = {
+        "partition_count": len(partitions),
+        "row_count": payload["row_count"],
+        "duplicate_partition_labels": int(pd.Series([item["label"] for item in partitions]).duplicated().sum()),
+    }
+    (output_root / "qa_report.json").write_text(json.dumps(qa_payload, indent=2), encoding="utf-8")
+    return payload
+
+
 def write_partitioned_second_level_feature_store(
     *,
     kline_frame: pd.DataFrame,
@@ -1393,9 +1710,15 @@ def write_partitioned_second_level_feature_store(
     feature_profile: SecondLevelFeatureProfile | dict[str, Any] | None = None,
     manifest: dict[str, Any] | None = None,
     resume: bool = False,
+    split_output_root: str | Path | None = None,
 ) -> dict[str, Any]:
     output_root = Path(output_dir)
     output_root.mkdir(parents=True, exist_ok=True)
+    split_root = Path(split_output_root) if split_output_root is not None else None
+    kline_partitions: list[dict[str, Any]] = []
+    agg_partitions: list[dict[str, Any]] = []
+    kline_schema: list[str] = []
+    agg_schema: list[str] = []
     kline = normalize_second_kline_frame(kline_frame)
     start, end = _timestamp_bounds(kline)
     partitions: list[dict[str, Any]] = []
@@ -1442,6 +1765,51 @@ def write_partitioned_second_level_feature_store(
         chunk_store = chunk_store.loc[(timestamps >= chunk_start) & (timestamps <= chunk_end)].reset_index(drop=True)
         if chunk_store.empty:
             continue
+        if split_root is not None:
+            kline_store = build_second_level_kline_feature_store(
+                kline_frame=chunk_kline,
+                market=market,
+                exchange=exchange,
+                source_manifest_id=source_manifest_id,
+                feature_profile=feature_profile,
+            )
+            kline_timestamps = pd.to_datetime(kline_store[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+            kline_store = kline_store.loc[(kline_timestamps >= chunk_start) & (kline_timestamps <= chunk_end)].reset_index(drop=True)
+            if not kline_store.empty:
+                kline_schema = list(kline_store.columns)
+                kline_partitions.append(
+                    _write_split_partition(
+                        output_root=split_root / "second_features_kline",
+                        label=label,
+                        frame=kline_store,
+                        store_name="second_features_kline",
+                        warmup_seconds=warmup_seconds,
+                    )
+                )
+            chunk_agg = _slice_frame_by_time(agg_trades_frame, warm_start, warm_end)
+            if chunk_agg is not None and not chunk_agg.empty:
+                agg_store = build_second_level_agg_feature_store(
+                    kline_frame=chunk_kline,
+                    agg_trades_frame=chunk_agg,
+                    market=market,
+                    exchange=exchange,
+                    source_manifest_id=source_manifest_id,
+                    large_trade_quantile=large_trade_quantile,
+                    large_trade_window_seconds=large_trade_window_seconds,
+                )
+                agg_timestamps = pd.to_datetime(agg_store[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+                agg_store = agg_store.loc[(agg_timestamps >= chunk_start) & (agg_timestamps <= chunk_end)].reset_index(drop=True)
+                if not agg_store.empty:
+                    agg_schema = list(agg_store.columns)
+                    agg_partitions.append(
+                        _write_split_partition(
+                            output_root=split_root / "second_features_agg",
+                            label=label,
+                            frame=agg_store,
+                            store_name="second_features_agg",
+                            warmup_seconds=warmup_seconds,
+                        )
+                    )
         partition_dir.mkdir(parents=True, exist_ok=True)
         chunk_store.to_parquet(partition_path, index=False)
         total_rows += len(chunk_store)
@@ -1460,29 +1828,47 @@ def write_partitioned_second_level_feature_store(
         )
     if not partitions:
         raise ValueError("Partitioned feature-store build produced no partitions.")
-    payload = {
-        "feature_version": SECOND_LEVEL_FEATURE_STORE_VERSION,
-        "feature_profile": "expanded_v2",
-        "feature_packs": list(DEFAULT_SECOND_LEVEL_PACKS),
-        "generation_timestamp": datetime.now(timezone.utc).isoformat(),
-        "partitioned": True,
-        "partition_frequency": partition_frequency,
-        "warmup_seconds": int(warmup_seconds),
-        "resume_enabled": bool(resume),
-        "row_count": int(total_rows),
-        "start": partitions[0]["start"],
-        "end": partitions[-1]["end"],
-        "feature_count": feature_count,
-        "schema": schema,
-        "partitions": partitions,
-    }
-    if manifest:
-        payload.update(manifest)
-    (output_root / "manifest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    qa_payload = {
-        "partition_count": len(partitions),
-        "row_count": int(total_rows),
-        "duplicate_partition_labels": int(pd.Series([item["label"] for item in partitions]).duplicated().sum()),
-    }
-    (output_root / "qa_report.json").write_text(json.dumps(qa_payload, indent=2), encoding="utf-8")
+    payload = _write_partitioned_manifest(
+        output_root=output_root,
+        store_name="second_features_extended",
+        partition_frequency=partition_frequency,
+        warmup_seconds=warmup_seconds,
+        resume=resume,
+        partitions=partitions,
+        schema=schema,
+        manifest=manifest,
+    )
+    if split_root is not None:
+        split_payloads: dict[str, Any] = {}
+        if kline_partitions:
+            split_payloads["second_features_kline"] = _write_partitioned_manifest(
+                output_root=split_root / "second_features_kline",
+                store_name="second_features_kline",
+                partition_frequency=partition_frequency,
+                warmup_seconds=warmup_seconds,
+                resume=resume,
+                partitions=kline_partitions,
+                schema=kline_schema,
+                manifest=manifest,
+            )
+        if agg_partitions:
+            split_payloads["second_features_agg"] = _write_partitioned_manifest(
+                output_root=split_root / "second_features_agg",
+                store_name="second_features_agg",
+                partition_frequency=partition_frequency,
+                warmup_seconds=warmup_seconds,
+                resume=resume,
+                partitions=agg_partitions,
+                schema=agg_schema,
+                manifest=manifest,
+            )
+        payload["split_stores"] = {
+            name: {
+                "path": str((split_root / name).resolve()),
+                "row_count": split_payload["row_count"],
+                "feature_count": split_payload["feature_count"],
+            }
+            for name, split_payload in split_payloads.items()
+        }
+        (output_root / "manifest.json").write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     return payload
