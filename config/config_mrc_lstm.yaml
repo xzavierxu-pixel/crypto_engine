@@ -1,0 +1,44 @@
+task:
+  prediction_horizon_seconds: 300
+  sequence_length_seconds: 300
+  label_type: project_grid_direction
+
+data:
+  settings_path: config/settings.yaml
+  kline_1m_path: artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet
+  second_level_store_path: artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT
+  output_dir: artifacts/data_v2/experiments/20260503_mrc_lstm_standalone
+  max_features: 64
+
+model:
+  name: MRC_LSTM
+  input_dim: auto
+  cnn_hidden_dim: 64
+  lstm_hidden_dim: 64
+  lstm_layers: 1
+  kernel_sizes: [3, 5, 10, 30, 60]
+  dropout: 0.2
+  bidirectional: false
+  embedding_dim: 64
+
+training:
+  optimizer: AdamW
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  batch_size: 128
+  epochs: 20
+  early_stopping_patience: 5
+  gradient_clip_norm: 1.0
+  loss: BCEWithLogitsLoss
+  sample_weighting: true
+  num_workers: 0
+
+validation:
+  split_type: recent_time_based
+  train_days: 60
+  validation_days: 30
+  purge_rows: 1
+
+signal:
+  upper_threshold: 0.55
+  lower_threshold: 0.45
