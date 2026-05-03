@@ -6,6 +6,8 @@ This directory is organized by workflow stage. Mainline scripts live in `data/`,
 
 Run these groups in order when rebuilding data from raw sources.
 
+For detailed inputs and outputs for every data script, see `data/DATA_SCRIPTS.md`.
+
 | Order | Directory | Scripts | Purpose |
 |---|---|---|---|
 | 1 | `data/step1_acquire/` | `backfill_binance_public_history.py`, `backfill_derivatives_history.py`, `download_derivatives_public_data.py` | Download or backfill raw Binance and derivatives inputs. |
