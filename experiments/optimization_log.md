@@ -1071,3 +1071,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: even a small null-importance tail cut reduces the objective. Feature pruning has repeatedly reduced validation confidence quality.
 - Next step: try a model-training ensemble variant based on rank averaging, using the best feature/data split unchanged.
+
+## 20260508_codex_iter55_catboost_rank_ensemble
+
+- Skill used: `tabular-rank-averaging-ensemble`.
+- Hypothesis: averaging empirical-rank-transformed predictions from nearby CatBoost seeds may reduce seed-specific probability-scale noise while preserving online-safe inference through stored training-score reference distributions.
+- Changed files: `src/model/catboost_ensemble_plugin.py`, `src/model/registry.py`, `experiments/configs/20260508_codex_iter55_catboost_rank_ensemble.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_rank_ensemble`, seeds `42,43,44`, same CatBoost hyperparameters as the best seed-42 run.
+- Config: `experiments/configs/20260508_codex_iter55_catboost_rank_ensemble.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter55_catboost_rank_ensemble --config experiments/configs/20260508_codex_iter55_catboost_rank_ensemble.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter55_catboost_rank_ensemble/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.15483669489117222`.
+- Utility before / after: `0.0751684810782789` / `0.0758164852255054`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5682613768961493`.
+- Accepted count before / after: `3245` / `4285`.
+- Coverage before / after: `0.4205546915500259` / `0.5553395541731467`.
+- Coverage constraint satisfied: yes.
+- Tests: `rtk python -m compileall -q src/model`; DQC ran during training.
+- Interpretation: rank averaging over-expanded the acceptance set and reduced accepted accuracy. The raw seed-42 CatBoost remains the best model-training result.
+- Next step: continue with simpler CatBoost regularization/iteration ablations on the best split rather than ensemble scaling.
