@@ -1028,3 +1028,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: soft full-history recency weighting did not beat a hard 75-day window. Older regimes remain a net drag even with substantial downweighting.
 - Next step: run null-importance feature selection on the current best 75-day VWAP-pruned split, protecting HTF and time features.
+
+## 20260508_codex_iter53_null_importance_pruned_catboost
+
+- Skill used: `tabular-null-importance-feature-selection`.
+- Hypothesis: removing features whose LightGBM RF gain fails a shuffled-target null distribution may reduce noisy feature competition and improve accepted accuracy for the best CatBoost setup.
+- Changed files: `experiments/configs/20260508_codex_iter53_null_importance_pruned_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter53_null_importance_split`.
+- Feature set: 436 selected features, down from 516; HTF/time features retained.
+- Selection details: 20 shuffled-target null runs on the development split only; dropped unprotected features with `null_score < 35` and `actual_gain/null_p75_gain < 0.60`.
+- Config: `experiments/configs/20260508_codex_iter53_null_importance_pruned_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter53_null_importance_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter53_null_importance_pruned_catboost --config experiments/configs/20260508_codex_iter53_null_importance_pruned_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter53_null_importance_pruned_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16497435165296886`.
+- Utility before / after: `0.0751684810782789` / `0.07102125453602905`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5803990610328639`.
+- Accepted count before / after: `3245` / `3408`.
+- Coverage before / after: `0.4205546915500259` / `0.4416796267496112`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: aggressive null-importance pruning again increased coverage but reduced accepted accuracy. The null model is over-penalizing features that CatBoost uses for selective confidence.
+- Next step: evaluate a smaller bottom-tail null-importance removal instead of the 80-feature drop.
