@@ -540,3 +540,22 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: interactions likely add noise, but dropping them removes too much coverage; keep them in the current best subset.
 - Next step: try narrower family-level drops among shifted second-level features instead.
+
+## 20260508_codex_iter28_drop_sl_vwap_catboost
+
+- Hypothesis: the two strongest adversarial-shift features, `sl_vwap_30s` and `sl_vwap_10s`, may be hurting validation stability; dropping only these may improve score without the broader pruning damage.
+- Changed files: `experiments/configs/20260508_codex_iter28_drop_sl_vwap_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter28_drop_sl_vwap_split`.
+- Config: `experiments/configs/20260508_codex_iter28_drop_sl_vwap_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter28_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter28_drop_sl_vwap_catboost --config experiments/configs/20260508_codex_iter28_drop_sl_vwap_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter28_drop_sl_vwap_catboost/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.16356339207951035`.
+- Utility before / after: `0.07879730430274755` / `0.08527734577501298`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5680314465408805`.
+- Accepted count before / after: `4082` / `4836`.
+- Coverage before / after: `0.5290305857957491` / `0.6267496111975117`.
+- Coverage constraint satisfied: yes.
+- Feature count before / after: `518` / `516`.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: removing the shifted VWAP features improves coverage and utility but hurts accepted accuracy; it is close but not better than the best score.
+- Next step: pair this surgical drop with a higher-accuracy CatBoost setting.
