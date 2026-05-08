@@ -848,3 +848,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: 70 days is too close to the coverage floor and scores below the 75-day best.
 - Next step: test 78 or 90 days with the VWAP-drop/regularized setup.
+
+## 20260508_codex_iter45_train90_drop_sl_vwap_stronger_catboost
+
+- Hypothesis: the VWAP-drop/regularized setup may benefit from the 90-day window, which was strong before the VWAP drop.
+- Changed files: `experiments/configs/20260508_codex_iter45_train90_drop_sl_vwap_stronger_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter45_train90_drop_sl_vwap_split`.
+- Config: `experiments/configs/20260508_codex_iter45_train90_drop_sl_vwap_stronger_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter45_train90_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter45_train90_drop_sl_vwap_stronger_catboost --config experiments/configs/20260508_codex_iter45_train90_drop_sl_vwap_stronger_catboost.yaml --horizon 5m --train-window-days 90 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter45_train90_drop_sl_vwap_stronger_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16931283044835744`.
+- Utility before / after: `0.0751684810782789` / `0.07788906298600313`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5777133243606999`.
+- Accepted count before / after: `3245` / `3866`.
+- Coverage before / after: `0.4205546915500259` / `0.5010368066355624`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: 90 days recovers coverage but loses the high accepted accuracy that made iteration 43 best.
+- Next step: keep 75 days as best and tune feature drops/model regularization around it.
