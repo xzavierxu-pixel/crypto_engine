@@ -128,3 +128,21 @@
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: regularized CatBoost is the best repaired-split run so far, improving score by increasing accepted count while keeping accepted accuracy above 0.574.
 - Next step: run a neighboring CatBoost configuration with slightly higher depth or lower L2 to see if score can clear the original cached baseline.
+
+## 20260508_codex_iter08_catboost_depth7_l2_15
+
+- Hypothesis: slightly higher CatBoost capacity than iteration 7 may improve accepted accuracy enough to lift selection_score.
+- Changed files: `experiments/configs/20260508_codex_iter08_catboost_depth7_l2_15.yaml`.
+- Config: `experiments/configs/20260508_codex_iter08_catboost_depth7_l2_15.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter01_htf_time --output-dir artifacts/data_v2/experiments/20260508_codex_iter08_catboost_depth7_l2_15 --config experiments/configs/20260508_codex_iter08_catboost_depth7_l2_15.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter08_catboost_depth7_l2_15/metrics.json`.
+- Score before: `0.15779432383682843`.
+- Score after: `0.1532816563036069`.
+- Utility before / after: `0.07153965785381029` / `0.06454121306376356`.
+- Accepted accuracy before / after: `0.5741138560687433` / `0.5769944341372912`.
+- Accepted count before / after: `3724` / `3234`.
+- Coverage before / after: `0.48263348885432866` / `0.4191290824261275`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: higher capacity increases accepted accuracy slightly but drops coverage and accepted count too much; iteration 7 remains the best repaired-split CatBoost setup.
+- Next step: try feature family pruning that removes only low-signal generated interaction families while retaining raw HTF/time/second-level signals.
