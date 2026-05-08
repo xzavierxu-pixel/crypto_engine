@@ -595,3 +595,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: this is the new best score. Recent-window training improves accepted accuracy enough to offset lower coverage.
 - Next step: sweep nearby recent training windows to see whether score can rise further while staying above coverage 0.40.
+
+## 20260508_codex_iter31_top500_train120_catboost
+
+- Hypothesis: a 120-day recent training window may retain the recency benefit while recovering coverage versus the 90-day run.
+- Changed files: `experiments/configs/20260508_codex_iter31_top500_train120_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter31_top500_train120_split`.
+- Config: `experiments/configs/20260508_codex_iter31_top500_train120_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter31_top500_train120_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter31_top500_train120_catboost --config experiments/configs/20260508_codex_iter31_top500_train120_catboost.yaml --horizon 5m --train-window-days 120 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter31_top500_train120_catboost/metrics.json`.
+- Score before: `0.17068437537379072`.
+- Score after: `0.1619470658932365`.
+- Utility before / after: `0.07465007776049767` / `0.06933644375324002`.
+- Accepted accuracy before / after: `0.5816742209631728` / `0.5793768545994065`.
+- Accepted count before / after: `3527` / `3368`.
+- Coverage before / after: `0.45710212545360395` / `0.4364955935717999`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: 120 days does not recover enough coverage and scores below 90 days.
+- Next step: test a shorter 60-day recent training window.
