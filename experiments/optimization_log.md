@@ -37,3 +37,22 @@
 - Tests: reused `20260508_codex_iter01_htf_time` cached split; no code changes in this iteration.
 - Interpretation: CatBoost improves accepted accuracy and selection_score over the repaired LightGBM run, but coverage is close to the 0.40 floor and score remains below the original cached baseline.
 - Next step: reduce noisy/redundant model inputs while retaining HTF/time features, then compare LightGBM and CatBoost on the same repaired split.
+
+## 20260508_codex_iter03_top250_lgbm
+
+- Hypothesis: reducing model inputs from 1732 features to the top 250 LightGBM gain features, while forcing all HTF/time features to remain, may reduce noise and improve validation selection_score.
+- Changed files: `experiments/configs/20260508_codex_iter03_top250_lgbm.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter03_top250_split`.
+- Config: `experiments/configs/20260508_codex_iter03_top250_lgbm.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter03_top250_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter03_top250_lgbm --config experiments/configs/20260508_codex_iter03_top250_lgbm.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter03_top250_lgbm/metrics.json`.
+- Score before: `0.14804920471517846`.
+- Score after: `0.14743848182308736`.
+- Utility before / after: `0.06518921721099015` / `0.0800933125972006`.
+- Accepted accuracy before / after: `0.5719599427753934` / `0.5597447795823666`.
+- Accepted count before / after: `3495` / `5172`.
+- Coverage before / after: `0.45295489891135304` / `0.6702954898911353`.
+- Coverage constraint satisfied: yes.
+- Feature count before / after: `1732` / `275`.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: aggressive top-gain filtering increased coverage but reduced accepted accuracy enough to lower selection_score; single-run gain is too lossy for this feature set.
+- Next step: try a less aggressive family-level data-processing change or tune model regularization on the full repaired split.
