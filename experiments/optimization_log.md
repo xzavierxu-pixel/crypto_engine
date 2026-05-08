@@ -146,3 +146,22 @@
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: higher capacity increases accepted accuracy slightly but drops coverage and accepted count too much; iteration 7 remains the best repaired-split CatBoost setup.
 - Next step: try feature family pruning that removes only low-signal generated interaction families while retaining raw HTF/time/second-level signals.
+
+## 20260508_codex_iter09_top500_catboost
+
+- Hypothesis: a moderate top-500 gain feature subset, with all HTF/time features forced in, may reduce noise without losing as many weak useful features as the top-250 subset.
+- Changed files: `experiments/configs/20260508_codex_iter09_top500_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter09_top500_split`.
+- Config: `experiments/configs/20260508_codex_iter09_top500_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter09_top500_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter09_top500_catboost --config experiments/configs/20260508_codex_iter09_top500_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter09_top500_catboost/metrics.json`.
+- Score before: `0.15779432383682843`.
+- Score after: `0.1660762617203513`.
+- Utility before / after: `0.07153965785381029` / `0.07879730430274755`.
+- Accepted accuracy before / after: `0.5741138560687433` / `0.5744732974032337`.
+- Accepted count before / after: `3724` / `4082`.
+- Coverage before / after: `0.48263348885432866` / `0.5290305857957491`.
+- Coverage constraint satisfied: yes.
+- Feature count before / after: `1732` / `518`.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: this is the best run so far and beats the original cached baseline; the improvement comes from higher accepted count at roughly the same accepted accuracy.
+- Next step: tune CatBoost regularization on the top-500 split to try to increase accepted accuracy without losing coverage.
