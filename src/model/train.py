@@ -460,15 +460,25 @@ def _build_regime_slices(
 def _build_feature_importance(model: ModelPlugin, feature_columns: list[str]) -> pd.DataFrame:
     wrapped_model = getattr(model, "model", None)
     booster = getattr(wrapped_model, "booster_", None)
-    if booster is None:
-        return pd.DataFrame(columns=["feature", "gain", "split"])
-    return pd.DataFrame(
-        {
-            "feature": feature_columns,
-            "gain": booster.feature_importance(importance_type="gain"),
-            "split": booster.feature_importance(importance_type="split"),
-        }
-    ).sort_values(["gain", "split"], ascending=False).reset_index(drop=True)
+    if booster is not None:
+        return pd.DataFrame(
+            {
+                "feature": feature_columns,
+                "gain": booster.feature_importance(importance_type="gain"),
+                "split": booster.feature_importance(importance_type="split"),
+            }
+        ).sort_values(["gain", "split"], ascending=False).reset_index(drop=True)
+    if wrapped_model is not None and hasattr(wrapped_model, "get_feature_importance"):
+        importance = wrapped_model.get_feature_importance()
+        if len(importance) == len(feature_columns):
+            return pd.DataFrame(
+                {
+                    "feature": feature_columns,
+                    "gain": importance,
+                    "split": np.zeros(len(feature_columns), dtype="float64"),
+                }
+            ).sort_values(["gain", "split"], ascending=False).reset_index(drop=True)
+    return pd.DataFrame(columns=["feature", "gain", "split"])
 
 
 def _build_probability_deciles(frame: pd.DataFrame, probabilities: pd.Series) -> pd.DataFrame:

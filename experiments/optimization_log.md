@@ -227,3 +227,22 @@ Recommended next work after this stop condition:
 - Run adversarial validation and null-importance selection on the repaired split to identify unstable feature families before another model-tuning cycle.
 - Try a top-500/top700 feature subset selected from multiple seeds or folds instead of one LightGBM gain run.
 - Tune CatBoost around iteration 9 with smaller one-variable steps that target coverage retention, not only accepted accuracy.
+
+## 20260508_codex_iter11_top500_catboost_importance
+
+- Hypothesis: CatBoost is the best current model family, but feature selection was still driven by LightGBM gain. Recording native CatBoost importances should enable better downstream feature subsets without changing labels, thresholds, or feature semantics.
+- Changed files: `src/model/train.py`; `experiments/configs/20260508_codex_iter11_top500_catboost_importance.yaml`.
+- Config: `experiments/configs/20260508_codex_iter11_top500_catboost_importance.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter09_top500_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter11_top500_catboost_importance --config experiments/configs/20260508_codex_iter11_top500_catboost_importance.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter11_top500_catboost_importance/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.1660762617203513`.
+- Utility before / after: `0.07879730430274755` / `0.07879730430274755`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5744732974032337`.
+- Accepted count before / after: `4082` / `4082`.
+- Coverage before / after: `0.5290305857957491` / `0.5290305857957491`.
+- Coverage constraint satisfied: yes.
+- Feature count: `518`.
+- Tests: `rtk python -m pytest -q tests/test_model_pipeline.py::test_train_model_pipeline_and_roundtrip` still fails because the current project config filters the unit-test fixture dates out of the training frame; this matches the pre-existing full-suite failure class from the previous run.
+- Interpretation: score is unchanged, as expected, but `feature_importance.csv` is now populated for CatBoost. Top features include `sl_agg_buy_trade_cluster_score_1s`, `htf_range_pos_15m`, `htf_close_z_15m_lag3`, `sl_taker_count_imbalance_5s`, and `htf_close_z_15m`, supporting the requirement to retain HTF/time and second-level context.
+- Next step: build a CatBoost-importance feature subset from iteration 11, forcing HTF/time features to remain, and evaluate top-N variants.
