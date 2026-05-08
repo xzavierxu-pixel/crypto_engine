@@ -448,3 +448,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: unweighted CatBoost over-accepts and loses too much accepted accuracy; weighted training remains preferred.
 - Next step: adjust sample-weight shape rather than turning weights off entirely.
+
+## 20260508_codex_iter23_top500_catboost_stronger_weights
+
+- Hypothesis: stronger abs-return sample weighting may focus CatBoost on clearer moves and increase accepted accuracy without changing features or thresholds.
+- Changed files: `experiments/configs/20260508_codex_iter23_top500_catboost_stronger_weights.yaml`; regenerated weighted split `artifacts/data_v2/experiments/20260508_codex_iter23_top500_stronger_weights_split`.
+- Config: `experiments/configs/20260508_codex_iter23_top500_catboost_stronger_weights.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter23_top500_stronger_weights_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter23_top500_catboost_stronger_weights --config experiments/configs/20260508_codex_iter23_top500_catboost_stronger_weights.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter23_top500_catboost_stronger_weights/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.15831786842218392`.
+- Utility before / after: `0.07879730430274755` / `0.06635562467651632`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5794906832298136`.
+- Accepted count before / after: `4082` / `3220`.
+- Coverage before / after: `0.5290305857957491` / `0.4173146708138932`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: stronger weighting improves accepted accuracy but loses too much coverage and utility.
+- Next step: test a milder sample-weight adjustment if revisiting weights; otherwise keep the original weighting.
