@@ -577,3 +577,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: the high-accuracy setting again collapses coverage too close to the floor; this combination is worse than both parents.
 - Next step: avoid low-L2 settings unless paired with a mechanism that preserves coverage.
+
+## 20260508_codex_iter30_top500_train90_catboost
+
+- Hypothesis: adversarial validation indicates strong temporal shift, so a shorter 90-day recent training window may better match the validation period than the full 183-day development window.
+- Changed files: `experiments/configs/20260508_codex_iter30_top500_train90_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter30_top500_train90_split`.
+- Config: `experiments/configs/20260508_codex_iter30_top500_train90_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter30_top500_train90_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter30_top500_train90_catboost --config experiments/configs/20260508_codex_iter30_top500_train90_catboost.yaml --horizon 5m --train-window-days 90 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter30_top500_train90_catboost/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.17068437537379072`.
+- Utility before / after: `0.07879730430274755` / `0.07465007776049767`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5816742209631728`.
+- Accepted count before / after: `4082` / `3527`.
+- Coverage before / after: `0.5290305857957491` / `0.45710212545360395`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: this is the new best score. Recent-window training improves accepted accuracy enough to offset lower coverage.
+- Next step: sweep nearby recent training windows to see whether score can rise further while staying above coverage 0.40.
