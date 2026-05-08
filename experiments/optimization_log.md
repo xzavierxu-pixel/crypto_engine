@@ -1093,3 +1093,24 @@ Main bottlenecks:
 - Tests: `rtk python -m compileall -q src/model`; DQC ran during training.
 - Interpretation: rank averaging over-expanded the acceptance set and reduced accepted accuracy. The raw seed-42 CatBoost remains the best model-training result.
 - Next step: continue with simpler CatBoost regularization/iteration ablations on the best split rather than ensemble scaling.
+
+## 20260508_codex_iter56_depth4_catboost
+
+- Hypothesis: reducing CatBoost tree depth from 5 to 4 may reduce confidence overfit and improve validation accepted accuracy on the current best data/feature split.
+- Changed files: `experiments/configs/20260508_codex_iter56_depth4_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: CatBoost depth `4`, otherwise same as the current best CatBoost settings.
+- Config: `experiments/configs/20260508_codex_iter56_depth4_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter56_depth4_catboost --config experiments/configs/20260508_codex_iter56_depth4_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter56_depth4_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16538464391392693`.
+- Utility before / after: `0.0751684810782789` / `0.0688180404354588`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5828910396503278`.
+- Accepted count before / after: `3245` / `3203`.
+- Coverage before / after: `0.4205546915500259` / `0.41511145671332295`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: shallower trees reduced both confidence quality and score. Depth 5 remains better.
+- Next step: test stronger CatBoost stochastic regularization at depth 5.
