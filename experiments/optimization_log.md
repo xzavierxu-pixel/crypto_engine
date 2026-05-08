@@ -793,3 +793,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: this setting has higher accepted accuracy but too little coverage; the best remains iteration 37.
 - Next step: test an intermediate learning-rate/iteration pair.
+
+## 20260508_codex_iter42_train75_lr0175_iter1000_catboost
+
+- Hypothesis: an intermediate learning rate/iteration pair may balance iteration 37 coverage and iteration 41 accepted accuracy.
+- Changed files: `experiments/configs/20260508_codex_iter42_train75_lr0175_iter1000_catboost.yaml`.
+- Config: `experiments/configs/20260508_codex_iter42_train75_lr0175_iter1000_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter33_top500_train75_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter42_train75_lr0175_iter1000_catboost --config experiments/configs/20260508_codex_iter42_train75_lr0175_iter1000_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter42_train75_lr0175_iter1000_catboost/metrics.json`.
+- Score before: `0.17464090309426274`.
+- Score after: `0.1605592798676145`.
+- Utility before / after: `0.07439087610160703` / `0.06829963711767756`.
+- Accepted accuracy before / after: `0.5850148367952522` / `0.5793973286808349`.
+- Accepted count before / after: `3370` / `3316`.
+- Coverage before / after: `0.43675505443234836` / `0.4297563504406428`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: this intermediate pair loses accepted accuracy and coverage versus iteration 37.
+- Next step: combine the best 75-day regularized model with the surgical VWAP feature drop.
