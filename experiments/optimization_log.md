@@ -1114,3 +1114,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: shallower trees reduced both confidence quality and score. Depth 5 remains better.
 - Next step: test stronger CatBoost stochastic regularization at depth 5.
+
+## 20260508_codex_iter57_stochastic_catboost
+
+- Hypothesis: increasing CatBoost stochastic regularization may improve validation generalization while keeping the current best data/feature split unchanged.
+- Changed files: `experiments/configs/20260508_codex_iter57_stochastic_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: CatBoost `random_strength=4.0`, `bagging_temperature=1.0`, otherwise same as the current best settings.
+- Config: `experiments/configs/20260508_codex_iter57_stochastic_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter57_stochastic_catboost --config experiments/configs/20260508_codex_iter57_stochastic_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter57_stochastic_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16470796966717988`.
+- Utility before / after: `0.0751684810782789` / `0.06881804043545879`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5823255813953488`.
+- Accepted count before / after: `3245` / `3225`.
+- Coverage before / after: `0.4205546915500259` / `0.4179626749611198`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: stronger stochastic regularization reduced the validation objective. The current best `random_strength=2.0`, `bagging_temperature=0.5` remains preferable.
+- Next step: evaluate a slightly less stochastic depth-5 variant.
