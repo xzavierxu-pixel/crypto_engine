@@ -28,4 +28,7 @@ class TimeFeaturePack(FeaturePack):
         minute = ts.dt.minute.astype("float64")
         features["minute_sin"] = np.sin(2 * np.pi * minute / 60.0)
         features["minute_cos"] = np.cos(2 * np.pi * minute / 60.0)
+        weekday = ts.dt.dayofweek.astype("float64")
+        features["weekday_sin"] = np.sin(2 * np.pi * weekday / 7.0)
+        features["weekday_cos"] = np.cos(2 * np.pi * weekday / 7.0)
         return features

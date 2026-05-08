@@ -1156,3 +1156,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: lower stochasticity increased coverage but reduced accepted accuracy. The existing stochastic settings remain best.
 - Next step: return to feature/data processing with a focused time-regime feature variant.
+
+## 20260508_codex_iter59_weekday_time_catboost
+
+- Skill used: `tabular-season-phase-labeling` adapted to crypto calendar-regime features.
+- Hypothesis: adding leak-free weekday cyclic features may capture weekly crypto liquidity/regime effects and improve accepted accuracy while preserving existing HTF/hour/minute features.
+- Changed files: `src/features/time_features.py`, `src/core/constants.py`, `tests/test_features.py`, `experiments/configs/20260508_codex_iter59_weekday_time_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter59_weekday_time_split`.
+- Feature set: current best VWAP-pruned top-500 split plus `weekday_sin`, `weekday_cos`; HTF/hour/minute features retained.
+- Config: `experiments/configs/20260508_codex_iter59_weekday_time_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter59_weekday_time_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter59_weekday_time_catboost --config experiments/configs/20260508_codex_iter59_weekday_time_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter59_weekday_time_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17121192784720896`.
+- Utility before / after: `0.0751684810782789` / `0.07011404872991185`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5864493448386066`.
+- Accepted count before / after: `3245` / `3129`.
+- Coverage before / after: `0.4205546915500259` / `0.40552099533437014`.
+- Coverage constraint satisfied: yes.
+- Tests: `rtk python -m pytest -q tests/test_features.py tests/test_train_live_feature_parity_with_15m.py` passed.
+- Interpretation: weekday cyclic context is valid and modestly competitive, but it does not beat the current best; it mainly reduces coverage while only partially preserving accepted accuracy.
+- Next step: test a weekend flag as a simpler weekly regime feature.
