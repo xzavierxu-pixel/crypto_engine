@@ -68,8 +68,8 @@ class ThresholdSearchConfig:
 @dataclass(frozen=True)
 class ObjectiveConfig:
     label: str = "settlement_direction"
-    optimize_metric: str = "balanced_precision"
-    min_coverage: float = 0.60
+    optimize_metric: str = "selection_score"
+    min_coverage: float = 0.40
     tie_breaker_metric: str = "coverage"
     balanced_precision_tie_tolerance: float = 0.002
 

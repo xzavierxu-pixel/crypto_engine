@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from statistics import mean
 
 import numpy as np
@@ -235,14 +236,29 @@ def compute_selective_binary_metrics(
     precision_down = float((y.loc[down_mask] == 0).mean()) if down_count else 0.0
     hard_predictions = (p_up >= 0.5).astype(int)
     accepted_correct = ((decisions.loc[accepted] == "UP") == (y.loc[accepted] == 1)) if accepted_count else pd.Series(dtype="bool")
+    coverage = float(accepted_count / len(y)) if len(y) else 0.0
+    accepted_sample_accuracy = float(accepted_correct.mean()) if accepted_count else 0.0
+    utility = float(coverage * (2.0 * accepted_sample_accuracy - 1.0))
+    downside_risk = float(math.sqrt(max(coverage * (1.0 - accepted_sample_accuracy), 0.0)))
+    if downside_risk > 0.0:
+        selection_score = float(utility / downside_risk)
+    elif utility > 0.0:
+        selection_score = float("inf")
+    elif utility < 0.0:
+        selection_score = float("-inf")
+    else:
+        selection_score = 0.0
     metrics = {
         "sample_count": float(len(y)),
-        "coverage": float(accepted_count / len(y)) if len(y) else 0.0,
+        "coverage": coverage,
         "precision_up": precision_up,
         "precision_down": precision_down,
         "balanced_precision": float((precision_up + precision_down) / 2.0),
         "all_sample_accuracy": float(accuracy_score(y, hard_predictions)) if len(y) else 0.0,
-        "accepted_sample_accuracy": float(accepted_correct.mean()) if accepted_count else 0.0,
+        "accepted_sample_accuracy": accepted_sample_accuracy,
+        "utility": utility,
+        "downside_risk": downside_risk,
+        "selection_score": selection_score,
         "share_up_predictions": float(up_count / accepted_count) if accepted_count else 0.0,
         "share_down_predictions": float(down_count / accepted_count) if accepted_count else 0.0,
         "selected_t_up": float(t_up),
@@ -270,6 +286,7 @@ def search_selective_binary_thresholds(
     step: float,
     min_coverage: float,
     tie_tolerance: float,
+    optimize_metric: str = "balanced_precision",
     enforce_min_side_share: bool = False,
     min_side_share: float = 0.20,
     min_up_signals: int = 0,
@@ -278,6 +295,15 @@ def search_selective_binary_thresholds(
 ) -> tuple[float, float, pd.DataFrame, dict[str, float | bool | str | None]]:
     if step <= 0:
         raise ValueError("threshold search step must be > 0.")
+    metric_name = {
+        "score": "selection_score",
+        "threshold_score": "selection_score",
+        "threshold_selection_score": "selection_score",
+        "downside_adjusted_return": "selection_score",
+    }.get(optimize_metric, optimize_metric)
+    if metric_name not in {"balanced_precision", "selection_score"}:
+        raise ValueError(f"Unsupported selective binary threshold objective '{optimize_metric}'.")
+    uses_selection_score = metric_name == "selection_score"
     records: list[dict[str, float]] = []
     eligible: list[dict[str, float]] = []
     up_candidates = [round(float(value), 6) for value in np.arange(t_up_min, t_up_max + step / 2.0, step)]
@@ -294,14 +320,14 @@ def search_selective_binary_thresholds(
                 **metrics,
             }
             records.append(record)
-            side_share_ok = (
+            side_share_ok = uses_selection_score or (
                 not enforce_min_side_share
                 or (
                     record["share_up_predictions"] >= min_side_share
                     and record["share_down_predictions"] >= min_side_share
                 )
             )
-            signal_counts_ok = (
+            signal_counts_ok = uses_selection_score or (
                 record["up_prediction_count"] >= min_up_signals
                 and record["down_prediction_count"] >= min_down_signals
                 and record["accepted_count"] >= min_total_signals
@@ -312,18 +338,40 @@ def search_selective_binary_thresholds(
     if not records:
         raise ValueError("threshold search produced no candidates.")
     pool = eligible if eligible else records
-    best_precision = max(record["balanced_precision"] for record in pool)
-    tied = [
-        record
-        for record in pool
-        if record["balanced_precision"] >= best_precision - tie_tolerance
-    ]
-    best = max(tied, key=lambda record: (record["coverage"], record["balanced_precision"]))
+    best_metric = max(record[metric_name] for record in pool)
+    if uses_selection_score:
+        tied = [record for record in pool if record[metric_name] == best_metric]
+        best = max(
+            tied,
+            key=lambda record: (
+                record["selection_score"],
+                record["utility"],
+                record["coverage"],
+                record["accepted_count"],
+                record["accepted_sample_accuracy"],
+                -abs(record["t_up"] - 0.5) - abs(record["t_down"] - 0.5),
+            ),
+        )
+    else:
+        tied = [record for record in pool if record[metric_name] >= best_metric - tie_tolerance]
+        best = max(tied, key=lambda record: (record["coverage"], record["balanced_precision"]))
+    fallback_reason = None
+    if not eligible:
+        fallback_reason = (
+            "no threshold set satisfied coverage constraints"
+            if uses_selection_score
+            else "no threshold set satisfied coverage/side-share/signal-count constraints"
+        )
     best_summary: dict[str, float | bool | str | None] = {
         "constraint_satisfied": bool(eligible),
-        "fallback_reason": None if eligible else "no threshold set satisfied coverage/side-share/signal-count constraints",
+        "fallback_reason": fallback_reason,
+        "objective": metric_name,
         "t_up": float(best["t_up"]),
         "t_down": float(best["t_down"]),
+        "selection_score": float(best["selection_score"]),
+        "utility": float(best["utility"]),
+        "downside_risk": float(best["downside_risk"]),
+        "accepted_sample_accuracy": float(best["accepted_sample_accuracy"]),
         "balanced_precision": float(best["balanced_precision"]),
         "coverage": float(best["coverage"]),
         "precision_up": float(best["precision_up"]),

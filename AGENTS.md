@@ -21,28 +21,31 @@ Core architecture:
 Optimize:
 
 ```text
-balanced_precision = (precision_up + precision_down) / 2
+Score = Utility / Downside Risk
+      = coverage * (2 * accepted_sample_accuracy - 1)
+        / sqrt(coverage * (1 - accepted_sample_accuracy))
 ```
 
 Subject to:
 
 ```text
-signal_coverage >= 0.60
+coverage >= 0.40
 ```
 
 Where:
 
 ```text
-precision_up     = correct UP signals / all UP signals
-precision_down   = correct DOWN signals / all DOWN signals
-signal_coverage  = emitted_signal_count / total_available_samples
+coverage                 = accepted_count / total_available_samples
+accepted_sample_accuracy = correct accepted predictions / accepted_count
+Utility                  = coverage * (2 * accepted_sample_accuracy - 1)
+Downside Risk            = sqrt(coverage * (1 - accepted_sample_accuracy))
 ```
 
-AUC, logloss, Brier, F1, and generic accuracy are diagnostics only. Do not optimize primarily for them.
+YES/NO balance, AUC, logloss, Brier, F1, and generic accuracy are diagnostics only. Do not optimize primarily for them.
 
-Reject any result where coverage falls below 0.60, even if precision improves.
+Reject any result where coverage falls below 0.40, even if score improves.
 
-Reject any result where one side nearly disappears.
+YES/NO balance should be recorded for diagnosis, but it is not part of the objective.
 
 ---
 
@@ -68,6 +71,9 @@ down_prediction_count
 roc_auc
 brier_score
 log_loss
+utility
+downside_risk
+selection_score
 up_signal_count
 down_signal_count
 total_signal_count
@@ -96,7 +102,10 @@ Every experiment `report.json` must include top-level train and validation secti
     "down_prediction_count": 0.0,
     "roc_auc": 0.0,
     "brier_score": 0.0,
-    "log_loss": 0.0
+    "log_loss": 0.0,
+    "utility": 0.0,
+    "downside_risk": 0.0,
+    "selection_score": 0.0
   },
   "train_window": {
     "row_count": 0,
@@ -120,7 +129,10 @@ Every experiment `report.json` must include top-level train and validation secti
     "down_prediction_count": 0.0,
     "roc_auc": 0.0,
     "brier_score": 0.0,
-    "log_loss": 0.0
+    "log_loss": 0.0,
+    "utility": 0.0,
+    "downside_risk": 0.0,
+    "selection_score": 0.0
   },
   "validation_window": {
     "row_count": 0,
@@ -136,22 +148,20 @@ Minimum valid result:
 
 ```yaml
 objective:
-  min_coverage: 0.60
+  min_coverage: 0.40
 
 threshold_search:
-  min_up_signals: 50
-  min_down_signals: 50
-  min_total_signals: 150
+  hard_constraint: coverage_only
 ```
 
 Optimization ranking:
 
-1. validation balanced_precision with coverage >= objective.min_coverage
-2. balance between precision_up and precision_down
-3. signal_count and coverage
+1. validation selection_score with coverage >= objective.min_coverage
+2. positive utility and accepted_sample_accuracy > 0.50
+3. coverage and accepted_count
 4. stability across time splits
 5. leakage risk and implementation simplicity
-6. AUC / logloss / Brier as diagnostics only
+6. YES/NO balance, AUC / logloss / Brier as diagnostics only
 
 ---
 
@@ -253,32 +263,32 @@ If null, load thresholds from the artifact.
 
 ## Threshold tuning
 
-Threshold search must maximize balanced_precision subject to all validity constraints:
+Threshold search must maximize selection_score subject to the coverage constraint:
 
 ```text
-up_signal_count >= threshold_search.min_up_signals
-down_signal_count >= threshold_search.min_down_signals
-total_signal_count >= threshold_search.min_total_signals
-signal_coverage >= objective.min_coverage
+coverage >= objective.min_coverage
 ```
 
 For each candidate, report:
 
 ```text
-precision_up
-precision_down
-balanced_precision
-up_signal_count
-down_signal_count
-total_signal_count
-signal_coverage
+coverage
+accepted_sample_accuracy
+utility
+downside_risk
+selection_score
+accepted_count
+up_prediction_count
+down_prediction_count
+share_up_predictions
+share_down_predictions
 ```
 
 Tie-breakers:
 
-1. higher signal_coverage
-2. higher total_signal_count
-3. smaller precision_up / precision_down gap
+1. higher utility
+2. higher coverage
+3. higher accepted_count
 4. simpler thresholds
 5. better time-split stability
 
@@ -325,7 +335,7 @@ If a feature cannot be built online at decision time, it must not be used offlin
 
 Prefer these before adding complex models:
 
-- threshold tuning for balanced_precision with coverage >= 0.60
+- threshold tuning for selection_score with coverage >= 0.40
 - validation discipline
 - feature ablation
 - feature importance review
@@ -346,18 +356,18 @@ Before changing code, state:
 ```text
 metric being improved
 files affected
-reason it may improve balanced_precision
-how coverage >= 0.60 is preserved
+reason it may improve selection_score
+how coverage >= 0.40 is preserved
 tests or reports to verify it
 ```
 
 After changing code, report:
 
 ```text
-before / after balanced_precision
-before / after precision_up and precision_down
+before / after selection_score
+before / after utility and accepted_sample_accuracy
 before / after signal_count
-before / after signal_coverage
+before / after coverage
 coverage constraint satisfied: yes/no
 ```
 
@@ -414,8 +424,8 @@ Example:
 ```yaml
 objective:
   label: settlement_direction
-  optimize_metric: balanced_precision
-  min_coverage: 0.60
+  optimize_metric: selection_score
+  min_coverage: 0.40
   tie_breaker_metric: coverage
   balanced_precision_tie_tolerance: 0.002
 
@@ -460,9 +470,8 @@ Tests should cover:
 - offline-online feature consistency
 - threshold search
 - UP / DOWN / NO-SIGNAL decisions
-- balanced_precision and signal_coverage calculation
-- invalid result when coverage < 0.60
-- invalid result when one side has too few signals
+- selection_score, utility, downside_risk, and coverage calculation
+- invalid result when coverage < 0.40
 - artifact save/load and artifact thresholds
 - execution layer does not recompute features
 
@@ -492,9 +501,9 @@ A change is complete only when:
 1. offline and online logic remain consistent
 2. labels and features remain centralized
 3. thresholds come from config or artifact
-4. balanced_precision, precision_up, precision_down, signal counts, and coverage are reported
-5. signal_coverage >= 0.60
+4. selection_score, utility, accepted_sample_accuracy, signal counts, and coverage are reported
+5. coverage >= 0.40
 6. tests pass
 7. no leakage columns are used
 8. result is compared against the previous baseline
-9. Codex states whether balanced_precision truly improved under the coverage constraint
+9. Codex states whether selection_score truly improved under the coverage constraint

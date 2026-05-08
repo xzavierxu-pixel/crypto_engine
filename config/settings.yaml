@@ -9,8 +9,8 @@ market:
 
 objective:
   label: settlement_direction
-  optimize_metric: balanced_precision
-  min_coverage: 0.60
+  optimize_metric: selection_score
+  min_coverage: 0.40
   tie_breaker_metric: coverage
   balanced_precision_tie_tolerance: 0.002
 

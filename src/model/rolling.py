@@ -116,6 +116,9 @@ def summarize_binary_rolling_results(results: list[dict[str, Any]]) -> dict[str,
     frame = pd.DataFrame(results)
     metric_columns = [
         "balanced_precision",
+        "selection_score",
+        "utility",
+        "downside_risk",
         "coverage",
         "precision_up",
         "precision_down",
@@ -142,12 +145,13 @@ def summarize_binary_rolling_results(results: list[dict[str, Any]]) -> dict[str,
         )
         summaries.append(entry)
 
+    primary_metric = "selection_score" if "selection_score" in frame.columns else "balanced_precision"
     ranked = sorted(
         summaries,
         key=lambda item: (
-            item.get("balanced_precision_mean", float("-inf")),
+            item.get(f"{primary_metric}_mean", float("-inf")),
             item.get("coverage_mean", float("-inf")),
-            item.get("balanced_precision_min", float("-inf")),
+            item.get(f"{primary_metric}_min", float("-inf")),
         ),
         reverse=True,
     )

@@ -393,13 +393,13 @@ def main() -> None:
     }
     manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
     logging.info(
-        "Training finished: t_up=%.4f, t_down=%.4f, coverage=%.4f, balanced_precision=%.4f, precision_up=%.4f, precision_down=%.4f",
+        "Training finished: t_up=%.4f, t_down=%.4f, coverage=%.4f, selection_score=%.4f, utility=%.4f, accepted_accuracy=%.4f",
         artifacts.t_up,
         artifacts.t_down,
         artifacts.validation_metrics.get("coverage", 0.0),
-        artifacts.validation_metrics.get("balanced_precision", 0.0),
-        artifacts.validation_metrics.get("precision_up", 0.0),
-        artifacts.validation_metrics.get("precision_down", 0.0),
+        artifacts.validation_metrics.get("selection_score", 0.0),
+        artifacts.validation_metrics.get("utility", 0.0),
+        artifacts.validation_metrics.get("accepted_sample_accuracy", 0.0),
     )
 
 

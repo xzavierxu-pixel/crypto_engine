@@ -40,7 +40,7 @@ dataset:
   train_start: "2025-10-01"
   train_end: "2026-05-01 23:55:00"
   validation_window_days: 30
-  train_window_days: 60
+  train_window_days: 182
   strict_grid_only: true
   drop_incomplete_candles: true
   walk_forward:
@@ -69,7 +69,7 @@ threshold_search:
 
 validation:
   mode: chronological_validation
-  train_days: 60
+  train_days: 182
   validation_days: 30
   report_worst_fold: false
 
@@ -236,7 +236,7 @@ features:
       use_time_features: true
 
 derivatives:
-  enabled: false
+  enabled: true
   exchange: binance
   symbol_spot: BTC/USDT
   symbol_perp: BTC/USDT:USDT

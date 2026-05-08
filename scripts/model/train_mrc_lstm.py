@@ -307,6 +307,7 @@ def main() -> None:
         step=float(settings.threshold_search.step),
         min_coverage=float(settings.objective.min_coverage),
         tie_tolerance=float(settings.objective.balanced_precision_tie_tolerance),
+        optimize_metric=str(settings.objective.optimize_metric),
         enforce_min_side_share=bool(settings.threshold_search.enforce_min_side_share),
         min_side_share=float(settings.threshold_search.min_side_share),
         min_up_signals=int(settings.threshold_search.min_up_signals),

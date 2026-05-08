@@ -109,6 +109,9 @@ def _metric_dict(
         "roc_auc": metrics.get("roc_auc"),
         "brier_score": metrics["brier_score"],
         "log_loss": metrics["log_loss"],
+        "utility": metrics["utility"],
+        "downside_risk": metrics["downside_risk"],
+        "selection_score": metrics["selection_score"],
         "up_signal_count": int(metrics["up_prediction_count"]),
         "down_signal_count": int(metrics["down_prediction_count"]),
         "total_signal_count": int(metrics["accepted_count"]),
@@ -129,6 +132,14 @@ def _window_dict(split_info: dict[str, Any], split_name: str) -> dict[str, Any]:
 
 def _constraints_satisfied(metrics: Any, *, settings: Any) -> bool:
     threshold_cfg = settings.threshold_search
+    if str(settings.objective.optimize_metric) in {
+        "score",
+        "selection_score",
+        "threshold_score",
+        "threshold_selection_score",
+        "downside_adjusted_return",
+    }:
+        return metrics["coverage"] >= settings.objective.min_coverage
     return (
         metrics["up_prediction_count"] >= threshold_cfg.min_up_signals
         and metrics["down_prediction_count"] >= threshold_cfg.min_down_signals
@@ -153,6 +164,10 @@ def _search_thresholds(settings: Any, y_true: Any, proba: Any) -> tuple[dict[str
                 "precision_up": metrics["precision_up"],
                 "precision_down": metrics["precision_down"],
                 "balanced_precision": metrics["balanced_precision"],
+                "accepted_sample_accuracy": metrics["accepted_sample_accuracy"],
+                "utility": metrics["utility"],
+                "downside_risk": metrics["downside_risk"],
+                "selection_score": metrics["selection_score"],
                 "up_signal_count": int(metrics["up_prediction_count"]),
                 "down_signal_count": int(metrics["down_prediction_count"]),
                 "total_signal_count": int(metrics["accepted_count"]),
@@ -168,14 +183,21 @@ def _search_thresholds(settings: Any, y_true: Any, proba: Any) -> tuple[dict[str
     eligible = frontier[
         (frontier["constraints_satisfied"])
         & (frontier["objective_min_coverage_satisfied"])
-        & frontier["balanced_precision"].notna()
+        & frontier["selection_score"].notna()
     ].copy()
+    metric_name = "selection_score" if str(objective_cfg.optimize_metric) in {
+        "score",
+        "selection_score",
+        "threshold_score",
+        "threshold_selection_score",
+        "downside_adjusted_return",
+    } else "balanced_precision"
     if eligible.empty:
-        fallback = frontier[frontier["balanced_precision"].notna()].copy()
+        fallback = frontier[frontier[metric_name].notna()].copy()
         if fallback.empty:
-            raise ValueError("No threshold candidate produced a valid balanced_precision.")
+            raise ValueError(f"No threshold candidate produced a valid {metric_name}.")
         ranked = fallback.sort_values(
-            ["balanced_precision", "signal_coverage", "total_signal_count"],
+            [metric_name, "signal_coverage", "total_signal_count"],
             ascending=[False, False, False],
         )
         selected = ranked.iloc[0].to_dict()
@@ -185,18 +207,30 @@ def _search_thresholds(settings: Any, y_true: Any, proba: Any) -> tuple[dict[str
     eligible["threshold_distance_from_neutral"] = (
         (eligible["t_up"] - 0.5).abs() + (eligible["t_down"] - 0.5).abs()
     )
-    ranked = eligible.sort_values(
-        [
-            "balanced_precision",
-            "signal_coverage",
-            "total_signal_count",
-            "side_count_gap",
-            "threshold_distance_from_neutral",
-        ],
-        ascending=[False, False, False, True, True],
-    )
+    if metric_name == "selection_score":
+        ranked = eligible.sort_values(
+            [
+                "selection_score",
+                "utility",
+                "signal_coverage",
+                "total_signal_count",
+                "threshold_distance_from_neutral",
+            ],
+            ascending=[False, False, False, False, True],
+        )
+    else:
+        ranked = eligible.sort_values(
+            [
+                "balanced_precision",
+                "signal_coverage",
+                "total_signal_count",
+                "side_count_gap",
+                "threshold_distance_from_neutral",
+            ],
+            ascending=[False, False, False, True, True],
+        )
     selected = ranked.iloc[0].to_dict()
-    selected["selection_reason"] = "max_balanced_precision_with_required_constraints"
+    selected["selection_reason"] = f"max_{metric_name}_with_required_constraints"
     return selected, frontier
 
 
@@ -213,8 +247,10 @@ def _threshold_values(start: float, stop: float, step: float) -> list[float]:
 def _write_summary(path: Path, report: dict[str, Any]) -> None:
     metrics = report["metrics"]
     thresholds = report["thresholds"]
+    objective_settings = report.get("objective_settings", {})
+    primary_metric = str(objective_settings.get("optimize_metric", "selection_score"))
     lines = [
-        "# Balanced Precision Validation Experiment",
+        "# Threshold Selection Validation Experiment",
         "",
         f"- experiment_id: `{report['experiment_id']}`",
         f"- thresholds: `t_up={thresholds['t_up']:.4f}`, `t_down={thresholds['t_down']:.4f}`",
@@ -224,9 +260,9 @@ def _write_summary(path: Path, report: dict[str, Any]) -> None:
         f"- git_dirty: `{report['git']['dirty']}`",
         f"- config_path: `{report['config_copy']}`",
         f"- report_path: `{report['artifacts']['report']}`",
-        f"- primary_metric: `validation.balanced_precision={metrics['validation']['balanced_precision']:.6f}`",
+        f"- primary_metric: `validation.{primary_metric}={metrics['validation'].get(primary_metric, 0.0):.6f}`",
         f"- signal_coverage: `validation={metrics['validation']['signal_coverage']:.6f}`",
-        f"- coverage_constraint_satisfied: `{metrics['validation']['signal_coverage'] >= 0.60}`",
+        f"- coverage_constraint_satisfied: `{metrics['validation']['signal_coverage'] >= objective_settings.get('min_coverage', 0.40)}`",
         "",
         "## Metrics",
         "",
@@ -353,6 +389,17 @@ def main() -> int:
         "objective_settings": asdict(settings.objective),
         "threshold_search_settings": asdict(settings.threshold_search),
         "required_constraints": {
+            "hard_constraint": (
+                "coverage_only"
+                if settings.objective.optimize_metric in {
+                    "score",
+                    "selection_score",
+                    "threshold_score",
+                    "threshold_selection_score",
+                    "downside_adjusted_return",
+                }
+                else "coverage_side_share_signal_counts"
+            ),
             "min_up_signals": settings.threshold_search.min_up_signals,
             "min_down_signals": settings.threshold_search.min_down_signals,
             "min_total_signals": settings.threshold_search.min_total_signals,

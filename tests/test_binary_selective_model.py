@@ -27,6 +27,20 @@ def test_selective_binary_metrics_reports_prd_fields() -> None:
     assert metrics["balanced_precision"] == 1.0
     assert metrics["share_up_predictions"] == 0.5
     assert metrics["share_down_predictions"] == 0.5
+    assert metrics["utility"] == 0.4
+    assert metrics["downside_risk"] == 0.0
+    assert metrics["selection_score"] == float("inf")
+
+
+def test_selective_binary_metrics_reports_threshold_selection_objective() -> None:
+    y_true = pd.Series([1, 1, 0, 0, 1], dtype="int64")
+    probabilities = pd.Series([0.61, 0.39, 0.55, 0.45, 0.52], dtype="float64")
+    metrics = compute_selective_binary_metrics(y_true, probabilities, t_up=0.60, t_down=0.40)
+    assert metrics["coverage"] == 0.4
+    assert metrics["accepted_sample_accuracy"] == 0.5
+    assert metrics["utility"] == 0.0
+    assert round(metrics["downside_risk"], 6) == 0.447214
+    assert metrics["selection_score"] == 0.0
 
 
 def test_threshold_search_prefers_higher_coverage_inside_precision_tie() -> None:
@@ -86,6 +100,33 @@ def test_threshold_search_enforces_min_signal_counts() -> None:
     )
     assert impossible_best["constraint_satisfied"] is False
     assert "signal-count" in str(impossible_best["fallback_reason"])
+
+
+def test_threshold_search_selection_score_uses_coverage_as_only_hard_constraint() -> None:
+    y_true = pd.Series([1, 1, 0, 0], dtype="int64")
+    probabilities = pd.Series([0.61, 0.56, 0.39, 0.44], dtype="float64")
+    t_up, t_down, _, best = search_selective_binary_thresholds(
+        y_true,
+        probabilities,
+        t_up_min=0.55,
+        t_up_max=0.60,
+        t_down_min=0.40,
+        t_down_max=0.45,
+        step=0.05,
+        min_coverage=0.50,
+        tie_tolerance=0.002,
+        optimize_metric="selection_score",
+        enforce_min_side_share=True,
+        min_side_share=0.90,
+        min_up_signals=99,
+        min_down_signals=99,
+        min_total_signals=99,
+    )
+    assert t_up == 0.55
+    assert t_down == 0.45
+    assert best["objective"] == "selection_score"
+    assert best["constraint_satisfied"] is True
+    assert best["coverage"] == 1.0
 
 
 def test_recent_split_uses_30_day_train_and_30_day_validation_windows() -> None:
