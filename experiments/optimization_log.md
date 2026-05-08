@@ -56,3 +56,21 @@
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: aggressive top-gain filtering increased coverage but reduced accepted accuracy enough to lower selection_score; single-run gain is too lossy for this feature set.
 - Next step: try a less aggressive family-level data-processing change or tune model regularization on the full repaired split.
+
+## 20260508_codex_iter04_lgbm_regularized
+
+- Hypothesis: stronger LightGBM regularization on the full repaired split may reduce overfit and improve validation selection_score without dropping feature families.
+- Changed files: `experiments/configs/20260508_codex_iter04_lgbm_regularized.yaml`.
+- Config: `experiments/configs/20260508_codex_iter04_lgbm_regularized.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter01_htf_time --output-dir artifacts/data_v2/experiments/20260508_codex_iter04_lgbm_regularized --config experiments/configs/20260508_codex_iter04_lgbm_regularized.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter04_lgbm_regularized/metrics.json`.
+- Score before: `0.14804920471517846`.
+- Score after: `0.15440666188914284`.
+- Utility before / after: `0.06518921721099015` / `0.07698289269051319`.
+- Accepted accuracy before / after: `0.5719599427753934` / `0.5670428893905192`.
+- Accepted count before / after: `3495` / `4430`.
+- Coverage before / after: `0.45295489891135304` / `0.5741316744427164`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: regularization improved selection_score mainly by restoring accepted count and coverage while keeping accepted accuracy above 0.56; best repaired-split score so far, but still below the original cached baseline.
+- Next step: test sample weighting because current weights may be overemphasizing small return regimes after the HTF semantic change.
