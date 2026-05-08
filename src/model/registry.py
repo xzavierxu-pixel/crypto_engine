@@ -6,6 +6,7 @@ from src.model.catboost_ensemble_plugin import CatBoostSeedEnsemblePlugin
 from src.model.catboost_plugin import CatBoostClassifierPlugin
 from src.model.lightgbm_plugin import LightGBMClassifierPlugin
 from src.model.logistic_plugin import LogisticRegressionPlugin
+from src.model.xgboost_plugin import XGBoostClassifierPlugin
 
 
 MODEL_PLUGINS: dict[str, type[ModelPlugin]] = {
@@ -14,6 +15,7 @@ MODEL_PLUGINS: dict[str, type[ModelPlugin]] = {
     "lightgbm_stage2": LightGBMClassifierPlugin,
     "catboost": CatBoostClassifierPlugin,
     "catboost_ensemble": CatBoostSeedEnsemblePlugin,
+    "xgboost": XGBoostClassifierPlugin,
     "logistic": LogisticRegressionPlugin,
 }
 
