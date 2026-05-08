@@ -502,3 +502,22 @@ Recommended next work after this stop condition:
 - Tests: config/plugin smoke check passed with `XGBoostClassifierPlugin`; DQC ran during training.
 - Interpretation: this XGBoost baseline over-accepts and has materially weaker accepted accuracy than CatBoost.
 - Next step: keep CatBoost as the primary model and use XGBoost only if a later narrow tuning reason emerges.
+
+## 20260508_codex_iter26_top700_catboost
+
+- Hypothesis: a broader LightGBM-ranked top-700 subset, with HTF/time forced in, may recover useful weak features excluded from the best top-500 subset.
+- Changed files: `experiments/configs/20260508_codex_iter26_top700_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter26_top700_split`.
+- Config: `experiments/configs/20260508_codex_iter26_top700_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter26_top700_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter26_top700_catboost --config experiments/configs/20260508_codex_iter26_top700_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter26_top700_catboost/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.14928366702871515`.
+- Utility before / after: `0.07879730430274755` / `0.0684292379471229`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5700079625298495`.
+- Accepted count before / after: `4082` / `3768`.
+- Coverage before / after: `0.5290305857957491` / `0.48833592534992224`.
+- Coverage constraint satisfied: yes.
+- Feature count before / after: `518` / `710`.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: adding weaker LightGBM-ranked features hurts both accepted accuracy and score; top-500 remains the best feature-size anchor.
+- Next step: investigate targeted family removals rather than broad top-N expansion.
