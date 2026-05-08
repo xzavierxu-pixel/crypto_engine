@@ -322,3 +322,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: shift pruning increased coverage, accepted count, and utility, but reduced accepted accuracy enough to miss the best score by a small margin.
 - Next step: try a smaller shifted-feature drop set or tune CatBoost on this pruned split to recover accuracy.
+
+## 20260508_codex_iter16_drop_shifted10_catboost
+
+- Hypothesis: dropping only the top 10 shifted non-HTF/non-time features may preserve more accepted accuracy than the top-20 drop while still reducing temporal shift.
+- Changed files: `experiments/configs/20260508_codex_iter16_drop_shifted10_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter16_drop_shifted10_split`.
+- Config: `experiments/configs/20260508_codex_iter16_drop_shifted10_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter16_drop_shifted10_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter16_drop_shifted10_catboost --config experiments/configs/20260508_codex_iter16_drop_shifted10_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter16_drop_shifted10_catboost/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.15081018755574904`.
+- Utility before / after: `0.07879730430274755` / `0.0765593571809228`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5646142237223254`.
+- Accepted count before / after: `4082` / `4570`.
+- Coverage before / after: `0.5290305857957491` / `0.5922768273716952`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: dropping only the strongest shift drivers over-accepts lower-quality predictions; the top-20 drop was better balanced.
+- Next step: tune CatBoost regularization on the top-20 shifted-pruned split to recover accepted accuracy while keeping the utility gain.
