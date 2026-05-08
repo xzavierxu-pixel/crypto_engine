@@ -559,3 +559,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: removing the shifted VWAP features improves coverage and utility but hurts accepted accuracy; it is close but not better than the best score.
 - Next step: pair this surgical drop with a higher-accuracy CatBoost setting.
+
+## 20260508_codex_iter29_drop_sl_vwap_l2_12_catboost
+
+- Hypothesis: combining the surgical VWAP drop's higher coverage with the high-accuracy lower-L2 CatBoost setting may improve the score tradeoff.
+- Changed files: `experiments/configs/20260508_codex_iter29_drop_sl_vwap_l2_12_catboost.yaml`.
+- Config: `experiments/configs/20260508_codex_iter29_drop_sl_vwap_l2_12_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter28_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter29_drop_sl_vwap_l2_12_catboost --config experiments/configs/20260508_codex_iter29_drop_sl_vwap_l2_12_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter29_drop_sl_vwap_l2_12_catboost/metrics.json`.
+- Score before: `0.16356339207951035`.
+- Score after: `0.15438031097322155`.
+- Utility before / after: `0.08527734577501298` / `0.06350440642820009`.
+- Accepted accuracy before / after: `0.5680314465408805` / `0.5790254756126482`.
+- Accepted count before / after: `4836` / `3100`.
+- Coverage before / after: `0.6267496111975117` / `0.4017625712804562`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: the high-accuracy setting again collapses coverage too close to the floor; this combination is worse than both parents.
+- Next step: avoid low-L2 settings unless paired with a mechanism that preserves coverage.
