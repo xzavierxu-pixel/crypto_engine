@@ -110,3 +110,21 @@
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: intermediate complexity over-accepts lower-quality predictions; the useful direction is closer to stronger regularization and lower column sampling.
 - Next step: try a high-precision CatBoost variant with reduced depth and stronger regularization.
+
+## 20260508_codex_iter07_catboost_regularized
+
+- Hypothesis: reducing CatBoost depth and increasing L2 regularization may retain CatBoost's validation accepted accuracy while reducing the severe train/validation gap from the default CatBoost run.
+- Changed files: `experiments/configs/20260508_codex_iter07_catboost_regularized.yaml`.
+- Config: `experiments/configs/20260508_codex_iter07_catboost_regularized.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter01_htf_time --output-dir artifacts/data_v2/experiments/20260508_codex_iter07_catboost_regularized --config experiments/configs/20260508_codex_iter07_catboost_regularized.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter07_catboost_regularized/metrics.json`.
+- Score before: `0.1539530578291256`.
+- Score after: `0.15779432383682843`.
+- Utility before / after: `0.06389320891653702` / `0.07153965785381029`.
+- Accepted accuracy before / after: `0.5782291336083782` / `0.5741138560687433`.
+- Accepted count before / after: `3151` / `3724`.
+- Coverage before / after: `0.4083722135821669` / `0.48263348885432866`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: regularized CatBoost is the best repaired-split run so far, improving score by increasing accepted count while keeping accepted accuracy above 0.574.
+- Next step: run a neighboring CatBoost configuration with slightly higher depth or lower L2 to see if score can clear the original cached baseline.
