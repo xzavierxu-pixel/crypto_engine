@@ -1050,3 +1050,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: aggressive null-importance pruning again increased coverage but reduced accepted accuracy. The null model is over-penalizing features that CatBoost uses for selective confidence.
 - Next step: evaluate a smaller bottom-tail null-importance removal instead of the 80-feature drop.
+
+## 20260508_codex_iter54_null_tail20_catboost
+
+- Skill used: `tabular-null-importance-feature-selection`.
+- Hypothesis: dropping only the weakest 20 unprotected null-importance features may remove noise without damaging CatBoost's selective confidence separation.
+- Changed files: `experiments/configs/20260508_codex_iter54_null_tail20_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter54_null_tail20_split`.
+- Feature set: 496 selected features, down from 516; HTF/time features retained.
+- Config: `experiments/configs/20260508_codex_iter54_null_tail20_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter54_null_tail20_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter54_null_tail20_catboost --config experiments/configs/20260508_codex_iter54_null_tail20_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter54_null_tail20_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16545486377312257`.
+- Utility before / after: `0.0751684810782789` / `0.06765163297045106`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5841392649903289`.
+- Accepted count before / after: `3245` / `3102`.
+- Coverage before / after: `0.4205546915500259` / `0.4020217729393468`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: even a small null-importance tail cut reduces the objective. Feature pruning has repeatedly reduced validation confidence quality.
+- Next step: try a model-training ensemble variant based on rank averaging, using the best feature/data split unchanged.
