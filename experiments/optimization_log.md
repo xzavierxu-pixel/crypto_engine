@@ -74,3 +74,21 @@
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: regularization improved selection_score mainly by restoring accepted count and coverage while keeping accepted accuracy above 0.56; best repaired-split score so far, but still below the original cached baseline.
 - Next step: test sample weighting because current weights may be overemphasizing small return regimes after the HTF semantic change.
+
+## 20260508_codex_iter05_lgbm_regularized_unweighted
+
+- Hypothesis: disabling abs-return sample weights may improve validation selection_score if the weighting scheme overfits return magnitude after the HTF semantic change.
+- Changed files: `experiments/configs/20260508_codex_iter05_lgbm_regularized_unweighted.yaml`.
+- Config: `experiments/configs/20260508_codex_iter05_lgbm_regularized_unweighted.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter01_htf_time --output-dir artifacts/data_v2/experiments/20260508_codex_iter05_lgbm_regularized_unweighted --config experiments/configs/20260508_codex_iter05_lgbm_regularized_unweighted.yaml --horizon 5m --train-window-days 183 --validation-window-days 30 --unweighted`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter05_lgbm_regularized_unweighted/metrics.json`.
+- Score before: `0.15440666188914284`.
+- Score after: `0.15152842409805947`.
+- Utility before / after: `0.07698289269051319` / `0.07840850181441164`.
+- Accepted accuracy before / after: `0.5670428893905192` / `0.5638589824783619`.
+- Accepted count before / after: `4430` / `4737`.
+- Coverage before / after: `0.5741316744427164` / `0.6139191290824261`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: unweighted training increases accepted count and coverage, but accepted accuracy drops enough to reduce selection_score; keep weighted training for now.
+- Next step: tune weighted LightGBM around the regularized configuration, especially depth, leaves, and column sampling.
