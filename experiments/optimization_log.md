@@ -284,3 +284,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: top-400 remains too narrow; accuracy is slightly higher than the best run, but accepted count and coverage collapse.
 - Next step: return to the top-500 split and tune CatBoost regularization/capacity for coverage retention.
+
+## 20260508_codex_iter14_multiscale_catboost
+
+- Hypothesis: adding leakage-safe multi-scale rolling return, absolute move, variation, positive-share, range, and close-position features may give CatBoost a cleaner short/medium-term context without changing HTF/time semantics.
+- Changed files: `src/core/config.py`; `src/features/multi_scale_rolling.py`; `src/features/registry.py`; `experiments/configs/20260508_codex_iter14_multiscale_catboost.yaml`.
+- Config: `experiments/configs/20260508_codex_iter14_multiscale_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --input artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet --output-dir artifacts/data_v2/experiments/20260508_codex_iter14_multiscale_catboost --config experiments/configs/20260508_codex_iter14_multiscale_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter14_multiscale_catboost/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.15826411642324503`.
+- Utility before / after: `0.07879730430274755` / `0.0740020736132711`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5723700887198986`.
+- Accepted count before / after: `4082` / `3945`.
+- Coverage before / after: `0.5290305857957491` / `0.5112752721617418`.
+- Coverage constraint satisfied: yes.
+- Tests: `rtk python -m pytest -q tests/test_features.py tests/test_train_live_feature_parity_with_15m.py` passed.
+- Interpretation: the feature pack is valid but does not improve the objective; it slightly weakens both accepted accuracy and coverage versus the best top-500 CatBoost run.
+- Next step: avoid more broad feature additions and use diagnostics/selection or model training changes on the existing best feature subset.

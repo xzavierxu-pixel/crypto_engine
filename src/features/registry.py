@@ -16,6 +16,7 @@ from src.features.lagged import LaggedFeaturePack
 from src.features.market_quality import MarketQualityFeaturePack
 from src.features.momentum import MomentumFeaturePack
 from src.features.momentum_acceleration import MomentumAccelerationFeaturePack
+from src.features.multi_scale_rolling import MultiScaleRollingFeaturePack
 from src.features.path_structure import PathStructureFeaturePack
 from src.features.prd_microstructure import (
     BookPressureFeaturePack,
@@ -35,6 +36,7 @@ from src.features.volatility import VolatilityFeaturePack
 FEATURE_PACKS: dict[str, FeaturePack] = {
     "momentum": MomentumFeaturePack(),
     "momentum_acceleration": MomentumAccelerationFeaturePack(),
+    "multi_scale_rolling": MultiScaleRollingFeaturePack(),
     "volatility": VolatilityFeaturePack(),
     "path_structure": PathStructureFeaturePack(),
     "regime": RegimeFeaturePack(),

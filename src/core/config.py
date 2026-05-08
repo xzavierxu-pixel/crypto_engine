@@ -122,6 +122,7 @@ class FeatureProfileConfig:
     market_quality_windows: list[int] = field(default_factory=list)
     slope_windows: list[int] = field(default_factory=list)
     range_windows: list[int] = field(default_factory=list)
+    multi_scale_windows: list[int] = field(default_factory=list)
     htf_context_timeframes: list[int] = field(default_factory=list)
     htf_context_vol_window: int = 5
     htf_context_range_window: int = 5
