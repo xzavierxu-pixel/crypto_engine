@@ -885,3 +885,22 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: dropping only `sl_vwap_30s` is better than no drop, but dropping both VWAP features remains best.
 - Next step: test dropping only `sl_vwap_10s`.
+
+## 20260508_codex_iter47_train75_drop_sl_vwap10_stronger_catboost
+
+- Hypothesis: dropping only `sl_vwap_10s` may isolate the useful part of the two-feature VWAP drop.
+- Changed files: `experiments/configs/20260508_codex_iter47_train75_drop_sl_vwap10_stronger_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter47_train75_drop_sl_vwap10_split`.
+- Config: `experiments/configs/20260508_codex_iter47_train75_drop_sl_vwap10_stronger_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter47_train75_drop_sl_vwap10_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter47_train75_drop_sl_vwap10_stronger_catboost --config experiments/configs/20260508_codex_iter47_train75_drop_sl_vwap10_stronger_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter47_train75_drop_sl_vwap10_stronger_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1658763696132359`.
+- Utility before / after: `0.0751684810782789` / `0.07050285121824782`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5816353887399464`.
+- Accepted count before / after: `3245` / `3326`.
+- Coverage before / after: `0.4205546915500259` / `0.43105339554173147`.
+- Coverage constraint satisfied: yes.
+- Feature count before / after: `516` / `517`.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: dropping only `sl_vwap_10s` is worse than dropping both or only `sl_vwap_30s`; the best remains dropping both.
+- Next step: test whether adding one more shifted feature drop helps the best two-VWAP-drop setup.
