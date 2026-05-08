@@ -430,3 +430,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: this setting restores coverage too aggressively and loses too much accepted accuracy.
 - Next step: test a narrower feature subset around the current best rather than further smoothing/regularization.
+
+## 20260508_codex_iter22_top500_catboost_unweighted
+
+- Hypothesis: disabling abs-return sample weights for CatBoost may improve probability ranking if the current weights overfit return magnitude.
+- Changed files: `experiments/configs/20260508_codex_iter22_top500_catboost_unweighted.yaml`.
+- Config: `experiments/configs/20260508_codex_iter22_top500_catboost_unweighted.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter09_top500_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter22_top500_catboost_unweighted --config experiments/configs/20260508_codex_iter22_top500_catboost_unweighted.yaml --horizon 5m --train-window-days 183 --validation-window-days 30 --unweighted`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter22_top500_catboost_unweighted/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.14850907805746492`.
+- Utility before / after: `0.07879730430274755` / `0.08009331259720064`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5605214152700186`.
+- Accepted count before / after: `4082` / `5102`.
+- Coverage before / after: `0.5290305857957491` / `0.6612244686365992`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: unweighted CatBoost over-accepts and loses too much accepted accuracy; weighted training remains preferred.
+- Next step: adjust sample-weight shape rather than turning weights off entirely.
