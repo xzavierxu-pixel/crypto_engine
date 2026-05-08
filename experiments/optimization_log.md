@@ -376,3 +376,21 @@ Recommended next work after this stop condition:
 - Tests: config/plugin smoke check passed with `CatBoostSeedEnsemblePlugin [42, 43, 44]`; DQC ran during training.
 - Interpretation: seed averaging smooths probabilities and increases accepted count/utility, but it reduces accepted accuracy too much for `selection_score`.
 - Next step: test single-model CatBoost settings that are less smoothing-heavy and target higher accepted accuracy at moderate coverage.
+
+## 20260508_codex_iter19_top500_catboost_bernoulli
+
+- Hypothesis: CatBoost Bernoulli row sampling may reduce temporal overfit on the top-500 split and improve accepted accuracy without feature changes.
+- Changed files: `experiments/configs/20260508_codex_iter19_top500_catboost_bernoulli.yaml`.
+- Config: `experiments/configs/20260508_codex_iter19_top500_catboost_bernoulli.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter09_top500_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter19_top500_catboost_bernoulli --config experiments/configs/20260508_codex_iter19_top500_catboost_bernoulli.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter19_top500_catboost_bernoulli/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.1527359111423785`.
+- Utility before / after: `0.07879730430274755` / `0.06441109383100054`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5766387889435337`.
+- Accepted count before / after: `4082` / `3243`.
+- Coverage before / after: `0.5290305857957491` / `0.42029549092794194`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: row sampling increased accepted accuracy slightly but lost too much coverage and utility.
+- Next step: avoid Bernoulli sampling and test smaller changes around learning rate/depth/L2.
