@@ -29,7 +29,9 @@ def test_feature_builder_uses_only_information_before_t0() -> None:
 
     assert math.isclose(row["ret_1"], expected_ret_1, rel_tol=1e-9)
     assert not math.isclose(row["ret_1"], current_bar_ret_1, rel_tol=1e-9)
-    assert row["minute_bucket"] == 5.0
+    assert math.isclose(row["minute_sin"], math.sin(2 * math.pi * 5 / 60.0), rel_tol=1e-9)
+    assert math.isclose(row["minute_cos"], math.cos(2 * math.pi * 5 / 60.0), rel_tol=1e-9)
+    assert "minute_bucket" not in feature_frame.columns
     assert "rv_3" in feature_frame.columns
     assert "range_5" in feature_frame.columns
     assert "regime_vol_ratio" in feature_frame.columns
@@ -53,4 +55,4 @@ def test_feature_builder_uses_only_information_before_t0() -> None:
     assert "momentum_reversal" in feature_frame.columns
     assert "last_1m_up" in feature_frame.columns
     assert "up_ratio_5" in feature_frame.columns
-    assert feature_frame["feature_version"].eq("v5").all()
+    assert feature_frame["feature_version"].eq("v6").all()

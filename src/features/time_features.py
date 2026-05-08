@@ -25,5 +25,7 @@ class TimeFeaturePack(FeaturePack):
         hour = ts.dt.hour + ts.dt.minute / 60.0
         features["hour_sin"] = np.sin(2 * np.pi * hour / 24.0)
         features["hour_cos"] = np.cos(2 * np.pi * hour / 24.0)
-        features["minute_bucket"] = ts.dt.minute.astype("float64")
+        minute = ts.dt.minute.astype("float64")
+        features["minute_sin"] = np.sin(2 * np.pi * minute / 60.0)
+        features["minute_cos"] = np.cos(2 * np.pi * minute / 60.0)
         return features

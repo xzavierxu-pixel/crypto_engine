@@ -8,7 +8,7 @@ from src.core.config import load_settings
 from src.features.builder import build_feature_frame
 
 
-def test_htf_context_uses_last_completed_higher_timeframe_candle() -> None:
+def test_htf_context_uses_trailing_bars_ending_before_t0() -> None:
     settings = load_settings()
     frame = pd.DataFrame(
         {
@@ -22,11 +22,11 @@ def test_htf_context_uses_last_completed_higher_timeframe_candle() -> None:
     )
 
     features = build_feature_frame(frame, settings, horizon_name="5m", select_grid_only=False)
-    row = features.loc[features["timestamp"] == pd.Timestamp("2024-01-01T12:15:00Z")].iloc[0]
+    row = features.loc[features["timestamp"] == pd.Timestamp("2024-01-01T12:20:00Z")].iloc[0]
 
-    expected_htf_ret_5m = (114 / 109) - 1
-    current_incomplete_5m_ret = (119 / 114) - 1
+    expected_htf_ret_15m = (119 / 104) - 1
+    current_bar_inclusive_ret = (120 / 105) - 1
 
-    assert math.isclose(row["htf_ret_5m_1"], expected_htf_ret_5m, rel_tol=1e-9)
-    assert not math.isclose(row["htf_ret_5m_1"], current_incomplete_5m_ret, rel_tol=1e-9)
+    assert math.isclose(row["htf_ret_15m_1"], expected_htf_ret_15m, rel_tol=1e-9)
+    assert not math.isclose(row["htf_ret_15m_1"], current_bar_inclusive_ret, rel_tol=1e-9)
     assert "htf_regime_trend_strength_15m" in features.columns
