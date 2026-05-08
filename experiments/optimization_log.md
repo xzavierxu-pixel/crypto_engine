@@ -811,3 +811,22 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: this intermediate pair loses accepted accuracy and coverage versus iteration 37.
 - Next step: combine the best 75-day regularized model with the surgical VWAP feature drop.
+
+## 20260508_codex_iter43_train75_drop_sl_vwap_stronger_catboost
+
+- Hypothesis: the surgical `sl_vwap_10s`/`sl_vwap_30s` drop may improve temporal stability when paired with the best recent-window regularized CatBoost setup.
+- Changed files: `experiments/configs/20260508_codex_iter43_train75_drop_sl_vwap_stronger_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Config: `experiments/configs/20260508_codex_iter43_train75_drop_sl_vwap_stronger_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_stronger_catboost --config experiments/configs/20260508_codex_iter43_train75_drop_sl_vwap_stronger_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_stronger_catboost/metrics.json`.
+- Score before: `0.17464090309426274`.
+- Score after: `0.1809240380968129`.
+- Utility before / after: `0.07439087610160703` / `0.0751684810782789`.
+- Accepted accuracy before / after: `0.5850148367952522` / `0.5893814907872698`.
+- Accepted count before / after: `3370` / `3245`.
+- Coverage before / after: `0.43675505443234836` / `0.4205546915500259`.
+- Coverage constraint satisfied: yes.
+- Feature count before / after: `518` / `516`.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: this is the new best score. Dropping the two shifted VWAP features improves accepted accuracy enough to offset lower coverage.
+- Next step: tune coverage/accuracy around this best combined setup.
