@@ -340,3 +340,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: dropping only the strongest shift drivers over-accepts lower-quality predictions; the top-20 drop was better balanced.
 - Next step: tune CatBoost regularization on the top-20 shifted-pruned split to recover accepted accuracy while keeping the utility gain.
+
+## 20260508_codex_iter17_drop_shifted20_stronger_catboost
+
+- Hypothesis: stronger CatBoost regularization on the top-20 shifted-pruned split may recover accepted accuracy while keeping the higher coverage/utility from shift pruning.
+- Changed files: `experiments/configs/20260508_codex_iter17_drop_shifted20_stronger_catboost.yaml`.
+- Config: `experiments/configs/20260508_codex_iter17_drop_shifted20_stronger_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter15_drop_shifted20_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter17_drop_shifted20_stronger_catboost --config experiments/configs/20260508_codex_iter17_drop_shifted20_stronger_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter17_drop_shifted20_stronger_catboost/metrics.json`.
+- Score before: `0.16543238270404207`.
+- Score after: `0.1573470734005547`.
+- Utility before / after: `0.08035251425505443` / `0.08001036806635562`.
+- Accepted accuracy before / after: `0.5727272727272728` / `0.5670526726368251`.
+- Accepted count before / after: `4268` / `4603`.
+- Coverage before / after: `0.5523597719025402` / `0.5965536547433904`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: this regularization setting further increased coverage but reduced accepted accuracy too much; it does not solve the pruned split's score tradeoff.
+- Next step: return to the original top-500 split and test training-stability changes.
