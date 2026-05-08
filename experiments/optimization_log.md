@@ -941,3 +941,48 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: seed 43 improves coverage/utility but loses too much accepted accuracy; seed 42 remains best.
 - Next step: test another seed once, then stop at the 50-iteration condition if the target is not reached.
+
+## 20260508_codex_iter50_best_seed44_catboost
+
+- Hypothesis: another neighboring CatBoost seed may improve the current best seed-42 result.
+- Changed files: `experiments/configs/20260508_codex_iter50_best_seed44_catboost.yaml`.
+- Config: `experiments/configs/20260508_codex_iter50_best_seed44_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter50_best_seed44_catboost --config experiments/configs/20260508_codex_iter50_best_seed44_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter50_best_seed44_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16811928538055864`.
+- Utility before / after: `0.0751684810782789` / `0.0705028512182478`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5834615384615385`.
+- Accepted count before / after: `3245` / `3250`.
+- Coverage before / after: `0.4205546915500259` / `0.4212026967330223`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: seed 44 is below the best seed-42 result. Seed 42 remains the final best run.
+- Next step: stop under the requested 50-iteration limit and summarize bottlenecks.
+
+## Extended stop-condition summary
+
+- Requested target: validation `selection_score >= 0.24` with `coverage >= 0.40`.
+- Stopping condition reached: 50 completed iterations without reaching target.
+- Best completed run: `20260508_codex_iter43_train75_drop_sl_vwap_stronger_catboost`.
+- Best validation score: `0.1809240380968129`.
+- Best validation utility: `0.0751684810782789`.
+- Best accepted accuracy: `0.5893814907872698`.
+- Best accepted count: `3245`.
+- Best coverage: `0.4205546915500259`.
+- Best config: `experiments/configs/20260508_codex_iter43_train75_drop_sl_vwap_stronger_catboost.yaml`.
+- Best report: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_stronger_catboost/metrics.json`.
+- Best commit: `44ab69c`.
+- Improvement versus official rerun baseline score `0.15945443699911072`: `+0.02146960109770218`.
+- Improvement versus previous best before extension `0.1660762617203513`: `+0.0148477763764616`.
+- Coverage constraint: satisfied by the best run and by all logged accepted-result runs in the extended cycle.
+- Threshold policy: no threshold-range or manual-threshold optimization was used as an optimization lever; runs used the official training/evaluation threshold search and reported selected thresholds.
+- HTF/time requirement: retained throughout; all generated feature subsets forced HTF/time columns or started from subsets that already retained them.
+
+Main bottlenecks:
+
+- The target score likely requires accepted accuracy around or above ~0.60 at coverage near 0.42-0.50, or a meaningful coverage increase while preserving the best run's `0.589` accepted accuracy. The best run improved accuracy but remains below that level.
+- Recent-window training is the most useful data-processing change found. The best window was 75 days; 60, 70, 80, 85, 90, and 120 day variants were worse for the best feature/model combinations.
+- Surgical removal of `sl_vwap_10s` and `sl_vwap_30s` helped only when combined with the 75-day regularized CatBoost setup. Broader adversarial pruning, interaction removal, and top-N changes reduced score.
+- CatBoost remains the best model family. XGBoost, LightGBM variants, and CatBoost seed averaging either over-accepted lower-quality predictions or collapsed coverage.
+- Stronger CatBoost regularization helped in the 75-day window, but nearby L2 and learning-rate variants did not improve the score.
