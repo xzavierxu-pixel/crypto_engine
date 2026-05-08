@@ -1007,3 +1007,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: conservative near-duplicate pruning increased coverage but reduced accepted accuracy enough to lower the objective. The removed redundancy appears to have included useful confidence-separation signal for CatBoost.
 - Next step: try a recency-weighted cached split that keeps more history than the 75-day best run while emphasizing the recent regime.
+
+## 20260508_codex_iter52_recency_decay_fullhist_catboost
+
+- Hypothesis: using the full VWAP-pruned top-500 development history with exponential recency-decayed sample weights may combine the 75-day model's recent-regime advantage with additional older examples for coverage.
+- Changed files: `experiments/configs/20260508_codex_iter52_recency_decay_fullhist_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter52_recency_decay_fullhist_split`.
+- Data processing: multiplied existing `stage1_sample_weight` by `0.20 + 0.80 * exp(-age_days / 45)`.
+- Feature set: VWAP-pruned top-500 feature set; HTF/time features retained.
+- Config: `experiments/configs/20260508_codex_iter52_recency_decay_fullhist_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter52_recency_decay_fullhist_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter52_recency_decay_fullhist_catboost --config experiments/configs/20260508_codex_iter52_recency_decay_fullhist_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter52_recency_decay_fullhist_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1675144439455203`.
+- Utility before / after: `0.0751684810782789` / `0.06920684292379468`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.584280303030303`.
+- Accepted count before / after: `3245` / `3168`.
+- Coverage before / after: `0.4205546915500259` / `0.4105754276827372`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: soft full-history recency weighting did not beat a hard 75-day window. Older regimes remain a net drag even with substantial downweighting.
+- Next step: run null-importance feature selection on the current best 75-day VWAP-pruned split, protecting HTF and time features.
