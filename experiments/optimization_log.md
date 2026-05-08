@@ -92,3 +92,21 @@
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: unweighted training increases accepted count and coverage, but accepted accuracy drops enough to reduce selection_score; keep weighted training for now.
 - Next step: tune weighted LightGBM around the regularized configuration, especially depth, leaves, and column sampling.
+
+## 20260508_codex_iter06_lgbm_mid_regularized
+
+- Hypothesis: an intermediate LightGBM configuration between the original and strongly regularized setup may recover accepted accuracy while maintaining enough coverage.
+- Changed files: `experiments/configs/20260508_codex_iter06_lgbm_mid_regularized.yaml`.
+- Config: `experiments/configs/20260508_codex_iter06_lgbm_mid_regularized.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter01_htf_time --output-dir artifacts/data_v2/experiments/20260508_codex_iter06_lgbm_mid_regularized --config experiments/configs/20260508_codex_iter06_lgbm_mid_regularized.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter06_lgbm_mid_regularized/metrics.json`.
+- Score before: `0.15440666188914284`.
+- Score after: `0.14327132997552222`.
+- Utility before / after: `0.07698289269051319` / `0.07840850181441154`.
+- Accepted accuracy before / after: `0.5670428893905192` / `0.5578725846565907`.
+- Accepted count before / after: `4430` / `5227`.
+- Coverage before / after: `0.5741316744427164` / `0.6774235355106273`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: intermediate complexity over-accepts lower-quality predictions; the useful direction is closer to stronger regularization and lower column sampling.
+- Next step: try a high-precision CatBoost variant with reduced depth and stronger regularization.
