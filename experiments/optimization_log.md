@@ -466,3 +466,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: stronger weighting improves accepted accuracy but loses too much coverage and utility.
 - Next step: test a milder sample-weight adjustment if revisiting weights; otherwise keep the original weighting.
+
+## 20260508_codex_iter24_top500_catboost_mild_weights
+
+- Hypothesis: a milder sample-weight adjustment may retain more coverage than iteration 23 while improving accepted accuracy over the original weights.
+- Changed files: `experiments/configs/20260508_codex_iter24_top500_catboost_mild_weights.yaml`; regenerated weighted split `artifacts/data_v2/experiments/20260508_codex_iter24_top500_mild_weights_split`.
+- Config: `experiments/configs/20260508_codex_iter24_top500_catboost_mild_weights.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter24_top500_mild_weights_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter24_top500_catboost_mild_weights --config experiments/configs/20260508_codex_iter24_top500_catboost_mild_weights.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter24_top500_catboost_mild_weights/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.15516344073503724`.
+- Utility before / after: `0.07879730430274755` / `0.06635562467651632`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5768175582990398`.
+- Accepted count before / after: `4082` / `3332`.
+- Coverage before / after: `0.5290305857957491` / `0.43182996371176775`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: even mild stronger weighting loses too much coverage; keep the original sample-weight shape.
+- Next step: stop changing weights and investigate alternative feature subsets/model families.
