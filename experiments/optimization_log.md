@@ -830,3 +830,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: this is the new best score. Dropping the two shifted VWAP features improves accepted accuracy enough to offset lower coverage.
 - Next step: tune coverage/accuracy around this best combined setup.
+
+## 20260508_codex_iter44_train70_drop_sl_vwap_stronger_catboost
+
+- Hypothesis: a 70-day recent window with the best VWAP-drop/regularized CatBoost setup may improve coverage or accuracy around the 75-day optimum.
+- Changed files: `experiments/configs/20260508_codex_iter44_train70_drop_sl_vwap_stronger_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter44_train70_drop_sl_vwap_split`.
+- Config: `experiments/configs/20260508_codex_iter44_train70_drop_sl_vwap_stronger_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter44_train70_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter44_train70_drop_sl_vwap_stronger_catboost --config experiments/configs/20260508_codex_iter44_train70_drop_sl_vwap_stronger_catboost.yaml --horizon 5m --train-window-days 70 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter44_train70_drop_sl_vwap_stronger_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16678035266271873`.
+- Utility before / after: `0.0751684810782789` / `0.06842923794712289`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5844765342960282`.
+- Accepted count before / after: `3245` / `3125`.
+- Coverage before / after: `0.4205546915500259` / `0.4050025920165889`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: 70 days is too close to the coverage floor and scores below the 75-day best.
+- Next step: test 78 or 90 days with the VWAP-drop/regularized setup.
