@@ -685,3 +685,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: 85 days is weaker than both 75 and 90 days; 75 days remains the best.
 - Next step: combine the 75-day window with CatBoost hyperparameter variants.
+
+## 20260508_codex_iter36_train75_l2_12_catboost
+
+- Hypothesis: the high-accuracy lower-L2 CatBoost setting may work better with the best 75-day recent training window.
+- Changed files: `experiments/configs/20260508_codex_iter36_train75_l2_12_catboost.yaml`.
+- Config: `experiments/configs/20260508_codex_iter36_train75_l2_12_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter33_top500_train75_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter36_train75_l2_12_catboost --config experiments/configs/20260508_codex_iter36_train75_l2_12_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter36_train75_l2_12_catboost/metrics.json`.
+- Score before: `0.17101863059180616`.
+- Score after: `0.14477851012860884`.
+- Utility before / after: `0.07490927941938828` / `0.0777604976671851`.
+- Accepted accuracy before / after: `0.5816145766416624` / `0.5590294966571156`.
+- Accepted count before / after: `3541` / `5083`.
+- Coverage before / after: `0.4589165370658372` / `0.6586314152410576`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: lower regularization over-accepts badly on the 75-day split and loses accepted accuracy.
+- Next step: test a more regularized 75-day CatBoost variant.
