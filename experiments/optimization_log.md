@@ -775,3 +775,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: lower learning rate loses coverage and does not improve score.
 - Next step: test a slightly higher learning rate/fewer iterations around the best.
+
+## 20260508_codex_iter41_train75_lr002_iter800_depth5_catboost
+
+- Hypothesis: higher learning rate with fewer iterations may sharpen CatBoost probabilities on the best 75-day setup.
+- Changed files: `experiments/configs/20260508_codex_iter41_train75_lr002_iter800_depth5_catboost.yaml`.
+- Config: `experiments/configs/20260508_codex_iter41_train75_lr002_iter800_depth5_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter33_top500_train75_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter41_train75_lr002_iter800_depth5_catboost --config experiments/configs/20260508_codex_iter41_train75_lr002_iter800_depth5_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter41_train75_lr002_iter800_depth5_catboost/metrics.json`.
+- Score before: `0.17464090309426274`.
+- Score after: `0.1722299384791155`.
+- Utility before / after: `0.07439087610160703` / `0.0710212545355106`.
+- Accepted accuracy before / after: `0.5850148367952522` / `0.5863749605806246`.
+- Accepted count before / after: `3370` / `3168`.
+- Coverage before / after: `0.43675505443234836` / `0.41057542768273715`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: this setting has higher accepted accuracy but too little coverage; the best remains iteration 37.
+- Next step: test an intermediate learning-rate/iteration pair.
