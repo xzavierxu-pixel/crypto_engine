@@ -165,3 +165,21 @@
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: this is the best run so far and beats the original cached baseline; the improvement comes from higher accepted count at roughly the same accepted accuracy.
 - Next step: tune CatBoost regularization on the top-500 split to try to increase accepted accuracy without losing coverage.
+
+## 20260508_codex_iter10_top500_catboost_stronger_reg
+
+- Hypothesis: stronger CatBoost regularization on the top-500 split may push accepted accuracy toward 0.59 while preserving coverage above 0.40.
+- Changed files: `experiments/configs/20260508_codex_iter10_top500_catboost_stronger_reg.yaml`.
+- Config: `experiments/configs/20260508_codex_iter10_top500_catboost_stronger_reg.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter09_top500_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter10_top500_catboost_stronger_reg --config experiments/configs/20260508_codex_iter10_top500_catboost_stronger_reg.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter10_top500_catboost_stronger_reg/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.15995031563702308`.
+- Utility before / after: `0.07879730430274755` / `0.06700362882322443`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5801550387596899`.
+- Accepted count before / after: `4082` / `3225`.
+- Coverage before / after: `0.5290305857957491` / `0.4179626749611198`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: stronger regularization raises accepted accuracy but loses too much coverage and utility; iteration 9 remains the best result.
+- Next step: stop under the 10-iteration stopping condition and summarize bottlenecks before further changes.
