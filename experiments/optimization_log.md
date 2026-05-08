@@ -19,3 +19,21 @@
 - Tests: `rtk python -m pytest -q tests/test_htf_context.py tests/test_features.py tests/test_train_live_feature_parity_with_15m.py` passed.
 - Interpretation: the logic fix is valid and leakage-safe, but reduced validation selection_score under the current LightGBM setup, mostly through lower accepted count and coverage.
 - Next step: run a feature availability/nullness and model-input audit on the rebuilt split, then target feature selection or model settings rather than further threshold changes.
+
+## 20260508_codex_iter02_catboost_default
+
+- Hypothesis: CatBoost default settings may handle the repaired HTF/time feature distribution better than the current LightGBM baseline.
+- Changed files: `experiments/configs/20260508_codex_iter02_catboost_default.yaml`.
+- Config: `experiments/configs/20260508_codex_iter02_catboost_default.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter01_htf_time --output-dir artifacts/data_v2/experiments/20260508_codex_iter02_catboost_default --config experiments/configs/20260508_codex_iter02_catboost_default.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter02_catboost_default/metrics.json`.
+- Score before: `0.14804920471517846`.
+- Score after: `0.1539530578291256`.
+- Utility before / after: `0.06518921721099015` / `0.06389320891653702`.
+- Accepted accuracy before / after: `0.5719599427753934` / `0.5782291336083782`.
+- Accepted count before / after: `3495` / `3151`.
+- Coverage before / after: `0.45295489891135304` / `0.4083722135821669`.
+- Coverage constraint satisfied: yes.
+- Tests: reused `20260508_codex_iter01_htf_time` cached split; no code changes in this iteration.
+- Interpretation: CatBoost improves accepted accuracy and selection_score over the repaired LightGBM run, but coverage is close to the 0.40 floor and score remains below the original cached baseline.
+- Next step: reduce noisy/redundant model inputs while retaining HTF/time features, then compare LightGBM and CatBoost on the same repaired split.
