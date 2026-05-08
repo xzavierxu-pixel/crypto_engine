@@ -246,3 +246,22 @@ Recommended next work after this stop condition:
 - Tests: `rtk python -m pytest -q tests/test_model_pipeline.py::test_train_model_pipeline_and_roundtrip` still fails because the current project config filters the unit-test fixture dates out of the training frame; this matches the pre-existing full-suite failure class from the previous run.
 - Interpretation: score is unchanged, as expected, but `feature_importance.csv` is now populated for CatBoost. Top features include `sl_agg_buy_trade_cluster_score_1s`, `htf_range_pos_15m`, `htf_close_z_15m_lag3`, `sl_taker_count_imbalance_5s`, and `htf_close_z_15m`, supporting the requirement to retain HTF/time and second-level context.
 - Next step: build a CatBoost-importance feature subset from iteration 11, forcing HTF/time features to remain, and evaluate top-N variants.
+
+## 20260508_codex_iter12_cb_top300_catboost
+
+- Hypothesis: a CatBoost-ranked top-300 subset, with all HTF/time features forced in, may remove weak/noisy features better than the earlier LightGBM-ranked top-250 subset.
+- Changed files: `experiments/configs/20260508_codex_iter12_cb_top300_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter12_cb_top300_split`.
+- Config: `experiments/configs/20260508_codex_iter12_cb_top300_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter12_cb_top300_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter12_cb_top300_catboost --config experiments/configs/20260508_codex_iter12_cb_top300_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter12_cb_top300_catboost/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.15375940258602763`.
+- Utility before / after: `0.07879730430274755` / `0.06544841886988073`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5764919721296576`.
+- Accepted count before / after: `4082` / `3301`.
+- Coverage before / after: `0.5290305857957491` / `0.4278123379989632`.
+- Coverage constraint satisfied: yes.
+- Feature count before / after: `518` / `315`.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: accepted accuracy improved modestly, but the narrower subset lost too much coverage and utility. CatBoost ranking is useful, but top-300 is too aggressive for this objective.
+- Next step: evaluate a less aggressive CatBoost-ranked top-400 subset with HTF/time forced in.
