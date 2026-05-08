@@ -521,3 +521,22 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: adding weaker LightGBM-ranked features hurts both accepted accuracy and score; top-500 remains the best feature-size anchor.
 - Next step: investigate targeted family removals rather than broad top-N expansion.
+
+## 20260508_codex_iter27_drop_interactions_catboost
+
+- Hypothesis: generated interaction-bank columns may overfit temporal quirks; dropping them from the top-500 subset may improve accepted accuracy while retaining HTF/time and core features.
+- Changed files: `experiments/configs/20260508_codex_iter27_drop_interactions_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter27_drop_interactions_split`.
+- Config: `experiments/configs/20260508_codex_iter27_drop_interactions_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter27_drop_interactions_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter27_drop_interactions_catboost --config experiments/configs/20260508_codex_iter27_drop_interactions_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter27_drop_interactions_catboost/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.15467651929973518`.
+- Utility before / after: `0.07879730430274755` / `0.06621772939346815`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.576497005988024`.
+- Accepted count before / after: `4082` / `3340`.
+- Coverage before / after: `0.5290305857957491` / `0.4328667703473302`.
+- Coverage constraint satisfied: yes.
+- Feature count before / after: `518` / `407`.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: interactions likely add noise, but dropping them removes too much coverage; keep them in the current best subset.
+- Next step: try narrower family-level drops among shifted second-level features instead.
