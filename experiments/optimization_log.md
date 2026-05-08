@@ -986,3 +986,24 @@ Main bottlenecks:
 - Surgical removal of `sl_vwap_10s` and `sl_vwap_30s` helped only when combined with the 75-day regularized CatBoost setup. Broader adversarial pruning, interaction removal, and top-N changes reduced score.
 - CatBoost remains the best model family. XGBoost, LightGBM variants, and CatBoost seed averaging either over-accepted lower-quality predictions or collapsed coverage.
 - Stronger CatBoost regularization helped in the 75-day window, but nearby L2 and learning-rate variants did not improve the score.
+
+## 20260508_codex_iter51_collinear_pruned_catboost
+
+- Skill used: `tabular-collinear-feature-removal`.
+- Hypothesis: removing only near-duplicate features (`abs(corr) >= 0.995`) while protecting HTF and cyclical time features may reduce redundant split noise and improve validation `selection_score`.
+- Changed files: `experiments/configs/20260508_codex_iter51_collinear_pruned_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter51_collinear_pruned_split`.
+- Feature set: 505 selected features, down from 516; HTF/time features retained.
+- Config: `experiments/configs/20260508_codex_iter51_collinear_pruned_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter51_collinear_pruned_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter51_collinear_pruned_catboost --config experiments/configs/20260508_codex_iter51_collinear_pruned_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter51_collinear_pruned_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16250720004851474`.
+- Utility before / after: `0.0751684810782789` / `0.0725764644893727`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5769653655854865`.
+- Accepted count before / after: `3245` / `3638`.
+- Coverage before / after: `0.4205546915500259` / `0.4714878175220321`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: conservative near-duplicate pruning increased coverage but reduced accepted accuracy enough to lower the objective. The removed redundancy appears to have included useful confidence-separation signal for CatBoost.
+- Next step: try a recency-weighted cached split that keeps more history than the 75-day best run while emphasizing the recent regime.
