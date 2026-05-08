@@ -394,3 +394,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: row sampling increased accepted accuracy slightly but lost too much coverage and utility.
 - Next step: avoid Bernoulli sampling and test smaller changes around learning rate/depth/L2.
+
+## 20260508_codex_iter20_top500_catboost_l2_12_rs_05
+
+- Hypothesis: slightly lower CatBoost L2 and random strength may increase accepted accuracy without the larger coverage loss seen from depth increases.
+- Changed files: `experiments/configs/20260508_codex_iter20_top500_catboost_l2_12_rs_05.yaml`.
+- Config: `experiments/configs/20260508_codex_iter20_top500_catboost_l2_12_rs_05.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter09_top500_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter20_top500_catboost_l2_12_rs_05 --config experiments/configs/20260508_codex_iter20_top500_catboost_l2_12_rs_05.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter20_top500_catboost_l2_12_rs_05/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.1621357461619461`.
+- Utility before / after: `0.07879730430274755` / `0.06743131156039416`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5815556954396483`.
+- Accepted count before / after: `4082` / `3188`.
+- Coverage before / after: `0.5290305857957491` / `0.41316744427164336`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: this setting gives the highest accepted accuracy so far, but coverage is too low to beat the best score.
+- Next step: interpolate between this high-accuracy setting and the best coverage setting.
