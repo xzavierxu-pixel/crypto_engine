@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from src.core.config import Settings
 from src.model.base import ModelPlugin
+from src.model.catboost_ensemble_plugin import CatBoostSeedEnsemblePlugin
 from src.model.catboost_plugin import CatBoostClassifierPlugin
 from src.model.lightgbm_plugin import LightGBMClassifierPlugin
 from src.model.logistic_plugin import LogisticRegressionPlugin
@@ -12,6 +13,7 @@ MODEL_PLUGINS: dict[str, type[ModelPlugin]] = {
     "lightgbm_stage1": LightGBMClassifierPlugin,
     "lightgbm_stage2": LightGBMClassifierPlugin,
     "catboost": CatBoostClassifierPlugin,
+    "catboost_ensemble": CatBoostSeedEnsemblePlugin,
     "logistic": LogisticRegressionPlugin,
 }
 

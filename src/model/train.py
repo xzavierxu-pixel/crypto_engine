@@ -468,8 +468,9 @@ def _build_feature_importance(model: ModelPlugin, feature_columns: list[str]) ->
                 "split": booster.feature_importance(importance_type="split"),
             }
         ).sort_values(["gain", "split"], ascending=False).reset_index(drop=True)
-    if wrapped_model is not None and hasattr(wrapped_model, "get_feature_importance"):
-        importance = wrapped_model.get_feature_importance()
+    importance_source = wrapped_model if wrapped_model is not None else model
+    if hasattr(importance_source, "get_feature_importance"):
+        importance = importance_source.get_feature_importance()
         if len(importance) == len(feature_columns):
             return pd.DataFrame(
                 {
