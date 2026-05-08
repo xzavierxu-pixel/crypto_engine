@@ -649,3 +649,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: this is the new best score by a small margin. The useful training window is around 75-90 recent days.
 - Next step: test 80-day and 85-day windows.
+
+## 20260508_codex_iter34_top500_train80_catboost
+
+- Hypothesis: an 80-day recent training window may refine the best 75-90 day recency range.
+- Changed files: `experiments/configs/20260508_codex_iter34_top500_train80_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter34_top500_train80_split`.
+- Config: `experiments/configs/20260508_codex_iter34_top500_train80_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter34_top500_train80_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter34_top500_train80_catboost --config experiments/configs/20260508_codex_iter34_top500_train80_catboost.yaml --horizon 5m --train-window-days 80 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter34_top500_train80_catboost/metrics.json`.
+- Score before: `0.17101863059180616`.
+- Score after: `0.1480181947347743`.
+- Utility before / after: `0.07490927941938828` / `0.07309486780715302`.
+- Accepted accuracy before / after: `0.5816145766416624` / `0.5651596121883656`.
+- Accepted count before / after: `3541` / `4328`.
+- Coverage before / after: `0.4589165370658372` / `0.560912389839294`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: the 80-day window over-accepts and loses too much accepted accuracy; window effects are not monotonic.
+- Next step: test 85 days and keep 75 days as current best.
