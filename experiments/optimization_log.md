@@ -703,3 +703,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: lower regularization over-accepts badly on the 75-day split and loses accepted accuracy.
 - Next step: test a more regularized 75-day CatBoost variant.
+
+## 20260508_codex_iter37_train75_stronger_catboost
+
+- Hypothesis: stronger CatBoost regularization on the best 75-day window may raise accepted accuracy while keeping coverage above the 0.40 floor.
+- Changed files: `experiments/configs/20260508_codex_iter37_train75_stronger_catboost.yaml`.
+- Config: `experiments/configs/20260508_codex_iter37_train75_stronger_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter33_top500_train75_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter37_train75_stronger_catboost --config experiments/configs/20260508_codex_iter37_train75_stronger_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter37_train75_stronger_catboost/metrics.json`.
+- Score before: `0.17101863059180616`.
+- Score after: `0.17464090309426274`.
+- Utility before / after: `0.07490927941938828` / `0.07439087610160703`.
+- Accepted accuracy before / after: `0.5816145766416624` / `0.5850148367952522`.
+- Accepted count before / after: `3541` / `3370`.
+- Coverage before / after: `0.4589165370658372` / `0.43675505443234836`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: this is the new best score. The stronger model sacrifices some coverage but improves accepted accuracy enough to win.
+- Next step: tune around this regularized 75-day setting.
