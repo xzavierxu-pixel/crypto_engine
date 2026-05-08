@@ -265,3 +265,22 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: accepted accuracy improved modestly, but the narrower subset lost too much coverage and utility. CatBoost ranking is useful, but top-300 is too aggressive for this objective.
 - Next step: evaluate a less aggressive CatBoost-ranked top-400 subset with HTF/time forced in.
+
+## 20260508_codex_iter13_cb_top400_catboost
+
+- Hypothesis: a CatBoost-ranked top-400 subset may preserve more coverage than top-300 while still dropping the lowest-ranked noisy columns.
+- Changed files: `experiments/configs/20260508_codex_iter13_cb_top400_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter13_cb_top400_split`.
+- Config: `experiments/configs/20260508_codex_iter13_cb_top400_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter13_cb_top400_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter13_cb_top400_catboost --config experiments/configs/20260508_codex_iter13_cb_top400_catboost.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter13_cb_top400_catboost/metrics.json`.
+- Score before: `0.1660762617203513`.
+- Score after: `0.15259826085449175`.
+- Utility before / after: `0.07879730430274755` / `0.06505961638154481`.
+- Accepted accuracy before / after: `0.5744732974032337` / `0.5758700906344411`.
+- Accepted count before / after: `4082` / `3308`.
+- Coverage before / after: `0.5290305857957491` / `0.42871954380508034`.
+- Coverage constraint satisfied: yes.
+- Feature count before / after: `518` / `409`.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: top-400 remains too narrow; accuracy is slightly higher than the best run, but accepted count and coverage collapse.
+- Next step: return to the top-500 split and tune CatBoost regularization/capacity for coverage retention.
