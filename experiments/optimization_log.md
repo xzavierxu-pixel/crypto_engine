@@ -613,3 +613,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: 120 days does not recover enough coverage and scores below 90 days.
 - Next step: test a shorter 60-day recent training window.
+
+## 20260508_codex_iter32_top500_train60_catboost
+
+- Hypothesis: a 60-day recent training window may further reduce temporal shift versus validation.
+- Changed files: `experiments/configs/20260508_codex_iter32_top500_train60_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter32_top500_train60_split`.
+- Config: `experiments/configs/20260508_codex_iter32_top500_train60_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter32_top500_train60_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter32_top500_train60_catboost --config experiments/configs/20260508_codex_iter32_top500_train60_catboost.yaml --horizon 5m --train-window-days 60 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter32_top500_train60_catboost/metrics.json`.
+- Score before: `0.17068437537379072`.
+- Score after: `0.15493733317107526`.
+- Utility before / after: `0.07465007776049767` / `0.06609642301710731`.
+- Accepted accuracy before / after: `0.5816742209631728` / `0.5767550567737166`.
+- Accepted count before / after: `3527` / `3327`.
+- Coverage before / after: `0.45710212545360395` / `0.43118299637117675`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: 60 days is too little training data for this feature/model setup; it lowers both coverage and score.
+- Next step: bracket the current best with 75-day and 105-day windows.
