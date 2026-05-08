@@ -31,4 +31,5 @@ class TimeFeaturePack(FeaturePack):
         weekday = ts.dt.dayofweek.astype("float64")
         features["weekday_sin"] = np.sin(2 * np.pi * weekday / 7.0)
         features["weekday_cos"] = np.cos(2 * np.pi * weekday / 7.0)
+        features["is_weekend"] = (weekday >= 5).astype("float64")
         return features
