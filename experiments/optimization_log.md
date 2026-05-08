@@ -866,3 +866,22 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: 90 days recovers coverage but loses the high accepted accuracy that made iteration 43 best.
 - Next step: keep 75 days as best and tune feature drops/model regularization around it.
+
+## 20260508_codex_iter46_train75_drop_sl_vwap30_stronger_catboost
+
+- Hypothesis: dropping only `sl_vwap_30s` may retain more coverage than dropping both shifted VWAP features while removing the worst adversarial-shift feature.
+- Changed files: `experiments/configs/20260508_codex_iter46_train75_drop_sl_vwap30_stronger_catboost.yaml`; generated split `artifacts/data_v2/experiments/20260508_codex_iter46_train75_drop_sl_vwap30_split`.
+- Config: `experiments/configs/20260508_codex_iter46_train75_drop_sl_vwap30_stronger_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter46_train75_drop_sl_vwap30_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter46_train75_drop_sl_vwap30_stronger_catboost --config experiments/configs/20260508_codex_iter46_train75_drop_sl_vwap30_stronger_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter46_train75_drop_sl_vwap30_stronger_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17589539124508847`.
+- Utility before / after: `0.0751684810782789` / `0.0751684810782789`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5853372434017596`.
+- Accepted count before / after: `3245` / `3394`.
+- Coverage before / after: `0.4205546915500259` / `0.4398652151373769`.
+- Coverage constraint satisfied: yes.
+- Feature count before / after: `516` / `517`.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: dropping only `sl_vwap_30s` is better than no drop, but dropping both VWAP features remains best.
+- Next step: test dropping only `sl_vwap_10s`.
