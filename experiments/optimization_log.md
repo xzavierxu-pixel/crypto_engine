@@ -923,3 +923,21 @@ Recommended next work after this stop condition:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: the third drop removes useful signal; the best feature-pruned set remains the two VWAP columns only.
 - Next step: test seed sensitivity on the current best.
+
+## 20260508_codex_iter49_best_seed43_catboost
+
+- Hypothesis: the current best setup may be seed-sensitive; a neighboring CatBoost seed could improve selection_score.
+- Changed files: `experiments/configs/20260508_codex_iter49_best_seed43_catboost.yaml`.
+- Config: `experiments/configs/20260508_codex_iter49_best_seed43_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260508_codex_iter49_best_seed43_catboost --config experiments/configs/20260508_codex_iter49_best_seed43_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260508_codex_iter49_best_seed43_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1750182045063192`.
+- Utility before / after: `0.0751684810782789` / `0.08035251425505444`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5800232288037166`.
+- Accepted count before / after: `3245` / `3874`.
+- Coverage before / after: `0.4205546915500259` / `0.5020736132711259`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: seed 43 improves coverage/utility but loses too much accepted accuracy; seed 42 remains best.
+- Next step: test another seed once, then stop at the 50-iteration condition if the target is not reached.
