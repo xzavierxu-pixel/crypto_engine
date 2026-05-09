@@ -1647,3 +1647,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: unweighted training over-accepts lower-quality predictions. The existing weight ramp is important for accepted accuracy.
 - Next step: test a milder weight ramp rather than removing weights completely.
+
+## 20260509_codex_iter82_softened_weights_catboost
+
+- Skill used: `tabular-balanced-log-loss` / data-weighting guidance.
+- Hypothesis: partially softening the existing sample-weight ramp may retain useful abs-return emphasis while reducing overfit from low-weight samples.
+- Changed files: `experiments/configs/20260509_codex_iter82_softened_weights_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter82_softened_weights_split`.
+- Data processing: replaced development weight `w` with `0.5 * w + 0.5`; validation unchanged.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter82_softened_weights_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter82_softened_weights_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter82_softened_weights_catboost --config experiments/configs/20260509_codex_iter82_softened_weights_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter82_softened_weights_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16213329573999713`.
+- Utility before / after: `0.0751684810782789` / `0.06726283048211511`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.581732283464567`.
+- Accepted count before / after: `3245` / `3175`.
+- Coverage before / after: `0.4205546915500259` / `0.41148263348885433`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: softening the weights loses accepted-set quality. The original stronger weight ramp remains best.
+- Next step: keep the original sample weights for subsequent CatBoost experiments.
