@@ -5041,6 +5041,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.45619491964748576`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; interaction transform summary saved at `artifacts/data_v2/experiments/20260509_codex_iter231_htf_time_interactions_split/interaction_summary.json`.
-- Git commit: `pending`.
+- Git commit: `1874d9f`.
 - Interpretation: the interactions make the model accept many more samples but lower accepted accuracy, so they are harmful for selection_score. Keep base HTF/time features but not this interaction pack.
 - Next step: avoid broad added-feature packs on the current split; return to model calibration/blend variants that preserve the best accepted boundary.
