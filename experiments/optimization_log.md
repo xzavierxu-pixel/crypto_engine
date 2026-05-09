@@ -4512,6 +4512,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4048729911871436`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `f5db3b6`.
 - Interpretation: higher CatBoost weight in rank blending still trails the logit-blend reference. Do not pursue rank blend further now.
 - Next step: return to the logit-blend reference.
