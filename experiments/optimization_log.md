@@ -7053,6 +7053,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4153706583722136`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `f03ae00`.
 - Interpretation: the 72-day filtered window also lowers accepted accuracy. Keep the 75-day current best window.
 - Next step: stop nearby train-window sweeps unless combined with a different weighting scheme.
