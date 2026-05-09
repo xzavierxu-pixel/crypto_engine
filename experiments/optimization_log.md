@@ -3065,3 +3065,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: `C: 0.3` raises utility/coverage slightly but loses enough accepted accuracy to trail the best score.
 - Next step: keep `C: 0.25`; optionally check the stronger side once.
+
+## 20260509_codex_iter146_blend99_platt_logit_c020
+
+- Skill used: `tabular-logit-transform-stacking`.
+- Hypothesis: stronger logit-calibrator regularization (`C: 0.2`) may improve accepted accuracy for the 99/1 blend near the coverage boundary.
+- Changed files: `experiments/configs/20260509_codex_iter146_blend99_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.99`, plus `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter146_blend99_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter146_blend99_platt_logit_c020 --config experiments/configs/20260509_codex_iter146_blend99_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter146_blend99_platt_logit_c020/metrics.json`.
+- Score before: `0.18511956039735958`.
+- Score after: `0.1842071111539714`.
+- Utility before / after: `0.0754276827371695` / `0.0749092794193883`.
+- Accepted accuracy before / after: `0.5925572519083969` / `0.592332268370607`.
+- Accepted count before / after: `3144` / `3130`.
+- Coverage before / after: `0.40746500777604977` / `0.40565059616381544`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: `C: 0.2` also trails `C: 0.25`; stop the local blend-calibration sweep.
+- Next step: keep iteration 142 as best.
