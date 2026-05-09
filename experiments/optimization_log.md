@@ -1754,3 +1754,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: bottom-10 pruning preserves accepted accuracy but gives up too much coverage/utility. Bottom-20 remains the better pruning variant, but still trails the best.
 - Next step: test an intermediate bottom-15 prune.
+
+## 20260509_codex_iter87_drop_bottom15_importance_catboost
+
+- Skill used: `tabular-recursive-feature-elimination` as conservative importance-tail pruning.
+- Hypothesis: dropping the bottom 15 unprotected CatBoost-importance features may balance the higher utility of bottom-20 pruning with the better accuracy retention of bottom-10 pruning.
+- Changed files: `experiments/configs/20260509_codex_iter87_drop_bottom15_importance_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter87_drop_bottom15_importance_split`.
+- Feature set: 501 selected features, down from 516; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter87_drop_bottom15_importance_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter87_drop_bottom15_importance_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter87_drop_bottom15_importance_catboost --config experiments/configs/20260509_codex_iter87_drop_bottom15_importance_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter87_drop_bottom15_importance_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17087458305233366`.
+- Utility before / after: `0.0751684810782789` / `0.0724468636599274`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5838583858385838`.
+- Accepted count before / after: `3245` / `3333`.
+- Coverage before / after: `0.4205546915500259` / `0.43195956454121304`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: bottom-15 pruning is worse than both the bottom-20 near-miss and the best benchmark. Importance-tail pruning does not beat iteration 43.
+- Next step: keep bottom-20 as a useful near-miss but continue with other approaches.
