@@ -2742,3 +2742,27 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: seed43 plus Platt increases coverage and utility but drops accepted accuracy too far. Seed42 Platt `C: 0.25` remains best.
 - Next step: do not pursue seed43 as a calibrated single-model replacement.
+
+## 20260509_codex_iter132_catboost_platt_logit_c025
+
+- Skill used: `tabular-logit-transform-stacking`, applied as a single-model logit-space Platt calibrator.
+- Hypothesis: fitting the calibration logistic regression on `logit(p_up)` instead of raw `p_up` should better preserve odds-space separation and may improve selective accepted accuracy near the coverage boundary.
+- Changed files: `src/calibration/platt_logit.py`, `src/calibration/registry.py`, `experiments/configs/20260509_codex_iter132_catboost_platt_logit_c025.yaml`, `experiments/optimization_log.md`.
+- Code change: added `platt_logit` calibration plugin; existing `platt` behavior unchanged for reproducibility.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: platt_logit`, `C: 0.25`, `max_iter: 1000`.
+- Config: `experiments/configs/20260509_codex_iter132_catboost_platt_logit_c025.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter132_catboost_platt_logit_c025 --config experiments/configs/20260509_codex_iter132_catboost_platt_logit_c025.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter132_catboost_platt_logit_c025/metrics.json`.
+- Score before: `0.18462759471376494`.
+- Score after: `0.1846861980124185`.
+- Utility before / after: `0.07516848107827886` / `0.07477967858994294`.
+- Accepted accuracy before / after: `0.5924155513065646` / `0.592854843900869`.
+- Accepted count before / after: `3138` / `3107`.
+- Coverage before / after: `0.40668740279937793` / `0.40266977708657337`.
+- Coverage constraint satisfied: yes.
+- Tests: `rtk python -m py_compile src\calibration\platt_logit.py src\calibration\registry.py`; DQC ran during training; calibration was fit only on development predictions.
+- Git commit: `f5cecee`.
+- Interpretation: logit-space calibration is a tiny but valid new best under the coverage constraint by improving accepted accuracy while staying above `coverage >= 0.40`.
+- Next step: use this as the new calibration benchmark and test nearby regularization or data/model changes against it.

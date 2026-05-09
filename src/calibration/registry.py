@@ -4,6 +4,7 @@ from src.calibration.base import CalibrationPlugin
 from src.calibration.isotonic import IsotonicCalibration
 from src.calibration.none import NoCalibration
 from src.calibration.platt import PlattScalingCalibration
+from src.calibration.platt_logit import PlattLogitCalibration
 from src.calibration.temperature import TemperatureScalingCalibration
 from src.core.config import Settings
 
@@ -12,6 +13,7 @@ CALIBRATION_PLUGINS: dict[str, type[CalibrationPlugin]] = {
     "none": NoCalibration,
     "isotonic": IsotonicCalibration,
     "platt": PlattScalingCalibration,
+    "platt_logit": PlattLogitCalibration,
     "temperature": TemperatureScalingCalibration,
 }
 
