@@ -4834,6 +4834,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4406428201140487`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `3652a00`.
 - Interpretation: CatBoost class balancing expands coverage and hurts accepted accuracy. Keep unweighted CatBoost training.
 - Next step: avoid class-balanced CatBoost on this branch.
