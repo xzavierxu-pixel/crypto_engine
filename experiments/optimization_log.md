@@ -6701,3 +6701,26 @@ Main bottlenecks:
 - Git commit: `8938847`.
 - Interpretation: lower CatBoost L2 broadens acceptance and reduces accepted accuracy. Keep `l2_leaf_reg: 30.0`.
 - Next step: if probing CatBoost regularization further, use stronger rather than weaker constraints or switch to another regularization dimension.
+
+## 20260509_codex_iter304_blend9770_cat_bagtemp025_platt_logit_c020
+
+- Skill used: model regularization probe.
+- Hypothesis: lowering CatBoost `bagging_temperature` may reduce sampling noise and improve accepted precision without changing data or thresholds.
+- Changed files: `experiments/configs/20260509_codex_iter304_blend9770_cat_bagtemp025_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, active nested CatBoost `bagging_temperature: 0.25`, nested DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter304_blend9770_cat_bagtemp025_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter304_blend9770_cat_bagtemp025_platt_logit_c020 --config experiments/configs/20260509_codex_iter304_blend9770_cat_bagtemp025_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter304_blend9770_cat_bagtemp025_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.19027803605274402`.
+- Utility before / after: `0.07698289269051321` / `0.07698289269051321`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5951923076923077`.
+- Accepted count before / after: `3120` / `3120`.
+- Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: the lower bagging temperature is an exact tie with the current best under the official evaluator. Treat as neutral, not an improvement.
+- Next step: do not spend more iterations on bagging temperature unless changing bootstrap type or seed ensemble.
