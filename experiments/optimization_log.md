@@ -5985,6 +5985,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.45204769310523585`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `fde54ed`.
 - Interpretation: deeper CatBoost also broadens accepted predictions and lowers accepted accuracy. Keep `depth: 5`.
 - Next step: avoid CatBoost depth changes around this blend; focus on feature/data diagnostics or a different model family knob.
