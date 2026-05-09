@@ -6889,3 +6889,27 @@ Main bottlenecks:
 - Git commit: `95062df`.
 - Interpretation: rolling HTF volatility normalization lowers accepted accuracy and selection_score. Do not keep these added features.
 - Next step: stop HTF volatility variants unless paired with a narrower model-side selection mechanism.
+
+## 20260509_codex_iter312_top12_new_nonvwap_nonhtf30_current_blend
+
+- Skill used: `tabular-null-importance-feature-selection`.
+- Hypothesis: the broad 1751-feature rebuild can be used as a discovery pass; adding only the top new non-VWAP, non-30m-HTF features may recover useful online-safe flow/path signals without broad overfit.
+- Changed files: `experiments/configs/20260509_codex_iter312_top12_new_nonvwap_nonhtf30_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter312_top12_new_nonvwap_nonhtf30_split`.
+- Feature set: 528 features; current best 516 features plus 12 selected new second-level/lag features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter312_top12_new_nonvwap_nonhtf30_split/top12_new_feature_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter312_top12_new_nonvwap_nonhtf30_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter312_top12_new_nonvwap_nonhtf30_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter312_top12_new_nonvwap_nonhtf30_current_blend --config experiments/configs/20260509_codex_iter312_top12_new_nonvwap_nonhtf30_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter312_top12_new_nonvwap_nonhtf30_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1736640931057337`.
+- Utility before / after: `0.07698289269051321` / `0.07231726283048212`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5862708719851577`.
+- Accepted count before / after: `3120` / `3234`.
+- Coverage before / after: `0.40435458786936235` / `0.4191290824261275`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary reports zero missing added values.
+- Git commit: `pending`.
+- Interpretation: selective expansion with top new non-VWAP/non-30m features still lowers accepted accuracy. Do not keep this expansion.
+- Next step: test an even narrower single-feature or top-3 expansion only if diagnostics justify it.
