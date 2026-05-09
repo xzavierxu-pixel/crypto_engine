@@ -8913,6 +8913,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.428589942975635`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records schema filtering from the raw-data 120-day artifact.
-- Git commit: pending.
+- Git commit: `6d7dca7`.
 - Interpretation: older history hurts accepted precision even when noisy extra features are removed. Do not adopt the 120-day same-schema split.
 - Next step: avoid extending history; test recency weighting within the incumbent 75-day window instead.
