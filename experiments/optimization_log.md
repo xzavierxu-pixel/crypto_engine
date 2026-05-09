@@ -6376,6 +6376,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4736910316226024`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `e750ddf`.
 - Interpretation: filtering to clearer high-return training rows increases utility and coverage but lowers accepted accuracy. Do not keep this filtered training split.
 - Next step: if continuing return-filter branches, test less aggressive existing low/tiny-return filters only once under the current blend.
