@@ -5344,3 +5344,26 @@ Main bottlenecks:
 - Git commit: `fadfafd`.
 - Interpretation: using much more history and the full rebuilt feature set increases coverage but lowers accepted accuracy, so the current objective worsens. The narrower 516-feature split remains better.
 - Next step: try a less aggressive rebuilt data window or constrain the rebuilt feature set, rather than using the full 120-day/1735-feature set as-is.
+
+## 20260509_codex_iter245_blend9770_train120_best516_platt_logit_c020
+
+- Skill used: `tabular-recursive-feature-elimination` as controlled feature-set filtering, applied by retaining the current best 516-feature manifest on the longer rebuilt split.
+- Hypothesis: using 120 days of local data with the proven 516-feature set may improve generalization while avoiding the noisy 1735-feature expansion from iter244.
+- Changed files: `experiments/configs/20260509_codex_iter245_blend9770_train120_best516_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter245_train120_best516_feature_filter_split`.
+- Feature set: 516 features matching `artifacts/data_v2/experiments/20260509_codex_iter233_blend9770_dart_l1_12_platt_logit_c020/artifact_manifest.json`; no missing reference features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter245_blend9770_train120_best516_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter245_train120_best516_feature_filter_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter245_blend9770_train120_best516_platt_logit_c020 --config experiments/configs/20260509_codex_iter245_blend9770_train120_best516_platt_logit_c020.yaml --horizon 5m --train-window-days 120 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter245_blend9770_train120_best516_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16988295531987718`.
+- Utility before / after: `0.07698289269051321` / `0.07983411093831004`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5765407554671969`.
+- Accepted count before / after: `3120` / `4024`.
+- Coverage before / after: `0.40435458786936235` / `0.5215137376879212`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; feature-filter summary saved at `artifacts/data_v2/experiments/20260509_codex_iter245_train120_best516_feature_filter_split/feature_filter_summary.json`.
+- Git commit: `pending`.
+- Interpretation: the extra history shifts the model toward much broader acceptance and lower accepted accuracy even with the best feature set. The recent 75-day window remains better.
+- Next step: try a moderate window before abandoning extra-history splits.
