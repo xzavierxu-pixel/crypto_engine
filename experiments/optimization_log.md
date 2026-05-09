@@ -3845,6 +3845,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40448418869880765` / `0.4169258683255573`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: `be9e11a`.
+- Git commit: `a93dd71`.
 - Interpretation: raw-probability Platt loses accepted accuracy. Keep `platt_logit`.
 - Next step: avoid raw Platt on this branch.
