@@ -7737,3 +7737,27 @@ Main bottlenecks:
 - Git commit: `d72088c`.
 - Interpretation: `0.9750` is close but worse; current `0.9770` remains the best blend weight tested.
 - Next step: stop dense blend-weight probing and return to data/feature transformations.
+
+## 20260510_codex_iter348_htf_pair_interactions_current_blend
+
+- Skill used: `tabular-polynomial-interaction-features`.
+- Hypothesis: selected degree-2 interactions among existing trailing HTF 15m context features may expose regime relationships while preserving all original HTF/time features.
+- Changed files: `experiments/configs/20260510_codex_iter348_htf_pair_interactions_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter348_htf_pair_interactions_split`.
+- Feature set: 522 features; current best 516 features plus six selected HTF pair interactions; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter348_htf_pair_interactions_split/htf_pair_interactions_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter348_htf_pair_interactions_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter348_htf_pair_interactions_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter348_htf_pair_interactions_current_blend --config experiments/configs/20260510_codex_iter348_htf_pair_interactions_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter348_htf_pair_interactions_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1699575459339848`.
+- Utility before / after: `0.07698289269051321` / `0.07205806117159147`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5834834834834834`.
+- Accepted count before / after: `3120` / `3330`.
+- Coverage before / after: `0.40435458786936235` / `0.43157076205287714`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records added HTF interaction columns and NaN counts.
+- Git commit: pending.
+- Interpretation: explicit HTF interactions increase coverage but reduce accepted precision. Keep the original HTF feature set without these pairwise terms.
+- Next step: prefer conservative feature selection or existing-feature model tuning over adding explicit interaction columns.
