@@ -4055,3 +4055,26 @@ Main bottlenecks:
 - Git commit: `294c8aa`.
 - Interpretation: a small increase in DART contribution improves utility enough to set a new best valid score.
 - Next step: test the opposite blend-weight side.
+
+## 20260509_codex_iter189_blend9785_dart_l1_12_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting` and `tabular-logit-transform-stacking`.
+- Hypothesis: reducing the DART contribution after the `reg_alpha: 1.2` side-model improvement may lift accepted accuracy enough to offset lower coverage.
+- Changed files: `experiments/configs/20260509_codex_iter189_blend9785_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: DART blend with `catboost_weight: 0.9785`, `calibration.active_plugin: platt_logit`, `C: 0.2`, nested DART `reg_alpha: 1.2`.
+- Config: `experiments/configs/20260509_codex_iter189_blend9785_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter189_blend9785_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter189_blend9785_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter189_blend9785_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.1890715674835194`.
+- Utility before / after: `0.07659409020217732` / `0.076464489372732`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5947334617854849`.
+- Accepted count before / after: `3123` / `3114`.
+- Coverage before / after: `0.4047433903576983` / `0.4035769828926905`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: higher CatBoost weight is near-tied but loses utility and score. Keep `catboost_weight: 0.9765`.
+- Next step: fine-tune the lower side of blend weight around `0.9765`.
