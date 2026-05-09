@@ -5271,6 +5271,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: `pending`.
+- Git commit: `6cf7e4b`.
 - Interpretation: this L2 change is neutral on the accepted slice. Keep `l2_leaf_reg: 30.0` for the canonical best unless further combinations show a benefit.
 - Next step: avoid very small CatBoost L2-only moves unless paired with another justified model change.
