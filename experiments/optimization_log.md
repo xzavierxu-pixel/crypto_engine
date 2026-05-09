@@ -8501,3 +8501,28 @@ Main bottlenecks:
 - Git commit: `09ba107`.
 - Interpretation: the mild low-return training filter lowers accepted precision and worsens calibration. Do not adopt this training filter.
 - Next step: avoid further abs-return training filters without a new slice-specific rationale.
+
+## 20260510_codex_iter380_top3_devcorr_mirror_return_current_blend
+
+- Skill used: source-isolated feature selection using development-only absolute correlation.
+- Hypothesis: the top unseen mirrored second-level return/slope features by development correlation may add short-horizon directional signal that full-profile gain ranking missed.
+- Changed files: `experiments/configs/20260510_codex_iter380_top3_devcorr_mirror_return_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter380_top3_devcorr_mirror_return_split`.
+- Feature set: 519 features; current best 516 features plus `sl_mirror_log_ret_1s`, `sl_mirror_return_slope_5s`, and `sl_mirror_log_ret_3s`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter380_top3_devcorr_mirror_return_split/top3_devcorr_mirror_return_summary.json`.
+- Feature selection record: `artifacts/data_v2/experiments/20260510_codex_devcorr_new_features.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter380_top3_devcorr_mirror_return_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter380_top3_devcorr_mirror_return_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter380_top3_devcorr_mirror_return_current_blend --config experiments/configs/20260510_codex_iter380_top3_devcorr_mirror_return_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter380_top3_devcorr_mirror_return_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17202845520509738`.
+- Utility before / after: `0.07698289269051321` / `0.07050285121824783`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5867346938775511`.
+- Accepted count before / after: `3120` / `3136`.
+- Coverage before / after: `0.40435458786936235` / `0.4064282011404873`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records row-preserving timestamp joins and zero missing joined values.
+- Git commit: `pending`.
+- Interpretation: development-only correlation did not transfer to validation, and calibration worsened materially. Do not adopt this feature pack.
+- Next step: avoid dev-correlation-only selection; require slice stability or model-objective evidence before adding more features.
