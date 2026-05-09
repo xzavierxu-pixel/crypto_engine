@@ -4535,6 +4535,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4171850699844479`.
 - Coverage constraint satisfied: yes.
 - Tests: `rtk python -m py_compile src\features\path_structure.py`; DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `b1583c2`.
 - Interpretation: trailing path features materially hurt accepted accuracy. Revert this source feature addition and do not use the derived split.
 - Next step: remove the harmful source change before continuing.
