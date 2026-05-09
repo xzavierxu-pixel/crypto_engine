@@ -4167,6 +4167,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40863141524105756`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `ecdf16c`.
 - Interpretation: correlation pruning damages accepted accuracy, likely because redundant HTF/flow variants still help tree splits and calibration. Do not use this collinear-pruned split.
 - Next step: return to the current best full split and try model-training regularization.
