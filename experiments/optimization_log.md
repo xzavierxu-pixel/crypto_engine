@@ -7901,6 +7901,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.43636599274235355`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records added columns and zero missing joined values.
-- Git commit: pending.
+- Git commit: `989b1ed`.
 - Interpretation: lag/context candidates improve logloss and coverage but reduce accepted precision. Do not add this subset.
 - Next step: full-profile selected additions remain discovery-only; avoid adding these feature candidates wholesale.
