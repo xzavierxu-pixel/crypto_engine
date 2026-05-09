@@ -3871,3 +3871,26 @@ Main bottlenecks:
 - Git commit: `213e88e`.
 - Interpretation: stronger Platt regularization loses both coverage and score. Keep `C: 0.2`.
 - Next step: tune the DART side model regularization instead of lowering calibration `C`.
+
+## 20260509_codex_iter181_blend9775_dart_l2_10_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting`.
+- Hypothesis: slightly stronger L2 regularization on the nested DART component may reduce overfit while preserving the CatBoost-dominant blend.
+- Changed files: `experiments/configs/20260509_codex_iter181_blend9775_dart_l2_10_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: best DART blend with `catboost_weight: 0.9775`, `calibration.active_plugin: platt_logit`, `C: 0.2`, and nested DART `reg_lambda: 10.0`.
+- Config: `experiments/configs/20260509_codex_iter181_blend9775_dart_l2_10_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter181_blend9775_dart_l2_10_platt_logit_c020 --config experiments/configs/20260509_codex_iter181_blend9775_dart_l2_10_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter181_blend9775_dart_l2_10_platt_logit_c020/metrics.json`.
+- Score before: `0.1884526862901693`.
+- Score after: `0.18756691860533328`.
+- Utility before / after: `0.07633488854328671` / `0.07594608605495076`.
+- Accepted accuracy before / after: `0.594360781800705` / `0.5940308087291399`.
+- Accepted count before / after: `3121` / `3116`.
+- Coverage before / after: `0.40448418869880765` / `0.40383618455158116`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: `reg_lambda: 10.0` is slightly worse than `8.0`.
+- Next step: test lighter DART L2 regularization.
