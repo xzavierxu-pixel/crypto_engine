@@ -8427,6 +8427,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4157594608605495`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `a7aec92`.
 - Interpretation: stronger L2 improves Brier/logloss but shifts the accepted set toward lower precision. Keep current CatBoost L2.
 - Next step: do not pursue more high-L2 variants unless a separate calibration objective becomes primary.
