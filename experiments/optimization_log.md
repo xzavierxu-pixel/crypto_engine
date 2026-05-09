@@ -1604,3 +1604,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: extra tree depth does not improve validation confidence quality even with stronger L2. Depth 5 remains best.
 - Next step: continue with depth-5 CatBoost or data/feature changes rather than deeper models.
+
+## 20260509_codex_iter80_ordered_catboost
+
+- Hypothesis: CatBoost ordered boosting may reduce overfitting in the current small 75-day train window and improve validation accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter80_ordered_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `boosting_type: Ordered`.
+- Config: `experiments/configs/20260509_codex_iter80_ordered_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter80_ordered_catboost --config experiments/configs/20260509_codex_iter80_ordered_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter80_ordered_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17262590564826172`.
+- Utility before / after: `0.0751684810782789` / `0.07244686365992739`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5852914250839182`.
+- Accepted count before / after: `3245` / `3277`.
+- Coverage before / after: `0.4205546915500259` / `0.4247019180922758`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: ordered boosting is slower and still below the best score. Plain depth-5 CatBoost remains better.
+- Next step: avoid ordered boosting for this setup.
