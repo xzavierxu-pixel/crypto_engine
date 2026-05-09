@@ -6514,6 +6514,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.44129082426127525`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; OOF generation summary saved at `artifacts/data_v2/experiments/20260509_codex_iter295_oof_lgbm_activity_meta_split/oof_lgbm_activity_meta_summary.json`.
-- Git commit: `pending`.
+- Git commit: `d1a34e6`.
 - Interpretation: predicted activity increases coverage and utility but lowers accepted accuracy enough to reduce selection_score. Do not keep this meta-feature.
 - Next step: stop OOF meta-feature variants unless an auxiliary target can be implemented into the online artifact path.
