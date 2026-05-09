@@ -7616,6 +7616,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40876101607050286`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `e7fc786`.
 - Interpretation: weaker calibration regularization lowers selection_score versus best. Keep `platt_logit.C: 0.2`.
 - Next step: return to data-window processing and test a slightly shorter training window with the same model settings.
