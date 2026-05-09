@@ -7808,3 +7808,27 @@ Main bottlenecks:
 - Git commit: `08ee3b9`.
 - Interpretation: slower/larger CatBoost raises coverage and utility but loses too much accepted precision. Keep active CatBoost `1200` iterations and `0.015` learning rate.
 - Next step: continue with small, isolated probes; current best remains unchanged.
+
+## 20260510_codex_iter351_full_profile_train90_current_blend
+
+- Skill used: `timeseries-multi-scale-rolling-features` as data/feature-expansion guidance; project feature builder used only trailing, online-available features.
+- Hypothesis: rebuilding from raw 1m data with the full configured feature profile and a longer 90-day train window may exploit more downloaded data and richer multi-scale context.
+- Changed files: `experiments/configs/20260510_codex_iter351_full_profile_train90_current_blend.yaml`, `experiments/optimization_log.md`.
+- Data source: `artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet`; second-level feature store `artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter351_full_profile_train90_current_blend`.
+- Feature set: 1735 full-profile features; HTF/time features retained.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter351_full_profile_train90_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --input artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet --output-dir artifacts/data_v2/experiments/20260510_codex_iter351_full_profile_train90_current_blend --config experiments/configs/20260510_codex_iter351_full_profile_train90_current_blend.yaml --horizon 5m --train-window-days 90 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter351_full_profile_train90_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1679319519546508`.
+- Utility before / after: `0.07698289269051321` / `0.07050285121824783`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5833333333333334`.
+- Accepted count before / after: `3120` / `3264`.
+- Coverage before / after: `0.40435458786936235` / `0.4230171073094868`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; raw rebuild wrote cached split files and artifact manifest with `feature_count: 1735`.
+- Git commit: pending.
+- Interpretation: more downloaded data and broader feature profile increase feature count substantially but reduce accepted precision. The filtered 516-feature 75-day split remains stronger.
+- Next step: use the full-profile train90 artifact as a discovery source, not as a candidate; try selecting only features with evidence from the wider profile.
