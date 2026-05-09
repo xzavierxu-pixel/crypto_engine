@@ -2676,3 +2676,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; fixed-temperature calibration fits no validation labels.
 - Interpretation: temperature softening is below Platt `C: 0.25`; it improves coverage but loses too much accepted accuracy.
 - Next step: test the sharpening side with `temperature: 0.8`.
+
+## 20260509_codex_iter129_catboost_temperature08
+
+- Skill used: probability calibration workflow inspired by `tabular-confidence-probability-clipping`.
+- Hypothesis: sharpening probabilities with fixed `temperature: 0.8` may improve selective confidence and selection_score.
+- Changed files: `experiments/configs/20260509_codex_iter129_catboost_temperature08.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: temperature`, `temperature: 0.8`.
+- Config: `experiments/configs/20260509_codex_iter129_catboost_temperature08.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter129_catboost_temperature08 --config experiments/configs/20260509_codex_iter129_catboost_temperature08.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter129_catboost_temperature08/metrics.json`.
+- Score before: `0.18462759471376494`.
+- Score after: `0.1773129128752469`.
+- Utility before / after: `0.07516848107827886` / `0.07400207361327109`.
+- Accepted accuracy before / after: `0.5924155513065646` / `0.5876035593740411`.
+- Accepted count before / after: `3138` / `3259`.
+- Coverage before / after: `0.40668740279937793` / `0.42236910316226023`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; fixed-temperature calibration fits no validation labels.
+- Interpretation: probability sharpening also trails Platt `C: 0.25`; stop fixed-temperature calibration.
+- Next step: return to model/data experiments around the calibrated benchmark.
