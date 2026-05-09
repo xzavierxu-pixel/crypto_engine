@@ -7761,3 +7761,27 @@ Main bottlenecks:
 - Git commit: `7958c66`.
 - Interpretation: explicit HTF interactions increase coverage but reduce accepted precision. Keep the original HTF feature set without these pairwise terms.
 - Next step: prefer conservative feature selection or existing-feature model tuning over adding explicit interaction columns.
+
+## 20260510_codex_iter349_session_relative_current_blend
+
+- Skill used: `tabular-relative-deviation-features`.
+- Hypothesis: train-fitted UTC session-relative deviations for volatility and volume context may improve current best selective precision under the stronger current blend.
+- Changed files: `experiments/configs/20260510_codex_iter349_session_relative_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter349_session_relative_current_split`.
+- Feature set: 531 features; current best 516 features plus 15 session-relative diff/ratio/z features for `rv_5`, `volume`, `relative_volume_20`, `htf_rv_15m`, and `dollar_vol_mean_20`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter349_session_relative_current_split/session_relative_current_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter349_session_relative_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter349_session_relative_current_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter349_session_relative_current_blend --config experiments/configs/20260510_codex_iter349_session_relative_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter349_session_relative_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17490899699896478`.
+- Utility before / after: `0.07698289269051321` / `0.07283566614826337`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.586781964175417`.
+- Accepted count before / after: `3120` / `3238`.
+- Coverage before / after: `0.40435458786936235` / `0.41964748574390875`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records train-fitted session statistics and added-feature NaN counts.
+- Git commit: pending.
+- Interpretation: session-relative features improve AUC slightly but lower the objective through weaker accepted precision. Do not add session-relative features to the current best.
+- Next step: close session-relative feature expansion and continue with conservative existing-feature/model probes.
