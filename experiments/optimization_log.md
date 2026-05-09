@@ -6307,6 +6307,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4000777604976672`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `91d671d`.
 - Interpretation: mid-regime upweighting lowers both utility and accepted accuracy and nearly falls to the coverage floor. Do not keep this weighting.
 - Next step: avoid regime-weighted sample variants under this blend.
