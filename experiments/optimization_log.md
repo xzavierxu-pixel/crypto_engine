@@ -2452,3 +2452,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: isotonic calibration expands coverage but lowers accepted accuracy too much. Platt remains the best calibration result.
 - Next step: keep Platt as the benchmark and test whether it combines with a near-miss model/data branch.
+
+## 20260509_codex_iter119_bottom20_platt_calibration
+
+- Skill used: probability calibration workflow plus feature-selection discipline from `tabular-recursive-feature-elimination`.
+- Hypothesis: the bottom20 feature-pruned branch had higher coverage and near-best utility; Platt calibration may recover accepted accuracy enough to beat the calibrated incumbent.
+- Changed files: `experiments/configs/20260509_codex_iter119_bottom20_platt_calibration.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter85_drop_bottom20_importance_split`.
+- Feature set: bottom20 low-importance pruned feature set; HTF/time features retained.
+- Model settings: bottom20 CatBoost settings plus `calibration.active_plugin: platt`.
+- Config: `experiments/configs/20260509_codex_iter119_bottom20_platt_calibration.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter85_drop_bottom20_importance_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter119_bottom20_platt_calibration --config experiments/configs/20260509_codex_iter119_bottom20_platt_calibration.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter119_bottom20_platt_calibration/metrics.json`.
+- Score before: `0.18451203496023655`.
+- Score after: `0.1816880856947416`.
+- Utility before / after: `0.07465007776049763` / `0.0756868843960601`.
+- Accepted accuracy before / after: `0.59284332688588` / `0.5895156345800122`.
+- Accepted count before / after: `3102` / `3262`.
+- Coverage before / after: `0.4020217729393468` / `0.4227579056505962`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: this combination improves utility and coverage but loses enough accepted accuracy to trail Platt on the full current-best feature set.
+- Next step: keep full feature set + Platt as benchmark.
