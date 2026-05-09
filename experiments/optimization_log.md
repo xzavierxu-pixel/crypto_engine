@@ -4216,3 +4216,26 @@ Main bottlenecks:
 - Git commit: `a355144`.
 - Interpretation: stronger CatBoost L2 lowers accepted accuracy and score. Keep `l2_leaf_reg: 30.0` unless the lower side improves.
 - Next step: test `l2_leaf_reg: 25.0`.
+
+## 20260509_codex_iter196_blend9765_cat_l2_25_dart_l1_12_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting` and `tabular-logit-transform-stacking`.
+- Hypothesis: slightly weaker CatBoost L2 regularization may recover useful signal in the dominant model and improve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter196_blend9765_cat_l2_25_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best DART blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, CatBoost `l2_leaf_reg: 25.0`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter196_blend9765_cat_l2_25_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter196_blend9765_cat_l2_25_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter196_blend9765_cat_l2_25_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter196_blend9765_cat_l2_25_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.16844822224789988`.
+- Utility before / after: `0.07659409020217732` / `0.06868843960601345`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.585594315245478`.
+- Accepted count before / after: `3123` / `3096`.
+- Coverage before / after: `0.4047433903576983` / `0.401244167962675`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: weaker CatBoost L2 materially hurts accepted accuracy. Keep `l2_leaf_reg: 30.0`.
+- Next step: leave CatBoost L2 bracket.
