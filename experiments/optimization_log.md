@@ -6330,6 +6330,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4204250907205806`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `2549d14`.
 - Interpretation: softened weights reduce accepted accuracy and score. Do not keep this weighting.
 - Next step: test the stronger squared-weight variant, then stop global weight-shape variants if it fails.
