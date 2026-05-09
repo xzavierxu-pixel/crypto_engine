@@ -5778,6 +5778,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4449196474857439`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `e0e8f4a`.
 - Interpretation: `sl_vwap_30s` over-broadens acceptance and reduces accepted accuracy more than the 10s-only variant. Keep both raw VWAP features excluded.
 - Next step: move away from VWAP restoration and test model/regularization changes on the best 516-feature split.
