@@ -2950,3 +2950,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: deterministic no-bootstrap sampling reduces accepted accuracy and score; keep Bayesian bootstrap with `bagging_temperature: 0.5`.
 - Next step: avoid more bootstrap variants unless paired with a distinct model/data change.
+
+## 20260509_codex_iter141_xgboost_platt_logit
+
+- Skill used: model-family check informed by `tabular-xgb-gpu-batch-iterator`/XGBoost guidance, using CPU hist locally.
+- Hypothesis: XGBoost may produce a different ranking/coverage tradeoff on the current 75-day split when paired with the best logit-space calibration.
+- Changed files: `experiments/configs/20260509_codex_iter141_xgboost_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `active_plugin: xgboost`, conservative hist-tree parameters from the earlier XGBoost baseline, plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter141_xgboost_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter141_xgboost_platt_logit --config experiments/configs/20260509_codex_iter141_xgboost_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter141_xgboost_platt_logit/metrics.json`.
+- Score before: `0.1846861980124185`.
+- Score after: `0.1324412169914792`.
+- Utility before / after: `0.07477967858994294` / `0.06350440642820114`.
+- Accepted accuracy before / after: `0.592854843900869` / `0.5606736007924715`.
+- Accepted count before / after: `3107` / `4038`.
+- Coverage before / after: `0.40266977708657337` / `0.5233281493001555`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: XGBoost over-accepts lower-quality predictions and is not competitive with calibrated CatBoost on this split.
+- Next step: keep CatBoost as the model family and use future XGBoost only for explicit ensemble diagnostics.
