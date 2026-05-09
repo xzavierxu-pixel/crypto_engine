@@ -8404,6 +8404,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4367547952306895`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records trailing shift(1) feature construction and validation zero rates.
-- Git commit: `pending`.
+- Git commit: `49622c3`.
 - Interpretation: multi-scale trailing context increases accepted count but reduces accepted precision and worsens logloss. Do not adopt this feature pack.
 - Next step: prioritize model regularization or pruning over additional broad rolling context additions.
