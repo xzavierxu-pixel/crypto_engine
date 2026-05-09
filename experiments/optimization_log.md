@@ -6080,3 +6080,26 @@ Main bottlenecks:
 - Git commit: `0d96285`.
 - Interpretation: compact regime flags do not recover the objective and leave coverage close to the floor. Do not keep this feature pack.
 - Next step: inspect remaining untested cached richer splits before creating new feature data.
+
+## 20260509_codex_iter277_blend9770_htf_micro_interactions_platt_logit_c020
+
+- Skill used: `tabular-polynomial-interaction-features`.
+- Hypothesis: explicit interactions between HTF context and top second-level microstructure features may capture conditional short-horizon behavior that separate raw features miss.
+- Changed files: `experiments/configs/20260509_codex_iter277_blend9770_htf_micro_interactions_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter84_htf_micro_interactions_split`.
+- Feature set: 548 features; current best 516 features plus 32 HTF-by-microstructure interaction features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter277_blend9770_htf_micro_interactions_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter84_htf_micro_interactions_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter277_blend9770_htf_micro_interactions_platt_logit_c020 --config experiments/configs/20260509_codex_iter277_blend9770_htf_micro_interactions_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter277_blend9770_htf_micro_interactions_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16557707314813985`.
+- Utility before / after: `0.07698289269051321` / `0.06920684292379474`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5826625386996904`.
+- Accepted count before / after: `3120` / `3230`.
+- Coverage before / after: `0.40435458786936235` / `0.4186106791083463`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: broad HTF-micro interaction expansion lowers accepted accuracy and objective score. Do not keep this feature pack.
+- Next step: use narrower feature selection or smaller targeted additions rather than broad interaction expansion.
