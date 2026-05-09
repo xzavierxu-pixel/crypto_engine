@@ -8769,3 +8769,28 @@ Main bottlenecks:
 - Git commit: `706f9fd`.
 - Interpretation: more history plus the full configured feature profile broadens coverage but materially lowers accepted precision. Do not adopt the 120-day full-profile rebuild.
 - Next step: use the 120-day artifact only as a feature discovery source; keep official candidates on the stronger 75-day filtered split unless a targeted data transform proves otherwise.
+
+## 20260510_codex_iter391_train120_top_non_sl_current_blend
+
+- Skill used: source-isolated feature discovery from a larger chronological training run.
+- Hypothesis: high-gain non-second-level features discovered in the 120-day full-profile run may add robust 1m context to the stronger 75-day filtered split without importing broad full-profile noise.
+- Changed files: `experiments/configs/20260510_codex_iter391_train120_top_non_sl_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter391_train120_top_non_sl_split`.
+- Feature set: 521 features; current best 516 features plus `clv_1_lag1`, `prev_bar_taker_buy_ratio_zscore_20`, `compression_score_lag12`, `legal_prev_trade_count_z_5`, and `volume_z_20_lag6`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter391_train120_top_non_sl_split/train120_top_non_sl_summary.json`.
+- Feature selection record: `artifacts/data_v2/experiments/20260510_codex_iter390_top_absent_candidates.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter391_train120_top_non_sl_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter391_train120_top_non_sl_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter391_train120_top_non_sl_current_blend --config experiments/configs/20260510_codex_iter391_train120_top_non_sl_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter391_train120_top_non_sl_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1786412189335398`.
+- Utility before / after: `0.07698289269051321` / `0.07335406946604457`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5893308080808081`.
+- Accepted count before / after: `3120` / `3168`.
+- Coverage before / after: `0.40435458786936235` / `0.4105754276827372`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records timestamp joins and zero nulls.
+- Git commit: pending.
+- Interpretation: the non-`sl_` discovery pack improves AUC but not accepted precision or selection_score. Do not adopt it.
+- Next step: test second-level discovery features separately; do not combine this pack with microstructure additions unless one family improves alone.
