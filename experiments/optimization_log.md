@@ -5712,3 +5712,26 @@ Main bottlenecks:
 - Git commit: `14c0bb4`.
 - Interpretation: time target encoding broadens accepted predictions and lowers accepted accuracy. Do not keep this feature pack.
 - Next step: avoid target-encoded time buckets on this validation slice.
+
+## 20260509_codex_iter261_blend9770_train75_top500_vwap_platt_logit_c020
+
+- Skill used: `tabular-recursive-feature-elimination` as feature-set ablation guidance; evaluated a nearby existing split that adds back the two VWAP features previously removed from the best split.
+- Hypothesis: `sl_vwap_10s` and `sl_vwap_30s` may restore short-horizon microstructure context and improve accepted accuracy without changing labels, thresholds, or HTF/time features.
+- Changed files: `experiments/configs/20260509_codex_iter261_blend9770_train75_top500_vwap_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter33_top500_train75_split`.
+- Feature set: 518 features; current best 516 features plus `sl_vwap_10s` and `sl_vwap_30s`; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter261_blend9770_train75_top500_vwap_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter33_top500_train75_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter261_blend9770_train75_top500_vwap_platt_logit_c020 --config experiments/configs/20260509_codex_iter261_blend9770_train75_top500_vwap_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter261_blend9770_train75_top500_vwap_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18031147569562883`.
+- Utility before / after: `0.07698289269051321` / `0.07309486780715395`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5909677419354838`.
+- Accepted count before / after: `3120` / `3100`.
+- Coverage before / after: `0.40435458786936235` / `0.40176257128045617`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: adding both VWAP features improves AUC/Brier/logloss diagnostics slightly but lowers objective score through lower accepted accuracy and coverage. Keep the VWAP-dropped 516-feature split.
+- Next step: test one-feature VWAP variants only if needed; otherwise continue with narrower model regularization or feature-selection checks.
