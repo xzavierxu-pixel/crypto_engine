@@ -7244,3 +7244,27 @@ Main bottlenecks:
 - Git commit: `4d308dd`.
 - Interpretation: positive-class rebalancing also lowers accepted precision and selection_score. Keep unweighted class loss.
 - Next step: close class-weight probes for this model family.
+
+## 20260509_codex_iter327_winsor_top12_sl_current_blend
+
+- Skill used: `timeseries-sigma-clip-outlier-masking`.
+- Hypothesis: development-fitted winsorization of extreme tails in high-importance second-level microstructure features may reduce tail overfit while preserving the current feature set.
+- Changed files: `experiments/configs/20260509_codex_iter327_winsor_top12_sl_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter327_winsor_top12_sl_split`.
+- Feature set: 516 features; same as current best; 12 top `sl_*` columns clipped at development 0.5%/99.5% quantiles; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter327_winsor_top12_sl_split/winsor_top12_sl_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter327_winsor_top12_sl_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter327_winsor_top12_sl_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter327_winsor_top12_sl_current_blend --config experiments/configs/20260509_codex_iter327_winsor_top12_sl_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter327_winsor_top12_sl_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17582887298373062`.
+- Utility before / after: `0.07698289269051321` / `0.07387247278382583`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5865209471766849`.
+- Accepted count before / after: `3120` / `3294`.
+- Coverage before / after: `0.40435458786936235` / `0.42690513219284604`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records development-fitted caps and validation changed-value counts.
+- Git commit: `pending`.
+- Interpretation: clipping microstructure tails lowers accepted precision. Keep raw values for these features.
+- Next step: do not apply broad winsorization to top microstructure columns.
