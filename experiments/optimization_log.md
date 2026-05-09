@@ -7829,6 +7829,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4230171073094868`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; raw rebuild wrote cached split files and artifact manifest with `feature_count: 1735`.
-- Git commit: pending.
+- Git commit: `9829b21`.
 - Interpretation: more downloaded data and broader feature profile increase feature count substantially but reduce accepted precision. The filtered 516-feature 75-day split remains stronger.
 - Next step: use the full-profile train90 artifact as a discovery source, not as a candidate; try selecting only features with evidence from the wider profile.
