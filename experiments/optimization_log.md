@@ -8430,3 +8430,27 @@ Main bottlenecks:
 - Git commit: `a7aec92`.
 - Interpretation: stronger L2 improves Brier/logloss but shifts the accepted set toward lower precision. Keep current CatBoost L2.
 - Next step: do not pursue more high-L2 variants unless a separate calibration objective becomes primary.
+
+## 20260510_codex_iter377_drop_top_sl_drift_current_blend
+
+- Skill used: `tabular-adversarial-validation`.
+- Hypothesis: removing only the highest-drift second-level features from adversarial validation may reduce validation overfit while preserving HTF/time features and core price-volume context.
+- Changed files: `experiments/configs/20260510_codex_iter377_drop_top_sl_drift_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter377_drop_top_sl_drift_split`.
+- Feature set: 511 features; current best 516 features minus `sl_range_10s`, `sl_mirror_true_range_pct_1s`, `sl_range_3s`, `sl_agg_median_trade_size_300s`, and `sl_agg_large_trade_volume_share_300s`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter377_drop_top_sl_drift_split/drop_top_sl_drift_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter377_drop_top_sl_drift_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter377_drop_top_sl_drift_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter377_drop_top_sl_drift_current_blend --config experiments/configs/20260510_codex_iter377_drop_top_sl_drift_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter377_drop_top_sl_drift_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1713184954521746`.
+- Utility before / after: `0.07698289269051321` / `0.07568688439606014`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5812013348164627`.
+- Accepted count before / after: `3120` / `3596`.
+- Coverage before / after: `0.40435458786936235` / `0.46604458268532917`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records dropped columns and row-preserving split shapes.
+- Git commit: `pending`.
+- Interpretation: narrow drift pruning increases coverage but lowers accepted precision, so the removed `sl_` features were not the main cause of poor accepted precision. Do not adopt this prune.
+- Next step: simple feature addition/removal paths are exhausted for now; continue with more targeted model or meta-model experiments.
