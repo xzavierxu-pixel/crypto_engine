@@ -7268,3 +7268,50 @@ Main bottlenecks:
 - Git commit: `1969e52`.
 - Interpretation: clipping microstructure tails lowers accepted precision. Keep raw values for these features.
 - Next step: do not apply broad winsorization to top microstructure columns.
+
+## 20260509_codex_iter328_derivatives_archive_discovery
+
+- Skill used: local derivative data enrichment.
+- Hypothesis: enabling locally archived derivatives inputs may add funding, basis, OI, and options context that improves 5m directional selection.
+- Changed files: `experiments/configs/20260509_codex_iter328_derivatives_archive_discovery.yaml`, `experiments/optimization_log.md`.
+- Data source: `artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet`; derivatives loaded from `./artifacts/data_v2/normalized` with `--derivatives-path-mode archive`.
+- Feature set: 1766 features from the full configured feature profile; derivative features available for funding, basis, OI, and options; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`; `derivatives.enabled: true`.
+- Config: `experiments/configs/20260509_codex_iter328_derivatives_archive_discovery.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --input artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet --output-dir artifacts/data_v2/experiments/20260509_codex_iter328_derivatives_archive_discovery --config experiments/configs/20260509_codex_iter328_derivatives_archive_discovery.yaml --horizon 5m --train-window-days 75 --validation-window-days 30 --derivatives-path-mode archive`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter328_derivatives_archive_discovery/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16341955659490887`.
+- Utility before / after: `0.07698289269051321` / `0.0672518394217116`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5828298887122416`.
+- Accepted count before / after: `3120` / `3145`.
+- Coverage before / after: `0.40435458786936235` / `0.40596359881244354`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; artifact manifest confirms derivative availability.
+- Git commit: `pending`.
+- Interpretation: broad derivative-enabled rebuild is weaker than the filtered best and is confounded by the full 1766-feature profile. Use it only as a derivative feature discovery source.
+- Next step: evaluate current best 516 features plus only derivative additions.
+
+## 20260509_codex_iter329_best516_plus_derivatives_current_blend
+
+- Skill used: local derivative data enrichment.
+- Hypothesis: adding only locally archived derivative features to the current best filtered feature set may improve precision without the broad full-profile rebuild confound.
+- Changed files: `experiments/configs/20260509_codex_iter329_best516_plus_derivatives_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter329_best516_plus_derivatives_split`.
+- Feature set: 543 features; current best 516 features plus 27 funding/basis/OI/options features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter329_best516_plus_derivatives_split/best516_plus_derivatives_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`; `derivatives.enabled: true`.
+- Config: `experiments/configs/20260509_codex_iter329_best516_plus_derivatives_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter329_best516_plus_derivatives_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter329_best516_plus_derivatives_current_blend --config experiments/configs/20260509_codex_iter329_best516_plus_derivatives_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30 --derivatives-path-mode archive`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter329_best516_plus_derivatives_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1729172392911379`.
+- Utility before / after: `0.07698289269051321` / `0.07037325038880246`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5876089060987415`.
+- Accepted count before / after: `3120` / `3099`.
+- Coverage before / after: `0.40435458786936235` / `0.4016329704510109`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records joined derivative columns and missing counts.
+- Git commit: `pending`.
+- Interpretation: isolated derivative features still reduce accepted accuracy and score. Keep derivatives disabled in the current best config.
+- Next step: do not add derivative features wholesale; only revisit if a single derivative source passes ablation.
