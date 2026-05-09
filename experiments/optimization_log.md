@@ -7691,3 +7691,26 @@ Main bottlenecks:
 - Git commit: `2646074`.
 - Interpretation: broad microstructure row aggregates add noise and reduce accepted precision. Keep the original microstructure features without these aggregates.
 - Next step: use narrower online-safe feature transforms rather than broad row summaries.
+
+## 20260510_codex_iter346_cat_weight_1000_current_blend
+
+- Skill used: model blend selection.
+- Hypothesis: because the current blend is already `97.7%` CatBoost, removing the residual DART component may improve accepted precision if DART adds noise.
+- Changed files: `experiments/configs/20260510_codex_iter346_cat_weight_1000_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except `catboost_weight: 0.9770 -> 1.0000`; calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter346_cat_weight_1000_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter346_cat_weight_1000_current_blend --config experiments/configs/20260510_codex_iter346_cat_weight_1000_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter346_cat_weight_1000_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18312798896889548`.
+- Utility before / after: `0.07698289269051321` / `0.07400207361327112`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5923649304432222`.
+- Accepted count before / after: `3120` / `3091`.
+- Coverage before / after: `0.40435458786936235` / `0.40059616381544844`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: pending.
+- Interpretation: the residual DART component is useful; CatBoost-only lowers selection_score. Keep a small DART contribution.
+- Next step: test a slightly lower CatBoost blend weight (`0.9750`) around the current `0.9770` local best.
