@@ -8477,3 +8477,27 @@ Main bottlenecks:
 - Git commit: `a417874`.
 - Interpretation: temperature sharpening improves Brier/logloss but lowers accepted precision under the official selector. Keep `platt_logit(C=0.2)`.
 - Next step: avoid optimizing calibration diagnostics at the expense of selection_score.
+
+## 20260510_codex_iter379_drop_train_abslt05bp_current_blend
+
+- Skill used: training data filtering based on existing label-window sample-quality diagnostics.
+- Hypothesis: dropping only the noisiest training rows with label-window `abs_return < 0.5bp` may improve accepted precision while leaving validation and inference features unchanged.
+- Changed files: `experiments/configs/20260510_codex_iter379_drop_train_abslt05bp_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter379_drop_train_abslt05bp_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter379_drop_train_abslt05bp_split/drop_train_abslt05bp_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter379_drop_train_abslt05bp_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter379_drop_train_abslt05bp_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter379_drop_train_abslt05bp_current_blend --config experiments/configs/20260510_codex_iter379_drop_train_abslt05bp_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter379_drop_train_abslt05bp_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17364837860321397`.
+- Utility before / after: `0.07698289269051321` / `0.07089165370658375`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5876883616543764`.
+- Accepted count before / after: `3120` / `3119`.
+- Coverage before / after: `0.40435458786936235` / `0.40422498703991705`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records training-only row removal and unchanged validation rows.
+- Git commit: `pending`.
+- Interpretation: the mild low-return training filter lowers accepted precision and worsens calibration. Do not adopt this training filter.
+- Next step: avoid further abs-return training filters without a new slice-specific rationale.
