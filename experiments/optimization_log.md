@@ -7805,6 +7805,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.45787973043027475`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `08ee3b9`.
 - Interpretation: slower/larger CatBoost raises coverage and utility but loses too much accepted precision. Keep active CatBoost `1200` iterations and `0.015` learning rate.
 - Next step: continue with small, isolated probes; current best remains unchanged.
