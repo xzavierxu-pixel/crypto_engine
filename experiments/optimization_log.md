@@ -4466,6 +4466,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40565059616381544`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `6ef5902`.
 - Interpretation: DART seed 7 is worse. Keep seed 42.
 - Next step: do not pursue DART seed 7.
