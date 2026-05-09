@@ -3641,3 +3641,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: higher DART leaf capacity reduces accepted accuracy and score. Keep `num_leaves: 31`.
 - Next step: stop DART leaf-count tuning.
+
+## 20260509_codex_iter171_train90_dart_blend_platt_logit_c020
+
+- Skill used: recency/window discipline from prior adversarial-validation findings plus the current DART blend stack.
+- Hypothesis: the 90-day VWAP-drop split may recover coverage/utility with the improved DART blend and stronger calibration, despite underperforming with earlier CatBoost-only models.
+- Changed files: `experiments/configs/20260509_codex_iter171_train90_dart_blend_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter45_train90_drop_sl_vwap_split`.
+- Feature set: VWAP-drop top-500 split with 90-day development window; HTF/time features retained.
+- Model settings: best DART blend stack with `catboost_weight: 0.9775`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter171_train90_dart_blend_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter45_train90_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter171_train90_dart_blend_platt_logit_c020 --config experiments/configs/20260509_codex_iter171_train90_dart_blend_platt_logit_c020.yaml --horizon 5m --train-window-days 90 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter171_train90_dart_blend_platt_logit_c020/metrics.json`.
+- Score before: `0.1884526862901693`.
+- Score after: `0.17288825028814156`.
+- Utility before / after: `0.07633488854328671` / `0.08138932089165375`.
+- Accepted accuracy before / after: `0.594360781800705` / `0.5775691699604744`.
+- Accepted count before / after: `3121` / `4048`.
+- Coverage before / after: `0.40448418869880765` / `0.5246241575946086`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: 90-day training over-expands coverage and loses too much accepted accuracy. Keep the 75-day split.
+- Next step: avoid longer-window variants unless paired with a precision-preserving change.
