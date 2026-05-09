@@ -7265,6 +7265,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42690513219284604`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records development-fitted caps and validation changed-value counts.
-- Git commit: `pending`.
+- Git commit: `1969e52`.
 - Interpretation: clipping microstructure tails lowers accepted precision. Keep raw values for these features.
 - Next step: do not apply broad winsorization to top microstructure columns.
