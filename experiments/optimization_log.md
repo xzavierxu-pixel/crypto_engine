@@ -6747,3 +6747,26 @@ Main bottlenecks:
 - Git commit: `ec8b880`.
 - Interpretation: seed averaging improves variance diagnostics relative to pure CatBoost history, but it lowers selection_score versus the current CatBoost/LGBM logit blend. Do not replace the best model.
 - Next step: if using multi-seed again, combine it with the LGBM blend only after implementing a dedicated blend plugin; otherwise continue with localized feature or calibration probes.
+
+## 20260509_codex_iter306_blend9770_seed43_platt_logit_c020
+
+- Skill used: `tabular-multi-seed-fold-averaging`.
+- Hypothesis: checking a neighboring seed in the current logit blend can reveal whether seed variance is a useful optimization axis before implementing a heavier ensemble.
+- Changed files: `experiments/configs/20260509_codex_iter306_blend9770_seed43_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, active nested CatBoost `random_seed: 43`, nested DART `random_state: 43`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter306_blend9770_seed43_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter306_blend9770_seed43_platt_logit_c020 --config experiments/configs/20260509_codex_iter306_blend9770_seed43_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter306_blend9770_seed43_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17604249815377476`.
+- Utility before / after: `0.07698289269051321` / `0.07996371176775535`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.581162851881084`.
+- Accepted count before / after: `3120` / `3801`.
+- Coverage before / after: `0.40435458786936235` / `0.4926127527216174`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: seed 43 materially broadens accepted coverage and lowers accepted accuracy. The current seed 42 model remains best.
+- Next step: do not implement a heavier seed ensemble for the active blend unless another seed demonstrates complementary precision rather than broadening.
