@@ -7782,6 +7782,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41964748574390875`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records train-fitted session statistics and added-feature NaN counts.
-- Git commit: pending.
+- Git commit: `a74a1e8`.
 - Interpretation: session-relative features improve AUC slightly but lower the objective through weaker accepted precision. Do not add session-relative features to the current best.
 - Next step: close session-relative feature expansion and continue with conservative existing-feature/model probes.
