@@ -2385,3 +2385,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: LightGBM GOSS underperforms the CatBoost incumbent and leaves coverage close to the floor. Do not pursue this model branch.
 - Next step: return to CatBoost/data feature experiments.
+
+## 20260509_codex_iter116_catboost_crossentropy
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: CatBoost `CrossEntropy` may produce a different probability surface than `Logloss` and improve selective accuracy under the existing threshold grid.
+- Changed files: `experiments/configs/20260509_codex_iter116_catboost_crossentropy.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings with `loss_function: CrossEntropy`, `eval_metric: CrossEntropy`.
+- Config: `experiments/configs/20260509_codex_iter116_catboost_crossentropy.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter116_catboost_crossentropy --config experiments/configs/20260509_codex_iter116_catboost_crossentropy.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter116_catboost_crossentropy/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1809171641645443`.
+- Utility before / after: `0.0751684810782789` / `0.0751684810782789`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5893958076448829`.
+- Accepted count before / after: `3245` / `3244`.
+- Coverage before / after: `0.4205546915500259` / `0.4204250907205806`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: CrossEntropy is effectively identical to the incumbent for this binary-label setup and does not beat it after tie-breakers.
+- Next step: stop CatBoost loss-function variants unless a materially different objective is introduced.
