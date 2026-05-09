@@ -7148,6 +7148,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40552099533437014`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `8fde348`.
 - Interpretation: lagged HTF context is important; dropping it sharply lowers accepted accuracy. Keep HTF lags.
 - Next step: do not remove HTF/time feature families.
