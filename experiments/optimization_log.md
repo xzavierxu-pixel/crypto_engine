@@ -1880,3 +1880,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: seed 43 does not rescue the bottom-20 feature-pruning near-miss. Seed 42 remains better for that branch and iteration 43 remains best overall.
 - Next step: leave the bottom-20 pruning branch.
+
+## 20260509_codex_iter93_catboost_bernoulli08
+
+- Hypothesis: Bernoulli bootstrap row subsampling may regularize the best CatBoost model better than Bayesian bagging and improve validation accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter93_catboost_bernoulli08.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings with `bootstrap_type: Bernoulli`, `subsample: 0.8` replacing `bagging_temperature`.
+- Config: `experiments/configs/20260509_codex_iter93_catboost_bernoulli08.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter93_catboost_bernoulli08 --config experiments/configs/20260509_codex_iter93_catboost_bernoulli08.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter93_catboost_bernoulli08/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1696886067484292`.
+- Utility before / after: `0.0751684810782789` / `0.07348367029548988`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5819127419820861`.
+- Accepted count before / after: `3245` / `3461`.
+- Coverage before / after: `0.4205546915500259` / `0.44854847071021253`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: Bernoulli bootstrap over-accepts and lowers accepted accuracy. The best Bayesian bootstrap CatBoost settings remain preferable.
+- Next step: keep the current best as benchmark.
