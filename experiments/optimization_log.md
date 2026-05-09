@@ -8474,6 +8474,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4237947122861586`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `a417874`.
 - Interpretation: temperature sharpening improves Brier/logloss but lowers accepted precision under the official selector. Keep `platt_logit(C=0.2)`.
 - Next step: avoid optimizing calibration diagnostics at the expense of selection_score.
