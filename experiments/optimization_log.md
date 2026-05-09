@@ -8844,3 +8844,28 @@ Main bottlenecks:
 - Git commit: `c20918d`.
 - Interpretation: null-importance pruning improves utility and broad calibration but lowers accepted precision enough to trail the best selection_score. Do not adopt drop20 as-is.
 - Next step: try a narrower null-importance drop10 to preserve more precision while removing only the worst noise candidates.
+
+## 20260510_codex_iter394_nullimp_drop10_current_blend
+
+- Skill used: `tabular-null-importance-feature-selection`.
+- Hypothesis: dropping only the 10 worst null-importance candidates may preserve more accepted precision than drop20 while still reducing noisy features.
+- Changed files: `experiments/configs/20260510_codex_iter394_nullimp_drop10_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter394_nullimp_drop10_split`.
+- Feature set: 506 features; current best 516 features minus the 10 worst non-protected null-importance candidates; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter394_nullimp_drop10_split/nullimp_drop10_summary.json`.
+- Feature selection record: `artifacts/data_v2/experiments/20260510_codex_null_importance_current516.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter394_nullimp_drop10_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter394_nullimp_drop10_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter394_nullimp_drop10_current_blend --config experiments/configs/20260510_codex_iter394_nullimp_drop10_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter394_nullimp_drop10_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17404892532778232`.
+- Utility before / after: `0.07698289269051321` / `0.07387247278382586`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5850746268656717`.
+- Accepted count before / after: `3120` / `3350`.
+- Coverage before / after: `0.40435458786936235` / `0.4341627786417833`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records drop-only feature removal and unchanged row windows.
+- Git commit: pending.
+- Interpretation: narrower null-pruning is worse than drop20 and the best; it does not preserve enough accepted precision. Do not adopt drop10.
+- Next step: do not continue simple null-importance prefix sweeps without a new acceptance-boundary rationale.
