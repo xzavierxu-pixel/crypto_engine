@@ -8889,6 +8889,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4202954898911353`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `6ad9312`.
 - Interpretation: stronger CatBoost L2 does not recover precision on the null-pruned split and worsens both score and utility. Do not adopt this combined variant.
 - Next step: keep nullimp drop20 only as a diagnostic; return to data/feature hypotheses with direct accepted-precision rationale.
