@@ -7877,7 +7877,7 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41498185588387765`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records added columns and zero missing joined values.
-- Git commit: pending.
+- Git commit: `ffa9681`.
 - Interpretation: full90-selected microstructure candidates reduce accepted precision. Do not add this subset.
 - Next step: evaluate the lag/context subset separately.
 
