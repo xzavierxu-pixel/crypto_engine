@@ -8380,6 +8380,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4433644375324002`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records development-fitted quantiles and validation flag rates.
-- Git commit: `pending`.
+- Git commit: `8d9168d`.
 - Interpretation: the regime flags increase coverage and reduce logloss, but accepted precision drops sharply. Do not adopt this flag pack.
 - Next step: avoid more coarse regime flags; pursue either model regularization or a feature-removal path that preserves accepted precision.
