@@ -4144,6 +4144,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4064282011404873`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `fccba95`.
 - Interpretation: higher calibration `C` expands coverage but loses accepted accuracy and score. Keep `C: 0.2`.
 - Next step: leave calibration and test another model-training lever.
