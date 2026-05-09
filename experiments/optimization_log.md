@@ -8941,3 +8941,28 @@ Main bottlenecks:
 - Git commit: `e72f77b`.
 - Interpretation: recency weighting increases down precision but loses accepted accuracy and utility. Do not adopt this ramp.
 - Next step: avoid nearby recency ramps; focus on feature/data transformations with clearer accepted-boundary signal.
+
+## 20260510_codex_iter398_activity_meta_ge1bp_current_blend
+
+- Skill used: `tabular-oof-meta-features`.
+- Hypothesis: the incumbent boundary diagnostics show poor precision on `abs_return < 1bp`; a leak-free auxiliary activity model for `abs_return >= 1bp` may help the direction model avoid no-edge samples.
+- Changed files: `experiments/configs/20260510_codex_iter398_activity_meta_ge1bp_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter398_activity_meta_ge1bp_split`.
+- Feature set: 517 features; current best 516 features plus `meta_activity_ge1bp_lgbm_oof`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter398_activity_meta_ge1bp_split/activity_meta_ge1bp_summary.json`.
+- Auxiliary model: LightGBM on development only; blocked TimeSeriesSplit OOF predictions for development, averaged fold predictions for validation; non-cold OOF AUC `0.5826163947063986`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter398_activity_meta_ge1bp_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter398_activity_meta_ge1bp_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter398_activity_meta_ge1bp_current_blend --config experiments/configs/20260510_codex_iter398_activity_meta_ge1bp_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter398_activity_meta_ge1bp_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1684918659513698`.
+- Utility before / after: `0.07698289269051321` / `0.07374287195438052`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.580709219858156`.
+- Accepted count before / after: `3120` / `3525`.
+- Coverage before / after: `0.40435458786936235` / `0.4568429237947123`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records blocked OOF folds and validation prediction range.
+- Git commit: pending.
+- Interpretation: the 1bp activity meta-feature broadens acceptance but lowers accepted precision, similar to the previous 5bp activity meta-feature. Do not adopt activity meta-features in this form.
+- Next step: avoid auxiliary activity meta-features unless formulated as a separate model component rather than a final-model feature.
