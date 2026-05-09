@@ -8916,3 +8916,28 @@ Main bottlenecks:
 - Git commit: `6d7dca7`.
 - Interpretation: older history hurts accepted precision even when noisy extra features are removed. Do not adopt the 120-day same-schema split.
 - Next step: avoid extending history; test recency weighting within the incumbent 75-day window instead.
+
+## 20260510_codex_iter397_recency_weight_075_125_current_blend
+
+- Skill used: `tabular-time-varying-reward-shaping` concept adapted to chronological sample weighting.
+- Hypothesis: emphasizing more recent development rows inside the proven 75-day window may improve regime fit without adding older-history noise.
+- Changed files: `experiments/configs/20260510_codex_iter397_recency_weight_075_125_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter397_recency_weight_075_125_split`.
+- Feature set: 516 incumbent features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter397_recency_weight_075_125_split/recency_weight_075_125_summary.json`.
+- Data processing: multiplied development `stage1_sample_weight` by a linear timestamp ramp from `0.75` oldest to `1.25` newest; validation unchanged.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter397_recency_weight_075_125_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter397_recency_weight_075_125_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter397_recency_weight_075_125_current_blend --config experiments/configs/20260510_codex_iter397_recency_weight_075_125_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter397_recency_weight_075_125_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17152643991689157`.
+- Utility before / after: `0.07698289269051321` / `0.06972524624157593`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5871113989637305`.
+- Accepted count before / after: `3120` / `3088`.
+- Coverage before / after: `0.40435458786936235` / `0.4002073613271125`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records weight transform and unchanged validation.
+- Git commit: pending.
+- Interpretation: recency weighting increases down precision but loses accepted accuracy and utility. Do not adopt this ramp.
+- Next step: avoid nearby recency ramps; focus on feature/data transformations with clearer accepted-boundary signal.
