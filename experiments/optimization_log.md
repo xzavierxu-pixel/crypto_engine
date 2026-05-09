@@ -8142,6 +8142,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41485225505443235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records development-fitted quantile counts and zero NaN additions.
-- Git commit: pending.
+- Git commit: `0904a14`.
 - Interpretation: rank transforms are used by the model and are less harmful than broad feature additions, but accepted precision remains below the best. Do not adopt the top10 rank pack.
 - Next step: if rank transforms are revisited, test a much narrower top3 subset.
