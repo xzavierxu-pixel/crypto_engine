@@ -2973,3 +2973,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: XGBoost over-accepts lower-quality predictions and is not competitive with calibrated CatBoost on this split.
 - Next step: keep CatBoost as the model family and use future XGBoost only for explicit ensemble diagnostics.
+
+## 20260509_codex_iter142_blend99_platt_logit
+
+- Skill used: `tabular-logit-transform-stacking`, applied to the existing CatBoost/LightGBM logit-blend plugin plus logit-space calibration.
+- Hypothesis: a tiny LightGBM component (`1%`) may perturb CatBoost's probability ranking enough to improve accepted count/utility while logit-space calibration preserves accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter142_blend99_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `active_plugin: catboost_lgbm_logit_blend`, `catboost_weight: 0.99`, current best CatBoost settings, regularized LightGBM settings, plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter142_blend99_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter142_blend99_platt_logit --config experiments/configs/20260509_codex_iter142_blend99_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter142_blend99_platt_logit/metrics.json`.
+- Score before: `0.1846861980124185`.
+- Score after: `0.18511956039735958`.
+- Utility before / after: `0.07477967858994294` / `0.0754276827371695`.
+- Accepted accuracy before / after: `0.592854843900869` / `0.5925572519083969`.
+- Accepted count before / after: `3107` / `3144`.
+- Coverage before / after: `0.40266977708657337` / `0.40746500777604977`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: calibrated 99/1 logit blending is a small valid new best under the coverage constraint, mainly by increasing utility and accepted count while keeping accepted accuracy close to the CatBoost-only benchmark.
+- Next step: sweep only very nearby blend weights; wider LightGBM weights had already underperformed.
