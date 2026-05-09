@@ -3756,3 +3756,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: keeping `sl_vwap_30s` is even worse; the current drop-both VWAP split remains best.
 - Next step: stop VWAP-drop split variants.
+
+## 20260509_codex_iter176_drop_vwap_lowvol_dart_blend_platt_logit_c020
+
+- Skill used: feature ablation discipline with the current DART blend stack.
+- Hypothesis: the cached low-volume VWAP-drop variant may remove VWAP noise more selectively than the current drop-both split when paired with the DART blend.
+- Changed files: `experiments/configs/20260509_codex_iter176_drop_vwap_lowvol_dart_blend_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter48_train75_drop_vwap_lowvol_split`.
+- Feature set: 75-day low-volume VWAP-drop split; HTF/time features retained.
+- Model settings: best DART blend stack with `catboost_weight: 0.9775`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter176_drop_vwap_lowvol_dart_blend_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter48_train75_drop_vwap_lowvol_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter176_drop_vwap_lowvol_dart_blend_platt_logit_c020 --config experiments/configs/20260509_codex_iter176_drop_vwap_lowvol_dart_blend_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter176_drop_vwap_lowvol_dart_blend_platt_logit_c020/metrics.json`.
+- Score before: `0.1884526862901693`.
+- Score after: `0.15776631448205672`.
+- Utility before / after: `0.07633488854328671` / `0.06674442716433385`.
+- Accepted accuracy before / after: `0.594360781800705` / `0.5785779676533415`.
+- Accepted count before / after: `3121` / `3277`.
+- Coverage before / after: `0.40448418869880765` / `0.4247019180922758`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: low-volume VWAP-drop variant is much worse. Keep the current drop-both VWAP split.
+- Next step: avoid further VWAP-drop variants.
