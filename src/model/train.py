@@ -578,9 +578,12 @@ def train_binary_selective_model_from_split(
     train_frame = _with_sample_weight(development, weighted=weighted)
     valid_frame = _with_sample_weight(validation, weighted=weighted)
     model = _fit_model(train_frame, settings, stage="binary", validation=valid_frame)
-    calibrator = NoCalibration()
-    train_proba = calibrator.transform(model.predict_proba(train_frame.X))
-    valid_proba = calibrator.transform(model.predict_proba(valid_frame.X))
+    raw_train_proba = model.predict_proba(train_frame.X)
+    raw_valid_proba = model.predict_proba(valid_frame.X)
+    calibrator = create_calibration_plugin(settings, stage="binary")
+    calibrator.fit(raw_train_proba, train_frame.y.astype(int))
+    train_proba = calibrator.transform(raw_train_proba)
+    valid_proba = calibrator.transform(raw_valid_proba)
     search = settings.threshold_search
     t_up, t_down, frontier, best = search_selective_binary_thresholds(
         valid_frame.y.astype(int),

@@ -2407,3 +2407,26 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: CrossEntropy is effectively identical to the incumbent for this binary-label setup and does not beat it after tie-breakers.
 - Next step: stop CatBoost loss-function variants unless a materially different objective is introduced.
+
+## 20260509_codex_iter117_catboost_platt_calibration
+
+- Skill used: probability calibration workflow using the existing `platt` calibration plugin.
+- Hypothesis: the binary selective path was ignoring configured calibration; fitting Platt scaling on development predictions only may improve probability scale and threshold selection without using validation labels for calibration.
+- Changed files: `src/model/train.py`, `experiments/configs/20260509_codex_iter117_catboost_platt_calibration.yaml`, `experiments/optimization_log.md`.
+- Code change: `train_binary_selective_model_from_split` now creates `settings.calibration`'s binary calibrator, fits it on development raw probabilities and labels, and transforms both development and validation probabilities.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: platt`.
+- Config: `experiments/configs/20260509_codex_iter117_catboost_platt_calibration.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter117_catboost_platt_calibration --config experiments/configs/20260509_codex_iter117_catboost_platt_calibration.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter117_catboost_platt_calibration/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.18451203496023655`.
+- Utility before / after: `0.0751684810782789` / `0.07465007776049763`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.59284332688588`.
+- Accepted count before / after: `3245` / `3102`.
+- Coverage before / after: `0.4205546915500259` / `0.4020217729393468`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: Platt calibration is the new best selection_score so far, but it buys accuracy by dropping coverage close to the floor. It is still below the 0.24 target.
+- Next step: test the existing isotonic calibrator on the same split.
