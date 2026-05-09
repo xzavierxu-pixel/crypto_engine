@@ -4722,3 +4722,26 @@ Main bottlenecks:
 - Git commit: `814452f`.
 - Interpretation: even low-importance features are useful to the ensemble; aggressive top-450 pruning badly hurts accepted accuracy. Keep the full feature set.
 - Next step: avoid aggressive feature-count pruning.
+
+## 20260509_codex_iter218_blend9765_dart_l1_12_platt_logit_c020_balanced
+
+- Skill used: `tabular-balanced-log-loss`.
+- Hypothesis: class-balanced Platt-logit calibration may improve calibrated decision quality while leaving threshold search unchanged.
+- Changed files: `experiments/configs/20260509_codex_iter218_blend9765_dart_l1_12_platt_logit_c020_balanced.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`, `class_weight: balanced`.
+- Config: `experiments/configs/20260509_codex_iter218_blend9765_dart_l1_12_platt_logit_c020_balanced.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter218_blend9765_dart_l1_12_platt_logit_c020_balanced --config experiments/configs/20260509_codex_iter218_blend9765_dart_l1_12_platt_logit_c020_balanced.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter218_blend9765_dart_l1_12_platt_logit_c020_balanced/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.18370391030053992`.
+- Utility before / after: `0.07659409020217732` / `0.07490927941938827`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5919211195928753`.
+- Accepted count before / after: `3123` / `3144`.
+- Coverage before / after: `0.4047433903576983` / `0.40746500777604977`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: balanced Platt-logit calibration hurts accepted accuracy. Keep unweighted `platt_logit`.
+- Next step: avoid balanced calibration on this branch.
