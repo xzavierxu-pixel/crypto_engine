@@ -8312,3 +8312,26 @@ Main bottlenecks:
 - Git commit: `33d6cc5`.
 - Interpretation: the lagged relative-volume pair improves UP/DOWN balance but reduces accepted precision sharply. Do not adopt these lag additions.
 - Next step: stop trusting full-profile gain alone; prefer additions supported by error slices or probability calibration behavior.
+
+## 20260510_codex_iter372_blend9775_current
+
+- Skill used: `tabular-logit-transform-stacking` for logit-space blend-weight refinement.
+- Hypothesis: a slightly higher CatBoost weight in the logit blend may improve accepted precision while preserving the LightGBM DART contribution.
+- Changed files: `experiments/configs/20260510_codex_iter372_blend9775_current.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except `catboost_weight: 0.9775`.
+- Config: `experiments/configs/20260510_codex_iter372_blend9775_current.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter372_blend9775_current --config experiments/configs/20260510_codex_iter372_blend9775_current.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter372_blend9775_current/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18899670247663125`.
+- Utility before / after: `0.07698289269051321` / `0.07646448937273198`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5946726572528883`.
+- Accepted count before / after: `3120` / `3116`.
+- Coverage before / after: `0.40435458786936235` / `0.40383618455158116`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: nudging the blend weight upward is slightly worse than the current best `0.9770`. Keep the current blend weight.
+- Next step: continue with error-slice-guided feature or model changes; target `selection_score >= 0.24` remains unmet.
