@@ -7056,3 +7056,26 @@ Main bottlenecks:
 - Git commit: `f03ae00`.
 - Interpretation: the 72-day filtered window also lowers accepted accuracy. Keep the 75-day current best window.
 - Next step: stop nearby train-window sweeps unless combined with a different weighting scheme.
+
+## 20260509_codex_iter319_blend9775_dart_l1_12_platt_logit_c020
+
+- Skill used: model blend-weight refinement.
+- Hypothesis: a slightly higher CatBoost weight may improve the small CatBoost/LGBM logit blend contribution without changing data, features, labels, or threshold policy.
+- Changed files: `experiments/configs/20260509_codex_iter319_blend9775_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9775`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter319_blend9775_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter319_blend9775_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter319_blend9775_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter319_blend9775_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18899670247663125`.
+- Utility before / after: `0.07698289269051321` / `0.07646448937273198`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5946726572528883`.
+- Accepted count before / after: `3120` / `3116`.
+- Coverage before / after: `0.40435458786936235` / `0.40383618455158116`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: the tiny higher CatBoost weight is slightly worse. Keep `catboost_weight: 0.9770`.
+- Next step: avoid further tiny blend-weight probes without a new base model signal.
