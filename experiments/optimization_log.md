@@ -6123,6 +6123,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.5001296008294454`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; interaction summary saved at `artifacts/data_v2/experiments/20260509_codex_iter278_htf_range_top4_micro_interactions_split/interaction_summary.json`.
-- Git commit: `pending`.
+- Git commit: `9d7c5ce`.
 - Interpretation: compact interactions increase utility and coverage but reduce accepted accuracy enough to lower selection_score. Do not keep this feature pack.
 - Next step: avoid further direct interaction additions unless paired with feature selection or a better acceptance-sharpening model.
