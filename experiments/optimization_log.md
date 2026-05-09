@@ -5251,3 +5251,26 @@ Main bottlenecks:
 - Git commit: `5aa602b`.
 - Interpretation: weaker calibration regularization increases coverage but lowers accepted accuracy and score. Keep `C: 0.2`.
 - Next step: stop calibration-C bracketing around this model.
+
+## 20260509_codex_iter241_blend9770_cat_l2_28_dart_l1_12_platt_logit_c020
+
+- Skill used: `tabular-logit-transform-stacking` for preserving the current logit blend while making a narrow CatBoost capacity change.
+- Hypothesis: a small CatBoost L2 decrease (`l2_leaf_reg: 28`) may improve the dominant model's accepted-boundary ranking without changing data or thresholds.
+- Changed files: `experiments/configs/20260509_codex_iter241_blend9770_cat_l2_28_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, CatBoost `l2_leaf_reg: 28.0`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter241_blend9770_cat_l2_28_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter241_blend9770_cat_l2_28_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter241_blend9770_cat_l2_28_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter241_blend9770_cat_l2_28_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.19027803605274402`.
+- Utility before / after: `0.07698289269051321` / `0.07698289269051321`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5951923076923077`.
+- Accepted count before / after: `3120` / `3120`.
+- Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: `pending`.
+- Interpretation: this L2 change is neutral on the accepted slice. Keep `l2_leaf_reg: 30.0` for the canonical best unless further combinations show a benefit.
+- Next step: avoid very small CatBoost L2-only moves unless paired with another justified model change.
