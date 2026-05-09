@@ -3891,6 +3891,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40448418869880765` / `0.40383618455158116`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `6d8eda3`.
 - Interpretation: `reg_lambda: 10.0` is slightly worse than `8.0`.
 - Next step: test lighter DART L2 regularization.
