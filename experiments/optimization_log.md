@@ -5159,3 +5159,26 @@ Main bottlenecks:
 - Git commit: `e22f6b9`.
 - Interpretation: `0.9771` ties the current best exactly. Treat `0.9770`/`0.9771` as the same accepted-boundary plateau.
 - Next step: tune DART regularization while keeping the new blend plateau.
+
+## 20260509_codex_iter237_blend9770_dart_l1_13_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting`.
+- Hypothesis: slightly stronger DART L1 (`reg_alpha: 1.3`) may reduce side-model overfit while preserving the new `0.9770` blend-weight gain.
+- Changed files: `experiments/configs/20260509_codex_iter237_blend9770_dart_l1_13_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.3`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter237_blend9770_dart_l1_13_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter237_blend9770_dart_l1_13_platt_logit_c020 --config experiments/configs/20260509_codex_iter237_blend9770_dart_l1_13_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter237_blend9770_dart_l1_13_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18759064675382858`.
+- Utility before / after: `0.07698289269051321` / `0.07607568688439606`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.59392`.
+- Accepted count before / after: `3120` / `3125`.
+- Coverage before / after: `0.40435458786936235` / `0.4050025920165889`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; initial malformed YAML attempt failed before training and was corrected before the recorded evaluation.
+- Git commit: `pending`.
+- Interpretation: higher DART L1 adds coverage but lowers accepted accuracy enough to hurt selection_score. Keep `reg_alpha: 1.2`.
+- Next step: avoid stronger DART L1; try weaker L1 or other regularization only if it can improve accepted accuracy.
