@@ -5064,6 +5064,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40059616381544844`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; initial malformed YAML attempt failed before training and was corrected before the recorded evaluation.
-- Git commit: `pending`.
+- Git commit: `9e70353`.
 - Interpretation: the small DART contribution in the best blend improves both coverage and accepted accuracy. Keep `catboost_weight: 0.9765`.
 - Next step: test a slightly larger DART contribution only if it remains close to the current accepted boundary.
