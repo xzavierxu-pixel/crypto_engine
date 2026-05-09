@@ -2608,3 +2608,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: `C: 0.5` is worse than `C: 0.25`; stop this immediate Platt-C sweep.
 - Next step: keep `C: 0.25` as the calibration benchmark.
+
+## 20260509_codex_iter126_catboost_platt_c02
+
+- Skill used: probability calibration workflow.
+- Hypothesis: a nearby Platt regularization value (`C: 0.2`) may improve the small coverage/accuracy tradeoff seen at `C: 0.25`.
+- Changed files: `experiments/configs/20260509_codex_iter126_catboost_platt_c02.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: platt`, `calibration.plugins.platt.C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter126_catboost_platt_c02.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter126_catboost_platt_c02 --config experiments/configs/20260509_codex_iter126_catboost_platt_c02.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter126_catboost_platt_c02/metrics.json`.
+- Score before: `0.18462759471376494`.
+- Score after: `0.18253714386992323`.
+- Utility before / after: `0.07516848107827886` / `0.07452047693105238`.
+- Accepted accuracy before / after: `0.5924155513065646` / `0.5913568477915475`.
+- Accepted count before / after: `3138` / `3147`.
+- Coverage before / after: `0.40668740279937793` / `0.4078538102643857`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: `C: 0.2` does not improve on `C: 0.25`; stop this local Platt sweep.
+- Next step: keep `C: 0.25` as best.
