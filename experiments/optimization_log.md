@@ -5248,6 +5248,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4068170036288232`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration nesting was verified before the recorded evaluation.
-- Git commit: `pending`.
+- Git commit: `5aa602b`.
 - Interpretation: weaker calibration regularization increases coverage but lowers accepted accuracy and score. Keep `C: 0.2`.
 - Next step: stop calibration-C bracketing around this model.
