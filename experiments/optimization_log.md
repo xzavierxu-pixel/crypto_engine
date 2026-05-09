@@ -8526,3 +8526,28 @@ Main bottlenecks:
 - Git commit: `270044e`.
 - Interpretation: development-only correlation did not transfer to validation, and calibration worsened materially. Do not adopt this feature pack.
 - Next step: avoid dev-correlation-only selection; require slice stability or model-objective evidence before adding more features.
+
+## 20260510_codex_iter381_activity_meta_ge5bp_current_blend
+
+- Skill used: `tabular-oof-meta-features`.
+- Hypothesis: a leak-free auxiliary model predicting large label-window activity (`abs_return >= 5bp`) can add move-likelihood context and help the direction model select higher-quality accepted samples.
+- Changed files: `experiments/configs/20260510_codex_iter381_activity_meta_ge5bp_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter381_activity_meta_ge5bp_split`.
+- Feature set: 517 features; current best 516 features plus `meta_activity_ge5bp_lgbm_oof`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter381_activity_meta_ge5bp_split/activity_meta_ge5bp_summary.json`.
+- Auxiliary model: LightGBM on development only; 5 blocked OOF folds for development meta-feature, averaged fold predictions for validation; development OOF AUC `0.6790667566459578`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter381_activity_meta_ge5bp_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter381_activity_meta_ge5bp_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter381_activity_meta_ge5bp_current_blend --config experiments/configs/20260510_codex_iter381_activity_meta_ge5bp_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter381_activity_meta_ge5bp_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17392426417760662`.
+- Utility before / after: `0.07698289269051321` / `0.0723172628304821`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5864848109113453`.
+- Accepted count before / after: `3120` / `3226`.
+- Coverage before / after: `0.40435458786936235` / `0.41809227579056507`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records OOF folds and validation prediction range.
+- Git commit: `pending`.
+- Interpretation: the auxiliary activity model has real large-move signal, but as a final-model feature it still lowers accepted precision. Do not adopt this meta feature.
+- Next step: pivot away from activity meta-features; continue searching for precision-preserving data transformations.
