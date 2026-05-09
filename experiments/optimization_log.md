@@ -5893,6 +5893,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `bf8e94e`.
 - Interpretation: exact tie to the current best; either this change does not affect the active model path materially, or it preserves identical threshold-selected predictions. Keep the simpler current best config.
 - Next step: inspect whether active training consumes sample weights before spending more iterations on sample-weighting brackets.
