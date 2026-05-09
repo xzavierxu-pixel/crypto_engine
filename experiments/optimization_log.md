@@ -8988,6 +8988,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4085018144116122`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records blocked OOF folds and validation prediction range.
-- Git commit: pending.
+- Git commit: `3c93042`.
 - Interpretation: the OOF direction meta-feature is valid but does not improve accepted precision enough to beat the incumbent. Do not adopt it.
 - Next step: avoid same-target OOF stacking as a single feature unless the base learner is materially stronger or more diverse.
