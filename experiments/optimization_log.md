@@ -6448,3 +6448,26 @@ Main bottlenecks:
 - Git commit: `ea549a1`.
 - Interpretation: unweighted training broadens acceptance and reduces accepted accuracy. Keep the incumbent return-ramp weighting.
 - Next step: stop simple sample-weight variants.
+
+## 20260509_codex_iter293_blend9770_oof_logistic_meta_platt_logit_c020
+
+- Skill used: `tabular-oof-meta-features`.
+- Hypothesis: an expanding-window OOF logistic probability feature may add a leak-free learned linear summary that complements the CatBoost/LGBM blend.
+- Changed files: `experiments/configs/20260509_codex_iter293_blend9770_oof_logistic_meta_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter293_oof_logistic_meta_split`.
+- Feature set: 517 features; current best 516 features plus `meta_oof_logistic_p_up_ts5`; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter293_blend9770_oof_logistic_meta_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter293_oof_logistic_meta_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter293_blend9770_oof_logistic_meta_platt_logit_c020 --config experiments/configs/20260509_codex_iter293_blend9770_oof_logistic_meta_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter293_blend9770_oof_logistic_meta_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17489598797968187`.
+- Utility before / after: `0.07698289269051321` / `0.07153965785381024`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5880663688576898`.
+- Accepted count before / after: `3120` / `3134`.
+- Coverage before / after: `0.40435458786936235` / `0.4061689994815967`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; OOF generation summary saved at `artifacts/data_v2/experiments/20260509_codex_iter293_oof_logistic_meta_split/oof_logistic_meta_summary.json`.
+- Git commit: `pending`.
+- Interpretation: the OOF logistic meta-feature does not improve ranking and lowers selection_score. Do not keep this meta-feature.
+- Next step: avoid simple OOF logistic stacking unless paired with a materially different auxiliary target.
