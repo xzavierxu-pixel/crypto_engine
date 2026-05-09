@@ -2120,3 +2120,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: the pruned model accepts many more samples but loses too much accepted accuracy. This low-importance feature set is not a clean path to the target.
 - Next step: use probability distribution diagnostics or a narrower feature perturbation rather than broader pruning.
+
+## 20260509_codex_iter104_train_abs_return_ge5bp_catboost
+
+- Skill used: data-processing discipline from `tabular-balanced-log-loss` / prior-focused training.
+- Hypothesis: because validation diagnostics show much stronger score on `abs_return_ge_5bp`, training only on higher-magnitude development examples may make the model prefer cleaner directional moves.
+- Changed files: `experiments/configs/20260509_codex_iter104_train_abs_return_ge5bp_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter104_train_abs_return_ge5bp_split`.
+- Data processing: kept development rows with `abs(abs_return) >= 0.0005`, reducing development from 19,922 to 12,683 rows; validation unchanged. `abs_return` was not used as a feature.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter104_train_abs_return_ge5bp_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter104_train_abs_return_ge5bp_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter104_train_abs_return_ge5bp_catboost --config experiments/configs/20260509_codex_iter104_train_abs_return_ge5bp_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter104_train_abs_return_ge5bp_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17400432702731852`.
+- Utility before / after: `0.0751684810782789` / `0.07218766200103677`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5866791160908807`.
+- Accepted count before / after: `3245` / `3213`.
+- Coverage before / after: `0.4205546915500259` / `0.41640746500777603`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: high-magnitude-only training improves in-sample quality but does not transfer enough to validation; the incumbent still has better score and utility.
+- Next step: stop target-magnitude filtering and inspect feature-family effects.
