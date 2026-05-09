@@ -8866,6 +8866,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4341627786417833`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records drop-only feature removal and unchanged row windows.
-- Git commit: pending.
+- Git commit: `d81d480`.
 - Interpretation: narrower null-pruning is worse than drop20 and the best; it does not preserve enough accepted precision. Do not adopt drop10.
 - Next step: do not continue simple null-importance prefix sweeps without a new acceptance-boundary rationale.
