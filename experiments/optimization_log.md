@@ -6840,3 +6840,28 @@ Main bottlenecks:
 - Git commit: `b3ec39a`.
 - Interpretation: isolated 30m HTF context still lowers accepted accuracy and selection_score. Keep the 15m HTF context only.
 - Next step: do not add broader HTF horizons without a stronger selection or interaction reason.
+
+## 20260509_codex_iter310_drop_htf_rv15_current_blend
+
+- Skill used: `tabular-adversarial-validation`.
+- Hypothesis: adversarial validation on the current best split shows severe train/validation shift (`AUC=0.9839742348711035`), and dropping only the top shifted raw HTF volatility feature may reduce temporal overfit while retaining other HTF/time features.
+- Changed files: `experiments/configs/20260509_codex_iter310_drop_htf_rv15_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter310_drop_htf_rv15_split`.
+- Feature set: 515 features; dropped only `htf_rv_15m`; all other HTF/time features retained.
+- Diagnostic: adversarial validation artifacts saved under `artifacts/data_v2/experiments/20260509_codex_iter310_adversarial_current_best`.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter310_drop_htf_rv15_split/drop_htf_rv15_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter310_drop_htf_rv15_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter310_drop_htf_rv15_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter310_drop_htf_rv15_current_blend --config experiments/configs/20260509_codex_iter310_drop_htf_rv15_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter310_drop_htf_rv15_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1659560944989951`.
+- Utility before / after: `0.07698289269051321` / `0.06804043545878692`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5841615902532863`.
+- Accepted count before / after: `3120` / `3119`.
+- Coverage before / after: `0.40435458786936235` / `0.40422498703991705`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: `htf_rv_15m` is drifted but still useful; dropping it lowers accepted accuracy. Keep the HTF volatility feature.
+- Next step: prefer transforming or interacting drifted HTF features rather than removing them.
