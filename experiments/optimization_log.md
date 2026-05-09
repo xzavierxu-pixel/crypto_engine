@@ -9137,3 +9137,28 @@ Main bottlenecks:
 - Git commit: `ca95430`.
 - Interpretation: compact futures context is better than broad derivative/full-profile additions but still below the incumbent accepted precision and score. Do not adopt it as-is.
 - Next step: if revisiting futures data, isolate individual futures features rather than adding the full compact pack.
+
+## 20260510_codex_iter406_futures_top2_current_blend
+
+- Skill used: source-specific feature isolation from the compact futures context branch.
+- Hypothesis: the two highest-gain futures context features from iter405 may retain the useful derivative signal while removing lower-gain noise.
+- Changed files: `experiments/configs/20260510_codex_iter406_futures_top2_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter406_futures_top2_split`.
+- Feature set: 518 features; current best 516 features plus `fut_sum_taker_long_short_vol_ratio_chg_1_lag5m` and `fut_mark_index_basis_bps_lag1m`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter406_futures_top2_split/futures_top2_summary.json`.
+- Feature selection record: `artifacts/data_v2/experiments/20260510_codex_iter405_compact_futures_context_current_blend/feature_importance.csv`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter406_futures_top2_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter406_futures_top2_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter406_futures_top2_current_blend --config experiments/configs/20260510_codex_iter406_futures_top2_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter406_futures_top2_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16588500920205104`.
+- Utility before / after: `0.07698289269051321` / `0.06920684292379474`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5829192546583851`.
+- Accepted count before / after: `3120` / `3220`.
+- Coverage before / after: `0.40435458786936235` / `0.41731467081389323`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records zero-null joins from the conservatively shifted iter405 futures context.
+- Git commit: pending.
+- Interpretation: top-two futures isolation is worse than the full compact futures pack and far below the incumbent. Do not adopt this subset.
+- Next step: do not select futures columns by gain alone; only revisit futures data with a different alignment or interaction rationale.
