@@ -1432,3 +1432,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: row aggregates over high-importance features add noise for this CatBoost setup and reduce accepted accuracy.
 - Next step: do not pursue row-aggregate feature expansion further unless a narrower homogeneous block is identified.
+
+## 20260509_codex_iter72_relative_drop_bases_catboost
+
+- Skill used: `tabular-relative-deviation-features`.
+- Hypothesis: session-relative features may work better if redundant raw base columns are removed, forcing the model to use normalized context rather than raw scale.
+- Changed files: `experiments/configs/20260509_codex_iter72_relative_drop_bases_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter72_relative_drop_bases_split`.
+- Feature set: iteration 66 session-relative split with raw `rv_5`, `relative_volume_20`, `htf_rv_15m`, and `dollar_vol_mean_20` removed; HTF/time features otherwise retained.
+- Config: `experiments/configs/20260509_codex_iter72_relative_drop_bases_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter72_relative_drop_bases_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter72_relative_drop_bases_catboost --config experiments/configs/20260509_codex_iter72_relative_drop_bases_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter72_relative_drop_bases_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16770962736249925`.
+- Utility before / after: `0.0751684810782789` / `0.07257646448937277`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5811594202898551`.
+- Accepted count before / after: `3245` / `3450`.
+- Coverage before / after: `0.4205546915500259` / `0.44712286158631415`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: raw volatility/volume context remains useful alongside relative deviations. Removing it increases coverage but lowers accepted accuracy and score.
+- Next step: keep raw context when using relative-deviation features.
