@@ -5962,6 +5962,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4707102125453603`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `cea29fa`.
 - Interpretation: shallower CatBoost over-broadens the accepted set and reduces accepted accuracy. Keep `depth: 5`.
 - Next step: test the paired higher-capacity side (`depth: 6`) only if it has not already been ruled out for the current blend.
