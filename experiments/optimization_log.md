@@ -6629,6 +6629,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40539139450492484`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `239a86c`.
 - Interpretation: rank blending is a close near miss but still loses accepted accuracy versus logit blending. Keep logit blending as best.
 - Next step: if testing rank further, vary only the blend weight narrowly; otherwise continue with model regularization.
