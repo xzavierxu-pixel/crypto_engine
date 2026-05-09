@@ -6865,3 +6865,27 @@ Main bottlenecks:
 - Git commit: `6a7b5a6`.
 - Interpretation: `htf_rv_15m` is drifted but still useful; dropping it lowers accepted accuracy. Keep the HTF volatility feature.
 - Next step: prefer transforming or interacting drifted HTF features rather than removing them.
+
+## 20260509_codex_iter311_htf_rv15_norm_current_blend
+
+- Skill used: `tabular-relative-deviation-features`.
+- Hypothesis: rolling-normalized `htf_rv_15m` features may preserve useful HTF volatility information while reducing raw-scale drift identified by adversarial validation.
+- Changed files: `experiments/configs/20260509_codex_iter311_htf_rv15_norm_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter311_htf_rv15_norm_split`.
+- Feature set: 522 features; current best 516 features plus `htf_rv_15m` rolling z-score and relative-mean features over 12, 48, and 288 grid rows; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter311_htf_rv15_norm_split/htf_rv15_norm_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter311_htf_rv15_norm_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter311_htf_rv15_norm_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter311_htf_rv15_norm_current_blend --config experiments/configs/20260509_codex_iter311_htf_rv15_norm_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter311_htf_rv15_norm_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1741556129536868`.
+- Utility before / after: `0.07698289269051321` / `0.07153965785381024`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5874524714828897`.
+- Accepted count before / after: `3120` / `3156`.
+- Coverage before / after: `0.40435458786936235` / `0.40902021772939345`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; validation added-feature missing count is zero.
+- Git commit: `pending`.
+- Interpretation: rolling HTF volatility normalization lowers accepted accuracy and selection_score. Do not keep these added features.
+- Next step: stop HTF volatility variants unless paired with a narrower model-side selection mechanism.
