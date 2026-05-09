@@ -7479,5 +7479,5 @@ Main bottlenecks:
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
 - Git commit: `9dcbc09`.
-- Interpretation: random-strength increase is an exact tie under the official evaluator. It does not improve the objective.
-- Next step: test a stronger CatBoost capacity reduction with depth `5 -> 4`.
+- Interpretation: exact tie occurred because this config change affected the inactive standalone CatBoost block, not the active nested `catboost_lgbm_logit_blend.catboost` block. Treat iter336 as a configuration-path check, not a valid model-side improvement.
+- Next step: apply model-side CatBoost changes only inside the active nested blend block.
