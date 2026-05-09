@@ -1583,3 +1583,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: mid-regime upweighting does not transfer as a useful training-weight rule and reduces accepted accuracy.
 - Next step: avoid regime sample-weighting unless combined with a more robust time split.
+
+## 20260509_codex_iter79_depth6_l260_catboost
+
+- Hypothesis: depth 6 with stronger L2 regularization may capture useful interactions missed by the best depth-5 model without overfitting excessively.
+- Changed files: `experiments/configs/20260509_codex_iter79_depth6_l260_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: CatBoost `depth=6`, `l2_leaf_reg=60.0`, otherwise same as the best CatBoost settings.
+- Config: `experiments/configs/20260509_codex_iter79_depth6_l260_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter79_depth6_l260_catboost --config experiments/configs/20260509_codex_iter79_depth6_l260_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter79_depth6_l260_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1708701494439188`.
+- Utility before / after: `0.0751684810782789` / `0.07283566614826333`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5834818775995246`.
+- Accepted count before / after: `3245` / `3366`.
+- Coverage before / after: `0.4205546915500259` / `0.43623639191290825`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: extra tree depth does not improve validation confidence quality even with stronger L2. Depth 5 remains best.
+- Next step: continue with depth-5 CatBoost or data/feature changes rather than deeper models.
