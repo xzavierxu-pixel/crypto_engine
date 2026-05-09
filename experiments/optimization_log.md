@@ -5755,6 +5755,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42081389320891655`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `5e00fb9`.
 - Interpretation: `sl_vwap_10s` increases coverage but lowers accepted accuracy enough to reduce selection_score. Keep it excluded.
 - Next step: test the `sl_vwap_30s`-only variant, then stop this VWAP ablation branch if it also fails.
