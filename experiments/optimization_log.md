@@ -8217,3 +8217,26 @@ Main bottlenecks:
 - Git commit: `900c020`.
 - Interpretation: the narrow VWAP ratio pair keeps coverage near the best but lowers accepted precision and score. Do not adopt this feature pack.
 - Next step: test whether a small recency-weighted training change can improve the same feature set before exploring more feature additions.
+
+## 20260510_codex_iter368_aggressive_sample_weight_current_blend
+
+- Skill used: existing sample-weighting controls; no feature skill required.
+- Hypothesis: an aggressive linear-ramp weight profile may improve accepted precision by suppressing fewer small-return samples and reaching full weight sooner.
+- Changed files: `experiments/configs/20260510_codex_iter368_aggressive_sample_weight_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter368_aggressive_sample_weight_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter368_aggressive_sample_weight_current_blend --config experiments/configs/20260510_codex_iter368_aggressive_sample_weight_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter368_aggressive_sample_weight_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.19027803605274402`.
+- Utility before / after: `0.07698289269051321` / `0.07698289269051321`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5951923076923077`.
+- Accepted count before / after: `3120` / `3120`.
+- Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: exact metric tie shows config-only sample-weight changes do not affect cached-split training because `stage1_sample_weight` is already materialized in the cached parquet. This is a useful process finding, not a model improvement.
+- Next step: create a derived cached split with `stage1_sample_weight` recomputed under the aggressive profile and rerun the same model.
