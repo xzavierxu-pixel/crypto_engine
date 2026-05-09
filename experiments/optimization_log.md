@@ -8094,6 +8094,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4359771902540176`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records selected cross terms and zero NaN additions.
-- Git commit: pending.
+- Git commit: `0799238`.
 - Interpretation: top-two HTF x microstructure cross terms are worse than the six-term set and far below the current best. Close this interaction-pruning path.
 - Next step: do not continue HTF x micro interaction variants unless a new signal source is identified.
