@@ -7288,7 +7288,7 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40596359881244354`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; artifact manifest confirms derivative availability.
-- Git commit: `pending`.
+- Git commit: `0f5b980`.
 - Interpretation: broad derivative-enabled rebuild is weaker than the filtered best and is confounded by the full 1766-feature profile. Use it only as a derivative feature discovery source.
 - Next step: evaluate current best 516 features plus only derivative additions.
 
@@ -7312,6 +7312,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4016329704510109`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records joined derivative columns and missing counts.
-- Git commit: `pending`.
+- Git commit: `0f5b980`.
 - Interpretation: isolated derivative features still reduce accepted accuracy and score. Keep derivatives disabled in the current best config.
 - Next step: do not add derivative features wholesale; only revisit if a single derivative source passes ablation.
