@@ -6169,6 +6169,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4083722135821669`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `b815328`.
 - Interpretation: collinearity pruning removes signal that the blend still uses and lowers accepted accuracy. Do not keep this feature filter.
 - Next step: test gentler importance-based pruning rather than correlation-only pruning.
