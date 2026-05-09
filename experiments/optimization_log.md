@@ -6333,3 +6333,26 @@ Main bottlenecks:
 - Git commit: `2549d14`.
 - Interpretation: softened weights reduce accepted accuracy and score. Do not keep this weighting.
 - Next step: test the stronger squared-weight variant, then stop global weight-shape variants if it fails.
+
+## 20260509_codex_iter288_blend9770_squared_weights_platt_logit_c020
+
+- Skill used: sample-weighting/data-processing discipline.
+- Hypothesis: squared sample weights may emphasize cleaner larger-return examples and sharpen accepted predictions more than the incumbent linear weighting.
+- Changed files: `experiments/configs/20260509_codex_iter288_blend9770_squared_weights_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter83_squared_weights_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained; cached sample weights square the return-ramp emphasis.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter288_blend9770_squared_weights_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter83_squared_weights_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter288_blend9770_squared_weights_platt_logit_c020 --config experiments/configs/20260509_codex_iter288_blend9770_squared_weights_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter288_blend9770_squared_weights_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1730526276208296`.
+- Utility before / after: `0.07698289269051321` / `0.07270606531881804`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5853881278538813`.
+- Accepted count before / after: `3120` / `3285`.
+- Coverage before / after: `0.40435458786936235` / `0.42573872472783825`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: squared weights still lower accepted accuracy and score. Keep the incumbent linear return-ramp sample weighting.
+- Next step: move away from global sample-weight shape variants.
