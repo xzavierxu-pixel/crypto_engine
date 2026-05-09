@@ -7411,3 +7411,27 @@ Main bottlenecks:
 - Git commit: `52c1b52`.
 - Interpretation: OI-only improves side balance and coverage but lowers accepted precision sharply. Do not add OI features to the current best.
 - Next step: close derivative source additions; move back to feature selection/model regularization using the 516-feature best split.
+
+## 20260510_codex_iter334_drop_collinear0995_nonhtf_current_blend
+
+- Skill used: `tabular-collinear-feature-removal`.
+- Hypothesis: dropping near-duplicate non-HTF features with development Pearson `abs(corr) > 0.995` may reduce tree overfit while preserving the important HTF and time context.
+- Changed files: `experiments/configs/20260510_codex_iter334_drop_collinear0995_nonhtf_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter334_drop_collinear0995_nonhtf_split`.
+- Feature set: 506 features; current best 516 features minus 10 non-HTF near-duplicate columns; all HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter334_drop_collinear0995_nonhtf_split/drop_collinear0995_nonhtf_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260510_codex_iter334_drop_collinear0995_nonhtf_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter334_drop_collinear0995_nonhtf_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter334_drop_collinear0995_nonhtf_current_blend --config experiments/configs/20260510_codex_iter334_drop_collinear0995_nonhtf_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter334_drop_collinear0995_nonhtf_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16912746885749363`.
+- Utility before / after: `0.07698289269051321` / `0.07024364955935722`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.58458177278402`.
+- Accepted count before / after: `3120` / `3204`.
+- Coverage before / after: `0.40435458786936235` / `0.4152410575427683`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records removed columns and confirms HTF retention.
+- Git commit: pending.
+- Interpretation: even near-duplicate non-HTF columns help the current blend; removing them lowers accepted precision. Keep the full 516-feature current best set.
+- Next step: try model-side regularization and sampling changes on the unchanged 516-feature split.
