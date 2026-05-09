@@ -4765,6 +4765,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4047433903576983`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `4481bca`.
 - Interpretation: CatBoost `iterations: 1000` is neutral. Keep the original `1200` for continuity.
 - Next step: avoid CatBoost iteration-only reductions.
