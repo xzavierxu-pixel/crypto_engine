@@ -7029,6 +7029,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4298859512700881`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `c3fb0e0`.
 - Interpretation: the 80-day window adds rows but lowers accepted accuracy sharply. Keep the 75-day current best window.
 - Next step: avoid nearby longer windows unless a recency-weighted version can preserve the 75-day precision profile.
