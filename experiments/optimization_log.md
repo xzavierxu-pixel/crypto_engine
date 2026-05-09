@@ -8743,6 +8743,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.49481596682218765`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records derivation from existing online-safe source features and zero nulls.
-- Git commit: pending.
+- Git commit: `dfe352c`.
 - Interpretation: explicit cluster imbalance causes over-acceptance and lowers accepted precision, despite similar utility. Do not adopt these features.
 - Next step: avoid simple buy/sell imbalance transforms unless paired with a narrower slice-specific gate or stronger regularization.
