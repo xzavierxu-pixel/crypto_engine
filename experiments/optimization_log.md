@@ -8000,3 +8000,27 @@ Main bottlenecks:
 - Git commit: `ea0d49c`.
 - Interpretation: more training history alone increases coverage and utility but lowers accepted precision substantially. The 75-day window remains better for the objective.
 - Next step: return to the 75-day window and test more-feature variants without extending history.
+
+## 20260510_codex_iter359_full75_top800_protected_current_blend
+
+- Skill used: `tabular-recursive-feature-elimination` adapted as a single-pass feature screen on the 75-day full-profile cache.
+- Hypothesis: using the current 75-day window with more selected full-profile features may improve precision by adding context without the 90-day history noise.
+- Changed files: `experiments/configs/20260510_codex_iter359_full75_top800_protected_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter359_full75_top800_protected_split`.
+- Feature set: 813 features; iter351 full-profile gain top800 plus protected HTF and hour/minute time features, filtered back to the current best 75-day development window.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter359_full75_top800_protected_split/full75_top800_protected_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter359_full75_top800_protected_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter359_full75_top800_protected_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter359_full75_top800_protected_current_blend --config experiments/configs/20260510_codex_iter359_full75_top800_protected_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter359_full75_top800_protected_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17433737152052686`.
+- Utility before / after: `0.07698289269051321` / `0.07270606531881801`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5864406779661017`.
+- Accepted count before / after: `3120` / `3245`.
+- Coverage before / after: `0.40435458786936235` / `0.4205546915500259`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records 75-day boundaries and protected features.
+- Git commit: pending.
+- Interpretation: more full-profile features on the same 75-day window still reduce accepted precision. The 516-feature filtered set remains stronger.
+- Next step: avoid wide full-profile expansion; only test narrowly motivated feature packs.
