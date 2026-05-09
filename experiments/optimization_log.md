@@ -9060,6 +9060,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4234059097978227`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records training-only row filtering and drop-only feature removal.
-- Git commit: pending.
+- Git commit: `c60ea86`.
 - Interpretation: the two diagnostic branches do not combine; accepted precision and calibration degrade. Do not adopt this combined split.
 - Next step: avoid stacking weakly positive diagnostic transforms unless a direct validation-agnostic interaction rationale exists.
