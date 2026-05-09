@@ -3319,3 +3319,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: `0.9825` is a valid new best, improving utility, coverage, accepted count, and accepted accuracy together.
 - Next step: continue bracketing the DART blend optimum with a nearby lower weight.
+
+## 20260509_codex_iter157_blend98125_dart_platt_logit
+
+- Skill used: `tabular-logit-transform-stacking` and `tabular-lgbm-dart-boosting`.
+- Hypothesis: a lower fine DART blend weight (`catboost_weight: 0.98125`) may continue the improvement from `0.9825`.
+- Changed files: `experiments/configs/20260509_codex_iter157_blend98125_dart_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.98125`, current best CatBoost settings, DART LightGBM component, plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter157_blend98125_dart_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter157_blend98125_dart_platt_logit --config experiments/configs/20260509_codex_iter157_blend98125_dart_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter157_blend98125_dart_platt_logit/metrics.json`.
+- Score before: `0.18741881994931217`.
+- Score after: `0.18601940180283025`.
+- Utility before / after: `0.07594608605495075` / `0.0755572835666148`.
+- Accepted accuracy before / after: `0.5939102564102564` / `0.5931607542345797`.
+- Accepted count before / after: `3120` / `3129`.
+- Coverage before / after: `0.40435458786936235` / `0.40552099533437014`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: lower than `0.9825` loses accepted accuracy and score; keep `catboost_weight: 0.9825`.
+- Next step: DART blend weight is locally bracketed; move to a different lever.
