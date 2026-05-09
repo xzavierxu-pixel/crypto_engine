@@ -5827,3 +5827,26 @@ Main bottlenecks:
 - Git commit: `b4c3ec5`.
 - Interpretation: increasing DART feature fraction does not help; both sides around `0.35` reduce accepted accuracy. Keep the current DART feature fraction.
 - Next step: pivot to CatBoost regularization, which dominates the blend weight.
+
+## 20260509_codex_iter266_blend9770_cat_random_strength3_platt_logit_c020
+
+- Skill used: none specific; the local CatBoost skill is MultRMSE-focused and not applicable to this binary selection_score workflow.
+- Hypothesis: increasing CatBoost `random_strength` from `2.0` to `3.0` may reduce split-selection overfit in the CatBoost-dominant blend and improve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter266_blend9770_cat_random_strength3_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost `random_strength: 3.0`, nested DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter266_blend9770_cat_random_strength3_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter266_blend9770_cat_random_strength3_platt_logit_c020 --config experiments/configs/20260509_codex_iter266_blend9770_cat_random_strength3_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter266_blend9770_cat_random_strength3_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1674552378749784`.
+- Utility before / after: `0.07698289269051321` / `0.06907724209434941`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5843621399176955`.
+- Accepted count before / after: `3120` / `3159`.
+- Coverage before / after: `0.40435458786936235` / `0.4094090202177294`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: stronger CatBoost randomization hurts accepted accuracy. Keep `random_strength: 2.0`.
+- Next step: test lower CatBoost randomization (`random_strength: 1.0`) before leaving this branch.
