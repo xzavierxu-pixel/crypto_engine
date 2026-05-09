@@ -4259,6 +4259,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40396578538102645`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `1818571`.
 - Interpretation: stronger CatBoost random strength sharply degrades accepted accuracy. Keep `random_strength: 2.0`.
 - Next step: avoid CatBoost stochastic-strength increases.
