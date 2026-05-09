@@ -6103,3 +6103,26 @@ Main bottlenecks:
 - Git commit: `60d31f5`.
 - Interpretation: broad HTF-micro interaction expansion lowers accepted accuracy and objective score. Do not keep this feature pack.
 - Next step: use narrower feature selection or smaller targeted additions rather than broad interaction expansion.
+
+## 20260509_codex_iter278_blend9770_htf_range_top4_micro_interactions_platt_logit_c020
+
+- Skill used: `tabular-polynomial-interaction-features`.
+- Hypothesis: a much smaller set of `htf_range_pos_15m` interactions with the top four microstructure features may capture useful conditional context without the noise of the 32-feature interaction pack.
+- Changed files: `experiments/configs/20260509_codex_iter278_blend9770_htf_range_top4_micro_interactions_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter278_htf_range_top4_micro_interactions_split`.
+- Feature set: 520 features; current best 516 features plus four `htf_range_pos_15m` by microstructure interaction features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter278_blend9770_htf_range_top4_micro_interactions_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter278_htf_range_top4_micro_interactions_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter278_blend9770_htf_range_top4_micro_interactions_platt_logit_c020 --config experiments/configs/20260509_codex_iter278_blend9770_htf_range_top4_micro_interactions_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter278_blend9770_htf_range_top4_micro_interactions_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17322282026027705`.
+- Utility before / after: `0.07698289269051321` / `0.07944530844997404`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5794247214304223`.
+- Accepted count before / after: `3120` / `3859`.
+- Coverage before / after: `0.40435458786936235` / `0.5001296008294454`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; interaction summary saved at `artifacts/data_v2/experiments/20260509_codex_iter278_htf_range_top4_micro_interactions_split/interaction_summary.json`.
+- Git commit: `pending`.
+- Interpretation: compact interactions increase utility and coverage but reduce accepted accuracy enough to lower selection_score. Do not keep this feature pack.
+- Next step: avoid further direct interaction additions unless paired with feature selection or a better acceptance-sharpening model.
