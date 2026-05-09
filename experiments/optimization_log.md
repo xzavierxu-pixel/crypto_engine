@@ -9063,3 +9063,27 @@ Main bottlenecks:
 - Git commit: `c60ea86`.
 - Interpretation: the two diagnostic branches do not combine; accepted precision and calibration degrade. Do not adopt this combined split.
 - Next step: avoid stacking weakly positive diagnostic transforms unless a direct validation-agnostic interaction rationale exists.
+
+## 20260510_codex_iter403_rv_volume_continuous_current_blend
+
+- Skill used: compact continuous interaction feature engineering.
+- Hypothesis: false signals cluster in high-volatility/high-volume regimes; continuous `rv_5` by volume-context interactions may be less brittle than high-volatility flags.
+- Changed files: `experiments/configs/20260510_codex_iter403_rv_volume_continuous_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter403_rv_volume_continuous_split`.
+- Feature set: 519 features; current best 516 features plus `rv5_x_relative_volume20`, `rv5_x_log_volume`, and `rv5_over_dollar_vol20`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter403_rv_volume_continuous_split/rv_volume_continuous_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter403_rv_volume_continuous_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter403_rv_volume_continuous_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter403_rv_volume_continuous_current_blend --config experiments/configs/20260510_codex_iter403_rv_volume_continuous_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter403_rv_volume_continuous_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1622882131272142`.
+- Utility before / after: `0.07698289269051321` / `0.06959564541213067`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5795555555555556`.
+- Accepted count before / after: `3120` / `3375`.
+- Coverage before / after: `0.40435458786936235` / `0.43740279937791604`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records zero-null same-row derivations.
+- Git commit: pending.
+- Interpretation: continuous volatility-volume interactions broaden low-quality acceptance and hurt calibration. Do not adopt this feature pack.
+- Next step: move away from volatility-volume interactions; the incumbent already encodes this context better than the explicit transforms.
