@@ -7643,3 +7643,27 @@ Main bottlenecks:
 - Git commit: `02125b3`.
 - Interpretation: weekday cyclical features reduce accepted precision. Keep the existing minute/hour time features only.
 - Next step: test data-window processing rather than adding more coarse calendar features.
+
+## 20260510_codex_iter344_train74_window_current_blend
+
+- Skill used: time-ordered window processing from `timeseries-expanding-window-stacking` principles.
+- Hypothesis: removing the oldest approximately one day from the current 75-day development window may reduce stale-regime noise while preserving the same validation period.
+- Changed files: `experiments/configs/20260510_codex_iter344_train74_window_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter344_train74_window_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter344_train74_window_split/train74_window_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter344_train74_window_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter344_train74_window_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter344_train74_window_current_blend --config experiments/configs/20260510_codex_iter344_train74_window_current_blend.yaml --horizon 5m --train-window-days 74 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter344_train74_window_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16768814758470169`.
+- Utility before / after: `0.07698289269051321` / `0.06985484707102126`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5837737022070252`.
+- Accepted count before / after: `3120` / `3217`.
+- Coverage before / after: `0.40435458786936235` / `0.4169258683255573`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records exact UTC window boundaries and dropped rows.
+- Git commit: pending.
+- Interpretation: even a small reduction of the current development window lowers accepted precision. Keep the 75-day cached split.
+- Next step: focus on adding online-safe feature transforms rather than shortening the training window.
