@@ -8719,6 +8719,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40098496630378433`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; first attempted Bernoulli config failed because `bagging_temperature` is Bayesian-only, then the config was corrected and rerun successfully.
-- Git commit: pending.
+- Git commit: `307666b`.
 - Interpretation: Bernoulli bootstrap lowers accepted precision and nearly falls to the coverage floor. Keep Bayesian bootstrap with `bagging_temperature: 0.5`.
 - Next step: avoid CatBoost bootstrap variants unless paired with a stronger validation-agnostic model selection signal.
