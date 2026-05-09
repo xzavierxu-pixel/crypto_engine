@@ -5571,6 +5571,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4059097978227061`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; quantile summary saved at `artifacts/data_v2/experiments/20260509_codex_iter254_top10_tail_flags_split/tail_flags_summary.json`.
-- Git commit: `pending`.
+- Git commit: `12239f7`.
 - Interpretation: sparse tail flags are less harmful than broad dense features but still lower accepted accuracy. Do not keep this feature pack.
 - Next step: stop adding top-feature regime flags unless they are side-specific or model-specific.
