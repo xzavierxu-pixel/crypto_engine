@@ -3963,3 +3963,26 @@ Main bottlenecks:
 - Git commit: `41679b6`.
 - Interpretation: `reg_alpha: 1.5` is too strong and loses accuracy. Keep `1.2` as the reference.
 - Next step: test a lower bracket at `reg_alpha: 1.0`.
+
+## 20260509_codex_iter185_blend9775_dart_l1_10_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting`.
+- Hypothesis: a lower nested DART L1 value than `1.2` may retain more useful side-model signal while still pruning more than the old `0.8`.
+- Changed files: `experiments/configs/20260509_codex_iter185_blend9775_dart_l1_10_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: DART blend with `catboost_weight: 0.9775`, `calibration.active_plugin: platt_logit`, `C: 0.2`, nested DART `reg_alpha: 1.0`, `reg_lambda: 8.0`.
+- Config: `experiments/configs/20260509_codex_iter185_blend9775_dart_l1_10_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter185_blend9775_dart_l1_10_platt_logit_c020 --config experiments/configs/20260509_codex_iter185_blend9775_dart_l1_10_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter185_blend9775_dart_l1_10_platt_logit_c020/metrics.json`.
+- Score before: `0.18899670247663125`.
+- Score after: `0.18717287178225642`.
+- Utility before / after: `0.07646448937273198` / `0.07581648522550548`.
+- Accepted accuracy before / after: `0.5946726572528883` / `0.5938402309913379`.
+- Accepted count before / after: `3116` / `3117`.
+- Coverage before / after: `0.40383618455158116` / `0.40396578538102645`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: `reg_alpha: 1.0` is worse than `1.2`. Keep `1.2`.
+- Next step: tune DART bagging around the `reg_alpha: 1.2` branch.
