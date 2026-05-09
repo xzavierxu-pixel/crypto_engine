@@ -7785,3 +7785,26 @@ Main bottlenecks:
 - Git commit: `a74a1e8`.
 - Interpretation: session-relative features improve AUC slightly but lower the objective through weaker accepted precision. Do not add session-relative features to the current best.
 - Next step: close session-relative feature expansion and continue with conservative existing-feature/model probes.
+
+## 20260510_codex_iter350_active_cat_slow1600_current_blend
+
+- Skill used: model training schedule probe.
+- Hypothesis: increasing active nested CatBoost iterations from `1200` to `1600` while lowering learning rate from `0.015` to `0.0125` may smooth updates and improve selective precision.
+- Changed files: `experiments/configs/20260510_codex_iter350_active_cat_slow1600_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except active nested CatBoost `iterations: 1200 -> 1600` and `learning_rate: 0.015 -> 0.0125`; DART and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter350_active_cat_slow1600_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter350_active_cat_slow1600_current_blend --config experiments/configs/20260510_codex_iter350_active_cat_slow1600_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter350_active_cat_slow1600_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.176729870143494`.
+- Utility before / after: `0.07698289269051321` / `0.07711249351995855`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5842060571752052`.
+- Accepted count before / after: `3120` / `3533`.
+- Coverage before / after: `0.40435458786936235` / `0.45787973043027475`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: pending.
+- Interpretation: slower/larger CatBoost raises coverage and utility but loses too much accepted precision. Keep active CatBoost `1200` iterations and `0.015` learning rate.
+- Next step: continue with small, isolated probes; current best remains unchanged.
