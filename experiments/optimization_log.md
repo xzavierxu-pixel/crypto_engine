@@ -2230,3 +2230,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: this is also neutral. Do not spend more iterations on Bayesian bootstrap temperature.
 - Next step: switch to feature input side rather than CatBoost temperature.
+
+## 20260509_codex_iter109_drop_bottom5_non_htf_time_catboost
+
+- Skill used: feature-selection discipline from `tabular-recursive-feature-elimination`.
+- Hypothesis: removing only the 5 lowest CatBoost-importance non-HTF/time features may reduce noise without the over-pruning seen in the bottom25 experiment.
+- Changed files: `experiments/configs/20260509_codex_iter109_drop_bottom5_non_htf_time_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter109_drop_bottom5_non_htf_time_split`.
+- Data processing: removed `sl_total_volume_10s`, `sl_agg_mean_interarrival_ms_5s`, `signed_volume_1_lag1`, `sl_agg_median_trade_size_3s`, `ret_3_rolling_z_12`; development and validation went from 540 to 535 columns.
+- Feature set: HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter109_drop_bottom5_non_htf_time_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter109_drop_bottom5_non_htf_time_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter109_drop_bottom5_non_htf_time_catboost --config experiments/configs/20260509_codex_iter109_drop_bottom5_non_htf_time_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter109_drop_bottom5_non_htf_time_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.170999728660344`.
+- Utility before / after: `0.0751684810782789` / `0.07102125453602902`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5853582554517134`.
+- Accepted count before / after: `3245` / `3210`.
+- Coverage before / after: `0.4205546915500259` / `0.41601866251944014`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: even minimal low-importance pruning hurts validation objective. Stop this pruning branch.
+- Next step: inspect model/report artifacts for another feature/data direction.
