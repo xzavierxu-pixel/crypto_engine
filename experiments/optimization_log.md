@@ -4788,6 +4788,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4051321928460342`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `2ca3c5d`.
 - Interpretation: `catboost_weight: 0.9760` is worse than `0.9765`. Keep `0.9765`.
 - Next step: close this fine blend-weight bracket.
