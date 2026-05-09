@@ -5274,3 +5274,26 @@ Main bottlenecks:
 - Git commit: `6cf7e4b`.
 - Interpretation: this L2 change is neutral on the accepted slice. Keep `l2_leaf_reg: 30.0` for the canonical best unless further combinations show a benefit.
 - Next step: avoid very small CatBoost L2-only moves unless paired with another justified model change.
+
+## 20260509_codex_iter242_catboost_seed_ensemble3_platt_logit_c020
+
+- Skill used: `tabular-multi-seed-fold-averaging`.
+- Hypothesis: averaging three CatBoost seeds may reduce prediction variance and improve selective accepted accuracy versus a single CatBoost model.
+- Changed files: `experiments/configs/20260509_codex_iter242_catboost_seed_ensemble3_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `model.active_plugin: catboost_ensemble`, `n_seeds: 3`, CatBoost base params matching the current best, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter242_catboost_seed_ensemble3_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter242_catboost_seed_ensemble3_platt_logit_c020 --config experiments/configs/20260509_codex_iter242_catboost_seed_ensemble3_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter242_catboost_seed_ensemble3_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18284455810731287`.
+- Utility before / after: `0.07698289269051321` / `0.07659409020217733`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5895725977568961`.
+- Accepted count before / after: `3120` / `3299`.
+- Coverage before / after: `0.40435458786936235` / `0.4275531363400726`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; initial malformed YAML attempt failed before training and was corrected before the recorded evaluation.
+- Git commit: `pending`.
+- Interpretation: seed averaging increases coverage but lowers accepted accuracy. The CatBoost+DART logit blend remains better than CatBoost-only ensembling.
+- Next step: avoid replacing the blend with CatBoost-only seed averages on this split.
