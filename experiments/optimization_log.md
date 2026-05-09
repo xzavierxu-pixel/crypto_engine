@@ -5686,6 +5686,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4004665629860031`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `db4f18d`.
 - Interpretation: shortening to 70 days lowers accepted accuracy and nearly reaches the coverage floor. Keep the 75-day split.
 - Next step: avoid further train-window bracketing around the current split.
