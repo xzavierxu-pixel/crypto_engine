@@ -1987,3 +1987,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: the 72-day fresh rebuild underperforms the current best; shortening the train window around 75 days does not improve the objective.
 - Next step: return to the current best cached split and test narrowly-scoped CatBoost regularization knobs.
+
+## 20260509_codex_iter98_catboost_model_size_reg2
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: adding CatBoost `model_size_reg: 2.0` may reduce overfit splits and improve selective validation accuracy without changing thresholds or feature semantics.
+- Changed files: `experiments/configs/20260509_codex_iter98_catboost_model_size_reg2.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `model_size_reg: 2.0`.
+- Config: `experiments/configs/20260509_codex_iter98_catboost_model_size_reg2.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter98_catboost_model_size_reg2 --config experiments/configs/20260509_codex_iter98_catboost_model_size_reg2.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter98_catboost_model_size_reg2/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1809171641645443`.
+- Utility before / after: `0.0751684810782789` / `0.0751684810782789`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5893958076448829`.
+- Accepted count before / after: `3245` / `3244`.
+- Coverage before / after: `0.4205546915500259` / `0.4204250907205806`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: model-size regularization is effectively neutral and does not beat the incumbent after the accepted-count/coverage tie-breakers.
+- Next step: test CatBoost quantization regularization with `border_count`.
