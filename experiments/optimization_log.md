@@ -1691,3 +1691,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: strengthening the weight ramp increases coverage but reduces accepted accuracy. The original weight ramp remains best.
 - Next step: keep original sample weights.
+
+## 20260509_codex_iter84_htf_micro_interactions_catboost
+
+- Skill used: `tabular-polynomial-interaction-features`.
+- Hypothesis: direct products between repaired trailing HTF context and the strongest second-level microstructure features may capture conditional microstructure signal under different higher-timeframe regimes.
+- Changed files: `experiments/configs/20260509_codex_iter84_htf_micro_interactions_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter84_htf_micro_interactions_split`.
+- Feature set: current best VWAP-pruned top-500 split plus 32 HTF x microstructure product features; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter84_htf_micro_interactions_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter84_htf_micro_interactions_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter84_htf_micro_interactions_catboost --config experiments/configs/20260509_codex_iter84_htf_micro_interactions_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter84_htf_micro_interactions_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16198013391301166`.
+- Utility before / after: `0.0751684810782789` / `0.06661482633488856`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5822663252240717`.
+- Accepted count before / after: `3245` / `3124`.
+- Coverage before / after: `0.4205546915500259` / `0.4048729911871436`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: explicit HTF x microstructure products add noise and reduce score. CatBoost already handles enough of this interaction structure from the base features.
+- Next step: continue with conservative feature selection rather than interaction expansion.
