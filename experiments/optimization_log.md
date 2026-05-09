@@ -6609,3 +6609,26 @@ Main bottlenecks:
 - Git commit: `8018c3c`.
 - Interpretation: gentle downweighting lowers accepted accuracy and selection_score. Do not keep this weighting.
 - Next step: avoid stronger variants from this same weighting family unless a new diagnostic points to a more selective weighting rule.
+
+## 20260509_codex_iter300_rank_blend9770_dart_l1_12_platt_logit_c020
+
+- Skill used: `tabular-rank-averaging-ensemble`.
+- Hypothesis: rank-space blending may reduce sensitivity to CatBoost/LGBM probability scale differences while preserving the same learned ordering signal.
+- Changed files: `experiments/configs/20260509_codex_iter300_rank_blend9770_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained.
+- Model settings: `model.active_plugin: catboost_lgbm_rank_blend`, `catboost_weight: 0.9770`, nested CatBoost/DART parameters copied from current best, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter300_rank_blend9770_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter300_rank_blend9770_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter300_rank_blend9770_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter300_rank_blend9770_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.187836226990091`.
+- Utility before / after: `0.07698289269051321` / `0.07620528771384136`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5939897698209718`.
+- Accepted count before / after: `3120` / `3128`.
+- Coverage before / after: `0.40435458786936235` / `0.40539139450492484`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: rank blending is a close near miss but still loses accepted accuracy versus logit blending. Keep logit blending as best.
+- Next step: if testing rank further, vary only the blend weight narrowly; otherwise continue with model regularization.
