@@ -4121,6 +4121,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40305857957490926`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `e7a645d`.
 - Interpretation: lower calibration `C` loses coverage and score. Keep `C: 0.2` unless the upper side improves.
 - Next step: test `C: 0.22`.
