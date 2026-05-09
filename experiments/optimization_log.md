@@ -7171,6 +7171,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42223950233281493`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `93d9f06`.
 - Interpretation: class rebalancing reduces accepted precision and selection_score. Keep unweighted class loss.
 - Next step: avoid class-weight tweaks unless a separate model family needs calibration.
