@@ -4190,6 +4190,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4545101088646967`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `f179ee0`.
 - Interpretation: slower CatBoost training greatly expands accepted coverage but damages accepted accuracy and score. Keep the original CatBoost schedule.
 - Next step: avoid broad CatBoost schedule changes; use narrower regularization or feature levers.
