@@ -7925,6 +7925,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.44738206324520474`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records added column and zero missing joined values.
-- Git commit: pending.
+- Git commit: `c4f7945`.
 - Interpretation: the top full90 candidate is unstable when isolated and sharply reduces accepted precision. Stop subdividing this candidate set.
 - Next step: look for a different feature-discovery source rather than continuing full90 top-gain additions.
