@@ -5640,6 +5640,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.49572317262830484`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `8ab2f6e`.
 - Interpretation: session flags increase coverage but dilute accepted accuracy. Keep the existing cyclical time features without these flags.
 - Next step: avoid coarse session flags on this validation slice.
