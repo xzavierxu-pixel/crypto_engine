@@ -7079,3 +7079,27 @@ Main bottlenecks:
 - Git commit: `0f0f30a`.
 - Interpretation: the tiny higher CatBoost weight is slightly worse. Keep `catboost_weight: 0.9770`.
 - Next step: avoid further tiny blend-weight probes without a new base model signal.
+
+## 20260509_codex_iter320_flow_agreement_current_blend
+
+- Skill used: `tabular-polynomial-interaction-features`.
+- Hypothesis: compact flow-agreement interactions between short-term return, taker imbalance, signed flow, and buy/sell cluster/run pressure may improve accepted precision without adding broad raw features.
+- Changed files: `experiments/configs/20260509_codex_iter320_flow_agreement_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter320_flow_agreement_split`.
+- Feature set: 524 features; current best 516 features plus 8 online-safe flow-agreement features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter320_flow_agreement_split/flow_agreement_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter320_flow_agreement_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter320_flow_agreement_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter320_flow_agreement_current_blend --config experiments/configs/20260509_codex_iter320_flow_agreement_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter320_flow_agreement_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16934815872294698`.
+- Utility before / after: `0.07698289269051321` / `0.0720580611715915`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5829850746268657`.
+- Accepted count before / after: `3120` / `3350`.
+- Coverage before / after: `0.40435458786936235` / `0.4341627786417833`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary reports unchanged row counts and zero missing added values.
+- Git commit: `pending`.
+- Interpretation: flow-agreement interactions broaden acceptance and lower accepted accuracy. Do not keep these features.
+- Next step: avoid adding microstructure interaction features unless validated by out-of-fold selection.
