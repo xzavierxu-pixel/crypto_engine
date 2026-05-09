@@ -7408,6 +7408,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.43144116122343185`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records OI-column missing counts.
-- Git commit: pending.
+- Git commit: `52c1b52`.
 - Interpretation: OI-only improves side balance and coverage but lowers accepted precision sharply. Do not add OI features to the current best.
 - Next step: close derivative source additions; move back to feature selection/model regularization using the 516-feature best split.
