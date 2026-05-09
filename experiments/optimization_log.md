@@ -2766,3 +2766,26 @@ Main bottlenecks:
 - Git commit: `f5cecee`.
 - Interpretation: logit-space calibration is a tiny but valid new best under the coverage constraint by improving accepted accuracy while staying above `coverage >= 0.40`.
 - Next step: use this as the new calibration benchmark and test nearby regularization or data/model changes against it.
+
+## 20260509_codex_iter133_catboost_platt_logit_c030
+
+- Skill used: `tabular-logit-transform-stacking`.
+- Hypothesis: slightly weaker regularization (`C: 0.3`) for the new logit-space calibrator may recover a little utility while preserving the accepted-accuracy gain.
+- Changed files: `experiments/configs/20260509_codex_iter133_catboost_platt_logit_c030.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: platt_logit`, `C: 0.3`, `max_iter: 1000`.
+- Config: `experiments/configs/20260509_codex_iter133_catboost_platt_logit_c030.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter133_catboost_platt_logit_c030 --config experiments/configs/20260509_codex_iter133_catboost_platt_logit_c030.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter133_catboost_platt_logit_c030/metrics.json`.
+- Score before: `0.1846861980124185`.
+- Score after: `0.18268522318286035`.
+- Utility before / after: `0.07477967858994294` / `0.07426127527216173`.
+- Accepted accuracy before / after: `0.592854843900869` / `0.5917387127761767`.
+- Accepted count before / after: `3107` / `3123`.
+- Coverage before / after: `0.40266977708657337` / `0.4047433903576983`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: weaker regularization is worse; keep `platt_logit C: 0.25`.
+- Next step: if continuing calibration, test only the lower side; otherwise return to feature/model changes.
