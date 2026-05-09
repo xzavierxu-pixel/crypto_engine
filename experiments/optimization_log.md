@@ -8073,3 +8073,27 @@ Main bottlenecks:
 - Git commit: `e6fbec2`.
 - Interpretation: HTF x microstructure interactions are less damaging than broad full-profile expansion but still do not beat the current best.
 - Next step: if continuing this direction, isolate the highest-value interaction terms instead of using all six.
+
+## 20260510_codex_iter362_htf_micro_cross_top2_current_blend
+
+- Skill used: `tabular-polynomial-interaction-features` with feature-importance-guided pruning.
+- Hypothesis: keeping only the top two gain-ranked HTF x microstructure cross terms from iter361 may preserve the useful context while removing lower-value interaction noise.
+- Changed files: `experiments/configs/20260510_codex_iter362_htf_micro_cross_top2_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter362_htf_micro_cross_top2_split`.
+- Feature set: 518 features; current best 516 features plus two HTF x microstructure cross features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter362_htf_micro_cross_top2_split/htf_micro_cross_top2_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter362_htf_micro_cross_top2_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter362_htf_micro_cross_top2_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter362_htf_micro_cross_top2_current_blend --config experiments/configs/20260510_codex_iter362_htf_micro_cross_top2_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter362_htf_micro_cross_top2_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16892546699191496`.
+- Utility before / after: `0.07698289269051321` / `0.07205806117159154`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.582639714625446`.
+- Accepted count before / after: `3120` / `3364`.
+- Coverage before / after: `0.40435458786936235` / `0.4359771902540176`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records selected cross terms and zero NaN additions.
+- Git commit: pending.
+- Interpretation: top-two HTF x microstructure cross terms are worse than the six-term set and far below the current best. Close this interaction-pruning path.
+- Next step: do not continue HTF x micro interaction variants unless a new signal source is identified.
