@@ -6540,3 +6540,26 @@ Main bottlenecks:
 - Git commit: `830157d`.
 - Interpretation: combined weak-regime downweighting still broadens acceptance and lowers accepted accuracy. Do not keep this weighting.
 - Next step: avoid further weak-regime weighting without a stronger model-side precision mechanism.
+
+## 20260509_codex_iter297_drop_bottom10_importance_current_blend
+
+- Skill used: `tabular-recursive-feature-elimination`.
+- Hypothesis: removing the 10 lowest-importance non-protected features may reduce noise while retaining the HTF and cyclical time context required by the current objective.
+- Changed files: `experiments/configs/20260509_codex_iter297_drop_bottom10_importance_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter86_drop_bottom10_importance_split`.
+- Feature set: 506 features; HTF/time features retained; lowest-importance feature subset removed by the cached split.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter297_drop_bottom10_importance_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter86_drop_bottom10_importance_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter297_drop_bottom10_importance_current_blend --config experiments/configs/20260509_codex_iter297_drop_bottom10_importance_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter297_drop_bottom10_importance_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17864711463061556`.
+- Utility before / after: `0.07698289269051321` / `0.07400207361327114`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5886921404162784`.
+- Accepted count before / after: `3120` / `3219`.
+- Coverage before / after: `0.40435458786936235` / `0.4171850699844479`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: the smaller feature set lowers accepted accuracy and selection_score despite satisfying coverage. Do not keep this split.
+- Next step: test neighboring bottom-importance pruning only if it may locate a narrower noise-removal band; otherwise pivot back to model regularization.
