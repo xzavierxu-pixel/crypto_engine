@@ -5179,6 +5179,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4050025920165889`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; initial malformed YAML attempt failed before training and was corrected before the recorded evaluation.
-- Git commit: `pending`.
+- Git commit: `60cddcb`.
 - Interpretation: higher DART L1 adds coverage but lowers accepted accuracy enough to hurt selection_score. Keep `reg_alpha: 1.2`.
 - Next step: avoid stronger DART L1; try weaker L1 or other regularization only if it can improve accepted accuracy.
