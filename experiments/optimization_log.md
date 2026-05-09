@@ -4880,6 +4880,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4048729911871436`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `9839706`.
 - Interpretation: DART `min_split_gain` lowers accepted accuracy and score. Keep no split-gain floor.
 - Next step: avoid this DART split-gain regularizer on the current branch.
