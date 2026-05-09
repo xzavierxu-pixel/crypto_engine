@@ -7387,3 +7387,27 @@ Main bottlenecks:
 - Git commit: `c8e0320`.
 - Interpretation: basis-only barely clears the coverage floor and lowers utility and accepted precision. Do not add basis/premium features to the current best.
 - Next step: log OI-only source-isolation run, then close derivative-source additions unless combined with explicit feature selection.
+
+## 20260510_codex_iter333_best516_plus_oi_current_blend
+
+- Skill used: `tabular-collinear-feature-removal` for source-isolation framing; local derivative data enrichment for cached split construction.
+- Hypothesis: OI level/change features may capture positioning expansion or unwind pressure that improves selective precision.
+- Changed files: `experiments/configs/20260510_codex_iter333_best516_plus_oi_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter333_best516_plus_oi_split`.
+- Feature set: 524 features; current best 516 features plus eight OI columns; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter333_best516_plus_oi_split/best516_plus_oi_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`; `derivatives.enabled: true`.
+- Config: `experiments/configs/20260510_codex_iter333_best516_plus_oi_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter333_best516_plus_oi_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter333_best516_plus_oi_current_blend --config experiments/configs/20260510_codex_iter333_best516_plus_oi_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30 --derivatives-path-mode archive`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter333_best516_plus_oi_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1649566274086236`.
+- Utility before / after: `0.07698289269051321` / `0.07011404872991185`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5812556323220186`.
+- Accepted count before / after: `3120` / `3329`.
+- Coverage before / after: `0.40435458786936235` / `0.43144116122343185`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records OI-column missing counts.
+- Git commit: pending.
+- Interpretation: OI-only improves side balance and coverage but lowers accepted precision sharply. Do not add OI features to the current best.
+- Next step: close derivative source additions; move back to feature selection/model regularization using the 516-feature best split.
