@@ -1712,3 +1712,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: explicit HTF x microstructure products add noise and reduce score. CatBoost already handles enough of this interaction structure from the base features.
 - Next step: continue with conservative feature selection rather than interaction expansion.
+
+## 20260509_codex_iter85_drop_bottom20_importance_catboost
+
+- Skill used: `tabular-recursive-feature-elimination` as conservative importance-tail pruning.
+- Hypothesis: dropping the 20 lowest CatBoost-importance unprotected features from the current best split may reduce noise while keeping HTF/time context intact.
+- Changed files: `experiments/configs/20260509_codex_iter85_drop_bottom20_importance_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter85_drop_bottom20_importance_split`.
+- Feature set: 496 selected features, down from 516; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter85_drop_bottom20_importance_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter85_drop_bottom20_importance_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter85_drop_bottom20_importance_catboost --config experiments/configs/20260509_codex_iter85_drop_bottom20_importance_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter85_drop_bottom20_importance_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17951039054804577`.
+- Utility before / after: `0.0751684810782789` / `0.08048211508553654`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5834004834810637`.
+- Accepted count before / after: `3245` / `3723`.
+- Coverage before / after: `0.4205546915500259` / `0.48250388802488337`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: bottom-tail importance pruning improves utility and coverage but loses enough accepted accuracy to remain just below the best score.
+- Next step: test a smaller bottom-10 importance drop to preserve more accepted accuracy.
