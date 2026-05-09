@@ -6238,6 +6238,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4599533437013997`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `c6ca109`.
 - Interpretation: trailing path features broaden acceptance and lower accepted accuracy. Do not keep this feature pack.
 - Next step: reassess remaining branches; added feature packs are consistently diluting precision under the current blend.
