@@ -3134,3 +3134,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: DART as a tiny blend component is a valid new best, improving accepted accuracy and downside-risk denominator while staying above the coverage floor.
 - Next step: keep this as the new benchmark; because coverage is close to `0.40`, prefer changes that recover coverage without sacrificing accepted accuracy.
+
+## 20260509_codex_iter149_blend985_dart_platt_logit
+
+- Skill used: `tabular-logit-transform-stacking` and `tabular-lgbm-dart-boosting`.
+- Hypothesis: a slightly larger DART LightGBM perturbation (`1.5%`) may recover coverage/utility while keeping accepted accuracy close to the DART 99/1 blend.
+- Changed files: `experiments/configs/20260509_codex_iter149_blend985_dart_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.985`, current best CatBoost settings, DART LightGBM component, plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter149_blend985_dart_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter149_blend985_dart_platt_logit --config experiments/configs/20260509_codex_iter149_blend985_dart_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter149_blend985_dart_platt_logit/metrics.json`.
+- Score before: `0.18680416480395254`.
+- Score after: `0.18682834549642668`.
+- Utility before / after: `0.07542768273716952` / `0.0755572835666148`.
+- Accepted accuracy before / after: `0.5939315687540349` / `0.5938204055358867`.
+- Accepted count before / after: `3098` / `3107`.
+- Coverage before / after: `0.4015033696215656` / `0.40266977708657337`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: DART `0.985` is a tiny valid new best, improving utility and coverage enough to offset the small accepted-accuracy decrease.
+- Next step: test the adjacent larger DART perturbation once.
