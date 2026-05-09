@@ -2586,3 +2586,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: `C: 0.1` increases coverage but loses too much accepted accuracy. `C: 0.25` remains best.
 - Next step: test the other side with `C: 0.5`.
+
+## 20260509_codex_iter125_catboost_platt_c05
+
+- Skill used: probability calibration workflow.
+- Hypothesis: milder Platt regularization (`C: 0.5`) may preserve more accepted accuracy than `C: 0.1` while improving over default Platt.
+- Changed files: `experiments/configs/20260509_codex_iter125_catboost_platt_c05.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: platt`, `calibration.plugins.platt.C: 0.5`.
+- Config: `experiments/configs/20260509_codex_iter125_catboost_platt_c05.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter125_catboost_platt_c05 --config experiments/configs/20260509_codex_iter125_catboost_platt_c05.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter125_catboost_platt_c05/metrics.json`.
+- Score before: `0.18462759471376494`.
+- Score after: `0.18176268376131016`.
+- Utility before / after: `0.07516848107827886` / `0.07400207361327116`.
+- Accepted accuracy before / after: `0.5924155513065646` / `0.5912432086928732`.
+- Accepted count before / after: `3138` / `3129`.
+- Coverage before / after: `0.40668740279937793` / `0.40552099533437014`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: `C: 0.5` is worse than `C: 0.25`; stop this immediate Platt-C sweep.
+- Next step: keep `C: 0.25` as the calibration benchmark.
