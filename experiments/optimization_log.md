@@ -8966,3 +8966,28 @@ Main bottlenecks:
 - Git commit: `c7db50c`.
 - Interpretation: the 1bp activity meta-feature broadens acceptance but lowers accepted precision, similar to the previous 5bp activity meta-feature. Do not adopt activity meta-features in this form.
 - Next step: avoid auxiliary activity meta-features unless formulated as a separate model component rather than a final-model feature.
+
+## 20260510_codex_iter399_direction_meta_lgbm_oof_current_blend
+
+- Skill used: `tabular-oof-meta-features` and `timeseries-expanding-window-stacking`.
+- Hypothesis: a leak-free blocked OOF LightGBM direction probability may add complementary rank signal to the incumbent CatBoost+DART blend.
+- Changed files: `experiments/configs/20260510_codex_iter399_direction_meta_lgbm_oof_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter399_direction_meta_lgbm_oof_split`.
+- Feature set: 517 features; current best 516 features plus `meta_direction_lgbm_oof`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter399_direction_meta_lgbm_oof_split/direction_meta_lgbm_oof_summary.json`.
+- Auxiliary model: LightGBM on development only; blocked TimeSeriesSplit OOF predictions for development, averaged fold predictions for validation; non-cold OOF AUC `0.5424026889616969`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter399_direction_meta_lgbm_oof_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter399_direction_meta_lgbm_oof_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter399_direction_meta_lgbm_oof_current_blend --config experiments/configs/20260510_codex_iter399_direction_meta_lgbm_oof_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter399_direction_meta_lgbm_oof_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1777891779485382`.
+- Utility before / after: `0.07698289269051321` / `0.07283566614826334`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5891497461928934`.
+- Accepted count before / after: `3120` / `3152`.
+- Coverage before / after: `0.40435458786936235` / `0.4085018144116122`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records blocked OOF folds and validation prediction range.
+- Git commit: pending.
+- Interpretation: the OOF direction meta-feature is valid but does not improve accepted precision enough to beat the incumbent. Do not adopt it.
+- Next step: avoid same-target OOF stacking as a single feature unless the base learner is materially stronger or more diverse.
