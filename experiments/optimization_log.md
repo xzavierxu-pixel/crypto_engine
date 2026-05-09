@@ -6077,6 +6077,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40085536547433903`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `0d96285`.
 - Interpretation: compact regime flags do not recover the objective and leave coverage close to the floor. Do not keep this feature pack.
 - Next step: inspect remaining untested cached richer splits before creating new feature data.
