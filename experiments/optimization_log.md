@@ -5202,6 +5202,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4048729911871436`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; initial malformed YAML attempt failed before training and was corrected before the recorded evaluation.
-- Git commit: `pending`.
+- Git commit: `410149c`.
 - Interpretation: weaker DART L1 also lowers accepted accuracy. Keep `reg_alpha: 1.2`.
 - Next step: avoid DART L1 changes around the current blend plateau.
