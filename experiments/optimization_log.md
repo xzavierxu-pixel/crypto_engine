@@ -1475,3 +1475,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: DART overfits development and barely clears validation coverage. CatBoost remains the best model family.
 - Next step: keep CatBoost as the primary model for subsequent iterations.
+
+## 20260509_codex_iter74_catboost_lgbm_logit_blend
+
+- Skill used: `tabular-log-odds-fold-averaging`.
+- Hypothesis: a heterogeneous CatBoost/LightGBM blend in logit space may add complementary ranking signal while preserving CatBoost as the dominant model.
+- Changed files: `src/model/logit_blend_plugin.py`, `src/model/registry.py`, `experiments/configs/20260509_codex_iter74_catboost_lgbm_logit_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, CatBoost weight `0.85`, best CatBoost settings plus regularized LightGBM settings.
+- Config: `experiments/configs/20260509_codex_iter74_catboost_lgbm_logit_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter74_catboost_lgbm_logit_blend --config experiments/configs/20260509_codex_iter74_catboost_lgbm_logit_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter74_catboost_lgbm_logit_blend/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1682325759784555`.
+- Utility before / after: `0.0751684810782789` / `0.0740020736132711`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5802642676412707`.
+- Accepted count before / after: `3245` / `3557`.
+- Coverage before / after: `0.4205546915500259` / `0.46099015033696217`.
+- Coverage constraint satisfied: yes.
+- Tests: `rtk python -m compileall -q src/model`; DQC ran during training.
+- Interpretation: LightGBM adds acceptance volume but dilutes accepted accuracy. CatBoost alone remains better.
+- Next step: if blending is revisited, use a much smaller non-CatBoost weight; otherwise continue with CatBoost-only changes.
