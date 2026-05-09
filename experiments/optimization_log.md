@@ -5479,6 +5479,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40902021772939345`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `105ebd2`.
 - Interpretation: session-relative features lower accepted accuracy under the current blend. Keep the current best split.
 - Next step: avoid this feature branch unless paired with a different model family.
