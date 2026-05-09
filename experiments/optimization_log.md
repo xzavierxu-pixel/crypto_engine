@@ -9112,3 +9112,28 @@ Main bottlenecks:
 - Git commit: `9a927c1`.
 - Interpretation: incumbent low-gain pruning removes useful calibration/abstention structure and causes over-acceptance. Do not adopt this pruning.
 - Next step: do not expand incumbent-gain pruning; low gain does not imply safe removal for selective scoring.
+
+## 20260510_codex_iter405_compact_futures_context_current_blend
+
+- Skill used: source-specific feature engineering with conservative timestamp alignment.
+- Hypothesis: compact futures premium/basis/OI context from downloaded futures data may add directional regime signal absent from the incumbent spot/second-level features, while avoiding the noise of broad derivative packs.
+- Changed files: `experiments/configs/20260510_codex_iter405_compact_futures_context_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter405_compact_futures_context_split`.
+- Feature set: 522 features; current best 516 features plus 6 compact futures context features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter405_compact_futures_context_split/compact_futures_context_summary.json`.
+- Source/alignment: `premiumIndexKlines`, `markPriceKlines`, and `indexPriceKlines` 1m bars shifted +1 minute before asof join; futures metrics shifted +5 minutes before asof join; no labels used.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter405_compact_futures_context_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter405_compact_futures_context_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter405_compact_futures_context_current_blend --config experiments/configs/20260510_codex_iter405_compact_futures_context_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter405_compact_futures_context_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18116264902962673`.
+- Utility before / after: `0.07698289269051321` / `0.07413167444271641`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5906210392902408`.
+- Accepted count before / after: `3120` / `3156`.
+- Coverage before / after: `0.40435458786936235` / `0.40902021772939345`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records source files, conservative timestamp shifts, and zero-null joined values.
+- Git commit: pending.
+- Interpretation: compact futures context is better than broad derivative/full-profile additions but still below the incumbent accepted precision and score. Do not adopt it as-is.
+- Next step: if revisiting futures data, isolate individual futures features rather than adding the full compact pack.
