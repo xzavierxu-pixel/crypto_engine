@@ -7547,6 +7547,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4011145671332296`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `b1e2e1a`.
 - Interpretation: lower active CatBoost L2 reduces accepted precision and score. The current best is not underfit in this direction.
 - Next step: test slightly higher active CatBoost L2 (`35`) to check the other side of the local regularization neighborhood.
