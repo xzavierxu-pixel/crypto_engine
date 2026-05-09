@@ -6961,3 +6961,26 @@ Main bottlenecks:
 - Git commit: `c717afb`.
 - Interpretation: the single strongest new flow feature broadens acceptance and lowers accepted accuracy. Close this selective expansion path.
 - Next step: avoid adding discovered full-profile features unless supported by a stronger out-of-fold or leakage-screening signal.
+
+## 20260509_codex_iter315_blend9770_cat_od_wait100_platt_logit_c020
+
+- Skill used: model training overfit-control probe.
+- Hypothesis: CatBoost overfitting detection with `od_wait: 100` may reduce overfit and improve accepted precision without changing data, features, labels, or threshold policy.
+- Changed files: `experiments/configs/20260509_codex_iter315_blend9770_cat_od_wait100_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, active nested CatBoost adds `od_type: Iter`, `od_wait: 100`, `use_best_model: true`; nested DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter315_blend9770_cat_od_wait100_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter315_blend9770_cat_od_wait100_platt_logit_c020 --config experiments/configs/20260509_codex_iter315_blend9770_cat_od_wait100_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter315_blend9770_cat_od_wait100_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.19027803605274402`.
+- Utility before / after: `0.07698289269051321` / `0.07698289269051321`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5951923076923077`.
+- Accepted count before / after: `3120` / `3120`.
+- Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: CatBoost overfitting detection is an exact tie with the current best. Treat as neutral, not an improvement.
+- Next step: do not rely on CatBoost OD unless paired with a lower iteration or learning-rate change.
