@@ -7758,6 +7758,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.43157076205287714`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records added HTF interaction columns and NaN counts.
-- Git commit: pending.
+- Git commit: `7958c66`.
 - Interpretation: explicit HTF interactions increase coverage but reduce accepted precision. Keep the original HTF feature set without these pairwise terms.
 - Next step: prefer conservative feature selection or existing-feature model tuning over adding explicit interaction columns.
