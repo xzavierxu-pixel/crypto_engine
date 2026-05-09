@@ -4374,6 +4374,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4108346293416278`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `05bfe3f`.
 - Interpretation: weekday/weekend features sharply hurt accepted accuracy. Keep the cached hour/minute time features only.
 - Next step: avoid weekday feature variants.
