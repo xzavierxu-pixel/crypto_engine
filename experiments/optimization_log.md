@@ -1945,3 +1945,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: the milder filter is worse than the stricter low-return filter and worse than the benchmark. Low-return row filtering is not enough.
 - Next step: stop this filtering branch.
+
+## 20260509_codex_iter96_bottom20_drop_low_return_catboost
+
+- Hypothesis: combining the bottom-20 importance-pruned feature set with low-absolute-return row filtering may preserve accepted accuracy while reducing noisy examples and features.
+- Changed files: `experiments/configs/20260509_codex_iter96_bottom20_drop_low_return_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter96_bottom20_drop_low_return_split`.
+- Data processing: removed development rows with `abs_return < 0.0001` from the bottom-20 feature-pruned split, keeping 18,428 rows; validation unchanged.
+- Feature set: 496 selected features; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter96_bottom20_drop_low_return_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter96_bottom20_drop_low_return_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter96_bottom20_drop_low_return_catboost --config experiments/configs/20260509_codex_iter96_bottom20_drop_low_return_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter96_bottom20_drop_low_return_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16973275974618138`.
+- Utility before / after: `0.0751684810782789` / `0.06907724209434937`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5862738750404661`.
+- Accepted count before / after: `3245` / `3089`.
+- Coverage before / after: `0.4205546915500259` / `0.4003369621565578`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: stacking the two near-miss branches lowers coverage to the floor and does not improve score. Do not combine these branches further.
+- Next step: continue with a different approach.
