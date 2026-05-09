@@ -4305,6 +4305,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.43792120269569723`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `c66df3e`.
 - Interpretation: stronger materialized weighting expands accepted coverage and reduces accepted accuracy. Do not use this ramp.
 - Next step: test a gentler materialized weighting ramp.
