@@ -7478,6 +7478,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `9dcbc09`.
 - Interpretation: random-strength increase is an exact tie under the official evaluator. It does not improve the objective.
 - Next step: test a stronger CatBoost capacity reduction with depth `5 -> 4`.
