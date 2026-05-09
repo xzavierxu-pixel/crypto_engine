@@ -2319,3 +2319,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no separate unit test was added because this branch underperformed and should not become active.
 - Interpretation: regime routing overfits the development data and sharply reduces validation accepted accuracy. Do not expand this plugin direction without a better gating design.
 - Next step: keep the plugin available but inactive; return to config-only experiments.
+
+## 20260509_codex_iter113_catboost_mvs_bootstrap
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: CatBoost `bootstrap_type: MVS` with `subsample: 0.8` may regularize sample usage differently from Bayesian and Bernoulli bootstrap while preserving the incumbent feature set.
+- Changed files: `experiments/configs/20260509_codex_iter113_catboost_mvs_bootstrap.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings with `bootstrap_type: MVS`, `subsample: 0.8`, and no `bagging_temperature`.
+- Config: `experiments/configs/20260509_codex_iter113_catboost_mvs_bootstrap.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter113_catboost_mvs_bootstrap --config experiments/configs/20260509_codex_iter113_catboost_mvs_bootstrap.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter113_catboost_mvs_bootstrap/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1809171641645443`.
+- Utility before / after: `0.0751684810782789` / `0.0751684810782789`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5893958076448829`.
+- Accepted count before / after: `3245` / `3244`.
+- Coverage before / after: `0.4205546915500259` / `0.4204250907205806`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: MVS produces the same acceptance metrics as the incumbent and does not beat it on accepted-count/coverage tie-breakers.
+- Next step: move to another model-training parameter family.
