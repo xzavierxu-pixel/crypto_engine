@@ -5666,3 +5666,26 @@ Main bottlenecks:
 - Git commit: `64a5dc0`.
 - Interpretation: even compact explicit microstructure interactions over-broaden accepted predictions and lower accepted accuracy. Do not keep this feature pack.
 - Next step: avoid interaction expansion on this split.
+
+## 20260509_codex_iter259_blend9770_train70_drop_sl_vwap_platt_logit_c020
+
+- Skill used: `tabular-group-shuffle-split` as split discipline context; evaluated an existing chronological 70-day recent-window split without changing label or thresholds.
+- Hypothesis: a slightly shorter 70-day recent training window may improve accepted accuracy by reducing stale regime contamination versus the 75-day best split.
+- Changed files: `experiments/configs/20260509_codex_iter259_blend9770_train70_drop_sl_vwap_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter44_train70_drop_sl_vwap_split`.
+- Feature set: 516 features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter259_blend9770_train70_drop_sl_vwap_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter44_train70_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter259_blend9770_train70_drop_sl_vwap_platt_logit_c020 --config experiments/configs/20260509_codex_iter259_blend9770_train70_drop_sl_vwap_platt_logit_c020.yaml --horizon 5m --train-window-days 70 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter259_blend9770_train70_drop_sl_vwap_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16724210380519422`.
+- Utility before / after: `0.07698289269051321` / `0.06817003628823227`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5851132686084143`.
+- Accepted count before / after: `3120` / `3090`.
+- Coverage before / after: `0.40435458786936235` / `0.4004665629860031`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: shortening to 70 days lowers accepted accuracy and nearly reaches the coverage floor. Keep the 75-day split.
+- Next step: avoid further train-window bracketing around the current split.
