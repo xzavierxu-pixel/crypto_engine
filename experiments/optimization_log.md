@@ -6606,6 +6606,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4061689994815967`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; source split has `sample_weight_report.json`.
-- Git commit: `pending`.
+- Git commit: `8018c3c`.
 - Interpretation: gentle downweighting lowers accepted accuracy and selection_score. Do not keep this weighting.
 - Next step: avoid stronger variants from this same weighting family unless a new diagnostic points to a more selective weighting rule.
