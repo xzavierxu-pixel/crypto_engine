@@ -9084,6 +9084,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.43740279937791604`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records zero-null same-row derivations.
-- Git commit: pending.
+- Git commit: `82982d2`.
 - Interpretation: continuous volatility-volume interactions broaden low-quality acceptance and hurt calibration. Do not adopt this feature pack.
 - Next step: move away from volatility-volume interactions; the incumbent already encodes this context better than the explicit transforms.
