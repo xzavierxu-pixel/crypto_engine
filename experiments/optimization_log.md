@@ -8309,6 +8309,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42081389320891655`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records row-preserving timestamp joins and zero missing joined values.
-- Git commit: `pending`.
+- Git commit: `33d6cc5`.
 - Interpretation: the lagged relative-volume pair improves UP/DOWN balance but reduces accepted precision sharply. Do not adopt these lag additions.
 - Next step: stop trusting full-profile gain alone; prefer additions supported by error slices or probability calibration behavior.
