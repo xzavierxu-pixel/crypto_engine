@@ -6862,6 +6862,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40422498703991705`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `6a7b5a6`.
 - Interpretation: `htf_rv_15m` is drifted but still useful; dropping it lowers accepted accuracy. Keep the HTF volatility feature.
 - Next step: prefer transforming or interacting drifted HTF features rather than removing them.
