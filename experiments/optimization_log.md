@@ -8696,6 +8696,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4755054432348367`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records development-fitted clip bounds and changed counts by frame.
-- Git commit: pending.
+- Git commit: `08fc36e`.
 - Interpretation: clipping drifted feature extremes broadens the accepted set but lowers accepted precision too much. Do not adopt this winsorization.
 - Next step: avoid broad drift clipping; investigate transformations that specifically improve ranking near the current acceptance boundary.
