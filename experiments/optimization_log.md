@@ -8649,3 +8649,28 @@ Main bottlenecks:
 - Git commit: `ed3532c`.
 - Interpretation: removing near-duplicates improves broad calibration diagnostics but shifts the accepted set toward lower precision, so selection_score declines. Do not adopt this drop set.
 - Next step: avoid broader collinearity pruning; focus on model regularization or targeted signal-quality transformations.
+
+## 20260510_codex_iter386_adv_drift_drop4_current_blend
+
+- Skill used: `tabular-adversarial-validation`.
+- Hypothesis: removing the top non-HTF/non-time volume and stale-trade features that distinguish development from validation may reduce temporal distribution overfit while keeping required HTF/time context.
+- Changed files: `experiments/configs/20260510_codex_iter386_adv_drift_drop4_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter386_adv_drift_drop4_split`.
+- Feature set: 512 features; current best 516 features minus `low_volume_flag_share_20_mean_gap_6`, `stale_trade_share_5_rolling_z_12`, `low_volume_flag_share_20_rolling_z_6`, and `legal_prev_trade_count_sum_20`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter386_adv_drift_drop4_split/adv_drift_drop4_summary.json`.
+- Feature selection record: `artifacts/data_v2/experiments/20260510_codex_adversarial_validation_best_split.json`; adversarial train-vs-validation AUC `0.9834855677942317`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter386_adv_drift_drop4_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter386_adv_drift_drop4_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter386_adv_drift_drop4_current_blend --config experiments/configs/20260510_codex_iter386_adv_drift_drop4_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter386_adv_drift_drop4_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17235479362138179`.
+- Utility before / after: `0.07698289269051321` / `0.07179885951270092`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5857054455445545`.
+- Accepted count before / after: `3120` / `3232`.
+- Coverage before / after: `0.40435458786936235` / `0.4188698807672369`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records drop-only feature removal and unchanged row windows.
+- Git commit: pending.
+- Interpretation: the drifted volume/stale features still carry useful selection signal; removing them lowers accepted precision. Do not adopt this drop set.
+- Next step: keep the drifted regime features and test bounded transformations or model settings instead of pruning them.
