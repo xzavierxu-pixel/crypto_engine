@@ -7458,3 +7458,26 @@ Main bottlenecks:
 - Git commit: `bbb0e3d`.
 - Interpretation: stronger DART subsampling is close but slightly worse, mostly from lower accepted accuracy. Keep the current DART sampling.
 - Next step: test a small CatBoost random-strength increase on the unchanged 516-feature split.
+
+## 20260510_codex_iter336_cat_random_strength3_current_blend
+
+- Skill used: model regularization probe.
+- Hypothesis: increasing CatBoost `random_strength` from `2.0` to `3.0` may reduce split-selection overfit in the dominant CatBoost component.
+- Changed files: `experiments/configs/20260510_codex_iter336_cat_random_strength3_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except nested CatBoost `random_strength: 2.0 -> 3.0`; DART and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter336_cat_random_strength3_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter336_cat_random_strength3_current_blend --config experiments/configs/20260510_codex_iter336_cat_random_strength3_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter336_cat_random_strength3_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.19027803605274402`.
+- Utility before / after: `0.07698289269051321` / `0.07698289269051321`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5951923076923077`.
+- Accepted count before / after: `3120` / `3120`.
+- Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: pending.
+- Interpretation: random-strength increase is an exact tie under the official evaluator. It does not improve the objective.
+- Next step: test a stronger CatBoost capacity reduction with depth `5 -> 4`.
