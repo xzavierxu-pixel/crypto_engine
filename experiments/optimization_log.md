@@ -3960,6 +3960,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40383618455158116` / `0.40422498703991705`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `41679b6`.
 - Interpretation: `reg_alpha: 1.5` is too strong and loses accuracy. Keep `1.2` as the reference.
 - Next step: test a lower bracket at `reg_alpha: 1.0`.
