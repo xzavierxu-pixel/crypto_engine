@@ -1966,3 +1966,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: stacking the two near-miss branches lowers coverage to the floor and does not improve score. Do not combine these branches further.
 - Next step: continue with a different approach.
+
+## 20260509_codex_iter97_train72_drop_sl_vwap_catboost
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`; feature-selection discipline from `tabular-recursive-feature-elimination`.
+- Hypothesis: a slightly shorter 72-day recent development window around the current best 75-day setup may improve validation regime match while retaining enough coverage.
+- Changed files: `experiments/configs/20260509_codex_iter97_train72_drop_sl_vwap_catboost.yaml`, `experiments/optimization_log.md`.
+- Input data: local raw 1m parquet `artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet`; no download.
+- Feature set: current best VWAP-pruned top-500 recipe; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter97_train72_drop_sl_vwap_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --input artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet --output-dir artifacts/data_v2/experiments/20260509_codex_iter97_train72_drop_sl_vwap_catboost --config experiments/configs/20260509_codex_iter97_train72_drop_sl_vwap_catboost.yaml --horizon 5m --train-window-days 72 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter97_train72_drop_sl_vwap_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.15651017565652897`.
+- Utility before / after: `0.0751684810782789` / `0.06493001555209954`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5793474817865062`.
+- Accepted count before / after: `3245` / `3157`.
+- Coverage before / after: `0.4205546915500259` / `0.40914981855883875`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: the 72-day fresh rebuild underperforms the current best; shortening the train window around 75 days does not improve the objective.
+- Next step: return to the current best cached split and test narrowly-scoped CatBoost regularization knobs.
