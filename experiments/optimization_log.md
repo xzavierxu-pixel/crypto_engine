@@ -8335,3 +8335,27 @@ Main bottlenecks:
 - Git commit: `0746339`.
 - Interpretation: nudging the blend weight upward is slightly worse than the current best `0.9770`. Keep the current blend weight.
 - Next step: continue with error-slice-guided feature or model changes; target `selection_score >= 0.24` remains unmet.
+
+## 20260510_codex_iter373_buy_trade_cluster_current_blend
+
+- Skill used: source-isolated second-level microstructure feature testing.
+- Hypothesis: a compact 3-second buy trade cluster score may help distinguish high-volume/high-volatility accepted signals from false UP predictions without adding the broader noisy micro pack.
+- Changed files: `experiments/configs/20260510_codex_iter373_buy_trade_cluster_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter373_buy_trade_cluster_split`.
+- Feature set: 517 features; current best 516 features plus `sl_agg_buy_trade_cluster_score_3s`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter373_buy_trade_cluster_split/buy_trade_cluster_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter373_buy_trade_cluster_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter373_buy_trade_cluster_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter373_buy_trade_cluster_current_blend --config experiments/configs/20260510_codex_iter373_buy_trade_cluster_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter373_buy_trade_cluster_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1776223738714069`.
+- Utility before / after: `0.07698289269051321` / `0.07568688439606013`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5862374483165977`.
+- Accepted count before / after: `3120` / `3386`.
+- Coverage before / after: `0.40435458786936235` / `0.4388284085018144`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records row-preserving timestamp joins and zero missing joined values.
+- Git commit: `pending`.
+- Interpretation: the single cluster feature increases coverage but decreases accepted precision enough to lower score. Do not adopt it.
+- Next step: inspect calibration/probability behavior and try transformations that reduce over-acceptance in noisy mid/high-volatility regimes.
