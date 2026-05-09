@@ -6215,6 +6215,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41614826334888544`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `1010b7c`.
 - Interpretation: weekday features lower accepted accuracy and score. Keep the existing hour/minute cyclic time feature set without weekday additions.
 - Next step: avoid more calendar expansions unless a time-slice diagnostic shows a stable weekday effect.
