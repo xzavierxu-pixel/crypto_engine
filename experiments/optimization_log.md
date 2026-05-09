@@ -5044,3 +5044,26 @@ Main bottlenecks:
 - Git commit: `1874d9f`.
 - Interpretation: the interactions make the model accept many more samples but lower accepted accuracy, so they are harmful for selection_score. Keep base HTF/time features but not this interaction pack.
 - Next step: avoid broad added-feature packs on the current split; return to model calibration/blend variants that preserve the best accepted boundary.
+
+## 20260509_codex_iter232_blend10000_dart_l1_12_platt_logit_c020
+
+- Skill used: `tabular-logit-transform-stacking`.
+- Hypothesis: pure CatBoost (`catboost_weight: 1.0`) may remove noisy LightGBM logit contribution and improve accepted accuracy near the selective boundary.
+- Changed files: `experiments/configs/20260509_codex_iter232_blend10000_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 1.0`, nested DART params unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter232_blend10000_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter232_blend10000_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter232_blend10000_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter232_blend10000_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.18312798896889548`.
+- Utility before / after: `0.07659409020217732` / `0.07400207361327112`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5923649304432222`.
+- Accepted count before / after: `3123` / `3091`.
+- Coverage before / after: `0.4047433903576983` / `0.40059616381544844`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; initial malformed YAML attempt failed before training and was corrected before the recorded evaluation.
+- Git commit: `pending`.
+- Interpretation: the small DART contribution in the best blend improves both coverage and accepted accuracy. Keep `catboost_weight: 0.9765`.
+- Next step: test a slightly larger DART contribution only if it remains close to the current accepted boundary.
