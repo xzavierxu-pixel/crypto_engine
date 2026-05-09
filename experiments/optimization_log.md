@@ -7151,3 +7151,26 @@ Main bottlenecks:
 - Git commit: `8fde348`.
 - Interpretation: lagged HTF context is important; dropping it sharply lowers accepted accuracy. Keep HTF lags.
 - Next step: do not remove HTF/time feature families.
+
+## 20260509_codex_iter323_blend9770_neg_rebalance_105_095
+
+- Skill used: `timeseries-class-weighted-multiclass-logloss`.
+- Hypothesis: the best model is UP-heavy and UP precision is lower than DOWN precision; a small negative-class training rebalance may improve accepted precision without changing thresholds.
+- Changed files: `experiments/configs/20260509_codex_iter323_blend9770_neg_rebalance_105_095.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`; active CatBoost adds `class_weights: [1.05, 0.95]`; active DART uses `scale_pos_weight: 0.9047619048`; `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter323_blend9770_neg_rebalance_105_095.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter323_blend9770_neg_rebalance_105_095 --config experiments/configs/20260509_codex_iter323_blend9770_neg_rebalance_105_095.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter323_blend9770_neg_rebalance_105_095/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17562963216732871`.
+- Utility before / after: `0.07698289269051321` / `0.07335406946604453`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5868631062001227`.
+- Accepted count before / after: `3120` / `3258`.
+- Coverage before / after: `0.40435458786936235` / `0.42223950233281493`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: class rebalancing reduces accepted precision and selection_score. Keep unweighted class loss.
+- Next step: avoid class-weight tweaks unless a separate model family needs calibration.
