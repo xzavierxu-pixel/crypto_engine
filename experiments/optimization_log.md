@@ -8097,3 +8097,27 @@ Main bottlenecks:
 - Git commit: `0799238`.
 - Interpretation: top-two HTF x microstructure cross terms are worse than the six-term set and far below the current best. Close this interaction-pruning path.
 - Next step: do not continue HTF x micro interaction variants unless a new signal source is identified.
+
+## 20260510_codex_iter363_taker_imbalance_pressure_current_blend
+
+- Skill used: source-isolated feature engineering from full-profile pressure features.
+- Hypothesis: compact directional taker-imbalance pressure features from the full profile may add signal without the broad full-profile noise.
+- Changed files: `experiments/configs/20260510_codex_iter363_taker_imbalance_pressure_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter363_taker_imbalance_pressure_split`.
+- Feature set: 518 features; current best 516 features plus `positive_taker_imbalance` and `negative_taker_imbalance`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter363_taker_imbalance_pressure_split/taker_imbalance_pressure_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter363_taker_imbalance_pressure_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter363_taker_imbalance_pressure_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter363_taker_imbalance_pressure_current_blend --config experiments/configs/20260510_codex_iter363_taker_imbalance_pressure_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter363_taker_imbalance_pressure_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17447601138538474`.
+- Utility before / after: `0.07698289269051321` / `0.07814930015552095`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5815085158150851`.
+- Accepted count before / after: `3120` / `3699`.
+- Coverage before / after: `0.40435458786936235` / `0.47939346811819594`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records added columns and zero missing joined values.
+- Git commit: pending.
+- Interpretation: compact pressure features increase coverage and utility but reduce accepted precision. Do not add them.
+- Next step: move away from full-profile pressure additions; focus on transformations of already strong current-best features.
