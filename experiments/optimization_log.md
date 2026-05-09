@@ -9186,3 +9186,27 @@ Main bottlenecks:
 - Git commit: `a28cf86`.
 - Interpretation: futures price-context columns are worse than the full compact futures pack and the incumbent. Do not adopt this subset.
 - Next step: stop isolating futures subsets by source group; use futures only if a new interaction or alignment hypothesis emerges.
+
+## 20260510_codex_iter408_futures_metrics_context_current_blend
+
+- Skill used: source-specific futures feature isolation.
+- Hypothesis: futures account/position metrics may retain useful derivative context without the noise of futures price-context features.
+- Changed files: `experiments/configs/20260510_codex_iter408_futures_metrics_context_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter408_futures_metrics_context_split`.
+- Feature set: 519 features; current best 516 features plus `fut_sum_open_interest_chg_1_lag5m`, `fut_sum_taker_long_short_vol_ratio_chg_1_lag5m`, and `fut_count_long_short_ratio_chg_1_lag5m`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter408_futures_metrics_context_split/futures_metrics_context_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter408_futures_metrics_context_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter408_futures_metrics_context_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter408_futures_metrics_context_current_blend --config experiments/configs/20260510_codex_iter408_futures_metrics_context_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter408_futures_metrics_context_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16978784155733212`.
+- Utility before / after: `0.07698289269051321` / `0.07115085536547433`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5842282908867751`.
+- Accepted count before / after: `3120` / `3259`.
+- Coverage before / after: `0.40435458786936235` / `0.42236910316226023`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records zero-null joins from the conservatively shifted iter405 futures context.
+- Git commit: pending.
+- Interpretation: metrics-only futures context is worse than the full compact futures pack and the incumbent. Do not adopt this subset.
+- Next step: close futures-subset isolation; any future futures attempt needs a new interaction/alignment idea rather than source grouping.
