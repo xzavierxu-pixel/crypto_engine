@@ -4098,6 +4098,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40526179367547954`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `04ab7dc`.
 - Interpretation: more DART weight keeps utility flat but lowers score through higher downside risk. Keep `catboost_weight: 0.9765`.
 - Next step: tune calibration locally around the new best branch.
