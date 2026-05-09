@@ -4282,6 +4282,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4047433903576983`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `6bbfaf9`.
 - Interpretation: config-only sample-weighting changes do not affect cached split runs because the cached `stage1_sample_weight` column is already materialized. Need a derived cached split to test weighting.
 - Next step: create a derived cached split with recomputed sample weights.
