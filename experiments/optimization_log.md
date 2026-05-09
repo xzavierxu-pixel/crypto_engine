@@ -8190,6 +8190,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4022809745982374`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records development-fitted extreme flag thresholds and zero NaN additions.
-- Git commit: `pending`.
+- Git commit: `9eade0f`.
 - Interpretation: extreme flags balance UP/DOWN predictions much more evenly, but reduce accepted precision and score. Do not adopt this feature pack.
 - Next step: move to a narrow source-isolated VWAP distance-ratio test from the full-profile feature cache.
