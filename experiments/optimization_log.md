@@ -2630,3 +2630,26 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: `C: 0.2` does not improve on `C: 0.25`; stop this local Platt sweep.
 - Next step: keep `C: 0.25` as best.
+
+## 20260509_codex_iter127_catboost_platt_c025_balanced
+
+- Skill used: probability calibration workflow plus class-balance guidance from `tabular-balanced-log-loss`.
+- Hypothesis: adding `class_weight: balanced` to the best Platt calibrator may improve asymmetric UP/DOWN calibration without changing the base model.
+- Changed files: `src/calibration/platt.py`, `experiments/configs/20260509_codex_iter127_catboost_platt_c025_balanced.yaml`, `experiments/optimization_log.md`.
+- Code change: Platt scaling now accepts `class_weight`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: platt`, `C: 0.25`, `class_weight: balanced`.
+- Config: `experiments/configs/20260509_codex_iter127_catboost_platt_c025_balanced.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter127_catboost_platt_c025_balanced --config experiments/configs/20260509_codex_iter127_catboost_platt_c025_balanced.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter127_catboost_platt_c025_balanced/metrics.json`.
+- Score before: `0.18462759471376494`.
+- Score after: `0.18234190152224153`.
+- Utility before / after: `0.07516848107827886` / `0.07374287195438049`.
+- Accepted accuracy before / after: `0.5924155513065646` / `0.5919818946007113`.
+- Accepted count before / after: `3138` / `3093`.
+- Coverage before / after: `0.40668740279937793` / `0.40085536547433903`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: balanced Platt hurts coverage and score. The best calibration remains unweighted Platt `C: 0.25`.
+- Next step: test a different calibration family rather than more Platt class weighting.

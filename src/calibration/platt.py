@@ -12,10 +12,16 @@ from src.calibration.base import CalibrationPlugin
 class PlattScalingCalibration(CalibrationPlugin):
     name = "platt"
 
-    def __init__(self, C: float = 1.0, max_iter: int = 1000) -> None:
+    def __init__(
+        self,
+        C: float = 1.0,
+        max_iter: int = 1000,
+        class_weight: str | dict[int, float] | None = None,
+    ) -> None:
         self.C = float(C)
         self.max_iter = int(max_iter)
-        self.model = LogisticRegression(C=self.C, max_iter=self.max_iter)
+        self.class_weight = class_weight
+        self.model = LogisticRegression(C=self.C, max_iter=self.max_iter, class_weight=self.class_weight)
 
     def fit(self, raw_proba: pd.Series, y_true: pd.Series) -> "PlattScalingCalibration":
         X = raw_proba.to_numpy().reshape(-1, 1)
