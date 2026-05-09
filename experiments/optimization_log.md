@@ -4627,6 +4627,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40526179367547954`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `c6b5c1c`.
 - Interpretation: higher DART feature fraction hurts accepted accuracy. Keep `colsample_bytree: 0.35`.
 - Next step: avoid nearby higher DART feature fractions.
