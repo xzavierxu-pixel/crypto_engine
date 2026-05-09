@@ -6422,6 +6422,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4309227579056506`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `adfac87`.
 - Interpretation: replacing raw bases with session-relative variants also lowers accepted accuracy. Do not keep this feature pack.
 - Next step: avoid further session-relative feature variants under this split.
