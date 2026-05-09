@@ -4351,6 +4351,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4761534473820632`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `a1a7efb`.
 - Interpretation: isotonic over-expands accepted coverage and loses accepted accuracy. Keep `platt_logit`.
 - Next step: continue with feature/model levers, not isotonic calibration.
