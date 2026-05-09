@@ -1389,3 +1389,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: the overfitting detector reproduces the current best within rounding/count differences and does not materially improve the objective.
 - Next step: keep the current best as benchmark; do not rely on OD as a scoring improvement.
+
+## 20260509_codex_iter70_session_relative_od_catboost
+
+- Skill used: `tabular-relative-deviation-features`.
+- Hypothesis: combining the strongest new feature-family result from iteration 66 with CatBoost's overfitting detector may close the small score gap to the best benchmark.
+- Changed files: `experiments/configs/20260509_codex_iter70_session_relative_od_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter66_session_relative_split`.
+- Feature set: iteration 66 session-relative volume/volatility feature set; HTF/time features retained.
+- Model settings: iteration 66 CatBoost settings plus `use_best_model: true`, `od_type: Iter`, `od_wait: 100`.
+- Config: `experiments/configs/20260509_codex_iter70_session_relative_od_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter66_session_relative_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter70_session_relative_od_catboost --config experiments/configs/20260509_codex_iter70_session_relative_od_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter70_session_relative_od_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1735426588189493`.
+- Utility before / after: `0.0751684810782789` / `0.07115085536547439`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.587336939230035`.
+- Accepted count before / after: `3245` / `3143`.
+- Coverage before / after: `0.4205546915500259` / `0.4073354069466045`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: OD reduces coverage and utility for the session-relative feature set. Iteration 66 remains the better relative-deviation result; iteration 43 remains best overall.
+- Next step: continue with a different feature-construction path rather than combining OD with relative features.
