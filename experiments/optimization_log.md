@@ -4285,3 +4285,26 @@ Main bottlenecks:
 - Git commit: `6bbfaf9`.
 - Interpretation: config-only sample-weighting changes do not affect cached split runs because the cached `stage1_sample_weight` column is already materialized. Need a derived cached split to test weighting.
 - Next step: create a derived cached split with recomputed sample weights.
+
+## 20260509_codex_iter199_reweighted_split_blend9765_dart_l1_12_platt_logit_c020
+
+- Skill used: `tabular-balanced-log-loss` for weighting discipline.
+- Hypothesis: materializing a stronger sample-weight ramp in the cached split may reduce low-return label noise and improve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter199_reweighted_split_blend9765_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter199_reweighted_split`; weight report: `artifacts/data_v2/experiments/20260509_codex_iter199_reweighted_split/sample_weight_report.json`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained; only `stage1_sample_weight` was rematerialized.
+- Model settings: current best DART blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`, materialized weight ramp `min_weight: 0.25`, `full_weight_abs_return: 0.0004`.
+- Config: `experiments/configs/20260509_codex_iter199_reweighted_split_blend9765_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter199_reweighted_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter199_reweighted_split_blend9765_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter199_reweighted_split_blend9765_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter199_reweighted_split_blend9765_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.17683619665998612`.
+- Utility before / after: `0.07659409020217732` / `0.07529808190772426`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5859721811186742`.
+- Accepted count before / after: `3123` / `3379`.
+- Coverage before / after: `0.4047433903576983` / `0.43792120269569723`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: stronger materialized weighting expands accepted coverage and reduces accepted accuracy. Do not use this ramp.
+- Next step: test a gentler materialized weighting ramp.
