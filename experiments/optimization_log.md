@@ -7832,3 +7832,27 @@ Main bottlenecks:
 - Git commit: `9829b21`.
 - Interpretation: more downloaded data and broader feature profile increase feature count substantially but reduce accepted precision. The filtered 516-feature 75-day split remains stronger.
 - Next step: use the full-profile train90 artifact as a discovery source, not as a candidate; try selecting only features with evidence from the wider profile.
+
+## 20260510_codex_iter352_best516_plus_full90_top10_nonvwap_current_blend
+
+- Skill used: `tabular-null-importance-feature-selection` style candidate screening using actual full-profile feature importance as a first-pass filter.
+- Hypothesis: the full-profile train90 run may identify useful online-safe features that were absent from the 516-feature best set; adding only top non-vwap candidates may improve utility without the full-profile noise.
+- Changed files: `experiments/configs/20260510_codex_iter352_best516_plus_full90_top10_nonvwap_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter352_best516_plus_full90_top10_nonvwap_split`.
+- Feature set: 526 features; current best 516 features plus top 10 non-vwap new features from iter351 full-profile importance; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter352_best516_plus_full90_top10_nonvwap_split/best516_plus_full90_top10_nonvwap_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter352_best516_plus_full90_top10_nonvwap_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter352_best516_plus_full90_top10_nonvwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter352_best516_plus_full90_top10_nonvwap_current_blend --config experiments/configs/20260510_codex_iter352_best516_plus_full90_top10_nonvwap_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter352_best516_plus_full90_top10_nonvwap_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18046378516226197`.
+- Utility before / after: `0.07698289269051321` / `0.08294453084499745`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5820512820512821`.
+- Accepted count before / after: `3120` / `3900`.
+- Coverage before / after: `0.40435458786936235` / `0.505443234836703`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records added columns and zero missing joined values.
+- Git commit: pending.
+- Interpretation: selected full-profile features increase utility and accepted count but reduce accepted precision enough to lower score. Narrower candidate groups may be more useful than all 10 together.
+- Next step: split the top10 candidates into microstructure-only and minute-lag groups to isolate which source drives utility without precision loss.
