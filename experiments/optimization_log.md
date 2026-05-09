@@ -3411,3 +3411,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: `catboost_weight: 0.98` with `C: 0.2` is a tiny new best, improving utility and accepted count while preserving accepted accuracy.
 - Next step: test only one nearby lower DART weight to see where the accuracy starts to break.
+
+## 20260509_codex_iter161_blend975_dart_platt_logit_c020
+
+- Skill used: `tabular-logit-transform-stacking` and `tabular-lgbm-dart-boosting`.
+- Hypothesis: increasing the DART component to `2.5%` may recover more utility/coverage while the stronger calibrator keeps accepted accuracy high.
+- Changed files: `experiments/configs/20260509_codex_iter161_blend975_dart_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.975`, current best CatBoost settings, DART LightGBM component, plus `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter161_blend975_dart_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter161_blend975_dart_platt_logit_c020 --config experiments/configs/20260509_codex_iter161_blend975_dart_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter161_blend975_dart_platt_logit_c020/metrics.json`.
+- Score before: `0.18778972634803784`.
+- Score after: `0.18761476545465552`.
+- Utility before / after: `0.07594608605495073` / `0.07620528771384133`.
+- Accepted accuracy before / after: `0.5942122186495177` / `0.5938098276962348`.
+- Accepted count before / after: `3110` / `3134`.
+- Coverage before / after: `0.40305857957490926` / `0.4061689994815967`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: `0.975` improves utility/coverage but loses enough accepted accuracy to trail `0.98`. Keep `catboost_weight: 0.98`.
+- Next step: bracket with a midpoint if continuing blend tuning.
