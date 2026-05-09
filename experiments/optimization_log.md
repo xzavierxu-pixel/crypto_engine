@@ -8288,3 +8288,27 @@ Main bottlenecks:
 - Git commit: `7b3e113`.
 - Interpretation: conservative reweighting also lowers accepted precision and score. The current best sample-weight profile remains preferable.
 - Next step: return to narrow feature-source isolation and avoid further weight profile sweeps unless a data slice points to a specific weighting failure.
+
+## 20260510_codex_iter371_relative_volume_lag12_current_blend
+
+- Skill used: `timeseries-multi-gap-lag-diff-features` for lagged volume-context feature testing.
+- Hypothesis: two high-importance lag-12 relative-volume features from the full-profile cache may add medium-range volume memory without broad feature-pack noise.
+- Changed files: `experiments/configs/20260510_codex_iter371_relative_volume_lag12_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter371_relative_volume_lag12_split`.
+- Feature set: 518 features; current best 516 features plus `relative_volume_5_lag12` and `relative_volume_20_lag12`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter371_relative_volume_lag12_split/relative_volume_lag12_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter371_relative_volume_lag12_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter371_relative_volume_lag12_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter371_relative_volume_lag12_current_blend --config experiments/configs/20260510_codex_iter371_relative_volume_lag12_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter371_relative_volume_lag12_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.159304523507553`.
+- Utility before / after: `0.07698289269051321` / `0.06700362882322444`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5796119494918386`.
+- Accepted count before / after: `3120` / `3247`.
+- Coverage before / after: `0.40435458786936235` / `0.42081389320891655`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records row-preserving timestamp joins and zero missing joined values.
+- Git commit: `pending`.
+- Interpretation: the lagged relative-volume pair improves UP/DOWN balance but reduces accepted precision sharply. Do not adopt these lag additions.
+- Next step: stop trusting full-profile gain alone; prefer additions supported by error slices or probability calibration behavior.
