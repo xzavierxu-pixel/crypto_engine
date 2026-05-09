@@ -8794,3 +8794,28 @@ Main bottlenecks:
 - Git commit: `69786c7`.
 - Interpretation: the non-`sl_` discovery pack improves AUC but not accepted precision or selection_score. Do not adopt it.
 - Next step: test second-level discovery features separately; do not combine this pack with microstructure additions unless one family improves alone.
+
+## 20260510_codex_iter392_train120_top_sl_current_blend
+
+- Skill used: source-isolated second-level feature discovery from a larger chronological training run.
+- Hypothesis: top absent second-level features from the 120-day full-profile model may add transferable microstructure signal when tested as a compact pack on the stronger 75-day split.
+- Changed files: `experiments/configs/20260510_codex_iter392_train120_top_sl_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter392_train120_top_sl_split`.
+- Feature set: 521 features; current best 516 features plus `sl_agg_median_trade_size_5s`, `sl_mirror_signed_quote_volume_1s`, `sl_agg_end_second_buy_pressure_300s`, `sl_trade_intensity_z_300s`, and `sl_mirror_close_location_1s`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter392_train120_top_sl_split/train120_top_sl_summary.json`.
+- Feature selection record: `artifacts/data_v2/experiments/20260510_codex_iter390_top_absent_candidates.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter392_train120_top_sl_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter392_train120_top_sl_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter392_train120_top_sl_current_blend --config experiments/configs/20260510_codex_iter392_train120_top_sl_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter392_train120_top_sl_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16801961681509264`.
+- Utility before / after: `0.07698289269051321` / `0.06933644375324001`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.584571609231742`.
+- Accepted count before / after: `3120` / `3163`.
+- Coverage before / after: `0.40435458786936235` / `0.40992742353551065`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records timestamp joins and zero nulls.
+- Git commit: pending.
+- Interpretation: the compact second-level discovery pack lowers accepted precision and AUC. Do not adopt it.
+- Next step: stop importing top-gain features directly from wider-history runs; use discovery artifacts for diagnostics only.
