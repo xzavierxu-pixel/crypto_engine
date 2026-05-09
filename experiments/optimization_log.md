@@ -5225,6 +5225,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40085536547433903`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; initial malformed calibration nesting failed before training and was corrected before the recorded evaluation.
-- Git commit: `pending`.
+- Git commit: `6936ab4`.
 - Interpretation: stronger calibration regularization hurts coverage and accepted accuracy. Keep `C: 0.2`.
 - Next step: test weaker calibration regularization once to bracket the direction.
