@@ -4397,6 +4397,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40059616381544844`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `f4e7e40`.
 - Interpretation: shallower DART is worse and nearly violates coverage. Keep `max_depth: 6` unless deeper improves.
 - Next step: test DART `max_depth: 7`.
