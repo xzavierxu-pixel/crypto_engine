@@ -3937,6 +3937,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40448418869880765` / `0.40383618455158116`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `ff0fce2`.
 - Interpretation: stronger DART L1 gives a small valid improvement and becomes the new reference branch.
 - Next step: bracket DART L1 around `1.2`.
