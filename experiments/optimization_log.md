@@ -5413,3 +5413,26 @@ Main bottlenecks:
 - Git commit: `69395d3`.
 - Interpretation: the selected extra feature set still lowers accepted accuracy. The 120-day rebuilt branch is not competitive on the current validation slice.
 - Next step: return to the 75-day recent-window branch and look for targeted feature additions rather than older-history expansion.
+
+## 20260509_codex_iter248_blend9770_existing_top700_split_platt_logit_c020
+
+- Skill used: `tabular-recursive-feature-elimination` as existing top-700 feature-set evaluation.
+- Hypothesis: the existing local top700 split may improve the current blend by adding more recent-window features without rebuilding raw data.
+- Changed files: `experiments/configs/20260509_codex_iter248_blend9770_existing_top700_split_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter26_top700_split`.
+- Feature set: 710 features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter248_blend9770_existing_top700_split_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter26_top700_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter248_blend9770_existing_top700_split_platt_logit_c020 --config experiments/configs/20260509_codex_iter248_blend9770_existing_top700_split_platt_logit_c020.yaml --horizon 5m --train-window-days 180 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter248_blend9770_existing_top700_split_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.15319799697886222`.
+- Utility before / after: `0.07698289269051321` / `0.06467081389320894`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5767928593413358`.
+- Accepted count before / after: `3120` / `3249`.
+- Coverage before / after: `0.40435458786936235` / `0.42107309486780714`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: adding the existing top700/full-history feature split lowers accepted accuracy substantially. Current best remains the 75-day 516-feature split.
+- Next step: avoid broad top700/full-history splits; use smaller, targeted feature transforms on the best split only.
