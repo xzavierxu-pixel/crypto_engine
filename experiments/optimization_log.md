@@ -9162,3 +9162,27 @@ Main bottlenecks:
 - Git commit: `9607b58`.
 - Interpretation: top-two futures isolation is worse than the full compact futures pack and far below the incumbent. Do not adopt this subset.
 - Next step: do not select futures columns by gain alone; only revisit futures data with a different alignment or interaction rationale.
+
+## 20260510_codex_iter407_futures_price_context_current_blend
+
+- Skill used: source-specific futures feature isolation.
+- Hypothesis: futures price-context features may be cleaner than account-ratio metrics from the compact futures pack.
+- Changed files: `experiments/configs/20260510_codex_iter407_futures_price_context_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter407_futures_price_context_split`.
+- Feature set: 519 features; current best 516 features plus `fut_premium_close_lag1m`, `fut_mark_index_basis_bps_lag1m`, and `fut_mark_ret_5m_lag1m`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter407_futures_price_context_split/futures_price_context_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter407_futures_price_context_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter407_futures_price_context_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter407_futures_price_context_current_blend --config experiments/configs/20260510_codex_iter407_futures_price_context_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter407_futures_price_context_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16648118034215992`.
+- Utility before / after: `0.07698289269051321` / `0.07076205287713841`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5818836232753449`.
+- Accepted count before / after: `3120` / `3334`.
+- Coverage before / after: `0.40435458786936235` / `0.4320891653706584`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records zero-null joins from the conservatively shifted iter405 futures context.
+- Git commit: pending.
+- Interpretation: futures price-context columns are worse than the full compact futures pack and the incumbent. Do not adopt this subset.
+- Next step: stop isolating futures subsets by source group; use futures only if a new interaction or alignment hypothesis emerges.
