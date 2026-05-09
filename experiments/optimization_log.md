@@ -6261,6 +6261,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.5010368066355625`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `6dc9a61`.
 - Interpretation: recency decay greatly broadens acceptance and lowers accepted accuracy. Keep the existing sample weights.
 - Next step: stop recency-decay weighting; look for methods that improve ranking/precision instead of coverage.
