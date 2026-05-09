@@ -2564,3 +2564,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: `C: 0.25` is a small new best by improving coverage and utility while retaining nearly the same accepted accuracy. It remains well below the 0.24 target.
 - Next step: probe nearby Platt regularization values.
+
+## 20260509_codex_iter124_catboost_platt_c01
+
+- Skill used: probability calibration workflow.
+- Hypothesis: stronger Platt regularization (`C: 0.1`) may further improve coverage/utility while preserving accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter124_catboost_platt_c01.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: platt`, `calibration.plugins.platt.C: 0.1`.
+- Config: `experiments/configs/20260509_codex_iter124_catboost_platt_c01.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter124_catboost_platt_c01 --config experiments/configs/20260509_codex_iter124_catboost_platt_c01.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter124_catboost_platt_c01/metrics.json`.
+- Score before: `0.18462759471376494`.
+- Score after: `0.1823274584883904`.
+- Utility before / after: `0.07516848107827886` / `0.07529808190772425`.
+- Accepted accuracy before / after: `0.5924155513065646` / `0.5904139433551199`.
+- Accepted count before / after: `3138` / `3213`.
+- Coverage before / after: `0.40668740279937793` / `0.41640746500777603`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: `C: 0.1` increases coverage but loses too much accepted accuracy. `C: 0.25` remains best.
+- Next step: test the other side with `C: 0.5`.
