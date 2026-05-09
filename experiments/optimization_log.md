@@ -4995,6 +4995,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.41044582685329184`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; feature filter summary saved at `artifacts/data_v2/experiments/20260509_codex_iter229_drop_low12_nonprotected_split/feature_filter_summary.json`.
-- Git commit: `pending`.
+- Git commit: `a040e38`.
 - Interpretation: even a shallow low-importance prune increases coverage but lowers accepted accuracy enough to hurt selection_score. Keep the full 516-feature best split.
 - Next step: avoid further simple tail pruning; consider model-side or split-side changes with no feature-family removal.
