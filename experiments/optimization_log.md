@@ -6494,3 +6494,26 @@ Main bottlenecks:
 - Git commit: `b6f6da9`.
 - Interpretation: the nonlinear OOF LightGBM meta-feature lowers accepted accuracy and score. Do not keep this meta-feature.
 - Next step: stop simple OOF meta-feature stacking.
+
+## 20260509_codex_iter295_blend9770_oof_lgbm_activity_meta_platt_logit_c020
+
+- Skill used: `tabular-oof-meta-features`.
+- Hypothesis: an expanding-window OOF LightGBM activity feature predicting `abs_return >= 5bp` may help the final direction model identify higher-quality movement regimes without using validation labels.
+- Changed files: `experiments/configs/20260509_codex_iter295_blend9770_oof_lgbm_activity_meta_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter295_oof_lgbm_activity_meta_split`.
+- Feature set: 517 features; current best 516 features plus `meta_oof_lgbm_absret_ge5bp_ts5`; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter295_blend9770_oof_lgbm_activity_meta_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter295_oof_lgbm_activity_meta_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter295_blend9770_oof_lgbm_activity_meta_platt_logit_c020 --config experiments/configs/20260509_codex_iter295_blend9770_oof_lgbm_activity_meta_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter295_blend9770_oof_lgbm_activity_meta_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17335121335477854`.
+- Utility before / after: `0.07698289269051321` / `0.07426127527216177`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5841409691629956`.
+- Accepted count before / after: `3120` / `3405`.
+- Coverage before / after: `0.40435458786936235` / `0.44129082426127525`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; OOF generation summary saved at `artifacts/data_v2/experiments/20260509_codex_iter295_oof_lgbm_activity_meta_split/oof_lgbm_activity_meta_summary.json`.
+- Git commit: `pending`.
+- Interpretation: predicted activity increases coverage and utility but lowers accepted accuracy enough to reduce selection_score. Do not keep this meta-feature.
+- Next step: stop OOF meta-feature variants unless an auxiliary target can be implemented into the online artifact path.
