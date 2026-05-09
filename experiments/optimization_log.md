@@ -8498,6 +8498,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40422498703991705`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records training-only row removal and unchanged validation rows.
-- Git commit: `pending`.
+- Git commit: `09ba107`.
 - Interpretation: the mild low-return training filter lowers accepted precision and worsens calibration. Do not adopt this training filter.
 - Next step: avoid further abs-return training filters without a new slice-specific rationale.
