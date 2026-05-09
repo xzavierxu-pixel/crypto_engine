@@ -5689,3 +5689,26 @@ Main bottlenecks:
 - Git commit: `db4f18d`.
 - Interpretation: shortening to 70 days lowers accepted accuracy and nearly reaches the coverage floor. Keep the 75-day split.
 - Next step: avoid further train-window bracketing around the current split.
+
+## 20260509_codex_iter260_blend9770_time_te_platt_logit_c020
+
+- Skill used: `tabular-inner-kfold-target-encoding`.
+- Hypothesis: smoothed leak-free target encodings for hour and 5-minute buckets may add time-regime priors beyond cyclical encodings while fitting only on development data.
+- Changed files: `experiments/configs/20260509_codex_iter260_blend9770_time_te_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter260_time_target_encoding_split`.
+- Feature set: 522 features; added 6 OOF/full-development time target-encoding and count features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter260_blend9770_time_te_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter260_time_target_encoding_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter260_blend9770_time_te_platt_logit_c020 --config experiments/configs/20260509_codex_iter260_blend9770_time_te_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter260_blend9770_time_te_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16959291290406484`.
+- Utility before / after: `0.07698289269051321` / `0.07153965785381029`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.583687083080655`.
+- Accepted count before / after: `3120` / `3298`.
+- Coverage before / after: `0.40435458786936235` / `0.4274235355106273`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; target encoding summary saved at `artifacts/data_v2/experiments/20260509_codex_iter260_time_target_encoding_split/time_target_encoding_summary.json`.
+- Git commit: `pending`.
+- Interpretation: time target encoding broadens accepted predictions and lowers accepted accuracy. Do not keep this feature pack.
+- Next step: avoid target-encoded time buckets on this validation slice.
