@@ -5939,6 +5939,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `e544a57`.
 - Interpretation: exact tie to the current best; MVS bootstrap does not change the selected validation predictions. Keep the simpler current best Bayesian bootstrap setting.
 - Next step: look for changes that affect ranking enough to move the accepted set, not exact-tie CatBoost bootstrap variants.
