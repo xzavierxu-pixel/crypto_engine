@@ -3273,3 +3273,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: high-magnitude-only training still hurts accepted accuracy with the DART blend; keep full development data.
 - Next step: avoid low-return row filtering on this branch.
+
+## 20260509_codex_iter155_blend985_dart_catseed43_platt_logit
+
+- Skill used: `tabular-multi-seed-fold-averaging` diagnostics applied as a single-seed sensitivity check.
+- Hypothesis: the DART blend may make CatBoost seed 43 less harmful than in the CatBoost-only branch, possibly improving utility/coverage without a large accepted-accuracy loss.
+- Changed files: `experiments/configs/20260509_codex_iter155_blend985_dart_catseed43_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best DART blend with nested CatBoost `random_seed: 43`, plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter155_blend985_dart_catseed43_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter155_blend985_dart_catseed43_platt_logit --config experiments/configs/20260509_codex_iter155_blend985_dart_catseed43_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter155_blend985_dart_catseed43_platt_logit/metrics.json`.
+- Score before: `0.18682834549642668`.
+- Score after: `0.17604371498514013`.
+- Utility before / after: `0.0755572835666148` / `0.08125972006220838`.
+- Accepted accuracy before / after: `0.5938204055358867` / `0.5800766283524904`.
+- Accepted count before / after: `3107` / `3915`.
+- Coverage before / after: `0.40266977708657337` / `0.5073872472783826`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: seed 43 again over-expands coverage and loses too much accepted accuracy. Keep CatBoost seed 42.
+- Next step: do not pursue seed 43 in the best blend branch.
