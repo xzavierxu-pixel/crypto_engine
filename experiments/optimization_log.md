@@ -2430,3 +2430,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: Platt calibration is the new best selection_score so far, but it buys accuracy by dropping coverage close to the floor. It is still below the 0.24 target.
 - Next step: test the existing isotonic calibrator on the same split.
+
+## 20260509_codex_iter118_catboost_isotonic_calibration
+
+- Skill used: probability calibration workflow using the existing `isotonic` calibration plugin.
+- Hypothesis: non-parametric isotonic calibration may improve the probability scale more flexibly than Platt while still fitting only on development predictions.
+- Changed files: `experiments/configs/20260509_codex_iter118_catboost_isotonic_calibration.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: isotonic`.
+- Config: `experiments/configs/20260509_codex_iter118_catboost_isotonic_calibration.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter118_catboost_isotonic_calibration --config experiments/configs/20260509_codex_iter118_catboost_isotonic_calibration.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter118_catboost_isotonic_calibration/metrics.json`.
+- Score before: `0.18451203496023655`.
+- Score after: `0.17148532779167233`.
+- Utility before / after: `0.07465007776049763` / `0.07750129600829445`.
+- Accepted accuracy before / after: `0.59284332688588` / `0.5797333333333333`.
+- Accepted count before / after: `3102` / `3750`.
+- Coverage before / after: `0.4020217729393468` / `0.4860031104199067`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: isotonic calibration expands coverage but lowers accepted accuracy too much. Platt remains the best calibration result.
+- Next step: keep Platt as the benchmark and test whether it combines with a near-miss model/data branch.
