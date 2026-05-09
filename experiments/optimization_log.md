@@ -6652,6 +6652,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4033177812337999`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `1498477`.
 - Interpretation: the higher rank weight improves rank blending but still does not beat the current logit blend. Do not replace the best model.
 - Next step: stop rank-blend probes unless paired with a different base model.
