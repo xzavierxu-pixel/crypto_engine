@@ -7976,3 +7976,27 @@ Main bottlenecks:
 - Git commit: `42ce58b`.
 - Interpretation: tighter top400 filtering improves utility but still lowers accepted precision too much. Full-profile feature screening is not enough by itself.
 - Next step: isolate the effect of more data by using the 90-day split with the original current-best 516 feature set.
+
+## 20260510_codex_iter358_train90_best516_features_current_blend
+
+- Skill used: time-ordered data-window isolation.
+- Hypothesis: using the same current-best 516 features with a 90-day development window may improve stability if more downloaded history helps independently of the wide full-profile feature set.
+- Changed files: `experiments/configs/20260510_codex_iter358_train90_best516_features_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter358_train90_best516_features_split`.
+- Feature set: 516 current-best features selected from the iter351 90-day full-profile cached split; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter358_train90_best516_features_split/train90_best516_features_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter358_train90_best516_features_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter358_train90_best516_features_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter358_train90_best516_features_current_blend --config experiments/configs/20260510_codex_iter358_train90_best516_features_current_blend.yaml --horizon 5m --train-window-days 90 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter358_train90_best516_features_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17126155185532435`.
+- Utility before / after: `0.07698289269051321` / `0.08074131674442717`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5768566493955095`.
+- Accepted count before / after: `3120` / `4053`.
+- Coverage before / after: `0.40435458786936235` / `0.5252721617418351`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary confirms all current-best features were present in the 90-day full-profile cache.
+- Git commit: pending.
+- Interpretation: more training history alone increases coverage and utility but lowers accepted precision substantially. The 75-day window remains better for the objective.
+- Next step: return to the 75-day window and test more-feature variants without extending history.
