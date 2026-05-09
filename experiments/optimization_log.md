@@ -6031,6 +6031,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41044582685329184`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `3c2458f`.
 - Interpretation: session z-score features lower accepted accuracy and objective score. Do not keep this feature pack.
 - Next step: test volume-session relative magnitude features, then avoid this session-normalization branch if it also fails.
