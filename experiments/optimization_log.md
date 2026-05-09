@@ -7667,3 +7667,27 @@ Main bottlenecks:
 - Git commit: `f819826`.
 - Interpretation: even a small reduction of the current development window lowers accepted precision. Keep the 75-day cached split.
 - Next step: focus on adding online-safe feature transforms rather than shortening the training window.
+
+## 20260510_codex_iter345_sl_bounded_rowagg_current_blend
+
+- Skill used: `tabular-row-aggregate-features`.
+- Hypothesis: row-wise summaries over bounded second-level imbalance/ratio/share/score/pressure features may capture broad microstructure state without dropping the original signals.
+- Changed files: `experiments/configs/20260510_codex_iter345_sl_bounded_rowagg_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter345_sl_bounded_rowagg_split`.
+- Feature set: 520 features; current best 516 features plus `sl_bounded_row_mean`, `sl_bounded_row_std`, `sl_bounded_row_min`, and `sl_bounded_row_max`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter345_sl_bounded_rowagg_split/sl_bounded_rowagg_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter345_sl_bounded_rowagg_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter345_sl_bounded_rowagg_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter345_sl_bounded_rowagg_current_blend --config experiments/configs/20260510_codex_iter345_sl_bounded_rowagg_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter345_sl_bounded_rowagg_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16756926994501953`.
+- Utility before / after: `0.07698289269051321` / `0.07089165370658375`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5826533695980659`.
+- Accepted count before / after: `3120` / `3309`.
+- Coverage before / after: `0.40435458786936235` / `0.42884914463452567`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records the 52 source columns and added-feature NaN counts.
+- Git commit: pending.
+- Interpretation: broad microstructure row aggregates add noise and reduce accepted precision. Keep the original microstructure features without these aggregates.
+- Next step: use narrower online-safe feature transforms rather than broad row summaries.
