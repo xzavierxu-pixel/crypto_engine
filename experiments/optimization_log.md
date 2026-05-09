@@ -9159,6 +9159,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41731467081389323`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records zero-null joins from the conservatively shifted iter405 futures context.
-- Git commit: pending.
+- Git commit: `9607b58`.
 - Interpretation: top-two futures isolation is worse than the full compact futures pack and far below the incumbent. Do not adopt this subset.
 - Next step: do not select futures columns by gain alone; only revisit futures data with a different alignment or interaction rationale.
