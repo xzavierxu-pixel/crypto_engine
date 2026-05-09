@@ -7527,3 +7527,26 @@ Main bottlenecks:
 - Git commit: `3f2422d`.
 - Interpretation: stronger active CatBoost randomization hurts accepted precision. Keep `random_strength: 2.0`.
 - Next step: test slightly lower active CatBoost L2 regularization to see whether the model needs more capacity instead.
+
+## 20260510_codex_iter339_active_cat_l2_25_current_blend
+
+- Skill used: model regularization probe.
+- Hypothesis: lowering active nested CatBoost `l2_leaf_reg` from `30` to `25` may recover useful interaction strength if the current best is slightly over-regularized.
+- Changed files: `experiments/configs/20260510_codex_iter339_active_cat_l2_25_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except active nested `catboost_lgbm_logit_blend.catboost.l2_leaf_reg: 30.0 -> 25.0`; DART and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter339_active_cat_l2_25_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter339_active_cat_l2_25_current_blend --config experiments/configs/20260510_codex_iter339_active_cat_l2_25_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter339_active_cat_l2_25_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16883185764364664`.
+- Utility before / after: `0.07698289269051321` / `0.06881804043545882`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.58578352180937`.
+- Accepted count before / after: `3120` / `3095`.
+- Coverage before / after: `0.40435458786936235` / `0.4011145671332296`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: pending.
+- Interpretation: lower active CatBoost L2 reduces accepted precision and score. The current best is not underfit in this direction.
+- Next step: test slightly higher active CatBoost L2 (`35`) to check the other side of the local regularization neighborhood.
