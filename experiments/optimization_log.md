@@ -8451,6 +8451,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.46604458268532917`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records dropped columns and row-preserving split shapes.
-- Git commit: `pending`.
+- Git commit: `c6e456e`.
 - Interpretation: narrow drift pruning increases coverage but lowers accepted precision, so the removed `sl_` features were not the main cause of poor accepted precision. Do not adopt this prune.
 - Next step: simple feature addition/removal paths are exhausted for now; continue with more targeted model or meta-model experiments.
