@@ -2097,3 +2097,26 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: stronger leaf-estimation shrinkage leaves coverage barely above the floor and still does not beat the incumbent. Stop this branch.
 - Next step: return to feature selection, using existing importance evidence for smaller low-importance pruning steps.
+
+## 20260509_codex_iter103_drop_bottom25_non_htf_time_catboost
+
+- Skill used: feature-selection discipline from `tabular-recursive-feature-elimination`.
+- Hypothesis: removing the 25 lowest CatBoost-importance features while protecting all HTF/time features may reduce noisy covariates and improve validation selection_score.
+- Changed files: `experiments/configs/20260509_codex_iter103_drop_bottom25_non_htf_time_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter103_drop_bottom25_non_htf_time_split`.
+- Data processing: removed 25 non-HTF/time low-importance columns from the incumbent split; development and validation went from 540 to 515 columns.
+- Dropped features: `sl_total_volume_10s`, `sl_agg_mean_interarrival_ms_5s`, `signed_volume_1_lag1`, `sl_agg_median_trade_size_3s`, `ret_3_rolling_z_12`, `ret_term_ratio__ret_1__ret_10`, `sl_agg_sell_trade_cluster_score_60s`, `abs_ret_mean_20`, `upside_rv_20`, `ret_vol_product__ret_10__rv_5`, `efficiency_10_delta_3`, `sl_mirror_true_range_pct_1s`, `wick_pressure_1_lag3`, `sl_agg_large_sell_trade_count_5s`, `sl_agg_max_trade_notional_10s`, `sl_post_jump_followthrough_ratio`, `efficiency_10_mean_gap_24`, `sl_taker_buy_count_60s`, `sl_mirror_close_z_60s`, `signed_dollar_volume_1`, `sl_interaction__sl_mirror_ret_60s__x__sl_mirror_rv_60s`, `efficiency_10_rolling_z_12`, `compression_score_rolling_z_24`, `ret_range_pos_product__ret_15__range_pos_10`, `low_volume_flag_share_5_rolling_z_12`.
+- Feature set: HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter103_drop_bottom25_non_htf_time_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter103_drop_bottom25_non_htf_time_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter103_drop_bottom25_non_htf_time_catboost --config experiments/configs/20260509_codex_iter103_drop_bottom25_non_htf_time_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter103_drop_bottom25_non_htf_time_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16561879591697629`.
+- Utility before / after: `0.0751684810782789` / `0.078149300155521`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5746471898984897`.
+- Accepted count before / after: `3245` / `4039`.
+- Coverage before / after: `0.4205546915500259` / `0.5234577501296008`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: the pruned model accepts many more samples but loses too much accepted accuracy. This low-importance feature set is not a clean path to the target.
+- Next step: use probability distribution diagnostics or a narrower feature perturbation rather than broader pruning.
