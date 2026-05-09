@@ -4972,6 +4972,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4047433903576983`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: `pending`.
+- Git commit: `67e017e`.
 - Interpretation: `border_count: 128` is neutral on the official validation metrics. The implementation passes nested CatBoost params through, but this knob did not move the accepted slice.
 - Next step: stop spending iterations on CatBoost-only schema knobs unless they are known to affect this plugin; return to data/feature/model changes with observed metric movement.
