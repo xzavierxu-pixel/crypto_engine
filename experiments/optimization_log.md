@@ -3687,3 +3687,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: 70-day training loses too much accepted accuracy. Keep the 75-day split.
 - Next step: stop cached train-window retests around this branch.
+
+## 20260509_codex_iter173_top700_dart_blend_platt_logit_c020
+
+- Skill used: feature-width ablation discipline plus the current DART blend stack.
+- Hypothesis: a wider top-700 cached feature set may give the small DART component more weak signals to perturb CatBoost rankings.
+- Changed files: `experiments/configs/20260509_codex_iter173_top700_dart_blend_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter26_top700_split`.
+- Feature set: top-700 split; HTF/time features retained by the original feature-selection workflow.
+- Model settings: best DART blend stack with `catboost_weight: 0.9775`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter173_top700_dart_blend_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter26_top700_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter173_top700_dart_blend_platt_logit_c020 --config experiments/configs/20260509_codex_iter173_top700_dart_blend_platt_logit_c020.yaml --horizon 5m --train-window-days 183 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter173_top700_dart_blend_platt_logit_c020/metrics.json`.
+- Score before: `0.1884526862901693`.
+- Score after: `0.1537062721170869`.
+- Utility before / after: `0.07633488854328671` / `0.07503888024883362`.
+- Accepted accuracy before / after: `0.594360781800705` / `0.5680056377730797`.
+- Accepted count before / after: `3121` / `4257`.
+- Coverage before / after: `0.40448418869880765` / `0.5517107309486781`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: the wider/full-history top-700 split badly lowers accepted accuracy. Keep the 75-day VWAP-drop split.
+- Next step: avoid wider/full-history cached feature sets for this branch.
