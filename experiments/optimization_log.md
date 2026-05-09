@@ -7481,3 +7481,26 @@ Main bottlenecks:
 - Git commit: `9dcbc09`.
 - Interpretation: exact tie occurred because this config change affected the inactive standalone CatBoost block, not the active nested `catboost_lgbm_logit_blend.catboost` block. Treat iter336 as a configuration-path check, not a valid model-side improvement.
 - Next step: apply model-side CatBoost changes only inside the active nested blend block.
+
+## 20260510_codex_iter337_cat_depth4_current_blend
+
+- Skill used: model capacity-control probe.
+- Hypothesis: reducing active nested CatBoost depth from `5` to `4` may reduce interaction overfit while preserving enough signal from the 516-feature set.
+- Changed files: `experiments/configs/20260510_codex_iter337_cat_depth4_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except active nested `catboost_lgbm_logit_blend.catboost.depth: 5 -> 4`; DART and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter337_cat_depth4_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter337_cat_depth4_current_blend --config experiments/configs/20260510_codex_iter337_cat_depth4_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter337_cat_depth4_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1683884155266234`.
+- Utility before / after: `0.07698289269051321` / `0.07490927941938832`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5795704845814978`.
+- Accepted count before / after: `3120` / `3632`.
+- Coverage before / after: `0.40435458786936235` / `0.4707102125453603`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: pending.
+- Interpretation: depth 4 raises coverage but loses too much accepted precision. Keep active CatBoost depth 5.
+- Next step: test a smaller active CatBoost regularization change rather than reducing tree depth.
