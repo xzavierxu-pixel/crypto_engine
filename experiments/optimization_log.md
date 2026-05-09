@@ -3111,3 +3111,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: seed 43 is worse; keep the original seed-42 blend.
 - Next step: keep iteration 142 as best and avoid seed-only blend variants unless a stronger model change motivates them.
+
+## 20260509_codex_iter148_blend99_dart_platt_logit
+
+- Skill used: `tabular-logit-transform-stacking` and `tabular-lgbm-dart-boosting`.
+- Hypothesis: with only a 1% LightGBM contribution, a DART LightGBM component may add a different ranking perturbation without overpowering CatBoost; logit calibration should preserve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter148_blend99_dart_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.99`, current best CatBoost settings, DART LightGBM component (`n_estimators: 1600`, `learning_rate: 0.01`, `boosting_type: dart`, `colsample_bytree: 0.35`), plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter148_blend99_dart_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter148_blend99_dart_platt_logit --config experiments/configs/20260509_codex_iter148_blend99_dart_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter148_blend99_dart_platt_logit/metrics.json`.
+- Score before: `0.18511956039735958`.
+- Score after: `0.18680416480395254`.
+- Utility before / after: `0.0754276827371695` / `0.07542768273716952`.
+- Accepted accuracy before / after: `0.5925572519083969` / `0.5939315687540349`.
+- Accepted count before / after: `3144` / `3098`.
+- Coverage before / after: `0.40746500777604977` / `0.4015033696215656`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: DART as a tiny blend component is a valid new best, improving accepted accuracy and downside-risk denominator while staying above the coverage floor.
+- Next step: keep this as the new benchmark; because coverage is close to `0.40`, prefer changes that recover coverage without sacrificing accepted accuracy.
