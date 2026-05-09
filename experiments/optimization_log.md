@@ -6721,6 +6721,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `e8101bb`.
 - Interpretation: the lower bagging temperature is an exact tie with the current best under the official evaluator. Treat as neutral, not an improvement.
 - Next step: do not spend more iterations on bagging temperature unless changing bootstrap type or seed ensemble.
