@@ -8892,3 +8892,27 @@ Main bottlenecks:
 - Git commit: `6ad9312`.
 - Interpretation: stronger CatBoost L2 does not recover precision on the null-pruned split and worsens both score and utility. Do not adopt this combined variant.
 - Next step: keep nullimp drop20 only as a diagnostic; return to data/feature hypotheses with direct accepted-precision rationale.
+
+## 20260510_codex_iter396_train120_best516_schema_current_blend
+
+- Skill used: time-ordered larger-window data processing from `timeseries-expanding-window-stacking` principles.
+- Hypothesis: using more downloaded history while preserving the exact incumbent 516-feature schema may improve model stability without importing full-profile feature noise.
+- Changed files: `experiments/configs/20260510_codex_iter396_train120_best516_schema_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter396_train120_best516_schema_split`.
+- Feature set: 516 incumbent features only; 120-day raw-data development split filtered to the incumbent cached schema/order; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter396_train120_best516_schema_split/train120_best516_schema_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter396_train120_best516_schema_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter396_train120_best516_schema_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter396_train120_best516_schema_current_blend --config experiments/configs/20260510_codex_iter396_train120_best516_schema_current_blend.yaml --horizon 5m --train-window-days 120 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter396_train120_best516_schema_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1635972719635856`.
+- Utility before / after: `0.07698289269051321` / `0.06933644375323997`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5808890232839431`.
+- Accepted count before / after: `3120` / `3307`.
+- Coverage before / after: `0.40435458786936235` / `0.428589942975635`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records schema filtering from the raw-data 120-day artifact.
+- Git commit: pending.
+- Interpretation: older history hurts accepted precision even when noisy extra features are removed. Do not adopt the 120-day same-schema split.
+- Next step: avoid extending history; test recency weighting within the incumbent 75-day window instead.
