@@ -8791,6 +8791,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4105754276827372`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records timestamp joins and zero nulls.
-- Git commit: pending.
+- Git commit: `69786c7`.
 - Interpretation: the non-`sl_` discovery pack improves AUC but not accepted precision or selection_score. Do not adopt it.
 - Next step: test second-level discovery features separately; do not combine this pack with microstructure additions unless one family improves alone.
