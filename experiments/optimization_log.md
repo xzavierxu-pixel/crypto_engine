@@ -6984,3 +6984,27 @@ Main bottlenecks:
 - Git commit: `c2d2d82`.
 - Interpretation: CatBoost overfitting detection is an exact tie with the current best. Treat as neutral, not an improvement.
 - Next step: do not rely on CatBoost OD unless paired with a lower iteration or learning-rate change.
+
+## 20260509_codex_iter316_drop_top1_drift_current_blend
+
+- Skill used: `tabular-adversarial-validation`.
+- Hypothesis: dropping only the strongest non-HTF/time adversarial drift feature may reduce temporal overfit without the damage seen from broader top-5 drift removal.
+- Changed files: `experiments/configs/20260509_codex_iter316_drop_top1_drift_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter316_drop_top1_drift_split`.
+- Feature set: 515 features; dropped only `low_volume_flag_share_20_mean_gap_6`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter316_drop_top1_drift_split/drop_top1_drift_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter316_drop_top1_drift_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter316_drop_top1_drift_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter316_drop_top1_drift_current_blend --config experiments/configs/20260509_codex_iter316_drop_top1_drift_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter316_drop_top1_drift_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.15780821100120215`.
+- Utility before / after: `0.07698289269051321` / `0.06583722135821674`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5795241077019412`.
+- Accepted count before / after: `3120` / `3194`.
+- Coverage before / after: `0.40435458786936235` / `0.4139450492483152`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: the top drift feature is still useful; dropping it materially lowers accepted accuracy. Keep it.
+- Next step: drift alone is not a sufficient drop criterion; use objective-driven ablations only.
