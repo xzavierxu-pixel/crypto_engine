@@ -9014,3 +9014,28 @@ Main bottlenecks:
 - Git commit: `d332b60`.
 - Interpretation: isotonic calibration broadens acceptance and lowers accepted precision. Keep `platt_logit(C=0.2)`.
 - Next step: do not continue calibration-only controls without a new model-ranking change.
+
+## 20260510_codex_iter401_drop_train_abslt1bp_current_blend
+
+- Skill used: boundary-slice-guided training data filtering.
+- Hypothesis: accepted precision is weakest on `abs_return < 1bp`; removing those no-edge samples from development training may focus the model on more decisive directional examples while leaving validation unchanged.
+- Changed files: `experiments/configs/20260510_codex_iter401_drop_train_abslt1bp_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter401_drop_train_abslt1bp_split`.
+- Feature set: 516 incumbent features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter401_drop_train_abslt1bp_split/drop_train_abslt1bp_summary.json`.
+- Data processing: development rows filtered from `19922` to `18428` by `abs_return >= 0.0001`; validation unchanged.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter401_drop_train_abslt1bp_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter401_drop_train_abslt1bp_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter401_drop_train_abslt1bp_current_blend --config experiments/configs/20260510_codex_iter401_drop_train_abslt1bp_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter401_drop_train_abslt1bp_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1800985512257311`.
+- Utility before / after: `0.07698289269051321` / `0.07309486780715399`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5907920154539601`.
+- Accepted count before / after: `3120` / `3106`.
+- Coverage before / after: `0.40435458786936235` / `0.40254017625712807`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records training-only row filtering and unchanged validation.
+- Git commit: pending.
+- Interpretation: filtering `abs_return < 1bp` improves accepted accuracy relative to many recent branches but still trails the incumbent score and utility. Do not adopt this filter.
+- Next step: avoid stronger low-return filtering unless combined with a different objective-specific sample weighting scheme.
