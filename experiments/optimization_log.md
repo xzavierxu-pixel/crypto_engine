@@ -8766,6 +8766,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.45010368066355627`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; raw-data rebuild wrote reproducible development and validation cached frames.
-- Git commit: pending.
+- Git commit: `706f9fd`.
 - Interpretation: more history plus the full configured feature profile broadens coverage but materially lowers accepted precision. Do not adopt the 120-day full-profile rebuild.
 - Next step: use the 120-day artifact only as a feature discovery source; keep official candidates on the stronger 75-day filtered split unless a targeted data transform proves otherwise.
