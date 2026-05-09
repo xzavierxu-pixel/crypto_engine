@@ -9207,6 +9207,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42236910316226023`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records zero-null joins from the conservatively shifted iter405 futures context.
-- Git commit: pending.
+- Git commit: `04def83`.
 - Interpretation: metrics-only futures context is worse than the full compact futures pack and the incumbent. Do not adopt this subset.
 - Next step: close futures-subset isolation; any future futures attempt needs a new interaction/alignment idea rather than source grouping.
