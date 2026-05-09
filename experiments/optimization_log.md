@@ -1775,3 +1775,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: bottom-15 pruning is worse than both the bottom-20 near-miss and the best benchmark. Importance-tail pruning does not beat iteration 43.
 - Next step: keep bottom-20 as a useful near-miss but continue with other approaches.
+
+## 20260509_codex_iter88_bottom20_l240_catboost
+
+- Hypothesis: the bottom-20 feature-pruned near-miss may benefit from slightly stronger CatBoost L2 regularization, recovering accepted accuracy while preserving higher coverage.
+- Changed files: `experiments/configs/20260509_codex_iter88_bottom20_l240_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter85_drop_bottom20_importance_split`.
+- Feature set: iteration 85 bottom-20 pruned feature set; HTF/time features retained.
+- Model settings: CatBoost `l2_leaf_reg=40.0`, otherwise iteration 85 settings.
+- Config: `experiments/configs/20260509_codex_iter88_bottom20_l240_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter85_drop_bottom20_importance_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter88_bottom20_l240_catboost --config experiments/configs/20260509_codex_iter88_bottom20_l240_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter88_bottom20_l240_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16273784821681872`.
+- Utility before / after: `0.0751684810782789` / `0.07568688439606013`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5744518103008669`.
+- Accepted count before / after: `3245` / `3922`.
+- Coverage before / after: `0.4205546915500259` / `0.5082944530844997`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: stronger L2 on the bottom-20 subset over-accepts and sharply lowers accepted accuracy. Iteration 85 remains the best pruning variant.
+- Next step: test a lower L2 on the bottom-20 subset only if pursuing this branch further.
