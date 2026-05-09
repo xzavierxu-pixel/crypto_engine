@@ -2164,3 +2164,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: Depthwise trees overfit train and degrade validation accepted accuracy. Stop this tree-shape branch.
 - Next step: return to symmetric CatBoost and test smaller, monotonic parameter changes only.
+
+## 20260509_codex_iter106_catboost_lr012_iter1600
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: lower learning rate with more iterations (`learning_rate: 0.012`, `iterations: 1600`) may smooth probability ranking and improve selection_score.
+- Changed files: `experiments/configs/20260509_codex_iter106_catboost_lr012_iter1600.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings with `iterations: 1600`, `learning_rate: 0.012`.
+- Config: `experiments/configs/20260509_codex_iter106_catboost_lr012_iter1600.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter106_catboost_lr012_iter1600 --config experiments/configs/20260509_codex_iter106_catboost_lr012_iter1600.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter106_catboost_lr012_iter1600/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17120761753786404`.
+- Utility before / after: `0.0751684810782789` / `0.06959564541213067`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.586977648202138`.
+- Accepted count before / after: `3245` / `3087`.
+- Coverage before / after: `0.4205546915500259` / `0.4000777604976672`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: smoother longer training lowers coverage to the floor and does not improve score. The incumbent remains better.
+- Next step: avoid more same-family CatBoost smoothing unless paired with a clear feature/data change.
