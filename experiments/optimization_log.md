@@ -5133,6 +5133,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4047433903576983`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: `pending`.
+- Git commit: `b019b83`.
 - Interpretation: `0.9769` returns to the previous metric plateau and does not preserve the `0.9770` accuracy lift.
 - Next step: test `0.9771` to bracket the other side of the narrow improvement.
