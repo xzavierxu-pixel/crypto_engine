@@ -8193,3 +8193,27 @@ Main bottlenecks:
 - Git commit: `9eade0f`.
 - Interpretation: extreme flags balance UP/DOWN predictions much more evenly, but reduce accepted precision and score. Do not adopt this feature pack.
 - Next step: move to a narrow source-isolated VWAP distance-ratio test from the full-profile feature cache.
+
+## 20260510_codex_iter367_best516_plus_vwap_ratio_current_blend
+
+- Skill used: `tabular-relative-deviation-features` for narrow relative-distance feature testing.
+- Hypothesis: two full-profile VWAP distance term-ratio columns may add price-location context without reintroducing the broad noisy VWAP family.
+- Changed files: `experiments/configs/20260510_codex_iter367_best516_plus_vwap_ratio_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter367_best516_plus_vwap_ratio_split`.
+- Feature set: 518 features; current best 516 features plus `vwap_dist_term_ratio__vwap_dist_5__vwap_dist_10` and `vwap_dist_term_ratio__vwap_dist_3__vwap_dist_10`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter367_best516_plus_vwap_ratio_split/vwap_ratio_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter367_best516_plus_vwap_ratio_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter367_best516_plus_vwap_ratio_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter367_best516_plus_vwap_ratio_current_blend --config experiments/configs/20260510_codex_iter367_best516_plus_vwap_ratio_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter367_best516_plus_vwap_ratio_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17794280249137012`.
+- Utility before / after: `0.07698289269051321` / `0.07244686365992745`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5896695540583895`.
+- Accepted count before / after: `3120` / `3117`.
+- Coverage before / after: `0.40435458786936235` / `0.40396578538102645`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records row-preserving timestamp joins and zero missing joined values.
+- Git commit: `pending`.
+- Interpretation: the narrow VWAP ratio pair keeps coverage near the best but lowers accepted precision and score. Do not adopt this feature pack.
+- Next step: test whether a small recency-weighted training change can improve the same feature set before exploring more feature additions.
