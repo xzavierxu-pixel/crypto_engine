@@ -7005,6 +7005,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4139450492483152`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `2f25f3e`.
 - Interpretation: the top drift feature is still useful; dropping it materially lowers accepted accuracy. Keep it.
 - Next step: drift alone is not a sufficient drop criterion; use objective-driven ablations only.
