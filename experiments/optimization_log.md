@@ -7241,6 +7241,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4037065837221358`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `4d308dd`.
 - Interpretation: positive-class rebalancing also lowers accepted precision and selection_score. Keep unweighted class loss.
 - Next step: close class-weight probes for this model family.
