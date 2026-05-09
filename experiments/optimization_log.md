@@ -5433,6 +5433,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42107309486780714`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `2f0f9da`.
 - Interpretation: adding the existing top700/full-history feature split lowers accepted accuracy substantially. Current best remains the 75-day 516-feature split.
 - Next step: avoid broad top700/full-history splits; use smaller, targeted feature transforms on the best split only.
