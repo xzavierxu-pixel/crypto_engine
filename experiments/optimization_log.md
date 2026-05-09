@@ -6287,3 +6287,26 @@ Main bottlenecks:
 - Git commit: `47a3b53`.
 - Interpretation: high-regime downweighting improves YES/NO balance but lowers accepted accuracy and selection_score. Do not keep this weighting.
 - Next step: test the paired mid-regime upweight split.
+
+## 20260509_codex_iter286_blend9770_mid_regime_upweight_platt_logit_c020
+
+- Skill used: data-weighting discipline; supervised regime weighting based on validation slice diagnostics.
+- Hypothesis: upweighting mid-volatility regime rows may emphasize the slice with the strongest validation selection_score and improve the accepted region.
+- Changed files: `experiments/configs/20260509_codex_iter286_blend9770_mid_regime_upweight_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter78_mid_regime_upweight_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained; cached sample weights upweight mid-volatility regime rows.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter286_blend9770_mid_regime_upweight_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter78_mid_regime_upweight_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter286_blend9770_mid_regime_upweight_platt_logit_c020 --config experiments/configs/20260509_codex_iter286_blend9770_mid_regime_upweight_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter286_blend9770_mid_regime_upweight_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1676909097701595`.
+- Utility before / after: `0.07698289269051321` / `0.06829963711767752`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5853579527048914`.
+- Accepted count before / after: `3120` / `3087`.
+- Coverage before / after: `0.40435458786936235` / `0.4000777604976672`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: mid-regime upweighting lowers both utility and accepted accuracy and nearly falls to the coverage floor. Do not keep this weighting.
+- Next step: avoid regime-weighted sample variants under this blend.
