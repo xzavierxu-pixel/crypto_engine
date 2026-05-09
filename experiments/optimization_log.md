@@ -7339,3 +7339,27 @@ Main bottlenecks:
 - Git commit: `52f6979`.
 - Interpretation: options-only features increase coverage but reduce accepted precision enough to lower selection_score. Keep options disabled in the current best config.
 - Next step: isolate funding-only, basis-only, and OI-only derivative sources; if none pass, close derivative enrichment for this split.
+
+## 20260510_codex_iter331_best516_plus_funding_current_blend
+
+- Skill used: `tabular-collinear-feature-removal` for source-isolation framing; local derivative data enrichment for cached split construction.
+- Hypothesis: funding-rate context may capture futures positioning pressure with less noise than the full derivative feature pack.
+- Changed files: `experiments/configs/20260510_codex_iter331_best516_plus_funding_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter331_best516_plus_funding_split`.
+- Feature set: 522 features; current best 516 features plus six funding columns; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter331_best516_plus_funding_split/best516_plus_funding_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`; `derivatives.enabled: true`.
+- Config: `experiments/configs/20260510_codex_iter331_best516_plus_funding_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter331_best516_plus_funding_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter331_best516_plus_funding_current_blend --config experiments/configs/20260510_codex_iter331_best516_plus_funding_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30 --derivatives-path-mode archive`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter331_best516_plus_funding_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17738881067164824`.
+- Utility before / after: `0.07698289269051321` / `0.07620528771384132`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5855646100116414`.
+- Accepted count before / after: `3120` / `3436`.
+- Coverage before / after: `0.40435458786936235` / `0.4453084499740798`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records funding-column missing counts.
+- Git commit: pending.
+- Interpretation: funding-only increases coverage and nearly preserves utility, but accepted precision drops enough to lower selection_score. Do not add funding features to the current best.
+- Next step: log basis-only and OI-only source-isolation runs.
