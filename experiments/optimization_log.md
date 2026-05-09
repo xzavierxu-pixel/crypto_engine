@@ -8356,6 +8356,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4388284085018144`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records row-preserving timestamp joins and zero missing joined values.
-- Git commit: `pending`.
+- Git commit: `617eee5`.
 - Interpretation: the single cluster feature increases coverage but decreases accepted precision enough to lower score. Do not adopt it.
 - Next step: inspect calibration/probability behavior and try transformations that reduce over-acceptance in noisy mid/high-volatility regimes.
