@@ -1497,3 +1497,25 @@ Main bottlenecks:
 - Tests: `rtk python -m compileall -q src/model`; DQC ran during training.
 - Interpretation: LightGBM adds acceptance volume but dilutes accepted accuracy. CatBoost alone remains better.
 - Next step: if blending is revisited, use a much smaller non-CatBoost weight; otherwise continue with CatBoost-only changes.
+
+## 20260509_codex_iter75_catboost_lgbm_logit_blend95
+
+- Skill used: `tabular-log-odds-fold-averaging`.
+- Hypothesis: reducing LightGBM's contribution to 5% in the logit blend may capture a small complementary ranking benefit without over-expanding lower-quality accepted predictions.
+- Changed files: `experiments/configs/20260509_codex_iter75_catboost_lgbm_logit_blend95.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, CatBoost weight `0.95`, same base model settings as iteration 74.
+- Config: `experiments/configs/20260509_codex_iter75_catboost_lgbm_logit_blend95.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter75_catboost_lgbm_logit_blend95 --config experiments/configs/20260509_codex_iter75_catboost_lgbm_logit_blend95.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter75_catboost_lgbm_logit_blend95/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17252509801406793`.
+- Utility before / after: `0.0751684810782789` / `0.07853810264385687`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5796529968454258`.
+- Accepted count before / after: `3245` / `3804`.
+- Coverage before / after: `0.4205546915500259` / `0.49300155520995337`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: the smaller blend improves utility and coverage but still lowers accepted accuracy enough to trail the CatBoost-only benchmark.
+- Next step: stop using LightGBM as a blend component unless a more orthogonal feature/data setup is found.
