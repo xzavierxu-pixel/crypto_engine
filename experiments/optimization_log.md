@@ -6379,3 +6379,26 @@ Main bottlenecks:
 - Git commit: `e750ddf`.
 - Interpretation: filtering to clearer high-return training rows increases utility and coverage but lowers accepted accuracy. Do not keep this filtered training split.
 - Next step: if continuing return-filter branches, test less aggressive existing low/tiny-return filters only once under the current blend.
+
+## 20260509_codex_iter290_blend9770_drop_tiny_abs_return_train_platt_logit_c020
+
+- Skill used: data-filtering discipline for low-signal sample removal.
+- Hypothesis: dropping only tiny sub-0.5bp training examples may remove noisy labels while preserving most development data and all current best features.
+- Changed files: `experiments/configs/20260509_codex_iter290_blend9770_drop_tiny_abs_return_train_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter95_drop_tiny_abs_return_train_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained; development rows filtered to remove tiny absolute returns.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter290_blend9770_drop_tiny_abs_return_train_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter95_drop_tiny_abs_return_train_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter290_blend9770_drop_tiny_abs_return_train_platt_logit_c020 --config experiments/configs/20260509_codex_iter290_blend9770_drop_tiny_abs_return_train_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter290_blend9770_drop_tiny_abs_return_train_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17364837860321397`.
+- Utility before / after: `0.07698289269051321` / `0.07089165370658375`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5876883616543764`.
+- Accepted count before / after: `3120` / `3119`.
+- Coverage before / after: `0.40435458786936235` / `0.40422498703991705`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: less aggressive tiny-return filtering still lowers accepted accuracy and score. Keep the full development set.
+- Next step: avoid further simple return-filter branches unless paired with a materially different model.
