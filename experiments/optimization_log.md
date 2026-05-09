@@ -8264,3 +8264,27 @@ Main bottlenecks:
 - Git commit: `91374b6`.
 - Interpretation: aggressive reweighting increases accepted count and coverage but reduces accepted accuracy enough to hurt selection_score. Keep the current best weighting profile.
 - Next step: test a conservative reweighting profile only if it materially differs from current weights; otherwise return to feature-source isolation.
+
+## 20260510_codex_iter370_conservative_reweighted_current_blend
+
+- Skill used: existing sample-weighting controls applied to a derived cached split.
+- Hypothesis: a conservative linear-ramp profile may improve accepted precision by focusing training more heavily on larger label-window moves.
+- Changed files: `experiments/configs/20260510_codex_iter370_conservative_sample_weight_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter370_conservative_reweighted_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter370_conservative_reweighted_split/conservative_weight_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter370_conservative_sample_weight_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter370_conservative_reweighted_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter370_conservative_reweighted_current_blend --config experiments/configs/20260510_codex_iter370_conservative_sample_weight_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter370_conservative_reweighted_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17806439355902406`.
+- Utility before / after: `0.07698289269051321` / `0.07283566614826337`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5893765903307888`.
+- Accepted count before / after: `3120` / `3144`.
+- Coverage before / after: `0.40435458786936235` / `0.40746500777604977`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records changed training and validation weight counts.
+- Git commit: `pending`.
+- Interpretation: conservative reweighting also lowers accepted precision and score. The current best sample-weight profile remains preferable.
+- Next step: return to narrow feature-source isolation and avoid further weight profile sweeps unless a data slice points to a specific weighting failure.
