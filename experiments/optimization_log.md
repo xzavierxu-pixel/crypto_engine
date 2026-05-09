@@ -6813,6 +6813,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40902021772939345`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `d896ad3`.
 - Interpretation: the broad rebuild with 30m HTF context loses accepted accuracy and selection_score. This is not a replacement for the current filtered best.
 - Next step: if testing 30m HTF further, apply the current best feature filter plus only the new 30m HTF columns to isolate the HTF effect.
