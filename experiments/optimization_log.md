@@ -6425,3 +6425,26 @@ Main bottlenecks:
 - Git commit: `adfac87`.
 - Interpretation: replacing raw bases with session-relative variants also lowers accepted accuracy. Do not keep this feature pack.
 - Next step: avoid further session-relative feature variants under this split.
+
+## 20260509_codex_iter292_blend9770_unweighted_best_platt_logit_c020
+
+- Skill used: sample-weighting/data-processing control.
+- Hypothesis: removing sample weights may reduce weighting-induced probability distortion and improve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter292_blend9770_unweighted_best_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter81_unweighted_best_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained; cached sample weights are all `1.0`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter292_blend9770_unweighted_best_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter81_unweighted_best_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter292_blend9770_unweighted_best_platt_logit_c020 --config experiments/configs/20260509_codex_iter292_blend9770_unweighted_best_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter292_blend9770_unweighted_best_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16351971576373614`.
+- Utility before / after: `0.07698289269051321` / `0.07257646448937267`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5777777777777777`.
+- Accepted count before / after: `3120` / `3600`.
+- Coverage before / after: `0.40435458786936235` / `0.4665629860031104`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: unweighted training broadens acceptance and reduces accepted accuracy. Keep the incumbent return-ramp weighting.
+- Next step: stop simple sample-weight variants.
