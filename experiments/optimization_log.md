@@ -8816,6 +8816,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40992742353551065`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records timestamp joins and zero nulls.
-- Git commit: pending.
+- Git commit: `4c20ae2`.
 - Interpretation: the compact second-level discovery pack lowers accepted precision and AUC. Do not adopt it.
 - Next step: stop importing top-gain features directly from wider-history runs; use discovery artifacts for diagnostics only.
