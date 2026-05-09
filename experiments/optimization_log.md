@@ -6192,6 +6192,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42198030067392434`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `d7daf21`.
 - Interpretation: even gentle low-importance pruning lowers accepted accuracy. Keep the full current best 516-feature set.
 - Next step: inspect remaining available more-data splits under the current blend.
