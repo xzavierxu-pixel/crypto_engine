@@ -6149,3 +6149,26 @@ Main bottlenecks:
 - Git commit: `9be7bcd`.
 - Interpretation: top-feature row aggregates broaden acceptance and reduce accepted accuracy. Do not keep this feature pack.
 - Next step: compact additions continue to dilute precision; prioritize feature filtering or alternative data windows over more broad row aggregates.
+
+## 20260509_codex_iter280_blend9770_collinear98_platt_logit_c020
+
+- Skill used: `tabular-collinear-feature-removal`.
+- Hypothesis: removing highly collinear features at a conservative threshold may reduce redundant noisy splits and improve accepted accuracy while keeping the core HTF/time feature families.
+- Changed files: `experiments/configs/20260509_codex_iter280_blend9770_collinear98_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter193_collinear98_split`.
+- Feature set: 496 features; 20 redundant features removed from the current best split; HTF/time families retained though some derived HTF columns were dropped by the collinearity filter.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter280_blend9770_collinear98_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter193_collinear98_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter280_blend9770_collinear98_platt_logit_c020 --config experiments/configs/20260509_codex_iter280_blend9770_collinear98_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter280_blend9770_collinear98_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16979350257159054`.
+- Utility before / after: `0.07698289269051321` / `0.0698548470710213`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.585528403681371`.
+- Accepted count before / after: `3120` / `3151`.
+- Coverage before / after: `0.40435458786936235` / `0.4083722135821669`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: collinearity pruning removes signal that the blend still uses and lowers accepted accuracy. Do not keep this feature filter.
+- Next step: test gentler importance-based pruning rather than correlation-only pruning.
