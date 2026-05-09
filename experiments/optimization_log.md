@@ -3825,3 +3825,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: higher-rate shorter DART over-expands coverage and loses accepted accuracy. Keep `learning_rate: 0.01`, `n_estimators: 1600`.
 - Next step: stop DART learning-rate bracket.
+
+## 20260509_codex_iter179_blend9775_dart_platt_raw_c020
+
+- Skill used: `tabular-logit-transform-stacking` as a contrast against raw-probability Platt scaling.
+- Hypothesis: the current DART blend may prefer raw-probability Platt calibration over logit-space Platt.
+- Changed files: `experiments/configs/20260509_codex_iter179_blend9775_dart_platt_raw_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: best DART blend with `catboost_weight: 0.9775`, `calibration.active_plugin: platt`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter179_blend9775_dart_platt_raw_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter179_blend9775_dart_platt_raw_c020 --config experiments/configs/20260509_codex_iter179_blend9775_dart_platt_raw_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter179_blend9775_dart_platt_raw_c020/metrics.json`.
+- Score before: `0.1884526862901693`.
+- Score after: `0.17940840488120582`.
+- Utility before / after: `0.07633488854328671` / `0.07426127527216175`.
+- Accepted accuracy before / after: `0.594360781800705` / `0.5890581286913273`.
+- Accepted count before / after: `3121` / `3217`.
+- Coverage before / after: `0.40448418869880765` / `0.4169258683255573`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: `be9e11a`.
+- Interpretation: raw-probability Platt loses accepted accuracy. Keep `platt_logit`.
+- Next step: avoid raw Platt on this branch.
