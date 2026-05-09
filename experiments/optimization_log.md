@@ -2142,3 +2142,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: high-magnitude-only training improves in-sample quality but does not transfer enough to validation; the incumbent still has better score and utility.
 - Next step: stop target-magnitude filtering and inspect feature-family effects.
+
+## 20260509_codex_iter105_catboost_depthwise
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: `grow_policy: Depthwise` may capture asymmetric feature interactions better than symmetric trees while preserving the same feature set and thresholds.
+- Changed files: `experiments/configs/20260509_codex_iter105_catboost_depthwise.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `grow_policy: Depthwise`.
+- Config: `experiments/configs/20260509_codex_iter105_catboost_depthwise.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter105_catboost_depthwise --config experiments/configs/20260509_codex_iter105_catboost_depthwise.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter105_catboost_depthwise/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16479724716812935`.
+- Utility before / after: `0.0751684810782789` / `0.06946604458268531`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5817571690054911`.
+- Accepted count before / after: `3245` / `3278`.
+- Coverage before / after: `0.4205546915500259` / `0.4248315189217211`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: Depthwise trees overfit train and degrade validation accepted accuracy. Stop this tree-shape branch.
+- Next step: return to symmetric CatBoost and test smaller, monotonic parameter changes only.
