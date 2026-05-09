@@ -1326,3 +1326,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: session-relative features are the strongest new feature-family result in this continuation batch, but still narrowly below the current best because coverage and utility slip.
 - Next step: refine this near-miss by using fewer relative features or combining only the most relevant volume/volatility deviations.
+
+## 20260509_codex_iter67_session_z2_catboost
+
+- Skill used: `tabular-relative-deviation-features`.
+- Hypothesis: a narrower session-relative feature set using only `rv_5_session_z` and `volume_session_z` may retain the useful signal from iteration 66 with less noise.
+- Changed files: `experiments/configs/20260509_codex_iter67_session_z2_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter67_session_z2_split`.
+- Feature set: current best VWAP-pruned top-500 split plus two train-fitted session z-score features; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter67_session_z2_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter67_session_z2_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter67_session_z2_catboost --config experiments/configs/20260509_codex_iter67_session_z2_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter67_session_z2_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1646700524546782`.
+- Utility before / after: `0.0751684810782789` / `0.06933644375324001`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5817792723937634`.
+- Accepted count before / after: `3245` / `3271`.
+- Coverage before / after: `0.4205546915500259` / `0.4239243131156039`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: narrowing to two z-score features loses the useful context from iteration 66 and hurts accepted accuracy. The broader session-relative feature set remains the stronger relative-deviation variant.
+- Next step: reassess feature-family candidates before another ablation.
