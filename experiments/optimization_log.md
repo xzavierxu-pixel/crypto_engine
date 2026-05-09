@@ -6560,6 +6560,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4171850699844479`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `82b40e9`.
 - Interpretation: the smaller feature set lowers accepted accuracy and selection_score despite satisfying coverage. Do not keep this split.
 - Next step: test neighboring bottom-importance pruning only if it may locate a narrower noise-removal band; otherwise pivot back to model regularization.
