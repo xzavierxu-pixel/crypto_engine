@@ -5502,6 +5502,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4092794193882841`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; adversarial source report is `artifacts/data_v2/experiments/20260508_codex_adversarial_top500/summary.json`.
-- Git commit: `pending`.
+- Git commit: `843d5ae`.
 - Interpretation: removing the top drift features worsens accepted accuracy and changes side balance. These shifted features still carry useful signal for the current objective.
 - Next step: avoid further adversarial-drop pruning unless combined with a separate feature transform.
