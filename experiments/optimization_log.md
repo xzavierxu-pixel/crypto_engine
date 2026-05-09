@@ -5436,3 +5436,26 @@ Main bottlenecks:
 - Git commit: `2f0f9da`.
 - Interpretation: adding the existing top700/full-history feature split lowers accepted accuracy substantially. Current best remains the 75-day 516-feature split.
 - Next step: avoid broad top700/full-history splits; use smaller, targeted feature transforms on the best split only.
+
+## 20260509_codex_iter249_blend9770_return_consistency_split_platt_logit_c020
+
+- Skill used: `timeseries-multi-gap-lag-diff-features` as targeted return-consistency feature evaluation.
+- Hypothesis: the existing return-consistency feature split may improve the current CatBoost+DART blend even though its earlier CatBoost-only run was weak.
+- Changed files: `experiments/configs/20260509_codex_iter249_blend9770_return_consistency_split_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter91_return_consistency_split`.
+- Feature set: 532 features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter249_blend9770_return_consistency_split_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter91_return_consistency_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter249_blend9770_return_consistency_split_platt_logit_c020 --config experiments/configs/20260509_codex_iter249_blend9770_return_consistency_split_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter249_blend9770_return_consistency_split_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17496376398996846`.
+- Utility before / after: `0.07698289269051321` / `0.07153965785381024`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5881226053639846`.
+- Accepted count before / after: `3120` / `3132`.
+- Coverage before / after: `0.40435458786936235` / `0.4059097978227061`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: return-consistency features lower accepted accuracy under the current blend as well. Keep the current best split.
+- Next step: avoid this targeted feature branch.
