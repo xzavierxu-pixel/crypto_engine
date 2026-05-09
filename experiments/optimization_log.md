@@ -7856,3 +7856,51 @@ Main bottlenecks:
 - Git commit: `5b8ba2b`.
 - Interpretation: selected full-profile features increase utility and accepted count but reduce accepted precision enough to lower score. Narrower candidate groups may be more useful than all 10 together.
 - Next step: split the top10 candidates into microstructure-only and minute-lag groups to isolate which source drives utility without precision loss.
+
+## 20260510_codex_iter353_best516_plus_full90_micro_current_blend
+
+- Skill used: `tabular-null-importance-feature-selection` style source isolation after full-profile candidate screening.
+- Hypothesis: the microstructure subset of iter352 top candidates may preserve useful extra flow information with less noise than all 10 features.
+- Changed files: `experiments/configs/20260510_codex_iter353_best516_plus_full90_micro_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter353_best516_plus_full90_micro_split`.
+- Feature set: 523 features; current best 516 features plus seven full90-selected microstructure candidates; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter353_best516_plus_full90_micro_split/best516_plus_full90_micro_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter353_best516_plus_full90_micro_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter353_best516_plus_full90_micro_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter353_best516_plus_full90_micro_current_blend --config experiments/configs/20260510_codex_iter353_best516_plus_full90_micro_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter353_best516_plus_full90_micro_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1726374566044994`.
+- Utility before / after: `0.07698289269051321` / `0.07153965785381029`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5861961274203623`.
+- Accepted count before / after: `3120` / `3202`.
+- Coverage before / after: `0.40435458786936235` / `0.41498185588387765`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records added columns and zero missing joined values.
+- Git commit: pending.
+- Interpretation: full90-selected microstructure candidates reduce accepted precision. Do not add this subset.
+- Next step: evaluate the lag/context subset separately.
+
+## 20260510_codex_iter354_best516_plus_full90_lag_context_current_blend
+
+- Skill used: `tabular-null-importance-feature-selection` style source isolation after full-profile candidate screening.
+- Hypothesis: the lag/context subset of iter352 top candidates may add slower 1m context without the noisier microstructure additions.
+- Changed files: `experiments/configs/20260510_codex_iter354_best516_plus_full90_lag_context_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter354_best516_plus_full90_lag_context_split`.
+- Feature set: 519 features; current best 516 features plus `relative_volume_5_lag12`, `relative_volume_20_lag12`, and `clv_1_lag1`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter354_best516_plus_full90_lag_context_split/best516_plus_full90_lag_context_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter354_best516_plus_full90_lag_context_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter354_best516_plus_full90_lag_context_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter354_best516_plus_full90_lag_context_current_blend --config experiments/configs/20260510_codex_iter354_best516_plus_full90_lag_context_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter354_best516_plus_full90_lag_context_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.175870338655848`.
+- Utility before / after: `0.07698289269051321` / `0.07477967858994299`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5856845856845857`.
+- Accepted count before / after: `3120` / `3367`.
+- Coverage before / after: `0.40435458786936235` / `0.43636599274235355`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records added columns and zero missing joined values.
+- Git commit: pending.
+- Interpretation: lag/context candidates improve logloss and coverage but reduce accepted precision. Do not add this subset.
+- Next step: full-profile selected additions remain discovery-only; avoid adding these feature candidates wholesale.
