@@ -4581,6 +4581,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4524364955935718`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `75f87a9`.
 - Interpretation: CatBoost depth 6 also hurts accepted accuracy. Keep `depth: 5`.
 - Next step: leave CatBoost depth.
