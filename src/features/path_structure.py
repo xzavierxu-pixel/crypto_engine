@@ -54,16 +54,10 @@ class PathStructureFeaturePack(FeaturePack):
             features[f"slope_{window}"] = _rolling_slope(past_close, window)
 
         for window in profile.range_windows:
-            trailing_open = df["open"].shift(window)
-            trailing_return = past_close / trailing_open.replace(0, np.nan) - 1.0
-            features[f"trailing_return_{window}"] = trailing_return
-            features[f"trailing_abs_return_{window}"] = trailing_return.abs()
-
             rolling_high = past_high.rolling(window=window, min_periods=window).max()
             rolling_low = past_low.rolling(window=window, min_periods=window).min()
             denom = (rolling_high - rolling_low).replace(0, np.nan)
             features[f"range_{window}"] = rolling_high - rolling_low
-            features[f"trailing_range_pct_{window}"] = (rolling_high - rolling_low) / past_close.replace(0, np.nan)
             features[f"range_pos_{window}"] = (past_close - rolling_low) / denom
 
             if profile.use_vwap_distance and "volume" in df.columns:
