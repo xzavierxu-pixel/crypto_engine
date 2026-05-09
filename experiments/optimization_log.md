@@ -6284,6 +6284,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41148263348885433`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `47a3b53`.
 - Interpretation: high-regime downweighting improves YES/NO balance but lowers accepted accuracy and selection_score. Do not keep this weighting.
 - Next step: test the paired mid-regime upweight split.
