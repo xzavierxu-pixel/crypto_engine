@@ -7124,6 +7124,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.406298600311042`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary reports zero validation missing added values.
-- Git commit: `pending`.
+- Git commit: `4e0ed06`.
 - Interpretation: rolling context ranks lower accepted accuracy and selection_score. Do not keep these features.
 - Next step: avoid broad contextual transformations unless they are selected out-of-fold.
