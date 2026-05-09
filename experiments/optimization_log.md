@@ -2812,3 +2812,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: stronger regularization also trails `C: 0.25`; stop local logit-Platt sweep.
 - Next step: retain iteration 132 as best and shift to feature/data or model training changes.
+
+## 20260509_codex_iter135_catboost_l220_platt_logit
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: reducing CatBoost `l2_leaf_reg` from `30.0` to `20.0` may sharpen learned interactions while logit-space calibration controls probability scale.
+- Changed files: `experiments/configs/20260509_codex_iter135_catboost_l220_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings with `l2_leaf_reg: 20.0`, plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter135_catboost_l220_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter135_catboost_l220_platt_logit --config experiments/configs/20260509_codex_iter135_catboost_l220_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter135_catboost_l220_platt_logit/metrics.json`.
+- Score before: `0.1846861980124185`.
+- Score after: `0.17428654505234928`.
+- Utility before / after: `0.07477967858994294` / `0.07257646448937276`.
+- Accepted accuracy before / after: `0.592854843900869` / `0.5865265760197775`.
+- Accepted count before / after: `3107` / `3236`.
+- Coverage before / after: `0.40266977708657337` / `0.41938828408501816`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: weaker L2 hurts accepted accuracy and score; do not lower L2 on the current split.
+- Next step: test the stronger L2 side once, then move away from local CatBoost L2 tuning if it fails.
