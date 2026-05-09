@@ -6724,3 +6724,26 @@ Main bottlenecks:
 - Git commit: `e8101bb`.
 - Interpretation: the lower bagging temperature is an exact tie with the current best under the official evaluator. Treat as neutral, not an improvement.
 - Next step: do not spend more iterations on bagging temperature unless changing bootstrap type or seed ensemble.
+
+## 20260509_codex_iter305_catboost_seed_ensemble3_platt_logit_c020
+
+- Skill used: `tabular-multi-seed-fold-averaging`.
+- Hypothesis: averaging three CatBoost seeds may reduce model variance and improve accepted precision versus a single CatBoost model.
+- Changed files: `experiments/configs/20260509_codex_iter305_catboost_seed_ensemble3_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained.
+- Model settings: `model.active_plugin: catboost_ensemble`, seeds `[42, 43, 44]`, CatBoost parameters copied from current best, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter305_catboost_seed_ensemble3_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter305_catboost_seed_ensemble3_platt_logit_c020 --config experiments/configs/20260509_codex_iter305_catboost_seed_ensemble3_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter305_catboost_seed_ensemble3_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18284455810731287`.
+- Utility before / after: `0.07698289269051321` / `0.07659409020217733`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5895725977568961`.
+- Accepted count before / after: `3120` / `3299`.
+- Coverage before / after: `0.40435458786936235` / `0.4275531363400726`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: seed averaging improves variance diagnostics relative to pure CatBoost history, but it lowers selection_score versus the current CatBoost/LGBM logit blend. Do not replace the best model.
+- Next step: if using multi-seed again, combine it with the LGBM blend only after implementing a dedicated blend plugin; otherwise continue with localized feature or calibration probes.
