@@ -9210,3 +9210,37 @@ Main bottlenecks:
 - Git commit: `04def83`.
 - Interpretation: metrics-only futures context is worse than the full compact futures pack and the incumbent. Do not adopt this subset.
 - Next step: close futures-subset isolation; any future futures attempt needs a new interaction/alignment idea rather than source grouping.
+
+
+## 2026-05-10 - Iteration 409 - Book-depth point-in-time context
+
+Hypothesis: Binance futures book-depth snapshots contain useful short-horizon liquidity imbalance information. Strictly lagged 1-minute last-snapshot depth imbalance and liquidity rolling features may improve accepted-sample accuracy while keeping coverage above 0.40.
+
+Skill used: `timeseries-multi-scale-rolling-features` for the rolling-window idea, adapted to causal trailing windows because centered windows would be future-looking for this task.
+
+Changed files/artifacts:
+- `artifacts/data_v2/experiments/20260510_codex_iter409_bookdepth_context_split/development_frame.parquet`
+- `artifacts/data_v2/experiments/20260510_codex_iter409_bookdepth_context_split/validation_frame.parquet`
+- `artifacts/data_v2/experiments/20260510_codex_iter409_bookdepth_context_split/bookdepth_features_manifest.json`
+- `experiments/configs/20260510_codex_iter409_bookdepth_context_current_blend.yaml`
+- `artifacts/data_v2/experiments/20260510_codex_iter409_bookdepth_context_current_blend/metrics.json`
+
+Feature/alignment notes: added 16 `bd_*` features from `artifacts/data_v2/normalized/futures_um/bookDepth/BTCUSDT.parquet`. Features are per-snapshot bid/ask notional imbalance and log liquidity at 1%, 2%, and 5%, plus trailing 5m/15m rolling stats and 5m deltas. Snapshots are resampled to 1m last values, shifted +1 minute, then backward-asof joined to sample `timestamp` with 10m tolerance. Development and validation have zero nulls in new features.
+
+Official command:
+
+```powershell
+rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter409_bookdepth_context_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter409_bookdepth_context_current_blend --config experiments/configs/20260510_codex_iter409_bookdepth_context_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30
+```
+
+Baseline before: selection_score `0.1902780361`, utility `0.0769828927`, accepted_sample_accuracy `0.5951923077`, accepted_count `3120`, coverage `0.4043545879`.
+
+After: selection_score `0.1651461757`, utility `0.0776308968`, accepted_sample_accuracy `0.5747069095`, accepted_count `4009`, coverage `0.5195697252`, up/down counts `2451/1558`, thresholds `0.570/0.350`.
+
+Coverage constraint satisfied: yes.
+
+Interpretation: rejected. The depth context increased accepted_count and coverage, but accepted accuracy fell too far, so the objective deteriorated despite slightly higher utility. This suggests the coarse book-depth snapshot signal is noisy or regime-dependent for the existing blend.
+
+Next step: test a different downloaded source or a narrower transformation that targets accepted accuracy rather than broad liquidity coverage.
+
+Git commit: PENDING

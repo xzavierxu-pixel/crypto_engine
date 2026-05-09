@@ -1,0 +1,41 @@
+Feature Scope: model features only
+
+==================== Data Quality Report: TRAIN ====================
+[1] Dimensions: 19922 rows, 532 columns
+[2] Duplicate Rows: 0 (0.00%)
+[3] Duplicate Columns (Exact Equality): 4
+    - Group: sl_return_1s, sl_mirror_ret_1s
+    - Group: sl_return_120s, sl_mirror_ret_120s
+    - Group: signed_dollar_volume_1, second_level_signed_dollar_flow
+    - Group: ret_15_delta_3, htf_ret_15m_1_delta_3
+[4] Columns with Missing or Inf Values: 0
+[5] Constant Features: 0
+[6] Near-Constant Features: 4
+    - sl_rvar_3s
+    - sl_interaction__sl_mirror_ret_60s__x__sl_mirror_rv_60s
+    - sl_price_impact_proxy_5s
+    - sl_price_impact_proxy_10s
+[7] High Cardinality Features (>50 unique): 0
+[8] Highly Imbalanced Categorical (>99% same value): 0
+
+==================== Data Quality Report: VALID ====================
+[1] Dimensions: 7716 rows, 532 columns
+[2] Duplicate Rows: 0 (0.00%)
+[3] Duplicate Columns (Exact Equality): 4
+    - Group: sl_return_1s, sl_mirror_ret_1s
+    - Group: sl_return_120s, sl_mirror_ret_120s
+    - Group: signed_dollar_volume_1, second_level_signed_dollar_flow
+    - Group: ret_15_delta_3, htf_ret_15m_1_delta_3
+[4] Columns with Missing or Inf Values: 0
+[5] Constant Features: 0
+[6] Near-Constant Features: 5
+    - sl_rvar_3s
+    - ret_vol_product__ret_3__rv_30
+    - sl_interaction__sl_mirror_ret_60s__x__sl_mirror_rv_60s
+    - sl_price_impact_proxy_5s
+    - sl_price_impact_proxy_10s
+[7] High Cardinality Features (>50 unique): 0
+[8] Highly Imbalanced Categorical (>99% same value): 0
+
+==================== Dataset Comparison ====================
+[OK] Schemas match perfectly.

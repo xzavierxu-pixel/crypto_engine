@@ -1,0 +1,24 @@
+{
+  "base_split": "artifacts\\data_v2\\experiments\\20260508_codex_iter43_train75_drop_sl_vwap_split",
+  "source": "artifacts\\data_v2\\normalized\\futures_um\\bookDepth\\BTCUSDT.parquet",
+  "alignment": "snapshot features resampled to 1min last, feature timestamp shifted +1min, asof backward to t0 with 10min tolerance",
+  "feature_columns": [
+    "bd_imbalance_1p",
+    "bd_log_total_notional_1p",
+    "bd_imbalance_2p",
+    "bd_log_total_notional_2p",
+    "bd_imbalance_5p",
+    "bd_log_total_notional_5p",
+    "bd_imbalance_1p_mean_5m",
+    "bd_imbalance_1p_std_15m",
+    "bd_imbalance_5p_mean_5m",
+    "bd_imbalance_5p_std_15m",
+    "bd_log_total_notional_1p_mean_5m",
+    "bd_log_total_notional_1p_std_15m",
+    "bd_log_total_notional_5p_mean_5m",
+    "bd_log_total_notional_5p_std_15m",
+    "bd_imbalance_1p_delta_5m",
+    "bd_total_notional_1p_delta_5m"
+  ],
+  "source_rows_used": 3389664
+}

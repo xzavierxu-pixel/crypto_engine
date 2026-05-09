@@ -1,0 +1,10 @@
+slice,bucket,feature,false_count,false_share
+volatility_regime,low,rv_5,280,0.26095060577819196
+volatility_regime,mid,rv_5,355,0.33084808946877914
+volatility_regime,high,rv_5,438,0.4082013047530289
+volume_regime,low,volume,345,0.32152842497670087
+volume_regime,mid,volume,352,0.32805219012115566
+volume_regime,high,volume,376,0.3504193849021435
+session,asia,timestamp_hour,382,0.3560111835973905
+session,europe,timestamp_hour,336,0.3131407269338304
+session,us,timestamp_hour,355,0.33084808946877914
