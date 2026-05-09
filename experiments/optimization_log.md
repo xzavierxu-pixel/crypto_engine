@@ -3848,3 +3848,26 @@ Main bottlenecks:
 - Git commit: `a93dd71`.
 - Interpretation: raw-probability Platt loses accepted accuracy. Keep `platt_logit`.
 - Next step: avoid raw Platt on this branch.
+
+## 20260509_codex_iter180_blend9775_dart_platt_logit_c015
+
+- Skill used: `tabular-logit-transform-stacking`.
+- Hypothesis: stronger logit-space Platt regularization may sharpen accepted predictions near the 40% coverage boundary.
+- Changed files: `experiments/configs/20260509_codex_iter180_blend9775_dart_platt_logit_c015.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: best DART blend with `catboost_weight: 0.9775`, nested DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.15`.
+- Config: `experiments/configs/20260509_codex_iter180_blend9775_dart_platt_logit_c015.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter180_blend9775_dart_platt_logit_c015 --config experiments/configs/20260509_codex_iter180_blend9775_dart_platt_logit_c015.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter180_blend9775_dart_platt_logit_c015/metrics.json`.
+- Score before: `0.1884526862901693`.
+- Score after: `0.18616222609328612`.
+- Utility before / after: `0.07633488854328671` / `0.07516848107827892`.
+- Accepted accuracy before / after: `0.594360781800705` / `0.5936692506459949`.
+- Accepted count before / after: `3121` / `3096`.
+- Coverage before / after: `0.40448418869880765` / `0.401244167962675`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: stronger Platt regularization loses both coverage and score. Keep `C: 0.2`.
+- Next step: tune the DART side model regularization instead of lowering calibration `C`.
