@@ -1562,3 +1562,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: high-regime downweighting is valid but does not improve enough; it trades a little accepted accuracy for extra coverage and remains below the best.
 - Next step: test mid-regime upweighting, since mid volatility/volume had the strongest regime-slice scores.
+
+## 20260509_codex_iter78_mid_regime_upweight_catboost
+
+- Hypothesis: the current best validation report shows mid-volatility and mid-volume slices have the strongest selection scores; upweighting matching development rows may improve the model's accepted-set quality.
+- Changed files: `experiments/configs/20260509_codex_iter78_mid_regime_upweight_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter78_mid_regime_upweight_split`.
+- Data processing: multiplied existing `stage1_sample_weight` by `1.20` for development rows inside both `rv_5` and `volume` development tercile middle buckets.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter78_mid_regime_upweight_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter78_mid_regime_upweight_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter78_mid_regime_upweight_catboost --config experiments/configs/20260509_codex_iter78_mid_regime_upweight_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter78_mid_regime_upweight_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16480445950815406`.
+- Utility before / after: `0.0751684810782789` / `0.0695956454121306`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.581635755548799`.
+- Accepted count before / after: `3245` / `3289`.
+- Coverage before / after: `0.4205546915500259` / `0.4262571280456195`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: mid-regime upweighting does not transfer as a useful training-weight rule and reduces accepted accuracy.
+- Next step: avoid regime sample-weighting unless combined with a more robust time split.
