@@ -4998,3 +4998,26 @@ Main bottlenecks:
 - Git commit: `a040e38`.
 - Interpretation: even a shallow low-importance prune increases coverage but lowers accepted accuracy enough to hurt selection_score. Keep the full 516-feature best split.
 - Next step: avoid further simple tail pruning; consider model-side or split-side changes with no feature-family removal.
+
+## 20260509_codex_iter230_blend9765_sl_top20_rowagg_platt_logit_c020
+
+- Skill used: `tabular-row-aggregate-features`.
+- Hypothesis: leak-free row aggregates over the top 20 second-level microstructure features may summarize broad tape pressure and improve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter230_blend9765_sl_top20_rowagg_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter230_sl_top20_rowagg_split`.
+- Feature set: 520 features; added `sl_top20_z_mean`, `sl_top20_z_std`, `sl_top20_z_min`, `sl_top20_z_max`; standardization fit on development only; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter230_blend9765_sl_top20_rowagg_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter230_sl_top20_rowagg_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter230_blend9765_sl_top20_rowagg_platt_logit_c020 --config experiments/configs/20260509_codex_iter230_blend9765_sl_top20_rowagg_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter230_blend9765_sl_top20_rowagg_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.1684464240266692`.
+- Utility before / after: `0.07659409020217732` / `0.0738724727838258`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5805539853024307`.
+- Accepted count before / after: `3123` / `3538`.
+- Coverage before / after: `0.4047433903576983` / `0.4585277345775013`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; row aggregate transform summary saved at `artifacts/data_v2/experiments/20260509_codex_iter230_sl_top20_rowagg_split/rowagg_summary.json`.
+- Git commit: `pending`.
+- Interpretation: broad row aggregates materially increase coverage but weaken accepted accuracy, reducing selection_score. Do not keep this aggregate pack.
+- Next step: favor narrower model-side experiments or more targeted time/HTF interactions instead of broad second-level aggregates.
