@@ -2996,3 +2996,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: calibrated 99/1 logit blending is a small valid new best under the coverage constraint, mainly by increasing utility and accepted count while keeping accepted accuracy close to the CatBoost-only benchmark.
 - Next step: sweep only very nearby blend weights; wider LightGBM weights had already underperformed.
+
+## 20260509_codex_iter143_blend995_platt_logit
+
+- Skill used: `tabular-logit-transform-stacking`.
+- Hypothesis: a smaller LightGBM contribution (`0.5%`) may preserve CatBoost accepted accuracy better than the 99/1 blend while retaining some ranking perturbation.
+- Changed files: `experiments/configs/20260509_codex_iter143_blend995_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.995`, current best CatBoost settings, regularized LightGBM settings, plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter143_blend995_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter143_blend995_platt_logit --config experiments/configs/20260509_codex_iter143_blend995_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter143_blend995_platt_logit/metrics.json`.
+- Score before: `0.18511956039735958`.
+- Score after: `0.18293232145740404`.
+- Utility before / after: `0.0754276827371695` / `0.07439087610160704`.
+- Accepted accuracy before / after: `0.5925572519083969` / `0.5918106206014075`.
+- Accepted count before / after: `3144` / `3126`.
+- Coverage before / after: `0.40746500777604977` / `0.4051321928460342`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: `0.995` is worse than `0.99`; the 1% LightGBM perturbation is better than 0.5%.
+- Next step: test the other nearby side (`0.985`) before stopping the local blend sweep.
