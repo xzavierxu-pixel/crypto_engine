@@ -5896,3 +5896,26 @@ Main bottlenecks:
 - Git commit: `bf8e94e`.
 - Interpretation: exact tie to the current best; either this change does not affect the active model path materially, or it preserves identical threshold-selected predictions. Keep the simpler current best config.
 - Next step: inspect whether active training consumes sample weights before spending more iterations on sample-weighting brackets.
+
+## 20260509_codex_iter269_blend9770_reweighted_min_weight020_platt_logit_c020
+
+- Skill used: none specific; this is an existing sample-weighting/data-processing experiment guided by boundary-slice diagnostics.
+- Hypothesis: recomputing cached split `stage1_sample_weight` with `sample_weighting.min_weight: 0.20` may make the config change from iter268 effective and improve accepted accuracy by downweighting ambiguous small-return rows.
+- Changed files: `experiments/configs/20260509_codex_iter269_blend9770_reweighted_min_weight020_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter269_reweighted_min_weight020_split`.
+- Feature set: 516 features; HTF/time features retained; `stage1_sample_weight` recomputed from existing `abs_return` with no label or feature changes.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, model params unchanged, `sample_weighting.min_weight: 0.20`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter269_blend9770_reweighted_min_weight020_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter269_reweighted_min_weight020_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter269_blend9770_reweighted_min_weight020_platt_logit_c020 --config experiments/configs/20260509_codex_iter269_blend9770_reweighted_min_weight020_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter269_blend9770_reweighted_min_weight020_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16713162470307982`.
+- Utility before / after: `0.07698289269051321` / `0.06933644375324002`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5838295205264807`.
+- Accepted count before / after: `3120` / `3191`.
+- Coverage before / after: `0.40435458786936235` / `0.41355624675997926`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; reweight summary saved at `artifacts/data_v2/experiments/20260509_codex_iter269_reweighted_min_weight020_split/reweight_summary.json`.
+- Git commit: `pending`.
+- Interpretation: making the lower sample-weight floor effective reduces accepted accuracy and objective score. Keep the existing cached weights.
+- Next step: stop sample-weight-floor bracketing and return to feature/model diagnostics.
