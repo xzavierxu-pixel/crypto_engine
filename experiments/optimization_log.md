@@ -3779,3 +3779,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: low-volume VWAP-drop variant is much worse. Keep the current drop-both VWAP split.
 - Next step: avoid further VWAP-drop variants.
+
+## 20260509_codex_iter177_blend9775_dart_lr005_iter3200_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting` and `tabular-logit-transform-stacking`.
+- Hypothesis: a lower-learning-rate, longer DART component may provide a smoother perturbation than `learning_rate: 0.01`, `n_estimators: 1600`.
+- Changed files: `experiments/configs/20260509_codex_iter177_blend9775_dart_lr005_iter3200_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: best DART blend with `catboost_weight: 0.9775`, `calibration.active_plugin: platt_logit`, `C: 0.2`, and nested DART `learning_rate: 0.005`, `n_estimators: 3200`.
+- Config: `experiments/configs/20260509_codex_iter177_blend9775_dart_lr005_iter3200_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter177_blend9775_dart_lr005_iter3200_platt_logit_c020 --config experiments/configs/20260509_codex_iter177_blend9775_dart_lr005_iter3200_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter177_blend9775_dart_lr005_iter3200_platt_logit_c020/metrics.json`.
+- Score before: `0.1884526862901693`.
+- Score after: `0.1747146637071683`.
+- Utility before / after: `0.07633488854328671` / `0.07102125453602899`.
+- Accepted accuracy before / after: `0.594360781800705` / `0.5884441575209812`.
+- Accepted count before / after: `3121` / `3098`.
+- Coverage before / after: `0.40448418869880765` / `0.4015033696215656`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: lower-rate longer DART materially hurts accepted accuracy and score. Keep `learning_rate: 0.01`, `n_estimators: 1600`.
+- Next step: test a shorter/faster DART component only if useful; otherwise shift levers.
