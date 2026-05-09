@@ -6126,3 +6126,26 @@ Main bottlenecks:
 - Git commit: `9d7c5ce`.
 - Interpretation: compact interactions increase utility and coverage but reduce accepted accuracy enough to lower selection_score. Do not keep this feature pack.
 - Next step: avoid further direct interaction additions unless paired with feature selection or a better acceptance-sharpening model.
+
+## 20260509_codex_iter279_blend9770_top40_rowagg_platt_logit_c020
+
+- Skill used: `tabular-row-aggregate-features`.
+- Hypothesis: row-wise aggregate summaries across the top 40 importance-normalized features may capture broad market-state intensity that individual features miss.
+- Changed files: `experiments/configs/20260509_codex_iter279_blend9770_top40_rowagg_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter71_top_importance_rowagg_split`.
+- Feature set: 520 features; current best 516 features plus `top40_imp_z_mean`, `top40_imp_z_std`, `top40_imp_z_min`, and `top40_imp_z_max`; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter279_blend9770_top40_rowagg_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter71_top_importance_rowagg_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter279_blend9770_top40_rowagg_platt_logit_c020 --config experiments/configs/20260509_codex_iter279_blend9770_top40_rowagg_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter279_blend9770_top40_rowagg_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1657742059251654`.
+- Utility before / after: `0.07698289269051321` / `0.07413167444271646`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5781848004373975`.
+- Accepted count before / after: `3120` / `3658`.
+- Coverage before / after: `0.40435458786936235` / `0.4740798341109383`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: top-feature row aggregates broaden acceptance and reduce accepted accuracy. Do not keep this feature pack.
+- Next step: compact additions continue to dilute precision; prioritize feature filtering or alternative data windows over more broad row aggregates.
