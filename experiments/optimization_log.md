@@ -7664,6 +7664,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4169258683255573`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records exact UTC window boundaries and dropped rows.
-- Git commit: pending.
+- Git commit: `f819826`.
 - Interpretation: even a small reduction of the current development window lowers accepted precision. Keep the 75-day cached split.
 - Next step: focus on adding online-safe feature transforms rather than shortening the training window.
