@@ -7336,6 +7336,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4177034733022291`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records joined options columns and missing counts.
-- Git commit: pending.
+- Git commit: `52f6979`.
 - Interpretation: options-only features increase coverage but reduce accepted precision enough to lower selection_score. Keep options disabled in the current best config.
 - Next step: isolate funding-only, basis-only, and OI-only derivative sources; if none pass, close derivative enrichment for this split.
