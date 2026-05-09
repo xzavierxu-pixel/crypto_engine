@@ -8574,3 +8574,28 @@ Main bottlenecks:
 - Git commit: `0067889`.
 - Interpretation: gentler class reweighting improves UP/DOWN balance slightly but still loses accepted precision and score. Keep unweighted CatBoost classes.
 - Next step: avoid more class-weight variants unless side-specific acceptance becomes the primary objective.
+
+## 20260510_codex_iter383_sl_pca8_current_blend
+
+- Skill used: `tabular-autoencoder-timeseries-embedding` / compressed dense representation idea, implemented with development-fitted PCA for a conservative first pass.
+- Hypothesis: compressing hundreds of unused second-level features into a small dense representation may retain useful 1s microstructure signal without the noise of the full-profile feature set.
+- Changed files: `experiments/configs/20260510_codex_iter383_sl_pca8_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter383_sl_pca8_split`.
+- Feature set: 524 features; current best 516 features plus 8 development-fitted PCA components from 532 unused `sl_` columns; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter383_sl_pca8_split/sl_pca8_summary.json`.
+- PCA fit: development only; explained variance sum `0.5413153477285344`; validation transformed with development imputer/scaler/PCA.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter383_sl_pca8_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter383_sl_pca8_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter383_sl_pca8_current_blend --config experiments/configs/20260510_codex_iter383_sl_pca8_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter383_sl_pca8_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1677533074234717`.
+- Utility before / after: `0.07698289269051321` / `0.06972524624157599`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5839575530586767`.
+- Accepted count before / after: `3120` / `3204`.
+- Coverage before / after: `0.40435458786936235` / `0.4152410575427683`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records development-only PCA fitting and zero missing source values.
+- Git commit: `pending`.
+- Interpretation: dense compression of unused second-level features lowers accepted precision and score. Do not adopt this PCA pack.
+- Next step: avoid broad compressed `sl_` feature mass unless a stronger supervised stability screen is available.
