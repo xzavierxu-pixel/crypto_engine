@@ -2053,3 +2053,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: stronger quantization increases accepted count and utility slightly but sacrifices accepted accuracy and downside-risk enough to lower selection_score. Stop this branch.
 - Next step: test CatBoost leaf-estimation regularization rather than split quantization.
+
+## 20260509_codex_iter101_catboost_leaf_estimation5
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: reducing CatBoost `leaf_estimation_iterations` to 5 may shrink per-tree leaf values and improve validation selective accuracy without touching thresholds.
+- Changed files: `experiments/configs/20260509_codex_iter101_catboost_leaf_estimation5.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `leaf_estimation_iterations: 5`.
+- Config: `experiments/configs/20260509_codex_iter101_catboost_leaf_estimation5.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter101_catboost_leaf_estimation5 --config experiments/configs/20260509_codex_iter101_catboost_leaf_estimation5.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter101_catboost_leaf_estimation5/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17027308905605648`.
+- Utility before / after: `0.0751684810782789` / `0.07037325038880246`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5854042151620006`.
+- Accepted count before / after: `3245` / `3179`.
+- Coverage before / after: `0.4205546915500259` / `0.4120010368066356`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: leaf-estimation shrinkage reduces coverage and does not improve accuracy enough; it is worse than the incumbent.
+- Next step: try `leaf_estimation_iterations: 1` once, then stop this branch if it also underperforms.
