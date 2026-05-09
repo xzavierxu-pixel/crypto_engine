@@ -7032,3 +7032,27 @@ Main bottlenecks:
 - Git commit: `c3fb0e0`.
 - Interpretation: the 80-day window adds rows but lowers accepted accuracy sharply. Keep the 75-day current best window.
 - Next step: avoid nearby longer windows unless a recency-weighted version can preserve the 75-day precision profile.
+
+## 20260509_codex_iter318_train72_best516_current_blend
+
+- Skill used: recency-window data processing.
+- Hypothesis: a slightly shorter 72-day current-best filtered training window may improve recency fit while retaining the exact best feature set.
+- Changed files: `experiments/configs/20260509_codex_iter318_train72_best516_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter318_train72_best516_filter_split`.
+- Feature set: 516 features; exact current best cached split columns retained; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter318_train72_best516_filter_split/train72_best516_filter_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter318_train72_best516_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter318_train72_best516_filter_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter318_train72_best516_current_blend --config experiments/configs/20260509_codex_iter318_train72_best516_current_blend.yaml --horizon 5m --train-window-days 72 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter318_train72_best516_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1694395121579687`.
+- Utility before / after: `0.07698289269051321` / `0.07037325038880253`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5847113884555383`.
+- Accepted count before / after: `3120` / `3205`.
+- Coverage before / after: `0.40435458786936235` / `0.4153706583722136`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: the 72-day filtered window also lowers accepted accuracy. Keep the 75-day current best window.
+- Next step: stop nearby train-window sweeps unless combined with a different weighting scheme.
