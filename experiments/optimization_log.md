@@ -7435,3 +7435,26 @@ Main bottlenecks:
 - Git commit: `2138d5b`.
 - Interpretation: even near-duplicate non-HTF columns help the current blend; removing them lowers accepted precision. Keep the full 516-feature current best set.
 - Next step: try model-side regularization and sampling changes on the unchanged 516-feature split.
+
+## 20260510_codex_iter335_dart_more_subsample_current_blend
+
+- Skill used: `tabular-lgbm-dart-boosting`.
+- Hypothesis: stronger DART subsampling may make the small LightGBM component more complementary to CatBoost and reduce overfit in high-dimensional features.
+- Changed files: `experiments/configs/20260510_codex_iter335_dart_more_subsample_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except nested LightGBM DART `subsample: 0.6 -> 0.5` and `colsample_bytree: 0.35 -> 0.25`; CatBoost and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter335_dart_more_subsample_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter335_dart_more_subsample_current_blend --config experiments/configs/20260510_codex_iter335_dart_more_subsample_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter335_dart_more_subsample_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18685291815527807`.
+- Utility before / after: `0.07698289269051321` / `0.07568688439606011`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5937098844672657`.
+- Accepted count before / after: `3120` / `3116`.
+- Coverage before / after: `0.40435458786936235` / `0.40383618455158116`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: pending.
+- Interpretation: stronger DART subsampling is close but slightly worse, mostly from lower accepted accuracy. Keep the current DART sampling.
+- Next step: test a small CatBoost random-strength increase on the unchanged 516-feature split.
