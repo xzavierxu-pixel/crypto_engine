@@ -2720,3 +2720,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: AUC eval metric improves neither accepted accuracy nor objective; keep Logloss eval metric.
 - Next step: continue with a different model/data direction.
+
+## 20260509_codex_iter131_seed43_platt_c025
+
+- Skill used: probability calibration workflow plus `tabular-multi-seed-fold-averaging` diagnostics.
+- Hypothesis: seed43 had higher utility/coverage but lower accepted accuracy; Platt `C: 0.25` may recover enough calibration quality to beat the seed42 calibrated benchmark.
+- Changed files: `experiments/configs/20260509_codex_iter131_seed43_platt_c025.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings with `random_seed: 43` plus Platt `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter131_seed43_platt_c025.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter131_seed43_platt_c025 --config experiments/configs/20260509_codex_iter131_seed43_platt_c025.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter131_seed43_platt_c025/metrics.json`.
+- Score before: `0.18462759471376494`.
+- Score after: `0.17560279500873954`.
+- Utility before / after: `0.07516848107827886` / `0.08113011923276307`.
+- Accepted accuracy before / after: `0.5924155513065646` / `0.5798469387755102`.
+- Accepted count before / after: `3138` / `3920`.
+- Coverage before / after: `0.40668740279937793` / `0.5080352514256091`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: seed43 plus Platt increases coverage and utility but drops accepted accuracy too far. Seed42 Platt `C: 0.25` remains best.
+- Next step: do not pursue seed43 as a calibrated single-model replacement.
