@@ -8841,6 +8841,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4534733022291343`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records drop-only feature removal and unchanged row windows.
-- Git commit: pending.
+- Git commit: `c20918d`.
 - Interpretation: null-importance pruning improves utility and broad calibration but lowers accepted precision enough to trail the best selection_score. Do not adopt drop20 as-is.
 - Next step: try a narrower null-importance drop10 to preserve more precision while removing only the worst noise candidates.
