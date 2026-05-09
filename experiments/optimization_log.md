@@ -1838,3 +1838,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: feature subsampling over-expands lower-quality acceptance and hurts the objective. Full feature availability remains better for CatBoost.
 - Next step: do not pursue stronger `rsm` unless revisiting with a different feature subset.
+
+## 20260509_codex_iter91_return_consistency_catboost
+
+- Skill used: `tabular-last-diff-lag-features` and `tabular-leak-free-loop-features` principles.
+- Hypothesis: leak-free return sign-consistency and lag-summary features may capture short-term persistence/reversal state better than individual lag columns.
+- Changed files: `experiments/configs/20260509_codex_iter91_return_consistency_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter91_return_consistency_split`.
+- Feature set: current best VWAP-pruned top-500 split plus 16 return/HTF-return lag summary features; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter91_return_consistency_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter91_return_consistency_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter91_return_consistency_catboost --config experiments/configs/20260509_codex_iter91_return_consistency_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter91_return_consistency_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17139599764919622`.
+- Utility before / after: `0.0751684810782789` / `0.07024364955935719`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5864709636247607`.
+- Accepted count before / after: `3245` / `3134`.
+- Coverage before / after: `0.4205546915500259` / `0.4061689994815967`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: the return-consistency features preserve reasonable accepted accuracy but reduce coverage and utility. They do not improve the objective.
+- Next step: continue with other feature/model approaches.
