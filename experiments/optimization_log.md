@@ -8551,3 +8551,26 @@ Main bottlenecks:
 - Git commit: `55d16b0`.
 - Interpretation: the auxiliary activity model has real large-move signal, but as a final-model feature it still lowers accepted precision. Do not adopt this meta feature.
 - Next step: pivot away from activity meta-features; continue searching for precision-preserving data transformations.
+
+## 20260510_codex_iter382_cat_class_weights_102_098_current_blend
+
+- Skill used: `tabular-balanced-log-loss` class-weighting idea applied conservatively to CatBoost.
+- Hypothesis: a gentler negative-class upweight (`class_weights: [1.02, 0.98]`) may reduce UP-heavy accepted predictions without the larger degradation seen from `[1.05, 0.95]`.
+- Changed files: `experiments/configs/20260510_codex_iter382_cat_class_weights_102_098_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except active CatBoost `class_weights: [1.02, 0.98]`.
+- Config: `experiments/configs/20260510_codex_iter382_cat_class_weights_102_098_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter382_cat_class_weights_102_098_current_blend --config experiments/configs/20260510_codex_iter382_cat_class_weights_102_098_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter382_cat_class_weights_102_098_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1793523721015031`.
+- Utility before / after: `0.07698289269051321` / `0.07270606531881801`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5905715208266064`.
+- Accepted count before / after: `3120` / `3097`.
+- Coverage before / after: `0.40435458786936235` / `0.4013737687921203`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: gentler class reweighting improves UP/DOWN balance slightly but still loses accepted precision and score. Keep unweighted CatBoost classes.
+- Next step: avoid more class-weight variants unless side-specific acceptance becomes the primary objective.
