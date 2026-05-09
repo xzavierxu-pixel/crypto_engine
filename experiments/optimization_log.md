@@ -5574,3 +5574,26 @@ Main bottlenecks:
 - Git commit: `12239f7`.
 - Interpretation: sparse tail flags are less harmful than broad dense features but still lower accepted accuracy. Do not keep this feature pack.
 - Next step: stop adding top-feature regime flags unless they are side-specific or model-specific.
+
+## 20260509_codex_iter255_blend9770_null_tail20_platt_logit_c020
+
+- Skill used: `tabular-null-importance-feature-selection`.
+- Hypothesis: the existing null-importance tail20 split may remove noisy features and improve accepted accuracy under the current blend.
+- Changed files: `experiments/configs/20260509_codex_iter255_blend9770_null_tail20_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter54_null_tail20_split`.
+- Feature set: 496 null-tail-selected features; HTF/time features retained by the existing split.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter255_blend9770_null_tail20_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter54_null_tail20_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter255_blend9770_null_tail20_platt_logit_c020 --config experiments/configs/20260509_codex_iter255_blend9770_null_tail20_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter255_blend9770_null_tail20_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16538765086813575`.
+- Utility before / after: `0.07698289269051321` / `0.0677812337998963`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5839486356340289`.
+- Accepted count before / after: `3120` / `3115`.
+- Coverage before / after: `0.40435458786936235` / `0.4037065837221358`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; null-tail source file is `artifacts/data_v2/experiments/20260508_codex_iter54_null_tail20_split/null_tail20_drops.csv`.
+- Git commit: `pending`.
+- Interpretation: null-importance tail pruning materially lowers accepted accuracy. Keep the current 516-feature split.
+- Next step: avoid aggressive null-importance pruning under the current blend.
