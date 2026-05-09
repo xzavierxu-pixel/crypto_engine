@@ -3526,3 +3526,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: larger DART column sampling hurts accepted accuracy. Keep `colsample_bytree: 0.35`.
 - Next step: avoid widening DART column sampling.
+
+## 20260509_codex_iter166_blend9775_dart_col030_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting` and `tabular-logit-transform-stacking`.
+- Hypothesis: slightly more aggressive DART column subsampling (`colsample_bytree: 0.30`) may diversify the LightGBM perturbation without the over-regularization seen at `0.20`.
+- Changed files: `experiments/configs/20260509_codex_iter166_blend9775_dart_col030_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: best DART blend with `catboost_weight: 0.9775`, `calibration.active_plugin: platt_logit`, `C: 0.2`, and nested DART `colsample_bytree: 0.30`.
+- Config: `experiments/configs/20260509_codex_iter166_blend9775_dart_col030_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter166_blend9775_dart_col030_platt_logit_c020 --config experiments/configs/20260509_codex_iter166_blend9775_dart_col030_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter166_blend9775_dart_col030_platt_logit_c020/metrics.json`.
+- Score before: `0.1884526862901693`.
+- Score after: `0.18424975896674967`.
+- Utility before / after: `0.07633488854328671` / `0.07477967858994297`.
+- Accepted accuracy before / after: `0.594360781800705` / `0.5924975953831356`.
+- Accepted count before / after: `3121` / `3119`.
+- Coverage before / after: `0.40448418869880765` / `0.40422498703991705`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: lower DART column sampling hurts accepted accuracy. Keep `colsample_bytree: 0.35`.
+- Next step: avoid DART column-sampling changes.
