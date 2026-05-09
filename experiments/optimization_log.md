@@ -9011,6 +9011,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4755054432348367`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `d332b60`.
 - Interpretation: isotonic calibration broadens acceptance and lowers accepted precision. Keep `platt_logit(C=0.2)`.
 - Next step: do not continue calibration-only controls without a new model-ranking change.
