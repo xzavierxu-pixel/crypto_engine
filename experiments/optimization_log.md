@@ -3434,3 +3434,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: `0.975` improves utility/coverage but loses enough accepted accuracy to trail `0.98`. Keep `catboost_weight: 0.98`.
 - Next step: bracket with a midpoint if continuing blend tuning.
+
+## 20260509_codex_iter162_blend9775_dart_platt_logit_c020
+
+- Skill used: `tabular-logit-transform-stacking` and `tabular-lgbm-dart-boosting`.
+- Hypothesis: the midpoint between `0.98` and `0.975` may capture the extra DART utility while preserving enough accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter162_blend9775_dart_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.9775`, current best CatBoost settings, DART LightGBM component, plus `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter162_blend9775_dart_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter162_blend9775_dart_platt_logit_c020 --config experiments/configs/20260509_codex_iter162_blend9775_dart_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter162_blend9775_dart_platt_logit_c020/metrics.json`.
+- Score before: `0.18778972634803784`.
+- Score after: `0.1884526862901693`.
+- Utility before / after: `0.07594608605495073` / `0.07633488854328671`.
+- Accepted accuracy before / after: `0.5942122186495177` / `0.594360781800705`.
+- Accepted count before / after: `3110` / `3121`.
+- Coverage before / after: `0.40305857957490926` / `0.40448418869880765`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: `0.9775` is a valid new best, improving utility, coverage, accepted count, and accepted accuracy together.
+- Next step: continue fine bracketing around this DART blend weight.
