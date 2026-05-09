@@ -8722,3 +8722,27 @@ Main bottlenecks:
 - Git commit: `307666b`.
 - Interpretation: Bernoulli bootstrap lowers accepted precision and nearly falls to the coverage floor. Keep Bayesian bootstrap with `bagging_temperature: 0.5`.
 - Next step: avoid CatBoost bootstrap variants unless paired with a stronger validation-agnostic model selection signal.
+
+## 20260510_codex_iter389_cluster_imbalance_current_blend
+
+- Skill used: `tabular-relative-deviation-features` / compact interaction feature engineering.
+- Hypothesis: explicit buy/sell 1s trade-cluster imbalance features may expose directional microstructure asymmetry already present in the source cluster scores.
+- Changed files: `experiments/configs/20260510_codex_iter389_cluster_imbalance_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter389_cluster_imbalance_split`.
+- Feature set: 518 features; current best 516 features plus `sl_agg_trade_cluster_imbalance_1s` and `sl_agg_trade_cluster_imbalance_ratio_1s`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter389_cluster_imbalance_split/cluster_imbalance_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter389_cluster_imbalance_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter389_cluster_imbalance_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter389_cluster_imbalance_current_blend --config experiments/configs/20260510_codex_iter389_cluster_imbalance_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter389_cluster_imbalance_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1671876282936878`.
+- Utility before / after: `0.07698289269051321` / `0.07646448937273198`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5772655840754322`.
+- Accepted count before / after: `3120` / `3818`.
+- Coverage before / after: `0.40435458786936235` / `0.49481596682218765`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records derivation from existing online-safe source features and zero nulls.
+- Git commit: pending.
+- Interpretation: explicit cluster imbalance causes over-acceptance and lowers accepted precision, despite similar utility. Do not adopt these features.
+- Next step: avoid simple buy/sell imbalance transforms unless paired with a narrower slice-specific gate or stronger regularization.
