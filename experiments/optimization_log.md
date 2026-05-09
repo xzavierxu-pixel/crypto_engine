@@ -7501,6 +7501,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4707102125453603`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `96e4c1c`.
 - Interpretation: depth 4 raises coverage but loses too much accepted precision. Keep active CatBoost depth 5.
 - Next step: test a smaller active CatBoost regularization change rather than reducing tree depth.
