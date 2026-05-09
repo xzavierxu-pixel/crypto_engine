@@ -7593,6 +7593,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40059616381544844`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `cf2a337`.
 - Interpretation: stronger calibration regularization lowers accepted precision and pushes coverage close to the floor. Keep `C: 0.2`.
 - Next step: test weaker calibration regularization (`C=0.3`) on the same split.
