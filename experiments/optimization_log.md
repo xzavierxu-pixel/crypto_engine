@@ -9109,6 +9109,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.571021254536029`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records drop-only pruning and unchanged row windows.
-- Git commit: pending.
+- Git commit: `9a927c1`.
 - Interpretation: incumbent low-gain pruning removes useful calibration/abstention structure and causes over-acceptance. Do not adopt this pruning.
 - Next step: do not expand incumbent-gain pruning; low gain does not imply safe removal for selective scoring.
