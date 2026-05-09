@@ -4742,6 +4742,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40746500777604977`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `9b9f6ee`.
 - Interpretation: balanced Platt-logit calibration hurts accepted accuracy. Keep unweighted `platt_logit`.
 - Next step: avoid balanced calibration on this branch.
