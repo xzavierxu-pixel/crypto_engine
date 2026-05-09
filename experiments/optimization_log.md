@@ -9039,3 +9039,27 @@ Main bottlenecks:
 - Git commit: `998ae85`.
 - Interpretation: filtering `abs_return < 1bp` improves accepted accuracy relative to many recent branches but still trails the incumbent score and utility. Do not adopt this filter.
 - Next step: avoid stronger low-return filtering unless combined with a different objective-specific sample weighting scheme.
+
+## 20260510_codex_iter402_abslt1bp_nullimp_drop20_current_blend
+
+- Skill used: boundary-slice-guided training filter plus `tabular-null-importance-feature-selection`.
+- Hypothesis: combining the 1bp training filter's accepted-precision lift with nullimp drop20's utility lift may improve the final selection_score.
+- Changed files: `experiments/configs/20260510_codex_iter402_abslt1bp_nullimp_drop20_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter402_abslt1bp_nullimp_drop20_split`.
+- Feature set: 496 features; iter401 development-row filter plus iter393 nullimp drop20 feature removal; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter402_abslt1bp_nullimp_drop20_split/abslt1bp_nullimp_drop20_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter402_abslt1bp_nullimp_drop20_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter402_abslt1bp_nullimp_drop20_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter402_abslt1bp_nullimp_drop20_current_blend --config experiments/configs/20260510_codex_iter402_abslt1bp_nullimp_drop20_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter402_abslt1bp_nullimp_drop20_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1675001368950275`.
+- Utility before / after: `0.07698289269051321` / `0.07037325038880246`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5831037649219467`.
+- Accepted count before / after: `3120` / `3267`.
+- Coverage before / after: `0.40435458786936235` / `0.4234059097978227`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records training-only row filtering and drop-only feature removal.
+- Git commit: pending.
+- Interpretation: the two diagnostic branches do not combine; accepted precision and calibration degrade. Do not adopt this combined split.
+- Next step: avoid stacking weakly positive diagnostic transforms unless a direct validation-agnostic interaction rationale exists.
