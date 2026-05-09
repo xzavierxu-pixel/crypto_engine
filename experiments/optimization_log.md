@@ -6910,6 +6910,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4191290824261275`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary reports zero missing added values.
-- Git commit: `pending`.
+- Git commit: `3849273`.
 - Interpretation: selective expansion with top new non-VWAP/non-30m features still lowers accepted accuracy. Do not keep this expansion.
 - Next step: test an even narrower single-feature or top-3 expansion only if diagnostics justify it.
