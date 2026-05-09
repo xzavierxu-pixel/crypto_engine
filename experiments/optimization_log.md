@@ -7688,6 +7688,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42884914463452567`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records the 52 source columns and added-feature NaN counts.
-- Git commit: pending.
+- Git commit: `2646074`.
 - Interpretation: broad microstructure row aggregates add noise and reduce accepted precision. Keep the original microstructure features without these aggregates.
 - Next step: use narrower online-safe feature transforms rather than broad row summaries.
