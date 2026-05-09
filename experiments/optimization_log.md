@@ -7997,6 +7997,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.5252721617418351`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary confirms all current-best features were present in the 90-day full-profile cache.
-- Git commit: pending.
+- Git commit: `ea0d49c`.
 - Interpretation: more training history alone increases coverage and utility but lowers accepted precision substantially. The 75-day window remains better for the objective.
 - Next step: return to the 75-day window and test more-feature variants without extending history.
