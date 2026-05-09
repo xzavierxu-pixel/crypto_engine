@@ -4354,3 +4354,26 @@ Main bottlenecks:
 - Git commit: `a1a7efb`.
 - Interpretation: isotonic over-expands accepted coverage and loses accepted accuracy. Keep `platt_logit`.
 - Next step: continue with feature/model levers, not isotonic calibration.
+
+## 20260509_codex_iter202_weekday_features_blend9765_dart_l1_12_platt_logit_c020
+
+- Skill used: `tabular-cyclical-feature-encoding`.
+- Hypothesis: adding the existing online-consistent weekday cyclical features from `TimeFeaturePack` to the cached split may improve time-regime discrimination.
+- Changed files: `experiments/configs/20260509_codex_iter202_weekday_features_blend9765_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter202_weekday_features_split`; feature report: `artifacts/data_v2/experiments/20260509_codex_iter202_weekday_features_split/weekday_feature_report.json`.
+- Feature set: current best VWAP-pruned top-500 split plus `weekday_sin`, `weekday_cos`, `is_weekend`; HTF/time features retained and semantics match the shared online builder.
+- Model settings: current best DART blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter202_weekday_features_blend9765_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter202_weekday_features_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter202_weekday_features_blend9765_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter202_weekday_features_blend9765_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter202_weekday_features_blend9765_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.16469253222951877`.
+- Utility before / after: `0.07659409020217732` / `0.06817003628823225`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5829652996845426`.
+- Accepted count before / after: `3123` / `3170`.
+- Coverage before / after: `0.4047433903576983` / `0.4108346293416278`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: weekday/weekend features sharply hurt accepted accuracy. Keep the cached hour/minute time features only.
+- Next step: avoid weekday feature variants.
