@@ -6054,6 +6054,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40889061689994816`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `ef5ede4`.
 - Interpretation: volume-session relative features remain below the best; they broaden coverage slightly but lower accepted accuracy. Do not keep this feature pack.
 - Next step: leave session-relative feature expansion and inspect other already-built richer splits or data windows.
