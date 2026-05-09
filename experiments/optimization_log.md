@@ -4696,6 +4696,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4016329704510109`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `8cc96ee`.
 - Interpretation: fewer DART estimators also hurts score and nearly hits the coverage floor. Keep `n_estimators: 1600`.
 - Next step: close DART estimator-count bracket.
