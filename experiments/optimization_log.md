@@ -5320,3 +5320,27 @@ Main bottlenecks:
 - Git commit: `4fb4081`.
 - Interpretation: broad trailing microstructure expansion increases coverage and side balance but materially lowers accepted accuracy and selection_score. Do not keep this feature pack.
 - Next step: use more local data via a longer training window, rather than adding broad derived features to the current split.
+
+## 20260509_codex_iter244_blend9770_train120_rebuild_platt_logit_c020
+
+- Skill used: `timeseries-multi-scale-rolling-features` for preserving the full rebuilt feature set with multi-scale context from local data.
+- Hypothesis: rebuilding from all local normalized 1m data with a 120-day training window and the materialized second-level store may improve generalization by using more history and all configured features.
+- Changed files: `experiments/configs/20260509_codex_iter244_blend9770_train120_rebuild_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Input data: `artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet`; second-level store `artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter244_blend9770_train120_rebuild_platt_logit_c020`.
+- Feature set: 1735 rebuilt features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter244_blend9770_train120_rebuild_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --input artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet --output-dir artifacts/data_v2/experiments/20260509_codex_iter244_blend9770_train120_rebuild_platt_logit_c020 --config experiments/configs/20260509_codex_iter244_blend9770_train120_rebuild_platt_logit_c020.yaml --horizon 5m --train-window-days 120 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter244_blend9770_train120_rebuild_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16085485386795179`.
+- Utility before / after: `0.07698289269051321` / `0.07011404872991182`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5778865534120357`.
+- Accepted count before / after: `3120` / `3473`.
+- Coverage before / after: `0.40435458786936235` / `0.45010368066355627`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split was rebuilt from local data only and cached in the run directory.
+- Git commit: `pending`.
+- Interpretation: using much more history and the full rebuilt feature set increases coverage but lowers accepted accuracy, so the current objective worsens. The narrower 516-feature split remains better.
+- Next step: try a less aggressive rebuilt data window or constrain the rebuilt feature set, rather than using the full 120-day/1735-feature set as-is.
