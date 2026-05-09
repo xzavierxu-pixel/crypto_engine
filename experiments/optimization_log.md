@@ -5341,6 +5341,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.45010368066355627`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split was rebuilt from local data only and cached in the run directory.
-- Git commit: `pending`.
+- Git commit: `fadfafd`.
 - Interpretation: using much more history and the full rebuilt feature set increases coverage but lowers accepted accuracy, so the current objective worsens. The narrower 516-feature split remains better.
 - Next step: try a less aggressive rebuilt data window or constrain the rebuilt feature set, rather than using the full 120-day/1735-feature set as-is.
