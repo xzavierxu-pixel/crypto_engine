@@ -2519,3 +2519,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: Platt does not rescue the low-return filter branch. Full-feature CatBoost + Platt remains best.
 - Next step: avoid further target-magnitude filter combinations.
+
+## 20260509_codex_iter122_border64_platt_calibration
+
+- Skill used: probability calibration workflow plus CatBoost parameter discipline.
+- Hypothesis: `border_count: 64` had higher coverage/utility but low accepted accuracy; Platt calibration may improve the probability scale and recover selection_score.
+- Changed files: `experiments/configs/20260509_codex_iter122_border64_platt_calibration.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: CatBoost `border_count: 64` plus `calibration.active_plugin: platt`.
+- Config: `experiments/configs/20260509_codex_iter122_border64_platt_calibration.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter122_border64_platt_calibration --config experiments/configs/20260509_codex_iter122_border64_platt_calibration.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter122_border64_platt_calibration/metrics.json`.
+- Score before: `0.18451203496023655`.
+- Score after: `0.17086816420181444`.
+- Utility before / after: `0.07465007776049763` / `0.07490927941938831`.
+- Accepted accuracy before / after: `0.59284332688588` / `0.5815462753950339`.
+- Accepted count before / after: `3102` / `3544`.
+- Coverage before / after: `0.4020217729393468` / `0.45930533955417313`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: Platt does not fix the accuracy loss from coarse quantization. Full-feature CatBoost + Platt remains best.
+- Next step: keep calibration code, but avoid broad combinations that mainly increase coverage at lower precision.
