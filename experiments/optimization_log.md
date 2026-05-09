@@ -7952,3 +7952,27 @@ Main bottlenecks:
 - Git commit: `64d6d5e`.
 - Interpretation: top800 full-profile filtering still over-accepts and loses accepted precision. More data plus this wide feature count is not better than the 516-feature 75-day best.
 - Next step: test a tighter full-profile top400 protected subset before abandoning this selection path.
+
+## 20260510_codex_iter357_full90_top400_protected_current_blend
+
+- Skill used: `tabular-recursive-feature-elimination` adapted as a tighter single-pass full-profile importance screen.
+- Hypothesis: a top400 protected subset from the 90-day full-profile run may reduce wide-feature noise while still using more data and more than the current best's HTF/time protected context.
+- Changed files: `experiments/configs/20260510_codex_iter357_full90_top400_protected_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter357_full90_top400_protected_split`.
+- Feature set: 422 features; iter351 full-profile gain top400 plus protected HTF and hour/minute time features.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter357_full90_top400_protected_split/full90_top400_protected_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter357_full90_top400_protected_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter357_full90_top400_protected_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter357_full90_top400_protected_current_blend --config experiments/configs/20260510_codex_iter357_full90_top400_protected_current_blend.yaml --horizon 5m --train-window-days 90 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter357_full90_top400_protected_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1766575210129201`.
+- Utility before / after: `0.07698289269051321` / `0.07801969932607572`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5833333333333334`.
+- Accepted count before / after: `3120` / `3612`.
+- Coverage before / after: `0.40435458786936235` / `0.4681181959564541`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records selected feature count and protected HTF/time features.
+- Git commit: pending.
+- Interpretation: tighter top400 filtering improves utility but still lowers accepted precision too much. Full-profile feature screening is not enough by itself.
+- Next step: isolate the effect of more data by using the 90-day split with the original current-best 516 feature set.
