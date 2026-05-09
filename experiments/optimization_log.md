@@ -6934,6 +6934,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41627786417833074`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary reports zero missing added values.
-- Git commit: `pending`.
+- Git commit: `8824aa9`.
 - Interpretation: the narrower top-3 expansion is better than top-12 but still below the current best. Do not keep these features.
 - Next step: single-feature expansion can be tested, but the discovery feature family is unlikely to close the gap to 0.24.
