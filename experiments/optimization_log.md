@@ -6816,3 +6816,27 @@ Main bottlenecks:
 - Git commit: `d896ad3`.
 - Interpretation: the broad rebuild with 30m HTF context loses accepted accuracy and selection_score. This is not a replacement for the current filtered best.
 - Next step: if testing 30m HTF further, apply the current best feature filter plus only the new 30m HTF columns to isolate the HTF effect.
+
+## 20260509_codex_iter309_best516_plus_htf30_current_blend
+
+- Skill used: `timeseries-multi-scale-rolling-features`.
+- Hypothesis: adding only the 30m trailing HTF columns to the current best 516-feature split may improve context without the broad 1751-feature rebuild confound.
+- Changed files: `experiments/configs/20260509_codex_iter309_best516_plus_htf30_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter309_best516_plus_htf30_split`.
+- Feature set: 532 features; current best 516 features plus 16 online-safe 30m HTF context/lag columns; HTF/time features retained.
+- Split construction: joined 30m HTF columns from `artifacts/data_v2/experiments/20260509_codex_iter308_htf15_30_context_current_blend` onto the current best cached split by `grid_t0`; summary saved at `artifacts/data_v2/experiments/20260509_codex_iter309_best516_plus_htf30_split/htf30_filter_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter309_best516_plus_htf30_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter309_best516_plus_htf30_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter309_best516_plus_htf30_current_blend --config experiments/configs/20260509_codex_iter309_best516_plus_htf30_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter309_best516_plus_htf30_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1738544096429746`.
+- Utility before / after: `0.07698289269051321` / `0.0717988595127009`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5869428750784683`.
+- Accepted count before / after: `3120` / `3186`.
+- Coverage before / after: `0.40435458786936235` / `0.4129082426127527`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split join summary reports unchanged row counts and no missing added HTF values.
+- Git commit: `pending`.
+- Interpretation: isolated 30m HTF context still lowers accepted accuracy and selection_score. Keep the 15m HTF context only.
+- Next step: do not add broader HTF horizons without a stronger selection or interaction reason.
