@@ -7949,6 +7949,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.45943494038361843`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records selected feature count and protected HTF/time features.
-- Git commit: pending.
+- Git commit: `64d6d5e`.
 - Interpretation: top800 full-profile filtering still over-accepts and loses accepted precision. More data plus this wide feature count is not better than the 516-feature 75-day best.
 - Next step: test a tighter full-profile top400 protected subset before abandoning this selection path.
