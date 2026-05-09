@@ -4029,6 +4029,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40383618455158116` / `0.4050025920165889`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `f8830b3`.
 - Interpretation: lower DART subsampling also hurts. Keep `subsample: 0.6`.
 - Next step: retune CatBoost/DART blend weight around the `reg_alpha: 1.2` branch.
