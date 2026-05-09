@@ -7734,6 +7734,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40539139450492484`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `d72088c`.
 - Interpretation: `0.9750` is close but worse; current `0.9770` remains the best blend weight tested.
 - Next step: stop dense blend-weight probing and return to data/feature transformations.
