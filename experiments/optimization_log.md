@@ -5456,6 +5456,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4059097978227061`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `fe435c2`.
 - Interpretation: return-consistency features lower accepted accuracy under the current blend as well. Keep the current best split.
 - Next step: avoid this targeted feature branch.
