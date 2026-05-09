@@ -8674,3 +8674,28 @@ Main bottlenecks:
 - Git commit: `37cdff8`.
 - Interpretation: the drifted volume/stale features still carry useful selection signal; removing them lowers accepted precision. Do not adopt this drop set.
 - Next step: keep the drifted regime features and test bounded transformations or model settings instead of pruning them.
+
+## 20260510_codex_iter387_adv_winsor10_current_blend
+
+- Skill used: `timeseries-sigma-clip-outlier-masking` principle applied as development-fitted winsorization.
+- Hypothesis: clipping extreme values in the most train/validation-shifted features may retain their regime signal while reducing distribution-shift overfit.
+- Changed files: `experiments/configs/20260510_codex_iter387_adv_winsor10_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter387_adv_winsor10_split`.
+- Feature set: 516 current best features; 10 adversarial-shifted features clipped to development 0.5%/99.5% quantiles; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter387_adv_winsor10_split/adv_winsor10_summary.json`.
+- Feature selection record: `artifacts/data_v2/experiments/20260510_codex_adversarial_validation_best_split.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter387_adv_winsor10_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter387_adv_winsor10_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter387_adv_winsor10_current_blend --config experiments/configs/20260510_codex_iter387_adv_winsor10_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter387_adv_winsor10_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.169596767248194`.
+- Utility before / after: `0.07698289269051321` / `0.07581648522550548`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5797219950940311`.
+- Accepted count before / after: `3120` / `3669`.
+- Coverage before / after: `0.40435458786936235` / `0.4755054432348367`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records development-fitted clip bounds and changed counts by frame.
+- Git commit: pending.
+- Interpretation: clipping drifted feature extremes broadens the accepted set but lowers accepted precision too much. Do not adopt this winsorization.
+- Next step: avoid broad drift clipping; investigate transformations that specifically improve ranking near the current acceptance boundary.
