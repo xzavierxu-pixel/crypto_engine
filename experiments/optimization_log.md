@@ -4236,6 +4236,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.401244167962675`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `220e72c`.
 - Interpretation: weaker CatBoost L2 materially hurts accepted accuracy. Keep `l2_leaf_reg: 30.0`.
 - Next step: leave CatBoost L2 bracket.
