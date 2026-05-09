@@ -5617,6 +5617,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4157594608605495`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; burst summary saved at `artifacts/data_v2/experiments/20260509_codex_iter256_directional_burst_rle_split/burst_rle_summary.json`.
-- Git commit: `pending`.
+- Git commit: `bc8522c`.
 - Interpretation: burst features increase coverage but reduce accepted accuracy. Do not keep this feature pack.
 - Next step: use smaller, side-targeted feature additions only.
