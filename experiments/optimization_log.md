@@ -5801,6 +5801,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40396578538102645`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `2849856`.
 - Interpretation: stronger DART feature subsampling keeps the same threshold region but slightly lowers accepted accuracy and objective score. Keep `colsample_bytree: 0.35`.
 - Next step: test the opposite DART direction only if warranted, or switch to CatBoost regularization around the current best.
