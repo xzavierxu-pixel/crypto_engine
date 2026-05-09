@@ -4489,6 +4489,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40578019699326073`.
 - Coverage constraint satisfied: yes.
 - Tests: `rtk python -m py_compile src\model\rank_blend_plugin.py src\model\registry.py`; DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `f88a4be`.
 - Interpretation: rank blending is valid but slightly worse than logit blending. Keep the logit blend as the reference.
 - Next step: only pursue rank-blend weights if a narrow bracket shows improvement.
