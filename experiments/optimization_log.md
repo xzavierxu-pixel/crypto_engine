@@ -7197,3 +7197,27 @@ Main bottlenecks:
 - Git commit: `4267af2`.
 - Interpretation: larger purge is an exact tie under this cached split. Treat as neutral, not an improvement.
 - Next step: keep `purge_rows: 1` unless the project wants a more conservative validation protocol for audit reasons.
+
+## 20260509_codex_iter325_drop_sl_interactions_current_blend
+
+- Skill used: feature-family ablation.
+- Hypothesis: explicit second-level interaction columns may overfit noisy microstructure relationships; dropping only `sl_interaction__*` could improve accepted precision while keeping HTF/time context.
+- Changed files: `experiments/configs/20260509_codex_iter325_drop_sl_interactions_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter325_drop_sl_interactions_split`.
+- Feature set: 507 features; dropped 9 `sl_interaction__*` columns; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter325_drop_sl_interactions_split/drop_sl_interactions_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter325_drop_sl_interactions_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter325_drop_sl_interactions_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter325_drop_sl_interactions_current_blend --config experiments/configs/20260509_codex_iter325_drop_sl_interactions_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter325_drop_sl_interactions_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1779352899253927`.
+- Utility before / after: `0.07698289269051321` / `0.08190772420943493`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5809841107124551`.
+- Accepted count before / after: `3120` / `3902`.
+- Coverage before / after: `0.40435458786936235` / `0.5057024364955935`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: dropping second-level interactions increases utility via coverage but lowers accepted precision enough to reduce selection_score. Keep these interactions.
+- Next step: avoid broad interaction-family removals unless a side-specific model can preserve precision.
