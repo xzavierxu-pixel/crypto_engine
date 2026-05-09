@@ -9036,6 +9036,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40254017625712807`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records training-only row filtering and unchanged validation.
-- Git commit: pending.
+- Git commit: `998ae85`.
 - Interpretation: filtering `abs_return < 1bp` improves accepted accuracy relative to many recent branches but still trails the incumbent score and utility. Do not adopt this filter.
 - Next step: avoid stronger low-return filtering unless combined with a different objective-specific sample weighting scheme.
