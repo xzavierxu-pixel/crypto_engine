@@ -8621,6 +8621,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4142042509072058`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records row-preserving timestamp joins and zero missing joined values.
-- Git commit: pending.
+- Git commit: `55e030d`.
 - Interpretation: the stable trade-side pack increases accepted count and keeps valid coverage, but accepted precision falls enough to lose selection score. Do not adopt this pack.
 - Next step: switch from adding feature mass to removal/regularization around harmful existing second-level features, using validation-agnostic diagnostics where possible.
