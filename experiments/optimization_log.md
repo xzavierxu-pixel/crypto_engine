@@ -4837,3 +4837,26 @@ Main bottlenecks:
 - Git commit: `3652a00`.
 - Interpretation: CatBoost class balancing expands coverage and hurts accepted accuracy. Keep unweighted CatBoost training.
 - Next step: avoid class-balanced CatBoost on this branch.
+
+## 20260509_codex_iter223_blend9765_dart_l1_12_extra_trees_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting`.
+- Hypothesis: LightGBM DART `extra_trees` may add useful side-model diversity while the CatBoost-dominant blend limits risk.
+- Changed files: `experiments/configs/20260509_codex_iter223_blend9765_dart_l1_12_extra_trees_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `extra_trees: true`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter223_blend9765_dart_l1_12_extra_trees_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter223_blend9765_dart_l1_12_extra_trees_platt_logit_c020 --config experiments/configs/20260509_codex_iter223_blend9765_dart_l1_12_extra_trees_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter223_blend9765_dart_l1_12_extra_trees_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.18279701864257217`.
+- Utility before / after: `0.07659409020217732` / `0.07413167444271639`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5919614147909967`.
+- Accepted count before / after: `3123` / `3110`.
+- Coverage before / after: `0.4047433903576983` / `0.40305857957490926`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: `extra_trees` hurts the DART side contribution. Keep it disabled.
+- Next step: avoid DART extra-trees.
