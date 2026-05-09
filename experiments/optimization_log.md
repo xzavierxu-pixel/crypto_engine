@@ -1347,3 +1347,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: narrowing to two z-score features loses the useful context from iteration 66 and hurts accepted accuracy. The broader session-relative feature set remains the stronger relative-deviation variant.
 - Next step: reassess feature-family candidates before another ablation.
+
+## 20260509_codex_iter68_volume_session_relative_catboost
+
+- Skill used: `tabular-relative-deviation-features`.
+- Hypothesis: iteration 66's importance profile suggests the useful relative-deviation signal is concentrated in `volume_session_diff`, `volume_session_ratio`, and `volume_session_z`; keeping only those may improve the score.
+- Changed files: `experiments/configs/20260509_codex_iter68_volume_session_relative_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter68_volume_session_relative_split`.
+- Feature set: current best VWAP-pruned top-500 split plus three train-fitted session-relative volume features; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter68_volume_session_relative_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter68_volume_session_relative_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter68_volume_session_relative_catboost --config experiments/configs/20260509_codex_iter68_volume_session_relative_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter68_volume_session_relative_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17271620686122222`.
+- Utility before / after: `0.0751684810782789` / `0.07141005702436497`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5863907180934462`.
+- Accepted count before / after: `3245` / `3189`.
+- Coverage before / after: `0.4205546915500259` / `0.41329704510108867`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: volume-only relative deviation keeps accepted accuracy fairly high, but coverage and score are still below the best. Iteration 66 remains the stronger relative-deviation variant.
+- Next step: continue with another feature-family candidate rather than further narrowing this one.
