@@ -6563,3 +6563,26 @@ Main bottlenecks:
 - Git commit: `82b40e9`.
 - Interpretation: the smaller feature set lowers accepted accuracy and selection_score despite satisfying coverage. Do not keep this split.
 - Next step: test neighboring bottom-importance pruning only if it may locate a narrower noise-removal band; otherwise pivot back to model regularization.
+
+## 20260509_codex_iter298_drop_bottom15_importance_current_blend
+
+- Skill used: `tabular-recursive-feature-elimination`.
+- Hypothesis: a slightly stronger bottom-importance prune may remove additional noisy features while keeping protected HTF/time context.
+- Changed files: `experiments/configs/20260509_codex_iter298_drop_bottom15_importance_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter87_drop_bottom15_importance_split`.
+- Feature set: 501 features; HTF/time features retained; bottom-importance features removed by the cached split.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter298_drop_bottom15_importance_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter87_drop_bottom15_importance_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter298_drop_bottom15_importance_current_blend --config experiments/configs/20260509_codex_iter298_drop_bottom15_importance_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter298_drop_bottom15_importance_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16974937665897222`.
+- Utility before / after: `0.07698289269051321` / `0.06959564541213066`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5857553497285213`.
+- Accepted count before / after: `3120` / `3131`.
+- Coverage before / after: `0.40435458786936235` / `0.40578019699326073`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: the additional prune further lowers selection_score; bottom-importance pruning is not improving the current blend.
+- Next step: pivot away from this pruning band and test a different data-processing axis.
