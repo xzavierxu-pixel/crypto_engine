@@ -3019,3 +3019,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: `0.995` is worse than `0.99`; the 1% LightGBM perturbation is better than 0.5%.
 - Next step: test the other nearby side (`0.985`) before stopping the local blend sweep.
+
+## 20260509_codex_iter144_blend985_platt_logit
+
+- Skill used: `tabular-logit-transform-stacking`.
+- Hypothesis: a slightly larger LightGBM contribution (`1.5%`) may improve accepted count/utility beyond the 99/1 blend while calibration maintains precision.
+- Changed files: `experiments/configs/20260509_codex_iter144_blend985_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.985`, current best CatBoost settings, regularized LightGBM settings, plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter144_blend985_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter144_blend985_platt_logit --config experiments/configs/20260509_codex_iter144_blend985_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter144_blend985_platt_logit/metrics.json`.
+- Score before: `0.18511956039735958`.
+- Score after: `0.18382818887408964`.
+- Utility before / after: `0.0754276827371695` / `0.07452047693105233`.
+- Accepted accuracy before / after: `0.5925572519083969` / `0.5924140147862423`.
+- Accepted count before / after: `3144` / `3111`.
+- Coverage before / after: `0.40746500777604977` / `0.4031881804043546`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: `0.985` is also worse than `0.99`; stop the immediate CatBoost-heavy blend sweep.
+- Next step: keep iteration 142 as best and test a different small lever.
