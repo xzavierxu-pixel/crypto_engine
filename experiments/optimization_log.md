@@ -8938,6 +8938,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4002073613271125`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records weight transform and unchanged validation.
-- Git commit: pending.
+- Git commit: `e72f77b`.
 - Interpretation: recency weighting increases down precision but loses accepted accuracy and utility. Do not adopt this ramp.
 - Next step: avoid nearby recency ramps; focus on feature/data transformations with clearer accepted-boundary signal.
