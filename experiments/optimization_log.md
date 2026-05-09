@@ -4443,6 +4443,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4059097978227061`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `3e20f4c`.
 - Interpretation: more frequent DART subsampling hurts accepted accuracy. Keep `subsample_freq: 10`.
 - Next step: avoid DART bagging-frequency changes.
