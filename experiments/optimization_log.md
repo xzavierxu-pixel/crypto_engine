@@ -6958,6 +6958,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.44738206324520474`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary reports zero missing added values.
-- Git commit: `pending`.
+- Git commit: `c717afb`.
 - Interpretation: the single strongest new flow feature broadens acceptance and lowers accepted accuracy. Close this selective expansion path.
 - Next step: avoid adding discovered full-profile features unless supported by a stronger out-of-fold or leakage-screening signal.
