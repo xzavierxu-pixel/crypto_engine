@@ -6793,3 +6793,26 @@ Main bottlenecks:
 - Git commit: `14fd10f`.
 - Interpretation: seed 41 also broadens acceptance and lowers accepted accuracy. Seed variation is not a promising standalone optimization path.
 - Next step: pivot back to feature semantics or calibration, not seed ensembling.
+
+## 20260509_codex_iter308_htf15_30_context_current_blend
+
+- Skill used: `timeseries-multi-scale-rolling-features`.
+- Hypothesis: adding online-safe 30m trailing HTF context alongside the fixed 15m trailing HTF context may improve directional precision in accepted samples.
+- Changed files: `experiments/configs/20260509_codex_iter308_htf15_30_context_current_blend.yaml`, `experiments/optimization_log.md`.
+- Data source: `artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet`.
+- Feature set: 1751 features after rebuilding from the full configured feature profile; HTF/time features retained; 30m HTF context and lag names added.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter308_htf15_30_context_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --input artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet --output-dir artifacts/data_v2/experiments/20260509_codex_iter308_htf15_30_context_current_blend --config experiments/configs/20260509_codex_iter308_htf15_30_context_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter308_htf15_30_context_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.15756605618158379`.
+- Utility before / after: `0.07698289269051321` / `0.06531881804043548`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5798479087452472`.
+- Accepted count before / after: `3120` / `3156`.
+- Coverage before / after: `0.40435458786936235` / `0.40902021772939345`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: the broad rebuild with 30m HTF context loses accepted accuracy and selection_score. This is not a replacement for the current filtered best.
+- Next step: if testing 30m HTF further, apply the current best feature filter plus only the new 30m HTF columns to isolate the HTF effect.
