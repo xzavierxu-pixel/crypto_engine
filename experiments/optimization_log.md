@@ -7432,6 +7432,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4152410575427683`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records removed columns and confirms HTF retention.
-- Git commit: pending.
+- Git commit: `2138d5b`.
 - Interpretation: even near-duplicate non-HTF columns help the current blend; removing them lowers accepted precision. Keep the full 516-feature current best set.
 - Next step: try model-side regularization and sampling changes on the unchanged 516-feature split.
