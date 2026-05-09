@@ -8624,3 +8624,28 @@ Main bottlenecks:
 - Git commit: `55e030d`.
 - Interpretation: the stable trade-side pack increases accepted count and keeps valid coverage, but accepted precision falls enough to lose selection score. Do not adopt this pack.
 - Next step: switch from adding feature mass to removal/regularization around harmful existing second-level features, using validation-agnostic diagnostics where possible.
+
+## 20260510_codex_iter385_collinear_drop7_current_blend
+
+- Skill used: `tabular-collinear-feature-removal`.
+- Hypothesis: removing only lower-importance near-duplicate features at `|corr| > 0.995` may reduce overfitting while preserving the strongest representative signals.
+- Changed files: `experiments/configs/20260510_codex_iter385_collinear_drop7_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter385_collinear_drop7_split`.
+- Feature set: 509 features; current best 516 features minus `sl_mirror_ret_1s`, `sl_log_return_1s`, `sl_mirror_ret_120s`, `second_level_signed_dollar_flow`, `taker_imbalance_slope`, `sl_log_return_3s`, and `volume_z_3_rolling_z_24`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter385_collinear_drop7_split/collinear_drop7_summary.json`.
+- Feature selection record: `artifacts/data_v2/experiments/20260510_codex_collinear_candidates_0995.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter385_collinear_drop7_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter385_collinear_drop7_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter385_collinear_drop7_current_blend --config experiments/configs/20260510_codex_iter385_collinear_drop7_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter385_collinear_drop7_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18118942491175016`.
+- Utility before / after: `0.07698289269051321` / `0.07516848107827893`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5896168108776267`.
+- Accepted count before / after: `3120` / `3236`.
+- Coverage before / after: `0.40435458786936235` / `0.41938828408501816`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records drop-only feature removal and unchanged row windows.
+- Git commit: pending.
+- Interpretation: removing near-duplicates improves broad calibration diagnostics but shifts the accepted set toward lower precision, so selection_score declines. Do not adopt this drop set.
+- Next step: avoid broader collinearity pruning; focus on model regularization or targeted signal-quality transformations.
