@@ -2653,3 +2653,26 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: balanced Platt hurts coverage and score. The best calibration remains unweighted Platt `C: 0.25`.
 - Next step: test a different calibration family rather than more Platt class weighting.
+
+## 20260509_codex_iter128_catboost_temperature125
+
+- Skill used: probability calibration workflow inspired by `tabular-confidence-probability-clipping`, using logit temperature scaling rather than hard clipping.
+- Hypothesis: softening probabilities with fixed `temperature: 1.25` may improve coverage/accuracy balance without fitting calibration to validation.
+- Changed files: `src/calibration/temperature.py`, `src/calibration/registry.py`, `experiments/configs/20260509_codex_iter128_catboost_temperature125.yaml`, `experiments/optimization_log.md`.
+- Code change: added `temperature` calibration plugin that scales logits by a fixed configured temperature and fits no validation-dependent parameters.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: temperature`, `temperature: 1.25`.
+- Config: `experiments/configs/20260509_codex_iter128_catboost_temperature125.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter128_catboost_temperature125 --config experiments/configs/20260509_codex_iter128_catboost_temperature125.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter128_catboost_temperature125/metrics.json`.
+- Score before: `0.18462759471376494`.
+- Score after: `0.18082709172769737`.
+- Utility before / after: `0.07516848107827886` / `0.07465007776049767`.
+- Accepted accuracy before / after: `0.5924155513065646` / `0.5898315658140986`.
+- Accepted count before / after: `3138` / `3206`.
+- Coverage before / after: `0.40668740279937793` / `0.4155002592016589`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; fixed-temperature calibration fits no validation labels.
+- Interpretation: temperature softening is below Platt `C: 0.25`; it improves coverage but loses too much accepted accuracy.
+- Next step: test the sharpening side with `temperature: 0.8`.
