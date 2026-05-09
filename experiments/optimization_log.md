@@ -4308,3 +4308,26 @@ Main bottlenecks:
 - Git commit: `c66df3e`.
 - Interpretation: stronger materialized weighting expands accepted coverage and reduces accepted accuracy. Do not use this ramp.
 - Next step: test a gentler materialized weighting ramp.
+
+## 20260509_codex_iter200_reweighted_gentle_blend9765_dart_l1_12_platt_logit_c020
+
+- Skill used: `tabular-balanced-log-loss` for weighting discipline.
+- Hypothesis: a gentler materialized sample-weight ramp than the current cached split may avoid over-penalizing ambiguous samples and improve calibration.
+- Changed files: `experiments/configs/20260509_codex_iter200_reweighted_gentle_blend9765_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter200_reweighted_gentle_split`; weight report: `artifacts/data_v2/experiments/20260509_codex_iter200_reweighted_gentle_split/sample_weight_report.json`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained; only `stage1_sample_weight` was rematerialized.
+- Model settings: current best DART blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`, materialized weight ramp `min_weight: 0.45`, `full_weight_abs_return: 0.00025`.
+- Config: `experiments/configs/20260509_codex_iter200_reweighted_gentle_blend9765_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter200_reweighted_gentle_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter200_reweighted_gentle_blend9765_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter200_reweighted_gentle_blend9765_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter200_reweighted_gentle_blend9765_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.16399769415815763`.
+- Utility before / after: `0.07659409020217732` / `0.06752203214100568`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5830411220911699`.
+- Accepted count before / after: `3123` / `3137`.
+- Coverage before / after: `0.4047433903576983` / `0.40655780196993263`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: gentler materialized weighting is worse than the current cached weights. Keep the original materialized `stage1_sample_weight`.
+- Next step: leave sample weighting.
