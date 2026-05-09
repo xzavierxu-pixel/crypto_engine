@@ -7904,3 +7904,27 @@ Main bottlenecks:
 - Git commit: `989b1ed`.
 - Interpretation: lag/context candidates improve logloss and coverage but reduce accepted precision. Do not add this subset.
 - Next step: full-profile selected additions remain discovery-only; avoid adding these feature candidates wholesale.
+
+## 20260510_codex_iter355_best516_plus_sl_mirror_signed_volume_1s_current_blend
+
+- Skill used: `tabular-null-importance-feature-selection` style single-candidate isolation after full-profile screening.
+- Hypothesis: the highest-gain new full90 candidate, `sl_mirror_signed_volume_1s`, may be useful by itself even though the broader microstructure candidate group was noisy.
+- Changed files: `experiments/configs/20260510_codex_iter355_best516_plus_sl_mirror_signed_volume_1s_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter355_best516_plus_sl_mirror_signed_volume_1s_split`.
+- Feature set: 517 features; current best 516 features plus `sl_mirror_signed_volume_1s`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter355_best516_plus_sl_mirror_signed_volume_1s_split/best516_plus_sl_mirror_signed_volume_1s_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter355_best516_plus_sl_mirror_signed_volume_1s_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter355_best516_plus_sl_mirror_signed_volume_1s_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter355_best516_plus_sl_mirror_signed_volume_1s_current_blend --config experiments/configs/20260510_codex_iter355_best516_plus_sl_mirror_signed_volume_1s_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter355_best516_plus_sl_mirror_signed_volume_1s_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16633912061373388`.
+- Utility before / after: `0.07698289269051321` / `0.07205806117159147`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5805330243337196`.
+- Accepted count before / after: `3120` / `3452`.
+- Coverage before / after: `0.40435458786936235` / `0.44738206324520474`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records added column and zero missing joined values.
+- Git commit: pending.
+- Interpretation: the top full90 candidate is unstable when isolated and sharply reduces accepted precision. Stop subdividing this candidate set.
+- Next step: look for a different feature-discovery source rather than continuing full90 top-gain additions.
