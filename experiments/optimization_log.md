@@ -5390,3 +5390,26 @@ Main bottlenecks:
 - Git commit: `f8f91b7`.
 - Interpretation: 90 days still over-broadens accepted predictions and reduces accepted accuracy. The 75-day split remains preferred for this validation period.
 - Next step: focus on feature selection within the current recent-window data rather than adding older history.
+
+## 20260509_codex_iter247_blend9770_train120_top700_platt_logit_c020
+
+- Skill used: `tabular-recursive-feature-elimination` as importance-based feature selection from the rebuilt 120-day full-feature branch.
+- Hypothesis: selecting the top 700 rebuilt features, while forcing HTF/time retention, may keep useful extra feature coverage from the 1735-feature rebuild without as much noise.
+- Changed files: `experiments/configs/20260509_codex_iter247_blend9770_train120_top700_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter247_train120_top700_importance_split`.
+- Feature set: 717 features after top-700 importance selection plus protected HTF/time features.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter247_blend9770_train120_top700_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter247_train120_top700_importance_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter247_blend9770_train120_top700_platt_logit_c020 --config experiments/configs/20260509_codex_iter247_blend9770_train120_top700_platt_logit_c020.yaml --horizon 5m --train-window-days 120 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter247_blend9770_train120_top700_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16159613759478425`.
+- Utility before / after: `0.07698289269051321` / `0.06739243131156038`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5811485642946317`.
+- Accepted count before / after: `3120` / `3204`.
+- Coverage before / after: `0.40435458786936235` / `0.4152410575427683`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; feature-selection summary saved at `artifacts/data_v2/experiments/20260509_codex_iter247_train120_top700_importance_split/feature_select_summary.json`.
+- Git commit: `pending`.
+- Interpretation: the selected extra feature set still lowers accepted accuracy. The 120-day rebuilt branch is not competitive on the current validation slice.
+- Next step: return to the 75-day recent-window branch and look for targeted feature additions rather than older-history expansion.
