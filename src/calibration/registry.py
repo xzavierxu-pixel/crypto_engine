@@ -24,7 +24,8 @@ def create_calibration_plugin(
         plugin_cls = CALIBRATION_PLUGINS[target]
     except KeyError as exc:
         raise KeyError(f"Unknown calibration plugin '{target}'.") from exc
-    return plugin_cls()
+    params = dict(settings.calibration.plugins.get(target, {}))
+    return plugin_cls(**params)
 
 
 def load_calibration_plugin(plugin_name: str, path: str) -> CalibrationPlugin:

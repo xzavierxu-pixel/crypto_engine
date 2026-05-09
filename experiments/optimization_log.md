@@ -2541,3 +2541,26 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: Platt does not fix the accuracy loss from coarse quantization. Full-feature CatBoost + Platt remains best.
 - Next step: keep calibration code, but avoid broad combinations that mainly increase coverage at lower precision.
+
+## 20260509_codex_iter123_catboost_platt_c025
+
+- Skill used: probability calibration workflow inspired by `tabular-confidence-probability-clipping`, using calibrated probability scaling rather than hard clipping.
+- Hypothesis: stronger Platt regularization (`C: 0.25`) may soften the calibrated probability scale and improve the coverage/accuracy balance versus default Platt.
+- Changed files: `src/calibration/registry.py`, `src/calibration/platt.py`, `experiments/configs/20260509_codex_iter123_catboost_platt_c025.yaml`, `experiments/optimization_log.md`.
+- Code change: calibration plugin creation now passes per-plugin config parameters; Platt scaling accepts `C` and `max_iter`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: platt`, `calibration.plugins.platt.C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter123_catboost_platt_c025.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter123_catboost_platt_c025 --config experiments/configs/20260509_codex_iter123_catboost_platt_c025.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter123_catboost_platt_c025/metrics.json`.
+- Score before: `0.18451203496023655`.
+- Score after: `0.18462759471376494`.
+- Utility before / after: `0.07465007776049763` / `0.07516848107827886`.
+- Accepted accuracy before / after: `0.59284332688588` / `0.5924155513065646`.
+- Accepted count before / after: `3102` / `3138`.
+- Coverage before / after: `0.4020217729393468` / `0.40668740279937793`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: `C: 0.25` is a small new best by improving coverage and utility while retaining nearly the same accepted accuracy. It remains well below the 0.24 target.
+- Next step: probe nearby Platt regularization values.
