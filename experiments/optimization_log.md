@@ -2341,3 +2341,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: MVS produces the same acceptance metrics as the incumbent and does not beat it on accepted-count/coverage tie-breakers.
 - Next step: move to another model-training parameter family.
+
+## 20260509_codex_iter114_catboost_balanced_class_weights
+
+- Skill used: class-balance guidance from `tabular-balanced-log-loss`.
+- Hypothesis: CatBoost `auto_class_weights: Balanced` may improve directional class treatment and accepted-sample accuracy beyond the earlier `SqrtBalanced` test.
+- Changed files: `experiments/configs/20260509_codex_iter114_catboost_balanced_class_weights.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `auto_class_weights: Balanced`.
+- Config: `experiments/configs/20260509_codex_iter114_catboost_balanced_class_weights.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter114_catboost_balanced_class_weights --config experiments/configs/20260509_codex_iter114_catboost_balanced_class_weights.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter114_catboost_balanced_class_weights/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1765719188387535`.
+- Utility before / after: `0.0751684810782789` / `0.07646448937273198`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5846727898966705`.
+- Accepted count before / after: `3245` / `3484`.
+- Coverage before / after: `0.4205546915500259` / `0.45152928978745466`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: stronger class weighting raises accepted count and utility slightly but lowers accepted accuracy enough to reduce selection_score.
+- Next step: do not continue CatBoost class-weight escalation.
