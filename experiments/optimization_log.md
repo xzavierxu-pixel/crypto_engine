@@ -5110,6 +5110,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40383618455158116`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: `pending`.
+- Git commit: `22a1a8a`.
 - Interpretation: moving above `0.9770` reduces both coverage and accepted accuracy. Keep iteration 233 as current best.
 - Next step: bracket the optimum around `0.9770` with smaller steps.
