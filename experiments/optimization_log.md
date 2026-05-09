@@ -8070,6 +8070,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41031622602384654`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records selected cross terms and zero NaN additions.
-- Git commit: pending.
+- Git commit: `e6fbec2`.
 - Interpretation: HTF x microstructure interactions are less damaging than broad full-profile expansion but still do not beat the current best.
 - Next step: if continuing this direction, isolate the highest-value interaction terms instead of using all six.
