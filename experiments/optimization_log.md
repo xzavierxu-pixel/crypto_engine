@@ -6655,3 +6655,26 @@ Main bottlenecks:
 - Git commit: `1498477`.
 - Interpretation: the higher rank weight improves rank blending but still does not beat the current logit blend. Do not replace the best model.
 - Next step: stop rank-blend probes unless paired with a different base model.
+
+## 20260509_codex_iter302_top450_keep_htf_time_current_blend
+
+- Skill used: `tabular-recursive-feature-elimination`.
+- Hypothesis: keeping HTF/time features while limiting non-protected inputs to a high-importance top-450 subset may reduce overfit noise.
+- Changed files: `experiments/configs/20260509_codex_iter302_top450_keep_htf_time_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter217_top450_keep_htf_time_split`.
+- Feature set: 459 features; HTF/time features retained by construction.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter302_top450_keep_htf_time_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter217_top450_keep_htf_time_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter302_top450_keep_htf_time_current_blend --config experiments/configs/20260509_codex_iter302_top450_keep_htf_time_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter302_top450_keep_htf_time_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16434680623520911`.
+- Utility before / after: `0.07698289269051321` / `0.06985484707102124`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5810039074241058`.
+- Accepted count before / after: `3120` / `3327`.
+- Coverage before / after: `0.40435458786936235` / `0.4311819595645412`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: stronger top-feature compression broadens acceptance and reduces accepted accuracy. Do not keep this split.
+- Next step: avoid further broad feature-count compression; focus on localized feature semantics or model regularization.
