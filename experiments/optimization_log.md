@@ -7640,6 +7640,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4068170036288232`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records UTC day-of-week counts.
-- Git commit: pending.
+- Git commit: `02125b3`.
 - Interpretation: weekday cyclical features reduce accepted precision. Keep the existing minute/hour time features only.
 - Next step: test data-window processing rather than adding more coarse calendar features.
