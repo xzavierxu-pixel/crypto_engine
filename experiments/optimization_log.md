@@ -3983,6 +3983,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40383618455158116` / `0.40396578538102645`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `3b773d4`.
 - Interpretation: `reg_alpha: 1.0` is worse than `1.2`. Keep `1.2`.
 - Next step: tune DART bagging around the `reg_alpha: 1.2` branch.
