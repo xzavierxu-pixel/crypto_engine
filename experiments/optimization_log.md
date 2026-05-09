@@ -2075,3 +2075,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: leaf-estimation shrinkage reduces coverage and does not improve accuracy enough; it is worse than the incumbent.
 - Next step: try `leaf_estimation_iterations: 1` once, then stop this branch if it also underperforms.
+
+## 20260509_codex_iter102_catboost_leaf_estimation1
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: a stronger `leaf_estimation_iterations: 1` setting may reduce overfit leaf values enough to improve validation selection_score.
+- Changed files: `experiments/configs/20260509_codex_iter102_catboost_leaf_estimation1.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `leaf_estimation_iterations: 1`.
+- Config: `experiments/configs/20260509_codex_iter102_catboost_leaf_estimation1.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter102_catboost_leaf_estimation1 --config experiments/configs/20260509_codex_iter102_catboost_leaf_estimation1.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter102_catboost_leaf_estimation1/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17043634959221762`.
+- Utility before / after: `0.0751684810782789` / `0.06933644375324004`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5865976044027194`.
+- Accepted count before / after: `3245` / `3089`.
+- Coverage before / after: `0.4205546915500259` / `0.4003369621565578`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: stronger leaf-estimation shrinkage leaves coverage barely above the floor and still does not beat the incumbent. Stop this branch.
+- Next step: return to feature selection, using existing importance evidence for smaller low-importance pruning steps.
