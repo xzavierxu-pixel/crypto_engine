@@ -8024,3 +8024,28 @@ Main bottlenecks:
 - Git commit: `8c05781`.
 - Interpretation: more full-profile features on the same 75-day window still reduce accepted precision. The 516-feature filtered set remains stronger.
 - Next step: avoid wide full-profile expansion; only test narrowly motivated feature packs.
+
+## 20260510_codex_iter360_train90_best516_old15_downweight_current_blend
+
+- Skill used: `tabular-balanced-log-loss` sample-weighting discipline, adapted for time-ordered data processing.
+- Hypothesis: 90 days of data may help if the extra older 15 days are treated as low-confidence context instead of full-weight training examples.
+- Changed files: `experiments/configs/20260510_codex_iter360_train90_best516_old15_downweight_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter360_train90_best516_old15_downweight_split`.
+- Feature set: 516 current-best features selected from the iter351 90-day full-profile cached split; HTF/time features retained.
+- Data processing: multiplied existing `stage1_sample_weight` by `0.20` for the 3,428 development rows older than the current best 75-day boundary; recent 19,922 development rows unchanged.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter360_train90_best516_old15_downweight_split/train90_best516_old15_downweight_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter360_train90_best516_old15_downweight_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter360_train90_best516_old15_downweight_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter360_train90_best516_old15_downweight_current_blend --config experiments/configs/20260510_codex_iter360_train90_best516_old15_downweight_current_blend.yaml --horizon 5m --train-window-days 90 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter360_train90_best516_old15_downweight_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1722479018622444`.
+- Utility before / after: `0.07698289269051321` / `0.07153965785381029`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5858742999377723`.
+- Accepted count before / after: `3120` / `3214`.
+- Coverage before / after: `0.40435458786936235` / `0.41653706583722133`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records exact downweighted row count and weight distribution.
+- Git commit: pending.
+- Interpretation: downweighting the extra older 15 days improves over the unweighted 90-day isolation but remains far below the 75-day best. Extra history is not useful here.
+- Next step: keep the 75-day window and focus on narrowly motivated online-safe feature engineering.
