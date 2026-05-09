@@ -6790,6 +6790,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.5177553136340073`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `14fd10f`.
 - Interpretation: seed 41 also broadens acceptance and lowers accepted accuracy. Seed variation is not a promising standalone optimization path.
 - Next step: pivot back to feature semantics or calibration, not seed ensembling.
