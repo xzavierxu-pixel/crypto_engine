@@ -7194,6 +7194,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `4267af2`.
 - Interpretation: larger purge is an exact tie under this cached split. Treat as neutral, not an improvement.
 - Next step: keep `purge_rows: 1` unless the project wants a more conservative validation protocol for audit reasons.
