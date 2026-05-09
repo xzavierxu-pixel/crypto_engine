@@ -7174,3 +7174,26 @@ Main bottlenecks:
 - Git commit: `93d9f06`.
 - Interpretation: class rebalancing reduces accepted precision and selection_score. Keep unweighted class loss.
 - Next step: avoid class-weight tweaks unless a separate model family needs calibration.
+
+## 20260509_codex_iter324_blend9770_purge5_platt_logit_c020
+
+- Skill used: validation-discipline data processing.
+- Hypothesis: increasing `purge_rows` from 1 to 5 may reduce near-boundary temporal overlap and improve validation reliability without changing labels, features, or thresholds.
+- Changed files: `experiments/configs/20260509_codex_iter324_blend9770_purge5_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`, command-line `--purge-rows 5`.
+- Config: `experiments/configs/20260509_codex_iter324_blend9770_purge5_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter324_blend9770_purge5_platt_logit_c020 --config experiments/configs/20260509_codex_iter324_blend9770_purge5_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30 --purge-rows 5`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter324_blend9770_purge5_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.19027803605274402`.
+- Utility before / after: `0.07698289269051321` / `0.07698289269051321`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5951923076923077`.
+- Accepted count before / after: `3120` / `3120`.
+- Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: larger purge is an exact tie under this cached split. Treat as neutral, not an improvement.
+- Next step: keep `purge_rows: 1` unless the project wants a more conservative validation protocol for audit reasons.
