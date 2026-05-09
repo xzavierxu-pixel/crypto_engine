@@ -5781,3 +5781,26 @@ Main bottlenecks:
 - Git commit: `e0e8f4a`.
 - Interpretation: `sl_vwap_30s` over-broadens acceptance and reduces accepted accuracy more than the 10s-only variant. Keep both raw VWAP features excluded.
 - Next step: move away from VWAP restoration and test model/regularization changes on the best 516-feature split.
+
+## 20260509_codex_iter264_blend9770_dart_colsample025_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting`.
+- Hypothesis: lowering nested LightGBM DART `colsample_bytree` from `0.35` to `0.25` may reduce high-dimensional overfit and sharpen accepted predictions in the CatBoost-dominant logit blend.
+- Changed files: `experiments/configs/20260509_codex_iter264_blend9770_dart_colsample025_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `colsample_bytree: 0.25`, `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter264_blend9770_dart_colsample025_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter264_blend9770_dart_colsample025_platt_logit_c020 --config experiments/configs/20260509_codex_iter264_blend9770_dart_colsample025_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter264_blend9770_dart_colsample025_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.185034045094492`.
+- Utility before / after: `0.07698289269051321` / `0.07503888024883364`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5928777670837344`.
+- Accepted count before / after: `3120` / `3117`.
+- Coverage before / after: `0.40435458786936235` / `0.40396578538102645`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: stronger DART feature subsampling keeps the same threshold region but slightly lowers accepted accuracy and objective score. Keep `colsample_bytree: 0.35`.
+- Next step: test the opposite DART direction only if warranted, or switch to CatBoost regularization around the current best.
