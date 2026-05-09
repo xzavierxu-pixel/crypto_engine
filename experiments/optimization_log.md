@@ -8407,3 +8407,26 @@ Main bottlenecks:
 - Git commit: `49622c3`.
 - Interpretation: multi-scale trailing context increases accepted count but reduces accepted precision and worsens logloss. Do not adopt this feature pack.
 - Next step: prioritize model regularization or pruning over additional broad rolling context additions.
+
+## 20260510_codex_iter376_active_cat_l2_45_current_blend
+
+- Skill used: model regularization follow-up after repeated feature over-acceptance.
+- Hypothesis: stronger CatBoost L2 regularization may reduce noisy accepted predictions and improve selection_score while preserving current best features.
+- Changed files: `experiments/configs/20260510_codex_iter376_active_cat_l2_45_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except active CatBoost `l2_leaf_reg: 45.0`.
+- Config: `experiments/configs/20260510_codex_iter376_active_cat_l2_45_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter376_active_cat_l2_45_current_blend --config experiments/configs/20260510_codex_iter376_active_cat_l2_45_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter376_active_cat_l2_45_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18075837536886877`.
+- Utility before / after: `0.07698289269051321` / `0.07465007776049763`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5897755610972568`.
+- Accepted count before / after: `3120` / `3208`.
+- Coverage before / after: `0.40435458786936235` / `0.4157594608605495`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: stronger L2 improves Brier/logloss but shifts the accepted set toward lower precision. Keep current CatBoost L2.
+- Next step: do not pursue more high-L2 variants unless a separate calibration objective becomes primary.
