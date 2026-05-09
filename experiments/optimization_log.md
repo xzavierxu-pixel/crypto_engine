@@ -4515,3 +4515,26 @@ Main bottlenecks:
 - Git commit: `f5db3b6`.
 - Interpretation: higher CatBoost weight in rank blending still trails the logit-blend reference. Do not pursue rank blend further now.
 - Next step: return to the logit-blend reference.
+
+## 20260509_codex_iter209_trailing_path_blend9765_dart_l1_12_platt_logit_c020
+
+- Skill used: `tabular-last-diff-lag-features`.
+- Hypothesis: online-safe trailing path features over completed bars through `t-1` may help separate larger-move regimes without using future `abs_return`.
+- Changed files: `src/features/path_structure.py`, `experiments/configs/20260509_codex_iter209_trailing_path_blend9765_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter209_trailing_path_split`; feature report: `artifacts/data_v2/experiments/20260509_codex_iter209_trailing_path_split/trailing_path_feature_report.json`.
+- Feature set: current best VWAP-pruned top-500 split plus `trailing_return_{3,5,10}`, `trailing_abs_return_{3,5,10}`, `trailing_range_pct_{3,5,10}`; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter209_trailing_path_blend9765_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter209_trailing_path_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter209_trailing_path_blend9765_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter209_trailing_path_blend9765_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter209_trailing_path_blend9765_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.16489169305911755`.
+- Utility before / after: `0.07659409020217732` / `0.06881804043545878`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5824790307548928`.
+- Accepted count before / after: `3123` / `3219`.
+- Coverage before / after: `0.4047433903576983` / `0.4171850699844479`.
+- Coverage constraint satisfied: yes.
+- Tests: `rtk python -m py_compile src\features\path_structure.py`; DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: trailing path features materially hurt accepted accuracy. Revert this source feature addition and do not use the derived split.
+- Next step: remove the harmful source change before continuing.
