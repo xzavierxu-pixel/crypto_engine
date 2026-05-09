@@ -5087,6 +5087,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.40435458786936235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; initial malformed YAML attempt failed before training and was corrected before the recorded evaluation.
-- Git commit: `pending`.
+- Git commit: `2d8e1a1`.
 - Interpretation: this is a new best under the coverage constraint. The gain comes from a small accepted-accuracy lift with nearly unchanged coverage and thresholds.
 - Next step: continue fine blend-weight search just above `0.9770` while monitoring coverage floor.
