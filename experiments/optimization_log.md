@@ -8046,6 +8046,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41653706583722133`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records exact downweighted row count and weight distribution.
-- Git commit: pending.
+- Git commit: `11fa637`.
 - Interpretation: downweighting the extra older 15 days improves over the unweighted 90-day isolation but remains far below the 75-day best. Extra history is not useful here.
 - Next step: keep the 75-day window and focus on narrowly motivated online-safe feature engineering.
