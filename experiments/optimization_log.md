@@ -5758,3 +5758,26 @@ Main bottlenecks:
 - Git commit: `5e00fb9`.
 - Interpretation: `sl_vwap_10s` increases coverage but lowers accepted accuracy enough to reduce selection_score. Keep it excluded.
 - Next step: test the `sl_vwap_30s`-only variant, then stop this VWAP ablation branch if it also fails.
+
+## 20260509_codex_iter263_blend9770_train75_vwap30_only_platt_logit_c020
+
+- Skill used: `tabular-recursive-feature-elimination` as feature-set ablation guidance.
+- Hypothesis: `sl_vwap_30s` alone may add slightly smoother microstructure price-location signal than `sl_vwap_10s` while preserving the current feature set's HTF/time context.
+- Changed files: `experiments/configs/20260509_codex_iter263_blend9770_train75_vwap30_only_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter47_train75_drop_sl_vwap10_split`.
+- Feature set: 517 features; current best 516 features plus `sl_vwap_30s`; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter263_blend9770_train75_vwap30_only_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter47_train75_drop_sl_vwap10_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter263_blend9770_train75_vwap30_only_platt_logit_c020 --config experiments/configs/20260509_codex_iter263_blend9770_train75_vwap30_only_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter263_blend9770_train75_vwap30_only_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16721669777776554`.
+- Utility before / after: `0.07698289269051321` / `0.07218766200103675`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5811243810078648`.
+- Accepted count before / after: `3120` / `3433`.
+- Coverage before / after: `0.40435458786936235` / `0.4449196474857439`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: `sl_vwap_30s` over-broadens acceptance and reduces accepted accuracy more than the 10s-only variant. Keep both raw VWAP features excluded.
+- Next step: move away from VWAP restoration and test model/regularization changes on the best 516-feature split.
