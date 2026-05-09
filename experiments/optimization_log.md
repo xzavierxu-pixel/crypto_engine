@@ -5018,6 +5018,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4585277345775013`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; row aggregate transform summary saved at `artifacts/data_v2/experiments/20260509_codex_iter230_sl_top20_rowagg_split/rowagg_summary.json`.
-- Git commit: `pending`.
+- Git commit: `af3539a`.
 - Interpretation: broad row aggregates materially increase coverage but weaken accepted accuracy, reducing selection_score. Do not keep this aggregate pack.
 - Next step: favor narrower model-side experiments or more targeted time/HTF interactions instead of broad second-level aggregates.
