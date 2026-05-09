@@ -4719,6 +4719,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4444012441679627`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `814452f`.
 - Interpretation: even low-importance features are useful to the ensemble; aggressive top-450 pruning badly hurts accepted accuracy. Keep the full feature set.
 - Next step: avoid aggressive feature-count pruning.
