@@ -4331,3 +4331,26 @@ Main bottlenecks:
 - Git commit: `2711fa6`.
 - Interpretation: gentler materialized weighting is worse than the current cached weights. Keep the original materialized `stage1_sample_weight`.
 - Next step: leave sample weighting.
+
+## 20260509_codex_iter201_blend9765_dart_l1_12_isotonic
+
+- Skill used: `tabular-logit-transform-stacking` as a calibration contrast.
+- Hypothesis: isotonic calibration may correct non-monotonic validation probability buckets and improve accepted accuracy without changing threshold policy.
+- Changed files: `experiments/configs/20260509_codex_iter201_blend9765_dart_l1_12_isotonic.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best DART blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: isotonic`.
+- Config: `experiments/configs/20260509_codex_iter201_blend9765_dart_l1_12_isotonic.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter201_blend9765_dart_l1_12_isotonic --config experiments/configs/20260509_codex_iter201_blend9765_dart_l1_12_isotonic.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter201_blend9765_dart_l1_12_isotonic/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.1723177340448186`.
+- Utility before / after: `0.07659409020217732` / `0.07698289269051324`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5808383233532934`.
+- Accepted count before / after: `3123` / `3674`.
+- Coverage before / after: `0.4047433903576983` / `0.4761534473820632`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: isotonic over-expands accepted coverage and loses accepted accuracy. Keep `platt_logit`.
+- Next step: continue with feature/model levers, not isotonic calibration.
