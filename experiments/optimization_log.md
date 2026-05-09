@@ -7076,6 +7076,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40383618455158116`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `0f0f30a`.
 - Interpretation: the tiny higher CatBoost weight is slightly worse. Keep `catboost_weight: 0.9770`.
 - Next step: avoid further tiny blend-weight probes without a new base model signal.
