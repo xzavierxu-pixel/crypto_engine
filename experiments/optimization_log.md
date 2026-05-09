@@ -7384,6 +7384,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.401244167962675`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records basis/premium-column missing counts.
-- Git commit: pending.
+- Git commit: `c8e0320`.
 - Interpretation: basis-only barely clears the coverage floor and lowers utility and accepted precision. Do not add basis/premium features to the current best.
 - Next step: log OI-only source-isolation run, then close derivative-source additions unless combined with explicit feature selection.
