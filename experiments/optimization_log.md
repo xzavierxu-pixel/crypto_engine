@@ -5732,6 +5732,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40176257128045617`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `730dcc0`.
 - Interpretation: adding both VWAP features improves AUC/Brier/logloss diagnostics slightly but lowers objective score through lower accepted accuracy and coverage. Keep the VWAP-dropped 516-feature split.
 - Next step: test one-feature VWAP variants only if needed; otherwise continue with narrower model regularization or feature-selection checks.
