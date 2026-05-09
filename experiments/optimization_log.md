@@ -4949,6 +4949,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4047433903576983`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: `pending`.
+- Git commit: `ca812d3`.
 - Interpretation: `rsm: 0.8` is neutral on the validation objective for this blend and split.
 - Next step: test CatBoost border resolution, which can alter numeric binning without changing feature semantics.
