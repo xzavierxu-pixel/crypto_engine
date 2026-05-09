@@ -5525,6 +5525,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40254017625712807`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `68649dc`.
 - Interpretation: filtering ambiguous low-return training samples reduces accepted accuracy and does not improve the objective.
 - Next step: avoid low-return training filters on this branch.
