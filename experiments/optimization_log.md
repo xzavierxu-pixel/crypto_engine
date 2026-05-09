@@ -5482,3 +5482,26 @@ Main bottlenecks:
 - Git commit: `105ebd2`.
 - Interpretation: session-relative features lower accepted accuracy under the current blend. Keep the current best split.
 - Next step: avoid this feature branch unless paired with a different model family.
+
+## 20260509_codex_iter251_blend9770_drop_top5_drift_platt_logit_c020
+
+- Skill used: `tabular-adversarial-validation`.
+- Hypothesis: dropping the top 5 non-HTF/time adversarial-drift features may improve validation transfer under the current CatBoost+DART blend.
+- Changed files: `experiments/configs/20260509_codex_iter251_blend9770_drop_top5_drift_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter111_drop_top5_drift_non_htf_time_split`.
+- Feature set: 511 features; dropped `low_volume_flag_share_20_mean_gap_6`, `sl_range_10s`, `sl_mirror_true_range_pct_1s`, `sl_range_3s`, `low_volume_flag_share_20_rolling_z_6`; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter251_blend9770_drop_top5_drift_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter111_drop_top5_drift_non_htf_time_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter251_blend9770_drop_top5_drift_platt_logit_c020 --config experiments/configs/20260509_codex_iter251_blend9770_drop_top5_drift_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter251_blend9770_drop_top5_drift_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17269477312126522`.
+- Utility before / after: `0.07698289269051321` / `0.071021254536029`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5867637745408486`.
+- Accepted count before / after: `3120` / `3158`.
+- Coverage before / after: `0.40435458786936235` / `0.4092794193882841`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; adversarial source report is `artifacts/data_v2/experiments/20260508_codex_adversarial_top500/summary.json`.
+- Git commit: `pending`.
+- Interpretation: removing the top drift features worsens accepted accuracy and changes side balance. These shifted features still carry useful signal for the current objective.
+- Next step: avoid further adversarial-drop pruning unless combined with a separate feature transform.
