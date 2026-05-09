@@ -5709,6 +5709,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4274235355106273`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; target encoding summary saved at `artifacts/data_v2/experiments/20260509_codex_iter260_time_target_encoding_split/time_target_encoding_summary.json`.
-- Git commit: `pending`.
+- Git commit: `14c0bb4`.
 - Interpretation: time target encoding broadens accepted predictions and lowers accepted accuracy. Do not keep this feature pack.
 - Next step: avoid target-encoded time buckets on this validation slice.
