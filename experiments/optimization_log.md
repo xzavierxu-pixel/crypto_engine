@@ -5847,6 +5847,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4094090202177294`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `52f985b`.
 - Interpretation: stronger CatBoost randomization hurts accepted accuracy. Keep `random_strength: 2.0`.
 - Next step: test lower CatBoost randomization (`random_strength: 1.0`) before leaving this branch.
