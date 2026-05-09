@@ -6586,3 +6586,26 @@ Main bottlenecks:
 - Git commit: `14ef177`.
 - Interpretation: the additional prune further lowers selection_score; bottom-importance pruning is not improving the current blend.
 - Next step: pivot away from this pruning band and test a different data-processing axis.
+
+## 20260509_codex_iter299_gentle_reweighted_current_blend
+
+- Skill used: targeted sample-weight data processing.
+- Hypothesis: gentle train-row downweighting may reduce noisy low-quality samples without the precision loss seen from stronger reweighting.
+- Changed files: `experiments/configs/20260509_codex_iter299_gentle_reweighted_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter200_reweighted_gentle_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained; cached train frame includes gentle `stage1_sample_weight` values.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter299_gentle_reweighted_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter200_reweighted_gentle_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter299_gentle_reweighted_current_blend --config experiments/configs/20260509_codex_iter299_gentle_reweighted_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter299_gentle_reweighted_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16513149838602742`.
+- Utility before / after: `0.07698289269051321` / `0.06791083462934164`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5835992342054882`.
+- Accepted count before / after: `3120` / `3134`.
+- Coverage before / after: `0.40435458786936235` / `0.4061689994815967`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; source split has `sample_weight_report.json`.
+- Git commit: `pending`.
+- Interpretation: gentle downweighting lowers accepted accuracy and selection_score. Do not keep this weighting.
+- Next step: avoid stronger variants from this same weighting family unless a new diagnostic points to a more selective weighting rule.
