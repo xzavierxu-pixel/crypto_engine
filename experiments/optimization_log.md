@@ -7619,3 +7619,27 @@ Main bottlenecks:
 - Git commit: `e7fc786`.
 - Interpretation: weaker calibration regularization lowers selection_score versus best. Keep `platt_logit.C: 0.2`.
 - Next step: return to data-window processing and test a slightly shorter training window with the same model settings.
+
+## 20260510_codex_iter343_add_dow_cyclical_current_blend
+
+- Skill used: `tabular-cyclical-feature-encoding`.
+- Hypothesis: adding day-of-week sine/cosine features may capture weekly crypto market seasonality while preserving online availability and existing minute/hour cyclical features.
+- Changed files: `experiments/configs/20260510_codex_iter343_add_dow_cyclical_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter343_add_dow_cyclical_split`.
+- Feature set: 518 features; current best 516 features plus `dow_sin` and `dow_cos`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter343_add_dow_cyclical_split/add_dow_cyclical_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter343_add_dow_cyclical_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter343_add_dow_cyclical_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter343_add_dow_cyclical_current_blend --config experiments/configs/20260510_codex_iter343_add_dow_cyclical_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter343_add_dow_cyclical_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17437665849133474`.
+- Utility before / after: `0.07698289269051321` / `0.07141005702436491`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5877668047148773`.
+- Accepted count before / after: `3120` / `3139`.
+- Coverage before / after: `0.40435458786936235` / `0.4068170036288232`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records UTC day-of-week counts.
+- Git commit: pending.
+- Interpretation: weekday cyclical features reduce accepted precision. Keep the existing minute/hour time features only.
+- Next step: test data-window processing rather than adding more coarse calendar features.
