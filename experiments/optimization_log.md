@@ -7360,6 +7360,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4453084499740798`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records funding-column missing counts.
-- Git commit: pending.
+- Git commit: `49e0b4e`.
 - Interpretation: funding-only increases coverage and nearly preserves utility, but accepted precision drops enough to lower selection_score. Do not add funding features to the current best.
 - Next step: log basis-only and OI-only source-isolation runs.
