@@ -7100,6 +7100,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4341627786417833`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary reports unchanged row counts and zero missing added values.
-- Git commit: `pending`.
+- Git commit: `0a97846`.
 - Interpretation: flow-agreement interactions broaden acceptance and lower accepted accuracy. Do not keep these features.
 - Next step: avoid adding microstructure interaction features unless validated by out-of-fold selection.
