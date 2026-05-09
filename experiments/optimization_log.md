@@ -6770,3 +6770,26 @@ Main bottlenecks:
 - Git commit: `3cd1ccb`.
 - Interpretation: seed 43 materially broadens accepted coverage and lowers accepted accuracy. The current seed 42 model remains best.
 - Next step: do not implement a heavier seed ensemble for the active blend unless another seed demonstrates complementary precision rather than broadening.
+
+## 20260509_codex_iter307_blend9770_seed41_platt_logit_c020
+
+- Skill used: `tabular-multi-seed-fold-averaging`.
+- Hypothesis: checking the opposite neighboring seed can confirm whether seed 42 is unusually strong or whether small seed changes can improve accepted precision.
+- Changed files: `experiments/configs/20260509_codex_iter307_blend9770_seed41_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, active nested CatBoost `random_seed: 41`, nested DART `random_state: 41`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter307_blend9770_seed41_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter307_blend9770_seed41_platt_logit_c020 --config experiments/configs/20260509_codex_iter307_blend9770_seed41_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter307_blend9770_seed41_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16849720609437357`.
+- Utility before / after: `0.07698289269051321` / `0.07892690513219282`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5762202753441802`.
+- Accepted count before / after: `3120` / `3995`.
+- Coverage before / after: `0.40435458786936235` / `0.5177553136340073`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: seed 41 also broadens acceptance and lowers accepted accuracy. Seed variation is not a promising standalone optimization path.
+- Next step: pivot back to feature semantics or calibration, not seed ensembling.
