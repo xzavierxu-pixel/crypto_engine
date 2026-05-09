@@ -5021,3 +5021,26 @@ Main bottlenecks:
 - Git commit: `af3539a`.
 - Interpretation: broad row aggregates materially increase coverage but weaken accepted accuracy, reducing selection_score. Do not keep this aggregate pack.
 - Next step: favor narrower model-side experiments or more targeted time/HTF interactions instead of broad second-level aggregates.
+
+## 20260509_codex_iter231_blend9765_htf_time_interactions_platt_logit_c020
+
+- Skill used: `tabular-polynomial-interaction-features`.
+- Hypothesis: explicit interactions between important HTF context and cyclical time features may capture time-of-day-dependent HTF effects without changing base feature semantics.
+- Changed files: `experiments/configs/20260509_codex_iter231_blend9765_htf_time_interactions_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter231_htf_time_interactions_split`.
+- Feature set: 532 features; added 16 same-row interactions crossing the top 4 HTF features with `hour_sin`, `hour_cos`, `minute_sin`, `minute_cos`; HTF/time base features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter231_blend9765_htf_time_interactions_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter231_htf_time_interactions_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter231_blend9765_htf_time_interactions_platt_logit_c020 --config experiments/configs/20260509_codex_iter231_blend9765_htf_time_interactions_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter231_blend9765_htf_time_interactions_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.16960989197385432`.
+- Utility before / after: `0.07659409020217732` / `0.07413167444271648`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.58125`.
+- Accepted count before / after: `3123` / `3520`.
+- Coverage before / after: `0.4047433903576983` / `0.45619491964748576`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; interaction transform summary saved at `artifacts/data_v2/experiments/20260509_codex_iter231_htf_time_interactions_split/interaction_summary.json`.
+- Git commit: `pending`.
+- Interpretation: the interactions make the model accept many more samples but lower accepted accuracy, so they are harmful for selection_score. Keep base HTF/time features but not this interaction pack.
+- Next step: avoid broad added-feature packs on the current split; return to model calibration/blend variants that preserve the best accepted boundary.
