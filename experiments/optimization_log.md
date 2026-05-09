@@ -2274,3 +2274,26 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: Langevin increases train score but lowers validation accepted accuracy; it is not useful here.
 - Next step: continue with a different, non-temperature/non-pruning direction.
+
+## 20260509_codex_iter111_drop_top5_drift_non_htf_time_catboost
+
+- Skill used: `tabular-adversarial-validation`.
+- Hypothesis: adversarial validation shows strong train/validation drift; removing the highest-drift non-HTF/time features may reduce overfit to the development period.
+- Changed files: `experiments/configs/20260509_codex_iter111_drop_top5_drift_non_htf_time_catboost.yaml`, `experiments/optimization_log.md`.
+- Diagnostic: train-vs-validation adversarial AUC `0.9844297893979366`; drift importances saved at `artifacts/data_v2/experiments/20260509_codex_iter111_adversarial_validation/drift_feature_importance.csv`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter111_drop_top5_drift_non_htf_time_split`.
+- Data processing: removed `low_volume_flag_share_20_mean_gap_6`, `sl_range_10s`, `sl_mirror_true_range_pct_1s`, `sl_range_3s`, `low_volume_flag_share_20_rolling_z_6`; development and validation went from 540 to 535 columns.
+- Feature set: HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter111_drop_top5_drift_non_htf_time_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter111_drop_top5_drift_non_htf_time_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter111_drop_top5_drift_non_htf_time_catboost --config experiments/configs/20260509_codex_iter111_drop_top5_drift_non_htf_time_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter111_drop_top5_drift_non_htf_time_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1678702462932051`.
+- Utility before / after: `0.0751684810782789` / `0.07050285121824777`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5832823025107164`.
+- Accepted count before / after: `3245` / `3266`.
+- Coverage before / after: `0.4205546915500259` / `0.4232763089683774`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: drift-driven feature removal lowers validation objective; these shifted features still carry useful directional signal.
+- Next step: use adversarial validation as diagnostic only, not as a blind removal rule.
