@@ -1453,3 +1453,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: raw volatility/volume context remains useful alongside relative deviations. Removing it increases coverage but lowers accepted accuracy and score.
 - Next step: keep raw context when using relative-deviation features.
+
+## 20260509_codex_iter73_lgbm_dart
+
+- Skill used: `tabular-lgbm-dart-boosting`.
+- Hypothesis: LightGBM DART with aggressive subsampling may reduce overfitting on the wide feature set and provide a stronger model-family alternative to CatBoost.
+- Changed files: `experiments/configs/20260509_codex_iter73_lgbm_dart.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `active_plugin: lightgbm`, `boosting_type: dart`, `n_estimators: 1600`, `learning_rate: 0.01`, `colsample_bytree: 0.35`, `subsample: 0.6`.
+- Config: `experiments/configs/20260509_codex_iter73_lgbm_dart.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter73_lgbm_dart --config experiments/configs/20260509_codex_iter73_lgbm_dart.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter73_lgbm_dart/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.15579683529138663`.
+- Utility before / after: `0.0751684810782789` / `0.0640228097459824`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5796774193548387`.
+- Accepted count before / after: `3245` / `3100`.
+- Coverage before / after: `0.4205546915500259` / `0.40176257128045617`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: DART overfits development and barely clears validation coverage. CatBoost remains the best model family.
+- Next step: keep CatBoost as the primary model for subsequent iterations.
