@@ -8214,6 +8214,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40396578538102645`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records row-preserving timestamp joins and zero missing joined values.
-- Git commit: `pending`.
+- Git commit: `900c020`.
 - Interpretation: the narrow VWAP ratio pair keeps coverage near the best but lowers accepted precision and score. Do not adopt this feature pack.
 - Next step: test whether a small recency-weighted training change can improve the same feature set before exploring more feature additions.
