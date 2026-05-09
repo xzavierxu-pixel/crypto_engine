@@ -4926,6 +4926,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4035769828926905`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: `pending`.
+- Git commit: `906ccdb`.
 - Interpretation: Lower DART dropout slightly reduces accepted accuracy and coverage, so the current best DART defaults remain preferable.
 - Next step: avoid lower `drop_rate`; test orthogonal DART knobs only if they plausibly improve side-model diversity without shifting thresholds.
