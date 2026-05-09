@@ -5597,3 +5597,26 @@ Main bottlenecks:
 - Git commit: `6b3d651`.
 - Interpretation: null-importance tail pruning materially lowers accepted accuracy. Keep the current 516-feature split.
 - Next step: avoid aggressive null-importance pruning under the current blend.
+
+## 20260509_codex_iter256_blend9770_directional_burst_rle_platt_logit_c020
+
+- Skill used: `timeseries-burst-rle-detection`.
+- Hypothesis: directional run-length features over key microstructure/HTF signals may capture persistent bursts without broad rolling-feature noise.
+- Changed files: `experiments/configs/20260509_codex_iter256_blend9770_directional_burst_rle_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter256_directional_burst_rle_split`.
+- Feature set: 564 features; added 48 positive/negative run-length and lagged rolling max features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter256_blend9770_directional_burst_rle_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter256_directional_burst_rle_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter256_blend9770_directional_burst_rle_platt_logit_c020 --config experiments/configs/20260509_codex_iter256_blend9770_directional_burst_rle_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter256_blend9770_directional_burst_rle_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18284980946198404`.
+- Utility before / after: `0.07698289269051321` / `0.07542768273716956`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.59071072319202`.
+- Accepted count before / after: `3120` / `3208`.
+- Coverage before / after: `0.40435458786936235` / `0.4157594608605495`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; burst summary saved at `artifacts/data_v2/experiments/20260509_codex_iter256_directional_burst_rle_split/burst_rle_summary.json`.
+- Git commit: `pending`.
+- Interpretation: burst features increase coverage but reduce accepted accuracy. Do not keep this feature pack.
+- Next step: use smaller, side-targeted feature additions only.
