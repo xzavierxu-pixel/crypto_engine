@@ -6218,3 +6218,26 @@ Main bottlenecks:
 - Git commit: `1010b7c`.
 - Interpretation: weekday features lower accepted accuracy and score. Keep the existing hour/minute cyclic time feature set without weekday additions.
 - Next step: avoid more calendar expansions unless a time-slice diagnostic shows a stable weekday effect.
+
+## 20260509_codex_iter283_blend9770_trailing_path_platt_logit_c020
+
+- Skill used: `timeseries-multi-scale-rolling-features`.
+- Hypothesis: past-only trailing return, absolute-return, and range features over 3/5/10 bars may add short path context aligned with the 5-minute forecast horizon.
+- Changed files: `experiments/configs/20260509_codex_iter283_blend9770_trailing_path_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter209_trailing_path_split`.
+- Feature set: 525 features; current best 516 features plus nine trailing path features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter283_blend9770_trailing_path_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter209_trailing_path_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter283_blend9770_trailing_path_platt_logit_c020 --config experiments/configs/20260509_codex_iter283_blend9770_trailing_path_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter283_blend9770_trailing_path_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16458683811756675`.
+- Utility before / after: `0.07698289269051321` / `0.07244686365992747`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5787545787545788`.
+- Accepted count before / after: `3120` / `3549`.
+- Coverage before / after: `0.40435458786936235` / `0.4599533437013997`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: trailing path features broaden acceptance and lower accepted accuracy. Do not keep this feature pack.
+- Next step: reassess remaining branches; added feature packs are consistently diluting precision under the current blend.
