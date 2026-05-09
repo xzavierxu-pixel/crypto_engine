@@ -1669,3 +1669,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: softening the weights loses accepted-set quality. The original stronger weight ramp remains best.
 - Next step: keep the original sample weights for subsequent CatBoost experiments.
+
+## 20260509_codex_iter83_squared_weights_catboost
+
+- Skill used: `tabular-balanced-log-loss` / data-weighting guidance.
+- Hypothesis: strengthening the existing sample-weight ramp by squaring weights may further emphasize higher-absolute-return examples and improve selective confidence.
+- Changed files: `experiments/configs/20260509_codex_iter83_squared_weights_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter83_squared_weights_split`.
+- Data processing: replaced development weight `w` with `clip(w ** 2, 0.15, 1.0)`; validation unchanged.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter83_squared_weights_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter83_squared_weights_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter83_squared_weights_catboost --config experiments/configs/20260509_codex_iter83_squared_weights_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter83_squared_weights_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16971684191691397`.
+- Utility before / after: `0.0751684810782789` / `0.07400207361327117`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5814550641940086`.
+- Accepted count before / after: `3245` / `3505`.
+- Coverage before / after: `0.4205546915500259` / `0.45425090720580613`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: strengthening the weight ramp increases coverage but reduces accepted accuracy. The original weight ramp remains best.
+- Next step: keep original sample weights.
