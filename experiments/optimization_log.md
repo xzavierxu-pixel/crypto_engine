@@ -7714,3 +7714,26 @@ Main bottlenecks:
 - Git commit: `da3472f`.
 - Interpretation: the residual DART component is useful; CatBoost-only lowers selection_score. Keep a small DART contribution.
 - Next step: test a slightly lower CatBoost blend weight (`0.9750`) around the current `0.9770` local best.
+
+## 20260510_codex_iter347_cat_weight_0975_current_blend
+
+- Skill used: model blend selection.
+- Hypothesis: slightly increasing the DART contribution (`catboost_weight: 0.9770 -> 0.9750`) may improve complementarity without materially changing the dominant CatBoost behavior.
+- Changed files: `experiments/configs/20260510_codex_iter347_cat_weight_0975_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except `catboost_weight: 0.9770 -> 0.9750`; calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter347_cat_weight_0975_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter347_cat_weight_0975_current_blend --config experiments/configs/20260510_codex_iter347_cat_weight_0975_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter347_cat_weight_0975_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18854937237607988`.
+- Utility before / after: `0.07698289269051321` / `0.07646448937273201`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.594309462915601`.
+- Accepted count before / after: `3120` / `3128`.
+- Coverage before / after: `0.40435458786936235` / `0.40539139450492484`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: pending.
+- Interpretation: `0.9750` is close but worse; current `0.9770` remains the best blend weight tested.
+- Next step: stop dense blend-weight probing and return to data/feature transformations.
