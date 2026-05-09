@@ -8332,6 +8332,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40383618455158116`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `0746339`.
 - Interpretation: nudging the blend weight upward is slightly worse than the current best `0.9770`. Keep the current blend weight.
 - Next step: continue with error-slice-guided feature or model changes; target `selection_score >= 0.24` remains unmet.
