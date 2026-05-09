@@ -5294,6 +5294,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4275531363400726`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; initial malformed YAML attempt failed before training and was corrected before the recorded evaluation.
-- Git commit: `pending`.
+- Git commit: `b194374`.
 - Interpretation: seed averaging increases coverage but lowers accepted accuracy. The CatBoost+DART logit blend remains better than CatBoost-only ensembling.
 - Next step: avoid replacing the blend with CatBoost-only seed averages on this split.
