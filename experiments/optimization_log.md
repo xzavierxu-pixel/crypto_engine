@@ -1625,3 +1625,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: ordered boosting is slower and still below the best score. Plain depth-5 CatBoost remains better.
 - Next step: avoid ordered boosting for this setup.
+
+## 20260509_codex_iter81_unweighted_best_catboost
+
+- Skill used: `tabular-balanced-log-loss` / `tabular-prior-rebalancing-oversampling` as data-weighting guidance.
+- Hypothesis: the current sample-weight ramp may be over-shaping probability tails; setting development weights to `1.0` tests whether the best 75-day split performs better unweighted.
+- Changed files: `experiments/configs/20260509_codex_iter81_unweighted_best_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter81_unweighted_best_split`.
+- Data processing: set all development `stage1_sample_weight` values to `1.0`; validation unchanged.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter81_unweighted_best_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter81_unweighted_best_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter81_unweighted_best_catboost --config experiments/configs/20260509_codex_iter81_unweighted_best_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter81_unweighted_best_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16093642981380082`.
+- Utility before / after: `0.0751684810782789` / `0.07231726283048208`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5759390310288514`.
+- Accepted count before / after: `3245` / `3674`.
+- Coverage before / after: `0.4205546915500259` / `0.4761534473820632`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: unweighted training over-accepts lower-quality predictions. The existing weight ramp is important for accepted accuracy.
+- Next step: test a milder weight ramp rather than removing weights completely.
