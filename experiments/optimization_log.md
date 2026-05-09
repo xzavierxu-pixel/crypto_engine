@@ -6100,6 +6100,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4186106791083463`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `60d31f5`.
 - Interpretation: broad HTF-micro interaction expansion lowers accepted accuracy and objective score. Do not keep this feature pack.
 - Next step: use narrower feature selection or smaller targeted additions rather than broad interaction expansion.
