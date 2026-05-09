@@ -6517,3 +6517,26 @@ Main bottlenecks:
 - Git commit: `d1a34e6`.
 - Interpretation: predicted activity increases coverage and utility but lowers accepted accuracy enough to reduce selection_score. Do not keep this meta-feature.
 - Next step: stop OOF meta-feature variants unless an auxiliary target can be implemented into the online artifact path.
+
+## 20260509_codex_iter296_blend9770_weak_regime_downweight_platt_logit_c020
+
+- Skill used: targeted sample-weight data processing based on false-slice diagnostics.
+- Hypothesis: conservatively downweighting training rows in weak validation regimes (high `rv_5`, low volume, Asia session) may reduce false accepted predictions and improve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter296_blend9770_weak_regime_downweight_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter296_weak_regime_downweight_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained; cached sample weights apply `0.85` factors for high-volatility, low-volume, and Asia-session rows.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter296_blend9770_weak_regime_downweight_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter296_weak_regime_downweight_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter296_blend9770_weak_regime_downweight_platt_logit_c020 --config experiments/configs/20260509_codex_iter296_blend9770_weak_regime_downweight_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter296_blend9770_weak_regime_downweight_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17300964556562526`.
+- Utility before / after: `0.07698289269051321` / `0.07620528771384133`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5820770519262981`.
+- Accepted count before / after: `3120` / `3582`.
+- Coverage before / after: `0.40435458786936235` / `0.4642301710730949`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; weight summary saved at `artifacts/data_v2/experiments/20260509_codex_iter296_weak_regime_downweight_split/weak_regime_downweight_summary.json`.
+- Git commit: `pending`.
+- Interpretation: combined weak-regime downweighting still broadens acceptance and lowers accepted accuracy. Do not keep this weighting.
+- Next step: avoid further weak-regime weighting without a stronger model-side precision mechanism.
