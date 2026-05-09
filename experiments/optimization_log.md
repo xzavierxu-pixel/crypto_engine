@@ -5870,6 +5870,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4127786417833074`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `169ed36`.
 - Interpretation: lower CatBoost randomization also hurts accepted accuracy. Keep `random_strength: 2.0`.
 - Next step: inspect probability and feature diagnostics before selecting the next focused iteration.
