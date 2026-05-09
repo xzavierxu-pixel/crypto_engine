@@ -8237,6 +8237,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `1ec4560`.
 - Interpretation: exact metric tie shows config-only sample-weight changes do not affect cached-split training because `stage1_sample_weight` is already materialized in the cached parquet. This is a useful process finding, not a model improvement.
 - Next step: create a derived cached split with `stage1_sample_weight` recomputed under the aggressive profile and rerun the same model.
