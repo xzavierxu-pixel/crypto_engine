@@ -8383,3 +8383,27 @@ Main bottlenecks:
 - Git commit: `8d9168d`.
 - Interpretation: the regime flags increase coverage and reduce logloss, but accepted precision drops sharply. Do not adopt this flag pack.
 - Next step: avoid more coarse regime flags; pursue either model regularization or a feature-removal path that preserves accepted precision.
+
+## 20260510_codex_iter375_trailing_multiscale_current_blend
+
+- Skill used: `timeseries-multi-scale-rolling-features`.
+- Hypothesis: trailing multi-scale rolling return, total-variation, range-position, and volume-z features may capture medium-term context not present in the current best feature set.
+- Changed files: `experiments/configs/20260510_codex_iter375_trailing_multiscale_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter375_trailing_multiscale_split`.
+- Feature set: 533 features; current best 516 features plus 17 trailing multi-scale OHLCV features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter375_trailing_multiscale_split/trailing_multiscale_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter375_trailing_multiscale_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter375_trailing_multiscale_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter375_trailing_multiscale_current_blend --config experiments/configs/20260510_codex_iter375_trailing_multiscale_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter375_trailing_multiscale_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17476811303837614`.
+- Utility before / after: `0.07698289269051321` / `0.07439087610160708`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5851632047477745`.
+- Accepted count before / after: `3120` / `3370`.
+- Coverage before / after: `0.40435458786936235` / `0.4367547952306895`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records trailing shift(1) feature construction and validation zero rates.
+- Git commit: `pending`.
+- Interpretation: multi-scale trailing context increases accepted count but reduces accepted precision and worsens logloss. Do not adopt this feature pack.
+- Next step: prioritize model regularization or pruning over additional broad rolling context additions.
