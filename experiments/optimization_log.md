@@ -8261,6 +8261,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4175738724727838`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records changed training and validation weight counts.
-- Git commit: `pending`.
+- Git commit: `91374b6`.
 - Interpretation: aggressive reweighting increases accepted count and coverage but reduces accepted accuracy enough to hurt selection_score. Keep the current best weighting profile.
 - Next step: test a conservative reweighting profile only if it materially differs from current weights; otherwise return to feature-source isolation.
