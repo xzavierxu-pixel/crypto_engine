@@ -6491,6 +6491,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42236910316226023`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; OOF generation summary saved at `artifacts/data_v2/experiments/20260509_codex_iter294_oof_lgbm_meta_split/oof_lgbm_meta_summary.json`.
-- Git commit: `pending`.
+- Git commit: `b6f6da9`.
 - Interpretation: the nonlinear OOF LightGBM meta-feature lowers accepted accuracy and score. Do not keep this meta-feature.
 - Next step: stop simple OOF meta-feature stacking.
