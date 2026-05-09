@@ -7853,6 +7853,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.505443234836703`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records added columns and zero missing joined values.
-- Git commit: pending.
+- Git commit: `5b8ba2b`.
 - Interpretation: selected full-profile features increase utility and accepted count but reduce accepted precision enough to lower score. Narrower candidate groups may be more useful than all 10 together.
 - Next step: split the top10 candidates into microstructure-only and minute-lag groups to isolate which source drives utility without precision loss.
