@@ -6445,6 +6445,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4665629860031104`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `ea549a1`.
 - Interpretation: unweighted training broadens acceptance and reduces accepted accuracy. Keep the incumbent return-ramp weighting.
 - Next step: stop simple sample-weight variants.
