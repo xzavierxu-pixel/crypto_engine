@@ -7973,6 +7973,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4681181959564541`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records selected feature count and protected HTF/time features.
-- Git commit: pending.
+- Git commit: `42ce58b`.
 - Interpretation: tighter top400 filtering improves utility but still lowers accepted precision too much. Full-profile feature screening is not enough by itself.
 - Next step: isolate the effect of more data by using the 90-day split with the original current-best 516 feature set.
