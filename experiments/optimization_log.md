@@ -8240,3 +8240,27 @@ Main bottlenecks:
 - Git commit: `1ec4560`.
 - Interpretation: exact metric tie shows config-only sample-weight changes do not affect cached-split training because `stage1_sample_weight` is already materialized in the cached parquet. This is a useful process finding, not a model improvement.
 - Next step: create a derived cached split with `stage1_sample_weight` recomputed under the aggressive profile and rerun the same model.
+
+## 20260510_codex_iter369_aggressive_reweighted_current_blend
+
+- Skill used: existing sample-weighting controls applied to a derived cached split.
+- Hypothesis: recomputing `stage1_sample_weight` with a more aggressive profile may improve accepted precision by reducing the penalty on quieter samples while keeping all features and labels unchanged.
+- Changed files: `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter369_aggressive_reweighted_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter369_aggressive_reweighted_split/aggressive_weight_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter368_aggressive_sample_weight_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter369_aggressive_reweighted_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter369_aggressive_reweighted_current_blend --config experiments/configs/20260510_codex_iter368_aggressive_sample_weight_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter369_aggressive_reweighted_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1644588428421985`.
+- Utility before / after: `0.07698289269051321` / `0.06868843960601352`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5822470515207946`.
+- Accepted count before / after: `3120` / `3222`.
+- Coverage before / after: `0.40435458786936235` / `0.4175738724727838`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records changed training and validation weight counts.
+- Git commit: `pending`.
+- Interpretation: aggressive reweighting increases accepted count and coverage but reduces accepted accuracy enough to hurt selection_score. Keep the current best weighting profile.
+- Next step: test a conservative reweighting profile only if it materially differs from current weights; otherwise return to feature-source isolation.
