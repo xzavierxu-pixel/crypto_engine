@@ -6264,3 +6264,26 @@ Main bottlenecks:
 - Git commit: `6dc9a61`.
 - Interpretation: recency decay greatly broadens acceptance and lowers accepted accuracy. Keep the existing sample weights.
 - Next step: stop recency-decay weighting; look for methods that improve ranking/precision instead of coverage.
+
+## 20260509_codex_iter285_blend9770_high_regime_downweight_platt_logit_c020
+
+- Skill used: data-weighting discipline; the available `tabular-time-varying-reward-shaping` skill was inspected but is RL-specific, so this uses the existing supervised regime-weighted split instead.
+- Hypothesis: downweighting high-volatility regime training rows may reduce influence from the weakest validation slice and improve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter285_blend9770_high_regime_downweight_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter77_high_regime_downweight_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained; cached sample weights downweight high-volatility regime rows.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter285_blend9770_high_regime_downweight_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter77_high_regime_downweight_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter285_blend9770_high_regime_downweight_platt_logit_c020 --config experiments/configs/20260509_codex_iter285_blend9770_high_regime_downweight_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter285_blend9770_high_regime_downweight_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1759591382618237`.
+- Utility before / after: `0.07698289269051321` / `0.0724468636599274`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5880314960629921`.
+- Accepted count before / after: `3120` / `3175`.
+- Coverage before / after: `0.40435458786936235` / `0.41148263348885433`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: high-regime downweighting improves YES/NO balance but lowers accepted accuracy and selection_score. Do not keep this weighting.
+- Next step: test the paired mid-regime upweight split.
