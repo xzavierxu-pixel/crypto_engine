@@ -3365,3 +3365,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: weaker calibration increases coverage but loses accepted accuracy and score. Keep `C: 0.25`.
 - Next step: optionally test the stronger calibration side once, then move to a different lever.
+
+## 20260509_codex_iter159_blend9825_dart_platt_logit_c020
+
+- Skill used: `tabular-logit-transform-stacking` and `tabular-lgbm-dart-boosting`.
+- Hypothesis: stronger logit-calibrator regularization (`C: 0.2`) may improve accepted accuracy on the best DART blend even if coverage tightens slightly.
+- Changed files: `experiments/configs/20260509_codex_iter159_blend9825_dart_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.9825`, current best CatBoost settings, DART LightGBM component, plus `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter159_blend9825_dart_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter159_blend9825_dart_platt_logit_c020 --config experiments/configs/20260509_codex_iter159_blend9825_dart_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter159_blend9825_dart_platt_logit_c020/metrics.json`.
+- Score before: `0.18741881994931217`.
+- Score after: `0.1876924881310137`.
+- Utility before / after: `0.07594608605495075` / `0.07581648522550545`.
+- Accepted accuracy before / after: `0.5939102564102564` / `0.5942636158556236`.
+- Accepted count before / after: `3120` / `3103`.
+- Coverage before / after: `0.40435458786936235` / `0.4021513737687921`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: `C: 0.2` is a valid new best by improving accepted accuracy enough to offset lower coverage and utility.
+- Next step: keep this as the benchmark; coverage is close to the floor, so future changes should avoid reducing coverage further.
