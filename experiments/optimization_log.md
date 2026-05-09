@@ -5594,6 +5594,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4037065837221358`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; null-tail source file is `artifacts/data_v2/experiments/20260508_codex_iter54_null_tail20_split/null_tail20_drops.csv`.
-- Git commit: `pending`.
+- Git commit: `6b3d651`.
 - Interpretation: null-importance tail pruning materially lowers accepted accuracy. Keep the current 516-feature split.
 - Next step: avoid aggressive null-importance pruning under the current blend.
