@@ -1,0 +1,19 @@
+{
+  "base_split": "artifacts\\data_v2\\experiments\\20260508_codex_iter43_train75_drop_sl_vwap_split",
+  "source": "artifacts\\data_v2\\normalized\\option\\BVOLIndex\\BTCBVOLUSDT.parquet",
+  "alignment": "BVOL resampled to 1min last, feature timestamp shifted +1min, backward asof to t0 with 10min tolerance",
+  "feature_columns": [
+    "bvol_lag1m",
+    "bvol_log_lag1m",
+    "bvol_log_ret_5m",
+    "bvol_log_ret_15m",
+    "bvol_log_ret_60m",
+    "bvol_log_z_30m",
+    "bvol_log_dev_30m",
+    "bvol_log_z_120m",
+    "bvol_log_dev_120m",
+    "bvol_abs_change_mean_15m",
+    "bvol_abs_change_mean_60m"
+  ],
+  "source_rows_used": 9237311
+}

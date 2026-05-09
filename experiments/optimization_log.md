@@ -9244,3 +9244,37 @@ Interpretation: rejected. The depth context increased accepted_count and coverag
 Next step: test a different downloaded source or a narrower transformation that targets accepted accuracy rather than broad liquidity coverage.
 
 Git commit: d76b86d
+
+
+## 2026-05-10 - Iteration 410 - BVOL causal volatility context
+
+Hypothesis: The downloaded Binance option BVOL index captures implied-volatility regime changes that can improve selective direction accuracy when represented as short causal changes and trailing deviations.
+
+Skills used: `timeseries-multi-scale-rolling-features` for causal rolling volatility context and `tabular-relative-deviation-features` conceptually for trailing deviation/z-score transforms. Group/future aggregates were not used.
+
+Changed files/artifacts:
+- `artifacts/data_v2/experiments/20260510_codex_iter410_bvol_context_split/development_frame.parquet`
+- `artifacts/data_v2/experiments/20260510_codex_iter410_bvol_context_split/validation_frame.parquet`
+- `artifacts/data_v2/experiments/20260510_codex_iter410_bvol_context_split/bvol_features_manifest.json`
+- `experiments/configs/20260510_codex_iter410_bvol_context_current_blend.yaml`
+- `artifacts/data_v2/experiments/20260510_codex_iter410_bvol_context_current_blend/metrics.json`
+
+Feature/alignment notes: added 11 `bvol_*` features from `artifacts/data_v2/normalized/option/BVOLIndex/BTCBVOLUSDT.parquet`: level/log level, 5m/15m/60m log changes, 30m/120m trailing log z-score/deviation, and 15m/60m absolute-change means. BVOL is resampled to 1m last, shifted +1 minute, and backward-asof joined to sample `timestamp` with 10m tolerance. Development and validation have zero nulls in new features.
+
+Official command:
+
+```powershell
+rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter410_bvol_context_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter410_bvol_context_current_blend --config experiments/configs/20260510_codex_iter410_bvol_context_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30
+```
+
+Baseline before: selection_score `0.1902780361`, utility `0.0769828927`, accepted_sample_accuracy `0.5951923077`, accepted_count `3120`, coverage `0.4043545879`.
+
+After: selection_score `0.1778959238`, utility `0.0799637118`, accepted_sample_accuracy `0.5825970549`, accepted_count `3735`, coverage `0.4840590980`, up/down counts `2369/1366`, thresholds `0.575/0.345`.
+
+Coverage constraint satisfied: yes.
+
+Interpretation: rejected. BVOL increased utility and accepted_count, but lower accepted_sample_accuracy outweighed that improvement under the downside-risk denominator.
+
+Next step: continue with narrower data-processing or feature-selection experiments aimed at accepted accuracy, not broader signal coverage.
+
+Git commit: PENDING
