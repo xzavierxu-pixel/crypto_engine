@@ -5824,6 +5824,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40448418869880765`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `b4c3ec5`.
 - Interpretation: increasing DART feature fraction does not help; both sides around `0.35` reduce accepted accuracy. Keep the current DART feature fraction.
 - Next step: pivot to CatBoost regularization, which dominates the blend weight.
