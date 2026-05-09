@@ -9183,6 +9183,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4320891653706584`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records zero-null joins from the conservatively shifted iter405 futures context.
-- Git commit: pending.
+- Git commit: `a28cf86`.
 - Interpretation: futures price-context columns are worse than the full compact futures pack and the incumbent. Do not adopt this subset.
 - Next step: stop isolating futures subsets by source group; use futures only if a new interaction or alignment hypothesis emerges.
