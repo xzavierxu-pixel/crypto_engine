@@ -8699,3 +8699,26 @@ Main bottlenecks:
 - Git commit: `08fc36e`.
 - Interpretation: clipping drifted feature extremes broadens the accepted set but lowers accepted precision too much. Do not adopt this winsorization.
 - Next step: avoid broad drift clipping; investigate transformations that specifically improve ranking near the current acceptance boundary.
+
+## 20260510_codex_iter388_active_cat_bernoulli08_current_blend
+
+- Skill used: CatBoost model regularization guided by bootstrap/subsampling principles.
+- Hypothesis: switching the dominant active CatBoost component from Bayesian bootstrap to Bernoulli bootstrap with `subsample: 0.8` may reduce tree overfit and improve accepted precision.
+- Changed files: `experiments/configs/20260510_codex_iter388_active_cat_bernoulli08_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend except active nested CatBoost adds `bootstrap_type: Bernoulli`, `subsample: 0.8`, and omits Bayesian-only `bagging_temperature`; DART and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter388_active_cat_bernoulli08_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter388_active_cat_bernoulli08_current_blend --config experiments/configs/20260510_codex_iter388_active_cat_bernoulli08_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter388_active_cat_bernoulli08_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17414532462917914`.
+- Utility before / after: `0.07698289269051321` / `0.07076205287713842`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5882352941176471`.
+- Accepted count before / after: `3120` / `3094`.
+- Coverage before / after: `0.40435458786936235` / `0.40098496630378433`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; first attempted Bernoulli config failed because `bagging_temperature` is Bayesian-only, then the config was corrected and rerun successfully.
+- Git commit: pending.
+- Interpretation: Bernoulli bootstrap lowers accepted precision and nearly falls to the coverage floor. Keep Bayesian bootstrap with `bagging_temperature: 0.5`.
+- Next step: avoid CatBoost bootstrap variants unless paired with a stronger validation-agnostic model selection signal.
