@@ -1305,3 +1305,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: extra recency decay inside the 75-day window over-accepts and lowers accepted accuracy. The hard 75-day window with original sample weights remains best.
 - Next step: avoid broad recency reweighting and inspect prediction-error slices for a more targeted feature or family ablation.
+
+## 20260509_codex_iter66_session_relative_catboost
+
+- Skill used: `tabular-relative-deviation-features`.
+- Hypothesis: train-fitted session-relative deviations for volatility and volume context may help CatBoost distinguish unusually active regimes where false signals concentrate.
+- Changed files: `experiments/configs/20260509_codex_iter66_session_relative_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter66_session_relative_split`.
+- Feature set: current best VWAP-pruned top-500 split plus session-relative diff/ratio/z features for `rv_5`, `volume`, `relative_volume_20`, `htf_rv_15m`, and `dollar_vol_mean_20`; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter66_session_relative_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter66_session_relative_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter66_session_relative_catboost --config experiments/configs/20260509_codex_iter66_session_relative_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter66_session_relative_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.177574444268134`.
+- Utility before / after: `0.0751684810782789` / `0.07361327112493518`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5881987577639751`.
+- Accepted count before / after: `3245` / `3220`.
+- Coverage before / after: `0.4205546915500259` / `0.41731467081389323`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: session-relative features are the strongest new feature-family result in this continuation batch, but still narrowly below the current best because coverage and utility slip.
+- Next step: refine this near-miss by using fewer relative features or combining only the most relevant volume/volatility deviations.
