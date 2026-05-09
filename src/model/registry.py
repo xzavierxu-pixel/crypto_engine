@@ -9,6 +9,7 @@ from src.model.catboost_session_plugin import CatBoostSessionPlugin
 from src.model.lightgbm_plugin import LightGBMClassifierPlugin
 from src.model.logit_blend_plugin import CatBoostLightGBMLogitBlendPlugin
 from src.model.logistic_plugin import LogisticRegressionPlugin
+from src.model.rank_blend_plugin import CatBoostLightGBMRankBlendPlugin
 from src.model.xgboost_plugin import XGBoostClassifierPlugin
 
 
@@ -22,6 +23,7 @@ MODEL_PLUGINS: dict[str, type[ModelPlugin]] = {
     "catboost_regime": CatBoostRegimePlugin,
     "catboost_session": CatBoostSessionPlugin,
     "catboost_lgbm_logit_blend": CatBoostLightGBMLogitBlendPlugin,
+    "catboost_lgbm_rank_blend": CatBoostLightGBMRankBlendPlugin,
     "xgboost": XGBoostClassifierPlugin,
     "logistic": LogisticRegressionPlugin,
 }

@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+import pickle
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pandas as pd
+from catboost import CatBoostClassifier
+from lightgbm import LGBMClassifier
+
+from src.model.base import ModelPlugin
+
+
+class CatBoostLightGBMRankBlendPlugin(ModelPlugin):
+    name = "catboost_lgbm_rank_blend"
+
+    def __init__(self, **params: Any) -> None:
+        raw_params = dict(params)
+        self.catboost_weight = float(raw_params.pop("catboost_weight", 0.85))
+        self.catboost_params = dict(raw_params.pop("catboost", {}))
+        self.lightgbm_params = dict(raw_params.pop("lightgbm", {}))
+        self.catboost_params.setdefault("verbose", False)
+        self.lightgbm_params.setdefault("verbosity", -1)
+        self.params = {
+            "catboost_weight": self.catboost_weight,
+            "catboost": self.catboost_params,
+            "lightgbm": self.lightgbm_params,
+        }
+        self.catboost_model = CatBoostClassifier(**self.catboost_params)
+        self.lightgbm_model = LGBMClassifier(**self.lightgbm_params)
+        self.catboost_reference: np.ndarray | None = None
+        self.lightgbm_reference: np.ndarray | None = None
+
+    def fit(
+        self,
+        X_train: pd.DataFrame,
+        y_train: pd.Series,
+        X_valid: pd.DataFrame | None = None,
+        y_valid: pd.Series | None = None,
+        sample_weight: pd.Series | None = None,
+        sample_weight_valid: pd.Series | None = None,
+    ) -> "CatBoostLightGBMRankBlendPlugin":
+        catboost_fit_kwargs: dict[str, Any] = {}
+        if X_valid is not None and y_valid is not None:
+            catboost_fit_kwargs["eval_set"] = (X_valid, y_valid)
+        if sample_weight is not None:
+            catboost_fit_kwargs["sample_weight"] = sample_weight
+        self.catboost_model.fit(X_train, y_train, **catboost_fit_kwargs)
+
+        lightgbm_fit_kwargs: dict[str, Any] = {}
+        if X_valid is not None and y_valid is not None:
+            lightgbm_fit_kwargs["eval_set"] = [(X_valid, y_valid)]
+            lightgbm_fit_kwargs["eval_names"] = ["validation"]
+            if sample_weight_valid is not None:
+                lightgbm_fit_kwargs["eval_sample_weight"] = [sample_weight_valid]
+        if sample_weight is not None:
+            lightgbm_fit_kwargs["sample_weight"] = sample_weight
+        self.lightgbm_model.fit(X_train, y_train, **lightgbm_fit_kwargs)
+
+        self.catboost_reference = np.sort(self.catboost_model.predict_proba(X_train)[:, 1].astype("float64"))
+        self.lightgbm_reference = np.sort(self.lightgbm_model.predict_proba(X_train)[:, 1].astype("float64"))
+        return self
+
+    def predict_proba(self, X: pd.DataFrame) -> pd.Series:
+        if self.catboost_reference is None or self.lightgbm_reference is None:
+            raise ValueError("CatBoostLightGBMRankBlendPlugin has not been fitted.")
+        catboost_rank = self._rank_against_reference(
+            self.catboost_model.predict_proba(X)[:, 1],
+            self.catboost_reference,
+        )
+        lightgbm_rank = self._rank_against_reference(
+            self.lightgbm_model.predict_proba(X)[:, 1],
+            self.lightgbm_reference,
+        )
+        probabilities = self.catboost_weight * catboost_rank + (1.0 - self.catboost_weight) * lightgbm_rank
+        return pd.Series(probabilities, index=X.index, name="p_up")
+
+    def get_feature_importance(self) -> np.ndarray:
+        catboost_importance = self.catboost_model.get_feature_importance()
+        lightgbm_importance = self.lightgbm_model.booster_.feature_importance(importance_type="gain")
+        if len(catboost_importance) != len(lightgbm_importance):
+            return np.array([], dtype="float64")
+        return (
+            self.catboost_weight * catboost_importance
+            + (1.0 - self.catboost_weight) * lightgbm_importance
+        )
+
+    def save(self, path: str | Path) -> None:
+        with Path(path).open("wb") as handle:
+            pickle.dump(
+                {
+                    "params": self.params,
+                    "catboost_model": self.catboost_model,
+                    "lightgbm_model": self.lightgbm_model,
+                    "catboost_reference": self.catboost_reference,
+                    "lightgbm_reference": self.lightgbm_reference,
+                },
+                handle,
+            )
+
+    @classmethod
+    def load(cls, path: str | Path) -> "CatBoostLightGBMRankBlendPlugin":
+        with Path(path).open("rb") as handle:
+            payload = pickle.load(handle)
+        plugin = cls(**payload["params"])
+        plugin.catboost_model = payload["catboost_model"]
+        plugin.lightgbm_model = payload["lightgbm_model"]
+        plugin.catboost_reference = payload["catboost_reference"]
+        plugin.lightgbm_reference = payload["lightgbm_reference"]
+        return plugin
+
+    @staticmethod
+    def _rank_against_reference(probabilities: np.ndarray, reference: np.ndarray) -> np.ndarray:
+        return np.searchsorted(reference, probabilities.astype("float64"), side="right") / max(len(reference), 1)
