@@ -7008,3 +7008,27 @@ Main bottlenecks:
 - Git commit: `2f25f3e`.
 - Interpretation: the top drift feature is still useful; dropping it materially lowers accepted accuracy. Keep it.
 - Next step: drift alone is not a sufficient drop criterion; use objective-driven ablations only.
+
+## 20260509_codex_iter317_train80_drop_sl_vwap_current_blend
+
+- Skill used: recency-window data processing.
+- Hypothesis: using a slightly longer 80-day training window than the 75-day best may add useful recent history while preserving the known-good `sl_vwap_10s`/`sl_vwap_30s` drop.
+- Changed files: `experiments/configs/20260509_codex_iter317_train80_drop_sl_vwap_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter317_train80_drop_sl_vwap_split`.
+- Feature set: 516 features; same current best feature set; `sl_vwap_10s` and `sl_vwap_30s` dropped; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter317_train80_drop_sl_vwap_split/train80_drop_sl_vwap_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter317_train80_drop_sl_vwap_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter317_train80_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter317_train80_drop_sl_vwap_current_blend --config experiments/configs/20260509_codex_iter317_train80_drop_sl_vwap_current_blend.yaml --horizon 5m --train-window-days 80 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter317_train80_drop_sl_vwap_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16196562580379897`.
+- Utility before / after: `0.07698289269051321` / `0.06881804043545878`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5800422068133856`.
+- Accepted count before / after: `3120` / `3317`.
+- Coverage before / after: `0.40435458786936235` / `0.4298859512700881`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: the 80-day window adds rows but lowers accepted accuracy sharply. Keep the 75-day current best window.
+- Next step: avoid nearby longer windows unless a recency-weighted version can preserve the 75-day precision profile.
