@@ -6356,3 +6356,26 @@ Main bottlenecks:
 - Git commit: `68272ef`.
 - Interpretation: squared weights still lower accepted accuracy and score. Keep the incumbent linear return-ramp sample weighting.
 - Next step: move away from global sample-weight shape variants.
+
+## 20260509_codex_iter289_blend9770_train_abs_return_ge5bp_platt_logit_c020
+
+- Skill used: data-filtering discipline; anomaly/low-signal filtering inspired by `tabular-anomaly-flag-imputation` inspection but applied as an existing supervised split rather than sentinel imputation.
+- Hypothesis: training only on clearer `abs_return >= 5bp` examples may improve accepted accuracy while keeping validation unchanged.
+- Changed files: `experiments/configs/20260509_codex_iter289_blend9770_train_abs_return_ge5bp_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter104_train_abs_return_ge5bp_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained; development rows filtered to `abs_return >= 0.0005`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter289_blend9770_train_abs_return_ge5bp_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter104_train_abs_return_ge5bp_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter289_blend9770_train_abs_return_ge5bp_platt_logit_c020 --config experiments/configs/20260509_codex_iter289_blend9770_train_abs_return_ge5bp_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter289_blend9770_train_abs_return_ge5bp_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17444922153409623`.
+- Utility before / after: `0.07698289269051321` / `0.07763089683773977`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5819425444596443`.
+- Accepted count before / after: `3120` / `3655`.
+- Coverage before / after: `0.40435458786936235` / `0.4736910316226024`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: filtering to clearer high-return training rows increases utility and coverage but lowers accepted accuracy. Do not keep this filtered training split.
+- Next step: if continuing return-filter branches, test less aggressive existing low/tiny-return filters only once under the current blend.
