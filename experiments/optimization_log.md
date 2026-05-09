@@ -8166,6 +8166,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.47952306894764124`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records development-fitted quantile counts and zero NaN additions.
-- Git commit: pending.
+- Git commit: `236d849`.
 - Interpretation: narrowing to top3 rank transforms is worse than the top10 rank pack and far below the current best. Close percentile-rank transform path.
 - Next step: test sparse extreme-quantile flags instead of continuous rank transforms.
