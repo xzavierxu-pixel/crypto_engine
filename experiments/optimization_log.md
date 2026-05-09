@@ -3226,3 +3226,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: `C: 0.3` adds coverage but loses accepted accuracy and score. Keep `C: 0.25`.
 - Next step: avoid weakening calibration further on this branch.
+
+## 20260509_codex_iter153_blend985_dart_aggressive_platt_logit
+
+- Skill used: `tabular-lgbm-dart-boosting` plus `tabular-logit-transform-stacking`.
+- Hypothesis: a more aggressively subsampled DART component may add a more diverse 1.5% ranking perturbation while CatBoost remains dominant.
+- Changed files: `experiments/configs/20260509_codex_iter153_blend985_dart_aggressive_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.985`, DART LightGBM with `subsample: 0.5`, `colsample_bytree: 0.2`, `min_child_samples: 80`, plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter153_blend985_dart_aggressive_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter153_blend985_dart_aggressive_platt_logit --config experiments/configs/20260509_codex_iter153_blend985_dart_aggressive_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter153_blend985_dart_aggressive_platt_logit/metrics.json`.
+- Score before: `0.18682834549642668`.
+- Score after: `0.18500627807829803`.
+- Utility before / after: `0.0755572835666148` / `0.0749092794193883`.
+- Accepted accuracy before / after: `0.5938204055358867` / `0.592985842985843`.
+- Accepted count before / after: `3107` / `3108`.
+- Coverage before / after: `0.40266977708657337` / `0.40279937791601866`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: more aggressive DART subsampling lowers accepted accuracy and score. Keep the original DART component from iteration 149.
+- Next step: avoid further DART component widening unless guided by new diagnostics.
