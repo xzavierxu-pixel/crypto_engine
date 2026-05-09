@@ -8963,6 +8963,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4568429237947123`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records blocked OOF folds and validation prediction range.
-- Git commit: pending.
+- Git commit: `c7db50c`.
 - Interpretation: the 1bp activity meta-feature broadens acceptance but lowers accepted precision, similar to the previous 5bp activity meta-feature. Do not adopt activity meta-features in this form.
 - Next step: avoid auxiliary activity meta-features unless formulated as a separate model component rather than a final-model feature.
