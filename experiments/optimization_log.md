@@ -7103,3 +7103,27 @@ Main bottlenecks:
 - Git commit: `0a97846`.
 - Interpretation: flow-agreement interactions broaden acceptance and lower accepted accuracy. Do not keep these features.
 - Next step: avoid adding microstructure interaction features unless validated by out-of-fold selection.
+
+## 20260509_codex_iter321_context_quantile_rank_current_blend
+
+- Skill used: `tabular-relative-deviation-features`.
+- Hypothesis: causal rolling rank/z-score context for volatility and volume features may make drifted regime variables more stationary while preserving their useful signal.
+- Changed files: `experiments/configs/20260509_codex_iter321_context_quantile_rank_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter321_context_quantile_rank_split`.
+- Feature set: 532 features; current best 516 features plus 16 rolling rank/z-score context features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260509_codex_iter321_context_quantile_rank_split/context_quantile_rank_summary.json`.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter321_context_quantile_rank_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter321_context_quantile_rank_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter321_context_quantile_rank_current_blend --config experiments/configs/20260509_codex_iter321_context_quantile_rank_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter321_context_quantile_rank_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1745115727540636`.
+- Utility before / after: `0.07698289269051321` / `0.07141005702436497`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5878787878787879`.
+- Accepted count before / after: `3120` / `3135`.
+- Coverage before / after: `0.40435458786936235` / `0.406298600311042`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary reports zero validation missing added values.
+- Git commit: `pending`.
+- Interpretation: rolling context ranks lower accepted accuracy and selection_score. Do not keep these features.
+- Next step: avoid broad contextual transformations unless they are selected out-of-fold.
