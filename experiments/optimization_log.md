@@ -1901,3 +1901,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: Bernoulli bootstrap over-accepts and lowers accepted accuracy. The best Bayesian bootstrap CatBoost settings remain preferable.
 - Next step: keep the current best as benchmark.
+
+## 20260509_codex_iter94_drop_low_abs_return_train_catboost
+
+- Skill used: data-weighting guidance from `tabular-balanced-log-loss` / prior-focused training.
+- Hypothesis: very low-absolute-return development rows are noisy for a 5m direction task; removing them may improve selective confidence more than simply downweighting them.
+- Changed files: `experiments/configs/20260509_codex_iter94_drop_low_abs_return_train_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter94_drop_low_abs_return_train_split`.
+- Data processing: removed development rows with `abs_return < 0.0001`, keeping 18,428 of 19,922 rows; validation unchanged.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter94_drop_low_abs_return_train_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter94_drop_low_abs_return_train_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter94_drop_low_abs_return_train_catboost --config experiments/configs/20260509_codex_iter94_drop_low_abs_return_train_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter94_drop_low_abs_return_train_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1771564762476538`.
+- Utility before / after: `0.0751684810782789` / `0.07257646448937274`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5888888888888889`.
+- Accepted count before / after: `3245` / `3150`.
+- Coverage before / after: `0.4205546915500259` / `0.4082426127527216`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: filtering low-absolute-return training rows is a valid near-miss, preserving accepted accuracy but losing too much coverage and utility.
+- Next step: test a milder low-absolute-return filter.
