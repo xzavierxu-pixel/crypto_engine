@@ -2186,3 +2186,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: smoother longer training lowers coverage to the floor and does not improve score. The incumbent remains better.
 - Next step: avoid more same-family CatBoost smoothing unless paired with a clear feature/data change.
+
+## 20260509_codex_iter107_catboost_temp025
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: lowering Bayesian bootstrap randomness to `bagging_temperature: 0.25` while keeping `random_strength: 2.0` may preserve the current best structure but reduce variance in noisy splits.
+- Changed files: `experiments/configs/20260509_codex_iter107_catboost_temp025.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings with `bagging_temperature: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter107_catboost_temp025.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter107_catboost_temp025 --config experiments/configs/20260509_codex_iter107_catboost_temp025.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter107_catboost_temp025/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1809171641645443`.
+- Utility before / after: `0.0751684810782789` / `0.0751684810782789`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5893958076448829`.
+- Accepted count before / after: `3245` / `3244`.
+- Coverage before / after: `0.4205546915500259` / `0.4204250907205806`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: this is effectively neutral and does not beat the incumbent after accepted-count/coverage tie-breakers.
+- Next step: test the opposite side with `bagging_temperature: 0.75`.
