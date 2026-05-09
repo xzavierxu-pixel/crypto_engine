@@ -4604,6 +4604,6 @@ Main bottlenecks:
 - Coverage before / after: `0.4047433903576983` / `0.4047433903576983`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `601066e`.
 - Interpretation: CatBoost bagging temperature change is numerically inert under the current setup. Keep `0.5` and avoid this lever.
 - Next step: move to another training lever.
