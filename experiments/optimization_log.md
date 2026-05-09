@@ -3203,3 +3203,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: the midpoint is slightly worse; keep `catboost_weight: 0.985`.
 - Next step: stop DART blend-weight tuning and test a different lever.
+
+## 20260509_codex_iter152_blend985_dart_platt_logit_c030
+
+- Skill used: `tabular-logit-transform-stacking` and `tabular-lgbm-dart-boosting`.
+- Hypothesis: the best DART blend may benefit from slightly weaker logit-calibrator regularization (`C: 0.3`) to recover coverage/utility.
+- Changed files: `experiments/configs/20260509_codex_iter152_blend985_dart_platt_logit_c030.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: `catboost_lgbm_logit_blend`, `catboost_weight: 0.985`, DART LightGBM component, plus `calibration.active_plugin: platt_logit`, `C: 0.3`.
+- Config: `experiments/configs/20260509_codex_iter152_blend985_dart_platt_logit_c030.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter152_blend985_dart_platt_logit_c030 --config experiments/configs/20260509_codex_iter152_blend985_dart_platt_logit_c030.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter152_blend985_dart_platt_logit_c030/metrics.json`.
+- Score before: `0.18682834549642668`.
+- Score after: `0.18545411201649561`.
+- Utility before / after: `0.0755572835666148` / `0.07529808190772425`.
+- Accepted accuracy before / after: `0.5938204055358867` / `0.59296`.
+- Accepted count before / after: `3107` / `3125`.
+- Coverage before / after: `0.40266977708657337` / `0.4050025920165889`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: `C: 0.3` adds coverage but loses accepted accuracy and score. Keep `C: 0.25`.
+- Next step: avoid weakening calibration further on this branch.
