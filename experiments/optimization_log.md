@@ -3549,3 +3549,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: lower DART column sampling hurts accepted accuracy. Keep `colsample_bytree: 0.35`.
 - Next step: avoid DART column-sampling changes.
+
+## 20260509_codex_iter167_blend9775_dart_minchild200_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting` and `tabular-logit-transform-stacking`.
+- Hypothesis: increasing DART `min_child_samples` from `120` to `200` may smooth the LightGBM perturbation and improve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter167_blend9775_dart_minchild200_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: best DART blend with `catboost_weight: 0.9775`, `calibration.active_plugin: platt_logit`, `C: 0.2`, and nested DART `min_child_samples: 200`.
+- Config: `experiments/configs/20260509_codex_iter167_blend9775_dart_minchild200_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter167_blend9775_dart_minchild200_platt_logit_c020 --config experiments/configs/20260509_codex_iter167_blend9775_dart_minchild200_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter167_blend9775_dart_minchild200_platt_logit_c020/metrics.json`.
+- Score before: `0.1884526862901693`.
+- Score after: `0.18840901158061896`.
+- Utility before / after: `0.07633488854328671` / `0.0760756868843961`.
+- Accepted accuracy before / after: `0.594360781800705` / `0.5945858846277796`.
+- Accepted count before / after: `3121` / `3103`.
+- Coverage before / after: `0.40448418869880765` / `0.4021513737687921`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: higher `min_child_samples` improves accepted accuracy but loses enough utility/coverage to narrowly trail the best.
+- Next step: keep `min_child_samples: 120` unless combining with a coverage-recovering change.
