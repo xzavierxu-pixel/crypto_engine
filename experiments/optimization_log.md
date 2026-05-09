@@ -6241,3 +6241,26 @@ Main bottlenecks:
 - Git commit: `c6ca109`.
 - Interpretation: trailing path features broaden acceptance and lower accepted accuracy. Do not keep this feature pack.
 - Next step: reassess remaining branches; added feature packs are consistently diluting precision under the current blend.
+
+## 20260509_codex_iter284_blend9770_recent75_decay_platt_logit_c020
+
+- Skill used: data-weighting/recency discipline; no exact local recency-weighting skill applies to this supervised classification path.
+- Hypothesis: recency-decayed sample weights over the same 75-day window may improve adaptation to the current validation regime without adding noisy features or changing labels.
+- Changed files: `experiments/configs/20260509_codex_iter284_blend9770_recent75_decay_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter65_recent75_decay_split`.
+- Feature set: 516 features; same as current best; HTF/time features retained; sample weights are recency-decayed in the cached split.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter284_blend9770_recent75_decay_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter65_recent75_decay_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter284_blend9770_recent75_decay_platt_logit_c020 --config experiments/configs/20260509_codex_iter284_blend9770_recent75_decay_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter284_blend9770_recent75_decay_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1628970060693794`.
+- Utility before / after: `0.07698289269051321` / `0.07516848107827885`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5750129332643559`.
+- Accepted count before / after: `3120` / `3866`.
+- Coverage before / after: `0.40435458786936235` / `0.5010368066355625`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: recency decay greatly broadens acceptance and lowers accepted accuracy. Keep the existing sample weights.
+- Next step: stop recency-decay weighting; look for methods that improve ranking/precision instead of coverage.
