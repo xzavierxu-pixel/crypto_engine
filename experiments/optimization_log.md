@@ -1284,3 +1284,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: regime flags are directionally reasonable but still reduce accepted accuracy relative to the best model. The underlying continuous features are likely sufficient for CatBoost.
 - Next step: test stricter recency weighting within the best 75-day split.
+
+## 20260509_codex_iter65_recent75_decay_catboost
+
+- Hypothesis: applying additional recency decay inside the best 75-day development window may emphasize the regime closest to validation and improve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter65_recent75_decay_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter65_recent75_decay_split`.
+- Data processing: multiplied existing `stage1_sample_weight` by `0.40 + 0.60 * exp(-age_days / 20)`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter65_recent75_decay_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter65_recent75_decay_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter65_recent75_decay_catboost --config experiments/configs/20260509_codex_iter65_recent75_decay_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter65_recent75_decay_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1584630212684989`.
+- Utility before / after: `0.0751684810782789` / `0.07374287195438055`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5727435438506776`.
+- Accepted count before / after: `3245` / `3911`.
+- Coverage before / after: `0.4205546915500259` / `0.5068688439606014`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: extra recency decay inside the 75-day window over-accepts and lowers accepted accuracy. The hard 75-day window with original sample weights remains best.
+- Next step: avoid broad recency reweighting and inspect prediction-error slices for a more targeted feature or family ablation.
