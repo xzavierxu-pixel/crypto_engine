@@ -6146,6 +6146,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4740798341109383`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `9be7bcd`.
 - Interpretation: top-feature row aggregates broaden acceptance and reduce accepted accuracy. Do not keep this feature pack.
 - Next step: compact additions continue to dilute precision; prioritize feature filtering or alternative data windows over more broad row aggregates.
