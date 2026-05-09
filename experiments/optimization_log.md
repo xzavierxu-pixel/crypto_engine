@@ -6468,6 +6468,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4061689994815967`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; OOF generation summary saved at `artifacts/data_v2/experiments/20260509_codex_iter293_oof_logistic_meta_split/oof_logistic_meta_summary.json`.
-- Git commit: `pending`.
+- Git commit: `8466538`.
 - Interpretation: the OOF logistic meta-feature does not improve ranking and lowers selection_score. Do not keep this meta-feature.
 - Next step: avoid simple OOF logistic stacking unless paired with a materially different auxiliary target.
