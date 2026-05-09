@@ -5317,6 +5317,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42431311560393986`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; transform summary saved at `artifacts/data_v2/experiments/20260509_codex_iter243_top8_trailing_lagdiff_roll_split/lagdiff_roll_summary.json`; validation features use chronological development+validation context with shift/lag only.
-- Git commit: `pending`.
+- Git commit: `4fb4081`.
 - Interpretation: broad trailing microstructure expansion increases coverage and side balance but materially lowers accepted accuracy and selection_score. Do not keep this feature pack.
 - Next step: use more local data via a longer training window, rather than adding broad derived features to the current split.
