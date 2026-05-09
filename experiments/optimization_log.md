@@ -6399,6 +6399,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40422498703991705`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `0bc4214`.
 - Interpretation: less aggressive tiny-return filtering still lowers accepted accuracy and score. Keep the full development set.
 - Next step: avoid further simple return-filter branches unless paired with a materially different model.
