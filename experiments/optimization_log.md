@@ -5528,3 +5528,26 @@ Main bottlenecks:
 - Git commit: `68649dc`.
 - Interpretation: filtering ambiguous low-return training samples reduces accepted accuracy and does not improve the objective.
 - Next step: avoid low-return training filters on this branch.
+
+## 20260509_codex_iter253_blend9770_gmm_regime_top10_platt_logit_c020
+
+- Skill used: `tabular-gmm-feature-augmentation`, adapted as unsupervised GMM regime feature augmentation rather than synthetic sampling.
+- Hypothesis: development-fitted GMM cluster probabilities over top market/microstructure features may expose latent regimes and improve accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter253_blend9770_gmm_regime_top10_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter253_gmm_regime_top10_split`.
+- Feature set: 524 features; added 5 GMM probabilities plus max-probability, entropy, and log-likelihood; GMM/imputer/scaler fit on development only; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter253_blend9770_gmm_regime_top10_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter253_gmm_regime_top10_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter253_blend9770_gmm_regime_top10_platt_logit_c020 --config experiments/configs/20260509_codex_iter253_blend9770_gmm_regime_top10_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter253_blend9770_gmm_regime_top10_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16766327576169632`.
+- Utility before / after: `0.07698289269051321` / `0.07555728356661487`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.578423459779392`.
+- Accepted count before / after: `3120` / `3717`.
+- Coverage before / after: `0.40435458786936235` / `0.4817262830482115`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; GMM transform summary saved at `artifacts/data_v2/experiments/20260509_codex_iter253_gmm_regime_top10_split/gmm_summary.json`.
+- Git commit: `pending`.
+- Interpretation: dense GMM regime probabilities over-broaden acceptance and dilute accepted accuracy. Do not keep this feature pack.
+- Next step: try simpler discretized/bin features if adding regime context, not dense unsupervised probabilities.
