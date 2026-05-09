@@ -7524,6 +7524,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4094090202177294`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `3f2422d`.
 - Interpretation: stronger active CatBoost randomization hurts accepted precision. Keep `random_strength: 2.0`.
 - Next step: test slightly lower active CatBoost L2 regularization to see whether the model needs more capacity instead.
