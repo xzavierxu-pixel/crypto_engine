@@ -6675,6 +6675,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4311819595645412`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `968c79d`.
 - Interpretation: stronger top-feature compression broadens acceptance and reduces accepted accuracy. Do not keep this split.
 - Next step: avoid further broad feature-count compression; focus on localized feature semantics or model regularization.
