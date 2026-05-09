@@ -7570,6 +7570,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42107309486780714`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `9194596`.
 - Interpretation: higher active CatBoost L2 improves logloss but lowers selection_score versus best. Keep `l2_leaf_reg: 30.0`.
 - Next step: test calibration regularization around current `platt_logit C=0.2`.
