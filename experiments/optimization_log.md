@@ -2835,3 +2835,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: weaker L2 hurts accepted accuracy and score; do not lower L2 on the current split.
 - Next step: test the stronger L2 side once, then move away from local CatBoost L2 tuning if it fails.
+
+## 20260509_codex_iter136_catboost_l240_platt_logit
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: increasing CatBoost `l2_leaf_reg` from `30.0` to `40.0` may reduce overfit and improve accepted accuracy after logit-space calibration.
+- Changed files: `experiments/configs/20260509_codex_iter136_catboost_l240_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings with `l2_leaf_reg: 40.0`, plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter136_catboost_l240_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter136_catboost_l240_platt_logit --config experiments/configs/20260509_codex_iter136_catboost_l240_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter136_catboost_l240_platt_logit/metrics.json`.
+- Score before: `0.1846861980124185`.
+- Score after: `0.1600604577681406`.
+- Utility before / after: `0.07477967858994294` / `0.06791083462934161`.
+- Accepted accuracy before / after: `0.592854843900869` / `0.5793458509993943`.
+- Accepted count before / after: `3107` / `3302`.
+- Coverage before / after: `0.40266977708657337` / `0.4279419388284085`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: stronger L2 materially hurts accepted accuracy; keep `l2_leaf_reg: 30.0`.
+- Next step: stop local L2 tuning and return to data/feature generation or a different model-family lever.
