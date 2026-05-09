@@ -7573,3 +7573,26 @@ Main bottlenecks:
 - Git commit: `9194596`.
 - Interpretation: higher active CatBoost L2 improves logloss but lowers selection_score versus best. Keep `l2_leaf_reg: 30.0`.
 - Next step: test calibration regularization around current `platt_logit C=0.2`.
+
+## 20260510_codex_iter341_platt_c010_current_blend
+
+- Skill used: `tabular-logit-transform-stacking`.
+- Hypothesis: stronger Platt/logit calibration regularization (`C: 0.2 -> 0.1`) may improve probability spacing for selective acceptance without changing threshold rules.
+- Changed files: `experiments/configs/20260510_codex_iter341_platt_c010_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend unchanged; calibration `platt_logit.C: 0.2 -> 0.1`.
+- Config: `experiments/configs/20260510_codex_iter341_platt_c010_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter341_platt_c010_current_blend --config experiments/configs/20260510_codex_iter341_platt_c010_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter341_platt_c010_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1817009809545009`.
+- Utility before / after: `0.07698289269051321` / `0.07348367029548993`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.591717890650275`.
+- Accepted count before / after: `3120` / `3091`.
+- Coverage before / after: `0.40435458786936235` / `0.40059616381544844`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: pending.
+- Interpretation: stronger calibration regularization lowers accepted precision and pushes coverage close to the floor. Keep `C: 0.2`.
+- Next step: test weaker calibration regularization (`C=0.3`) on the same split.
