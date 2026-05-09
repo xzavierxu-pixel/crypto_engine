@@ -8454,3 +8454,26 @@ Main bottlenecks:
 - Git commit: `c6e456e`.
 - Interpretation: narrow drift pruning increases coverage but lowers accepted precision, so the removed `sl_` features were not the main cause of poor accepted precision. Do not adopt this prune.
 - Next step: simple feature addition/removal paths are exhausted for now; continue with more targeted model or meta-model experiments.
+
+## 20260510_codex_iter378_temperature080_current_blend
+
+- Skill used: existing calibration plugin, probability-sharpening control.
+- Hypothesis: temperature scaling with `temperature=0.8` may sharpen probabilities and improve accepted precision after the official coverage-constrained threshold search.
+- Changed files: `experiments/configs/20260510_codex_iter378_temperature080_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 current best features; HTF/time features retained.
+- Model settings: current best logit blend; calibration changed from `platt_logit(C=0.2)` to `temperature(0.8)`.
+- Config: `experiments/configs/20260510_codex_iter378_temperature080_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter378_temperature080_current_blend --config experiments/configs/20260510_codex_iter378_temperature080_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter378_temperature080_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1772939616486968`.
+- Utility before / after: `0.07698289269051321` / `0.07413167444271646`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5874617737003058`.
+- Accepted count before / after: `3120` / `3270`.
+- Coverage before / after: `0.40435458786936235` / `0.4237947122861586`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: temperature sharpening improves Brier/logloss but lowers accepted precision under the official selector. Keep `platt_logit(C=0.2)`.
+- Next step: avoid optimizing calibration diagnostics at the expense of selection_score.
