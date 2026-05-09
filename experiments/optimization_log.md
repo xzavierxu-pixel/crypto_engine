@@ -1923,3 +1923,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: filtering low-absolute-return training rows is a valid near-miss, preserving accepted accuracy but losing too much coverage and utility.
 - Next step: test a milder low-absolute-return filter.
+
+## 20260509_codex_iter95_drop_tiny_abs_return_train_catboost
+
+- Skill used: data-weighting guidance from `tabular-balanced-log-loss` / prior-focused training.
+- Hypothesis: a milder low-absolute-return training filter may remove only the noisiest examples while preserving more coverage than iteration 94.
+- Changed files: `experiments/configs/20260509_codex_iter95_drop_tiny_abs_return_train_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter95_drop_tiny_abs_return_train_split`.
+- Data processing: removed development rows with `abs_return < 0.00005`, keeping 19,194 of 19,922 rows; validation unchanged.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter95_drop_tiny_abs_return_train_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter95_drop_tiny_abs_return_train_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter95_drop_tiny_abs_return_train_catboost --config experiments/configs/20260509_codex_iter95_drop_tiny_abs_return_train_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter95_drop_tiny_abs_return_train_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16896951322359216`.
+- Utility before / after: `0.0751684810782789` / `0.06959564541213063`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5851030110935024`.
+- Accepted count before / after: `3245` / `3155`.
+- Coverage before / after: `0.4205546915500259` / `0.40889061689994816`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: the milder filter is worse than the stricter low-return filter and worse than the benchmark. Low-return row filtering is not enough.
+- Next step: stop this filtering branch.
