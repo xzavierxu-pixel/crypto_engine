@@ -8548,6 +8548,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41809227579056507`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records OOF folds and validation prediction range.
-- Git commit: `pending`.
+- Git commit: `55d16b0`.
 - Interpretation: the auxiliary activity model has real large-move signal, but as a final-model feature it still lowers accepted precision. Do not adopt this meta feature.
 - Next step: pivot away from activity meta-features; continue searching for precision-preserving data transformations.
