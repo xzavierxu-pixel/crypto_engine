@@ -6353,6 +6353,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.42573872472783825`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `68272ef`.
 - Interpretation: squared weights still lower accepted accuracy and score. Keep the incumbent linear return-ramp sample weighting.
 - Next step: move away from global sample-weight shape variants.
