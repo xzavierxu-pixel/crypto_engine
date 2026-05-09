@@ -6537,6 +6537,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4642301710730949`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; weight summary saved at `artifacts/data_v2/experiments/20260509_codex_iter296_weak_regime_downweight_split/weak_regime_downweight_summary.json`.
-- Git commit: `pending`.
+- Git commit: `830157d`.
 - Interpretation: combined weak-regime downweighting still broadens acceptance and lowers accepted accuracy. Do not keep this weighting.
 - Next step: avoid further weak-regime weighting without a stronger model-side precision mechanism.
