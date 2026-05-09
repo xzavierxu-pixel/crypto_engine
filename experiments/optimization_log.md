@@ -1817,3 +1817,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: lower L2 recovers some accepted accuracy but loses too much coverage and utility. Iteration 85 remains the best bottom-20 pruning setup.
 - Next step: leave the bottom-20 branch and continue elsewhere.
+
+## 20260509_codex_iter90_catboost_rsm08
+
+- Hypothesis: CatBoost feature subsampling (`rsm=0.8`) may reduce overfitting across the wide feature set and improve validation accepted accuracy.
+- Changed files: `experiments/configs/20260509_codex_iter90_catboost_rsm08.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `rsm: 0.8`.
+- Config: `experiments/configs/20260509_codex_iter90_catboost_rsm08.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter90_catboost_rsm08 --config experiments/configs/20260509_codex_iter90_catboost_rsm08.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter90_catboost_rsm08/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16118940613674487`.
+- Utility before / after: `0.0751684810782789` / `0.07205806117159146`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5763736263736263`.
+- Accepted count before / after: `3245` / `3640`.
+- Coverage before / after: `0.4205546915500259` / `0.47174701918092277`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: feature subsampling over-expands lower-quality acceptance and hurts the objective. Full feature availability remains better for CatBoost.
+- Next step: do not pursue stronger `rsm` unless revisiting with a different feature subset.
