@@ -8746,3 +8746,26 @@ Main bottlenecks:
 - Git commit: `dfe352c`.
 - Interpretation: explicit cluster imbalance causes over-acceptance and lowers accepted precision, despite similar utility. Do not adopt these features.
 - Next step: avoid simple buy/sell imbalance transforms unless paired with a narrower slice-specific gate or stronger regularization.
+
+## 20260510_codex_iter390_train120_best_profile_current_blend
+
+- Skill used: `timeseries-expanding-window-stacking` time-ordered window principle, applied as a larger chronological training window rather than stacking.
+- Hypothesis: using more downloaded history and the full configured feature profile may improve model stability and exploit richer second-level context.
+- Changed files: `experiments/configs/20260510_codex_iter390_train120_best_profile_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter390_train120_best_profile_current_blend`.
+- Feature set: 1735 features generated from raw downloaded 1m data plus materialized second-level feature store; HTF/time features retained.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter390_train120_best_profile_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --input artifacts/data_v2/normalized/spot/klines/BTCUSDT-1m.parquet --output-dir artifacts/data_v2/experiments/20260510_codex_iter390_train120_best_profile_current_blend --config experiments/configs/20260510_codex_iter390_train120_best_profile_current_blend.yaml --horizon 5m --train-window-days 120 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter390_train120_best_profile_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16085485386795179`.
+- Utility before / after: `0.07698289269051321` / `0.07011404872991182`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5778865534120357`.
+- Accepted count before / after: `3120` / `3473`.
+- Coverage before / after: `0.40435458786936235` / `0.45010368066355627`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; raw-data rebuild wrote reproducible development and validation cached frames.
+- Git commit: pending.
+- Interpretation: more history plus the full configured feature profile broadens coverage but materially lowers accepted precision. Do not adopt the 120-day full-profile rebuild.
+- Next step: use the 120-day artifact only as a feature discovery source; keep official candidates on the stronger 75-day filtered split unless a targeted data transform proves otherwise.
