@@ -4653,3 +4653,26 @@ Main bottlenecks:
 - Git commit: `d1b6464`.
 - Interpretation: lower DART feature fraction also hurts accepted accuracy. Keep `colsample_bytree: 0.35`.
 - Next step: close DART feature-fraction bracket.
+
+## 20260509_codex_iter215_blend9765_dart_l1_12_n2000_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting`.
+- Hypothesis: more DART trees at the same learning rate may improve the side model while the small blend weight limits overfit.
+- Changed files: `experiments/configs/20260509_codex_iter215_blend9765_dart_l1_12_n2000_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `n_estimators: 2000`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter215_blend9765_dart_l1_12_n2000_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter215_blend9765_dart_l1_12_n2000_platt_logit_c020 --config experiments/configs/20260509_codex_iter215_blend9765_dart_l1_12_n2000_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter215_blend9765_dart_l1_12_n2000_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.1861015296056356`.
+- Utility before / after: `0.07659409020217732` / `0.0759460860549507`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5928390367553865`.
+- Accepted count before / after: `3123` / `3156`.
+- Coverage before / after: `0.4047433903576983` / `0.40902021772939345`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: more DART estimators expand coverage and lose accepted accuracy. Keep `n_estimators: 1600`.
+- Next step: avoid larger DART estimator counts.
