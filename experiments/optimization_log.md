@@ -8169,3 +8169,27 @@ Main bottlenecks:
 - Git commit: `236d849`.
 - Interpretation: narrowing to top3 rank transforms is worse than the top10 rank pack and far below the current best. Close percentile-rank transform path.
 - Next step: test sparse extreme-quantile flags instead of continuous rank transforms.
+
+## 20260510_codex_iter366_top10_extreme_flags_current_blend
+
+- Skill used: sparse feature engineering informed by the prior rank-transform experiments.
+- Hypothesis: sparse q05/q95 flags for high-gain features may expose rare extreme regimes without the continuous-rank over-acceptance seen in iter364 and iter365.
+- Changed files: `experiments/configs/20260510_codex_iter366_top10_extreme_flags_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter366_top10_extreme_flags_split`.
+- Feature set: 536 features; current best 516 features plus development-fitted low/high extreme flags for the top 10 current-best gain features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter366_top10_extreme_flags_split/top10_extreme_flags_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter366_top10_extreme_flags_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter366_top10_extreme_flags_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter366_top10_extreme_flags_current_blend --config experiments/configs/20260510_codex_iter366_top10_extreme_flags_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter366_top10_extreme_flags_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17099083692334`.
+- Utility before / after: `0.07698289269051321` / `0.06972524624157596`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5866623711340206`.
+- Accepted count before / after: `3120` / `3104`.
+- Coverage before / after: `0.40435458786936235` / `0.4022809745982374`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records development-fitted extreme flag thresholds and zero NaN additions.
+- Git commit: `pending`.
+- Interpretation: extreme flags balance UP/DOWN predictions much more evenly, but reduce accepted precision and score. Do not adopt this feature pack.
+- Next step: move to a narrow source-isolated VWAP distance-ratio test from the full-profile feature cache.
