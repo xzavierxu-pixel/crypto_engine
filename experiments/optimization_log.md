@@ -9134,6 +9134,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40902021772939345`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records source files, conservative timestamp shifts, and zero-null joined values.
-- Git commit: pending.
+- Git commit: `ca95430`.
 - Interpretation: compact futures context is better than broad derivative/full-profile additions but still below the incumbent accepted precision and score. Do not adopt it as-is.
 - Next step: if revisiting futures data, isolate individual futures features rather than adding the full compact pack.
