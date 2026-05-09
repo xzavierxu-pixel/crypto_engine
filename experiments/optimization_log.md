@@ -4101,3 +4101,26 @@ Main bottlenecks:
 - Git commit: `04ab7dc`.
 - Interpretation: more DART weight keeps utility flat but lowers score through higher downside risk. Keep `catboost_weight: 0.9765`.
 - Next step: tune calibration locally around the new best branch.
+
+## 20260509_codex_iter191_blend9765_dart_l1_12_platt_logit_c018
+
+- Skill used: `tabular-logit-transform-stacking`.
+- Hypothesis: slightly stronger logit-space Platt regularization than `C: 0.2` may improve accepted accuracy on the new blend branch while maintaining coverage.
+- Changed files: `experiments/configs/20260509_codex_iter191_blend9765_dart_l1_12_platt_logit_c018.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: DART blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.18`.
+- Config: `experiments/configs/20260509_codex_iter191_blend9765_dart_l1_12_platt_logit_c018.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter191_blend9765_dart_l1_12_platt_logit_c018 --config experiments/configs/20260509_codex_iter191_blend9765_dart_l1_12_platt_logit_c018.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter191_blend9765_dart_l1_12_platt_logit_c018/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.188505346877847`.
+- Utility before / after: `0.07659409020217732` / `0.07620528771384134`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5945337620578778`.
+- Accepted count before / after: `3123` / `3110`.
+- Coverage before / after: `0.4047433903576983` / `0.40305857957490926`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: lower calibration `C` loses coverage and score. Keep `C: 0.2` unless the upper side improves.
+- Next step: test `C: 0.22`.
