@@ -8359,3 +8359,27 @@ Main bottlenecks:
 - Git commit: `617eee5`.
 - Interpretation: the single cluster feature increases coverage but decreases accepted precision enough to lower score. Do not adopt it.
 - Next step: inspect calibration/probability behavior and try transformations that reduce over-acceptance in noisy mid/high-volatility regimes.
+
+## 20260510_codex_iter374_high_vol_volume_flags_current_blend
+
+- Skill used: `tabular-polynomial-interaction-features` for compact interaction/regime-flag feature testing.
+- Hypothesis: development-fitted high-volatility and high-volume flags, plus joint flags, may help the model avoid noisy high-vol/high-volume false signals observed in slice reports.
+- Changed files: `experiments/configs/20260510_codex_iter374_high_vol_volume_flags_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter374_high_vol_volume_flags_split`.
+- Feature set: 522 features; current best 516 features plus q67/q80 `rv_5`, `volume`, and joint high-regime flags; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter374_high_vol_volume_flags_split/high_vol_volume_flags_summary.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter374_high_vol_volume_flags_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter374_high_vol_volume_flags_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter374_high_vol_volume_flags_current_blend --config experiments/configs/20260510_codex_iter374_high_vol_volume_flags_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter374_high_vol_volume_flags_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16558825856055887`.
+- Utility before / after: `0.07698289269051321` / `0.07141005702436491`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5805320081847413`.
+- Accepted count before / after: `3120` / `3421`.
+- Coverage before / after: `0.40435458786936235` / `0.4433644375324002`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records development-fitted quantiles and validation flag rates.
+- Git commit: `pending`.
+- Interpretation: the regime flags increase coverage and reduce logloss, but accepted precision drops sharply. Do not adopt this flag pack.
+- Next step: avoid more coarse regime flags; pursue either model regularization or a feature-removal path that preserves accepted precision.
