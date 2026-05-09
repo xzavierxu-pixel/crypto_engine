@@ -6981,6 +6981,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `c2d2d82`.
 - Interpretation: CatBoost overfitting detection is an exact tie with the current best. Treat as neutral, not an improvement.
 - Next step: do not rely on CatBoost OD unless paired with a lower iteration or learning-rate change.
