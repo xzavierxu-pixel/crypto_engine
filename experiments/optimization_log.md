@@ -5387,6 +5387,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.5047952306894764`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; window-filter summary saved at `artifacts/data_v2/experiments/20260509_codex_iter246_train90_best516_feature_filter_split/window_filter_summary.json`.
-- Git commit: `pending`.
+- Git commit: `f8f91b7`.
 - Interpretation: 90 days still over-broadens accepted predictions and reduces accepted accuracy. The 75-day split remains preferred for this validation period.
 - Next step: focus on feature selection within the current recent-window data rather than adding older history.
