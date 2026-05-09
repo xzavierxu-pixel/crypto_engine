@@ -5663,6 +5663,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4324779678589943`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; transform summary saved at `artifacts/data_v2/experiments/20260509_codex_iter258_top4_micro_interactions_split/micro_interactions_summary.json`.
-- Git commit: `pending`.
+- Git commit: `64a5dc0`.
 - Interpretation: even compact explicit microstructure interactions over-broaden accepted predictions and lower accepted accuracy. Do not keep this feature pack.
 - Next step: avoid interaction expansion on this split.
