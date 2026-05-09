@@ -6767,6 +6767,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4926127527216174`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `3cd1ccb`.
 - Interpretation: seed 43 materially broadens accepted coverage and lowers accepted accuracy. The current seed 42 model remains best.
 - Next step: do not implement a heavier seed ensemble for the active blend unless another seed demonstrates complementary precision rather than broadening.
