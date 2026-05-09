@@ -5942,3 +5942,26 @@ Main bottlenecks:
 - Git commit: `e544a57`.
 - Interpretation: exact tie to the current best; MVS bootstrap does not change the selected validation predictions. Keep the simpler current best Bayesian bootstrap setting.
 - Next step: look for changes that affect ranking enough to move the accepted set, not exact-tie CatBoost bootstrap variants.
+
+## 20260509_codex_iter271_blend9770_cat_depth4_platt_logit_c020
+
+- Skill used: none specific; CatBoost capacity bracket in the existing binary model path.
+- Hypothesis: reducing nested CatBoost `depth` from `5` to `4` may lower interaction overfit and improve accepted accuracy on the validation accepted set.
+- Changed files: `experiments/configs/20260509_codex_iter271_blend9770_cat_depth4_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost `depth: 4`, nested DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter271_blend9770_cat_depth4_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter271_blend9770_cat_depth4_platt_logit_c020 --config experiments/configs/20260509_codex_iter271_blend9770_cat_depth4_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter271_blend9770_cat_depth4_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1683884155266234`.
+- Utility before / after: `0.07698289269051321` / `0.07490927941938832`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5795704845814978`.
+- Accepted count before / after: `3120` / `3632`.
+- Coverage before / after: `0.40435458786936235` / `0.4707102125453603`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: shallower CatBoost over-broadens the accepted set and reduces accepted accuracy. Keep `depth: 5`.
+- Next step: test the paired higher-capacity side (`depth: 6`) only if it has not already been ruled out for the current blend.
