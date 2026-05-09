@@ -7711,6 +7711,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40059616381544844`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `da3472f`.
 - Interpretation: the residual DART component is useful; CatBoost-only lowers selection_score. Keep a small DART contribution.
 - Next step: test a slightly lower CatBoost blend weight (`0.9750`) around the current `0.9770` local best.
