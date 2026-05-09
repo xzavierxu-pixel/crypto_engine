@@ -3733,3 +3733,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: keeping `sl_vwap_10s` hurts accepted accuracy. The current drop-both VWAP split remains better.
 - Next step: test the complementary `sl_vwap_10s`-drop split only if needed.
+
+## 20260509_codex_iter175_drop_vwap10_dart_blend_platt_logit_c020
+
+- Skill used: feature ablation discipline with the current DART blend stack.
+- Hypothesis: dropping only `sl_vwap_10s` may retain useful longer VWAP context while removing short-horizon VWAP noise.
+- Changed files: `experiments/configs/20260509_codex_iter175_drop_vwap10_dart_blend_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter47_train75_drop_sl_vwap10_split`.
+- Feature set: 75-day split dropping only `sl_vwap_10s`; HTF/time features retained.
+- Model settings: best DART blend stack with `catboost_weight: 0.9775`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter175_drop_vwap10_dart_blend_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter47_train75_drop_sl_vwap10_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter175_drop_vwap10_dart_blend_platt_logit_c020 --config experiments/configs/20260509_codex_iter175_drop_vwap10_dart_blend_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter175_drop_vwap10_dart_blend_platt_logit_c020/metrics.json`.
+- Score before: `0.1884526862901693`.
+- Score after: `0.16691648826649505`.
+- Utility before / after: `0.07633488854328671` / `0.07205806117159151`.
+- Accepted accuracy before / after: `0.594360781800705` / `0.581002331002331`.
+- Accepted count before / after: `3121` / `3432`.
+- Coverage before / after: `0.40448418869880765` / `0.4447900466562986`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: keeping `sl_vwap_30s` is even worse; the current drop-both VWAP split remains best.
+- Next step: stop VWAP-drop split variants.
