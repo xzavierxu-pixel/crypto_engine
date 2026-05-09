@@ -8571,6 +8571,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4013737687921203`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `0067889`.
 - Interpretation: gentler class reweighting improves UP/DOWN balance slightly but still loses accepted precision and score. Keep unweighted CatBoost classes.
 - Next step: avoid more class-weight variants unless side-specific acceptance becomes the primary objective.
