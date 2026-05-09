@@ -7218,6 +7218,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.5057024364955935`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `64578d4`.
 - Interpretation: dropping second-level interactions increases utility via coverage but lowers accepted precision enough to reduce selection_score. Keep these interactions.
 - Next step: avoid broad interaction-family removals unless a side-specific model can preserve precision.
