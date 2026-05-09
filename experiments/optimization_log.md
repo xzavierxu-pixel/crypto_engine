@@ -4147,3 +4147,26 @@ Main bottlenecks:
 - Git commit: `fccba95`.
 - Interpretation: higher calibration `C` expands coverage but loses accepted accuracy and score. Keep `C: 0.2`.
 - Next step: leave calibration and test another model-training lever.
+
+## 20260509_codex_iter193_collinear98_blend9765_dart_l1_12_platt_logit_c020
+
+- Skill used: `tabular-collinear-feature-removal`.
+- Hypothesis: dropping only highly redundant features with absolute Pearson correlation above `0.98`, choosing the feature with higher development target correlation to keep, may reduce noise without changing label or feature semantics.
+- Changed files: `experiments/configs/20260509_codex_iter193_collinear98_blend9765_dart_l1_12_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter193_collinear98_split`; drop report: `artifacts/data_v2/experiments/20260509_codex_iter193_collinear98_split/collinear_drop_report.json`.
+- Feature set: current best VWAP-pruned split minus 20 collinear features; HTF/time packs retained, but some redundant HTF columns were dropped by the data-processing rule.
+- Model settings: current best DART blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter193_collinear98_blend9765_dart_l1_12_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter193_collinear98_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter193_collinear98_blend9765_dart_l1_12_platt_logit_c020 --config experiments/configs/20260509_codex_iter193_collinear98_blend9765_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter193_collinear98_blend9765_dart_l1_12_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.16972853470903534`.
+- Utility before / after: `0.07659409020217732` / `0.06985484707102121`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5854741516016492`.
+- Accepted count before / after: `3123` / `3153`.
+- Coverage before / after: `0.4047433903576983` / `0.40863141524105756`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: pending.
+- Interpretation: correlation pruning damages accepted accuracy, likely because redundant HTF/flow variants still help tree splits and calibration. Do not use this collinear-pruned split.
+- Next step: return to the current best full split and try model-training regularization.
