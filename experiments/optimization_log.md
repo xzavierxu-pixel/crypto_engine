@@ -8599,3 +8599,28 @@ Main bottlenecks:
 - Git commit: `4682ff5`.
 - Interpretation: dense compression of unused second-level features lowers accepted precision and score. Do not adopt this PCA pack.
 - Next step: avoid broad compressed `sl_` feature mass unless a stronger supervised stability screen is available.
+
+## 20260510_codex_iter384_stable_trade_side_current_blend
+
+- Skill used: `timeseries-multi-scale-rolling-features` and `tabular-leak-free-loop-features` principles, restricted to trailing, already-materialized trade-side features and development-only screening.
+- Hypothesis: compact trade-side composition features that had stable development-half correlation may add directional microstructure signal without the broad noise introduced by full second-level packs.
+- Changed files: `experiments/configs/20260510_codex_iter384_stable_trade_side_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter384_stable_trade_side_split`.
+- Feature set: 521 features; current best 516 features plus `sl_agg_last_10_trades_sell_share`, `sl_agg_last_10_trades_buy_share`, `sl_last_3s_sell_dominance`, `sl_last_3s_buy_dominance`, and `sl_agg_large_trade_imbalance_1s`; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter384_stable_trade_side_split/stable_trade_side_summary.json`.
+- Feature selection record: `artifacts/data_v2/experiments/20260510_codex_stable_devcorr_new_features.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter384_stable_trade_side_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter384_stable_trade_side_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter384_stable_trade_side_current_blend --config experiments/configs/20260510_codex_iter384_stable_trade_side_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter384_stable_trade_side_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17977653341691674`.
+- Utility before / after: `0.07698289269051321` / `0.0741316744427164`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5894868585732165`.
+- Accepted count before / after: `3120` / `3196`.
+- Coverage before / after: `0.40435458786936235` / `0.4142042509072058`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records row-preserving timestamp joins and zero missing joined values.
+- Git commit: pending.
+- Interpretation: the stable trade-side pack increases accepted count and keeps valid coverage, but accepted precision falls enough to lose selection score. Do not adopt this pack.
+- Next step: switch from adding feature mass to removal/regularization around harmful existing second-level features, using validation-agnostic diagnostics where possible.
