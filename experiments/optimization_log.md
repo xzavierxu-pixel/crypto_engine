@@ -6195,3 +6195,26 @@ Main bottlenecks:
 - Git commit: `d7daf21`.
 - Interpretation: even gentle low-importance pruning lowers accepted accuracy. Keep the full current best 516-feature set.
 - Next step: inspect remaining available more-data splits under the current blend.
+
+## 20260509_codex_iter282_blend9770_weekday_features_platt_logit_c020
+
+- Skill used: `tabular-cyclical-feature-encoding`.
+- Hypothesis: weekday cyclical encoding and weekend flag may add longer calendar context beyond hour/minute cyclic features while preserving online availability.
+- Changed files: `experiments/configs/20260509_codex_iter282_blend9770_weekday_features_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter202_weekday_features_split`.
+- Feature set: 519 features; current best 516 features plus `weekday_sin`, `weekday_cos`, and `is_weekend`; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter282_blend9770_weekday_features_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter202_weekday_features_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter282_blend9770_weekday_features_platt_logit_c020 --config experiments/configs/20260509_codex_iter282_blend9770_weekday_features_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter282_blend9770_weekday_features_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16377147021625257`.
+- Utility before / after: `0.07698289269051321` / `0.06829963711767756`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.582061663033323`.
+- Accepted count before / after: `3120` / `3211`.
+- Coverage before / after: `0.40435458786936235` / `0.41614826334888544`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: weekday features lower accepted accuracy and score. Keep the existing hour/minute cyclic time feature set without weekday additions.
+- Next step: avoid more calendar expansions unless a time-slice diagnostic shows a stable weekday effect.
