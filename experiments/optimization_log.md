@@ -8523,6 +8523,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4064282011404873`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records row-preserving timestamp joins and zero missing joined values.
-- Git commit: `pending`.
+- Git commit: `270044e`.
 - Interpretation: development-only correlation did not transfer to validation, and calibration worsened materially. Do not adopt this feature pack.
 - Next step: avoid dev-correlation-only selection; require slice stability or model-objective evidence before adding more features.
