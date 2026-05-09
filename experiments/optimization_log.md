@@ -8646,6 +8646,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41938828408501816`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records drop-only feature removal and unchanged row windows.
-- Git commit: pending.
+- Git commit: `ed3532c`.
 - Interpretation: removing near-duplicates improves broad calibration diagnostics but shifts the accepted set toward lower precision, so selection_score declines. Do not adopt this drop set.
 - Next step: avoid broader collinearity pruning; focus on model regularization or targeted signal-quality transformations.
