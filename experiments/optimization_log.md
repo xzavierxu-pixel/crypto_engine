@@ -1541,3 +1541,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: the 1% blend is close but still worse than CatBoost alone. LightGBM blending does not improve the objective.
 - Next step: abandon LightGBM blending for this split and keep CatBoost-only as the best model family.
+
+## 20260509_codex_iter77_high_regime_downweight_catboost
+
+- Hypothesis: false-signal diagnostics concentrate in high `rv_5` and high `volume` regimes; downweighting those training rows may reduce noisy confidence tails while leaving validation unchanged.
+- Changed files: `experiments/configs/20260509_codex_iter77_high_regime_downweight_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter77_high_regime_downweight_split`.
+- Data processing: multiplied existing `stage1_sample_weight` by `0.75` where development `rv_5` or `volume` exceeded its development q67 cutoff.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Config: `experiments/configs/20260509_codex_iter77_high_regime_downweight_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter77_high_regime_downweight_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter77_high_regime_downweight_catboost --config experiments/configs/20260509_codex_iter77_high_regime_downweight_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter77_high_regime_downweight_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17338252935206183`.
+- Utility before / after: `0.0751684810782789` / `0.07348367029548988`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5849056603773585`.
+- Accepted count before / after: `3245` / `3339`.
+- Coverage before / after: `0.4205546915500259` / `0.43273716951788493`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: high-regime downweighting is valid but does not improve enough; it trades a little accepted accuracy for extra coverage and remains below the best.
+- Next step: test mid-regime upweighting, since mid volatility/volume had the strongest regime-slice scores.
