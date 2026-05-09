@@ -5156,6 +5156,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: `pending`.
+- Git commit: `e22f6b9`.
 - Interpretation: `0.9771` ties the current best exactly. Treat `0.9770`/`0.9771` as the same accepted-boundary plateau.
 - Next step: tune DART regularization while keeping the new blend plateau.
