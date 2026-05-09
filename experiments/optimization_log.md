@@ -2789,3 +2789,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: weaker regularization is worse; keep `platt_logit C: 0.25`.
 - Next step: if continuing calibration, test only the lower side; otherwise return to feature/model changes.
+
+## 20260509_codex_iter134_catboost_platt_logit_c020
+
+- Skill used: `tabular-logit-transform-stacking`.
+- Hypothesis: slightly stronger regularization (`C: 0.2`) for the logit-space calibrator may improve accepted accuracy at the lower coverage boundary.
+- Changed files: `experiments/configs/20260509_codex_iter134_catboost_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `calibration.active_plugin: platt_logit`, `C: 0.2`, `max_iter: 1000`.
+- Config: `experiments/configs/20260509_codex_iter134_catboost_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter134_catboost_platt_logit_c020 --config experiments/configs/20260509_codex_iter134_catboost_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter134_catboost_platt_logit_c020/metrics.json`.
+- Score before: `0.1846861980124185`.
+- Score after: `0.18312798896889548`.
+- Utility before / after: `0.07477967858994294` / `0.07400207361327112`.
+- Accepted accuracy before / after: `0.592854843900869` / `0.5923649304432222`.
+- Accepted count before / after: `3107` / `3091`.
+- Coverage before / after: `0.40266977708657337` / `0.40059616381544844`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: stronger regularization also trails `C: 0.25`; stop local logit-Platt sweep.
+- Next step: retain iteration 132 as best and shift to feature/data or model training changes.
