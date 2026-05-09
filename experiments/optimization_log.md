@@ -3868,6 +3868,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40448418869880765` / `0.401244167962675`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `213e88e`.
 - Interpretation: stronger Platt regularization loses both coverage and score. Keep `C: 0.2`.
 - Next step: tune the DART side model regularization instead of lowering calibration `C`.
