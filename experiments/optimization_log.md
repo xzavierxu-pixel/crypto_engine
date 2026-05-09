@@ -9087,3 +9087,28 @@ Main bottlenecks:
 - Git commit: `82982d2`.
 - Interpretation: continuous volatility-volume interactions broaden low-quality acceptance and hurt calibration. Do not adopt this feature pack.
 - Next step: move away from volatility-volume interactions; the incumbent already encodes this context better than the explicit transforms.
+
+## 20260510_codex_iter404_lowgain_drop30_current_blend
+
+- Skill used: feature-importance pruning / recursive feature elimination principle.
+- Hypothesis: removing the lowest incumbent gain features may reduce noise while preserving the stronger HTF/time and high-importance predictors.
+- Changed files: `experiments/configs/20260510_codex_iter404_lowgain_drop30_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter404_lowgain_drop30_split`.
+- Feature set: 486 features; current best 516 features minus the 30 lowest-gain non-protected incumbent features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter404_lowgain_drop30_split/lowgain_drop30_summary.json`.
+- Feature selection record: `artifacts/data_v2/experiments/20260509_codex_iter233_blend9770_dart_l1_12_platt_logit_c020/feature_importance.csv`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter404_lowgain_drop30_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter404_lowgain_drop30_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter404_lowgain_drop30_current_blend --config experiments/configs/20260510_codex_iter404_lowgain_drop30_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter404_lowgain_drop30_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1610942337802796`.
+- Utility before / after: `0.07698289269051321` / `0.07983411093830999`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5699046754425783`.
+- Accepted count before / after: `3120` / `4406`.
+- Coverage before / after: `0.40435458786936235` / `0.571021254536029`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records drop-only pruning and unchanged row windows.
+- Git commit: pending.
+- Interpretation: incumbent low-gain pruning removes useful calibration/abstention structure and causes over-acceptance. Do not adopt this pruning.
+- Next step: do not expand incumbent-gain pruning; low gain does not imply safe removal for selective scoring.
