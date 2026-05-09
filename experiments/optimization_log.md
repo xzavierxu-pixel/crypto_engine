@@ -2252,3 +2252,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: even minimal low-importance pruning hurts validation objective. Stop this pruning branch.
 - Next step: inspect model/report artifacts for another feature/data direction.
+
+## 20260509_codex_iter110_catboost_langevin
+
+- Skill used: CatBoost parameter discipline from `tabular-catboost-multirmse`.
+- Hypothesis: CatBoost Langevin regularization may reduce overfit to noisy microstructure patterns and improve validation selection_score.
+- Changed files: `experiments/configs/20260509_codex_iter110_catboost_langevin.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best CatBoost settings plus `langevin: true`, `diffusion_temperature: 10000`.
+- Config: `experiments/configs/20260509_codex_iter110_catboost_langevin.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter110_catboost_langevin --config experiments/configs/20260509_codex_iter110_catboost_langevin.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter110_catboost_langevin/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.16565921536408432`.
+- Utility before / after: `0.0751684810782789` / `0.06985484707102127`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.582089552238806`.
+- Accepted count before / after: `3245` / `3283`.
+- Coverage before / after: `0.4205546915500259` / `0.42547952306894765`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: Langevin increases train score but lowers validation accepted accuracy; it is not useful here.
+- Next step: continue with a different, non-temperature/non-pruning direction.
