@@ -8671,6 +8671,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4188698807672369`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records drop-only feature removal and unchanged row windows.
-- Git commit: pending.
+- Git commit: `37cdff8`.
 - Interpretation: the drifted volume/stale features still carry useful selection signal; removing them lowers accepted precision. Do not adopt this drop set.
 - Next step: keep the drifted regime features and test bounded transformations or model settings instead of pruning them.
