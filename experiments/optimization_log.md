@@ -5916,6 +5916,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.41355624675997926`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; reweight summary saved at `artifacts/data_v2/experiments/20260509_codex_iter269_reweighted_min_weight020_split/reweight_summary.json`.
-- Git commit: `pending`.
+- Git commit: `0047ec7`.
 - Interpretation: making the lower sample-weight floor effective reduces accepted accuracy and objective score. Keep the existing cached weights.
 - Next step: stop sample-weight-floor bracketing and return to feature/model diagnostics.
