@@ -4,6 +4,7 @@ from src.core.config import Settings
 from src.model.base import ModelPlugin
 from src.model.catboost_ensemble_plugin import CatBoostRankEnsemblePlugin, CatBoostSeedEnsemblePlugin
 from src.model.catboost_plugin import CatBoostClassifierPlugin
+from src.model.catboost_session_plugin import CatBoostSessionPlugin
 from src.model.lightgbm_plugin import LightGBMClassifierPlugin
 from src.model.logistic_plugin import LogisticRegressionPlugin
 from src.model.xgboost_plugin import XGBoostClassifierPlugin
@@ -16,6 +17,7 @@ MODEL_PLUGINS: dict[str, type[ModelPlugin]] = {
     "catboost": CatBoostClassifierPlugin,
     "catboost_ensemble": CatBoostSeedEnsemblePlugin,
     "catboost_rank_ensemble": CatBoostRankEnsemblePlugin,
+    "catboost_session": CatBoostSessionPlugin,
     "xgboost": XGBoostClassifierPlugin,
     "logistic": LogisticRegressionPlugin,
 }

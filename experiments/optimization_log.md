@@ -1219,3 +1219,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: class weighting again increases acceptance volume at lower accepted accuracy. The current best unweighted CatBoost setup remains strongest.
 - Next step: preserve the current best run as the active benchmark and avoid adopting the class-weighted variant.
+
+## 20260509_codex_iter62_session_catboost
+
+- Skill used: `tabular-per-type-model-training`.
+- Hypothesis: training separate CatBoost models by UTC session may capture session-specific market behavior that the global model only partially learns from `hour_sin/hour_cos`.
+- Changed files: `src/model/catboost_session_plugin.py`, `src/model/registry.py`, `experiments/configs/20260509_codex_iter62_session_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained. Session routing is derived from existing `hour_sin/hour_cos`.
+- Model settings: `catboost_session`, one global fallback model plus per-session CatBoost models with the same hyperparameters as the current best run.
+- Config: `experiments/configs/20260509_codex_iter62_session_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter62_session_catboost --config experiments/configs/20260509_codex_iter62_session_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter62_session_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.15068218469943065`.
+- Utility before / after: `0.0751684810782789` / `0.0648004147226542`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5745378652355396`.
+- Accepted count before / after: `3245` / `3354`.
+- Coverage before / after: `0.4205546915500259` / `0.43468118195956457`.
+- Coverage constraint satisfied: yes.
+- Tests: `rtk python -m compileall -q src/model`; DQC ran during training.
+- Interpretation: per-session models overfit development data and reduce validation accepted accuracy. The global CatBoost remains better.
+- Next step: use session information only as lightweight engineered features or interactions, not separate models.
