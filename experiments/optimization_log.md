@@ -8596,6 +8596,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4152410575427683`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records development-only PCA fitting and zero missing source values.
-- Git commit: `pending`.
+- Git commit: `4682ff5`.
 - Interpretation: dense compression of unused second-level features lowers accepted precision and score. Do not adopt this PCA pack.
 - Next step: avoid broad compressed `sl_` feature mass unless a stronger supervised stability screen is available.
