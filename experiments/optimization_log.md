@@ -8021,6 +8021,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4205546915500259`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split summary records 75-day boundaries and protected features.
-- Git commit: pending.
+- Git commit: `8c05781`.
 - Interpretation: more full-profile features on the same 75-day window still reduce accepted precision. The 516-feature filtered set remains stronger.
 - Next step: avoid wide full-profile expansion; only test narrowly motivated feature packs.
