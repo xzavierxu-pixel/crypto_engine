@@ -5804,3 +5804,26 @@ Main bottlenecks:
 - Git commit: `2849856`.
 - Interpretation: stronger DART feature subsampling keeps the same threshold region but slightly lowers accepted accuracy and objective score. Keep `colsample_bytree: 0.35`.
 - Next step: test the opposite DART direction only if warranted, or switch to CatBoost regularization around the current best.
+
+## 20260509_codex_iter265_blend9770_dart_colsample045_platt_logit_c020
+
+- Skill used: `tabular-lgbm-dart-boosting`.
+- Hypothesis: increasing nested LightGBM DART `colsample_bytree` from `0.35` to `0.45` may let the small LightGBM contribution capture useful cross-feature structure missing under stronger subsampling.
+- Changed files: `experiments/configs/20260509_codex_iter265_blend9770_dart_colsample045_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested DART `colsample_bytree: 0.45`, `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter265_blend9770_dart_colsample045_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter265_blend9770_dart_colsample045_platt_logit_c020 --config experiments/configs/20260509_codex_iter265_blend9770_dart_colsample045_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter265_blend9770_dart_colsample045_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.18488840631152179`.
+- Utility before / after: `0.07698289269051321` / `0.0750388802488336`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5927587311759052`.
+- Accepted count before / after: `3120` / `3121`.
+- Coverage before / after: `0.40435458786936235` / `0.40448418869880765`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: increasing DART feature fraction does not help; both sides around `0.35` reduce accepted accuracy. Keep the current DART feature fraction.
+- Next step: pivot to CatBoost regularization, which dominates the blend weight.
