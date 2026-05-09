@@ -5364,6 +5364,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.5215137376879212`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; feature-filter summary saved at `artifacts/data_v2/experiments/20260509_codex_iter245_train120_best516_feature_filter_split/feature_filter_summary.json`.
-- Git commit: `pending`.
+- Git commit: `9a8e816`.
 - Interpretation: the extra history shifts the model toward much broader acceptance and lower accepted accuracy even with the best feature set. The recent 75-day window remains better.
 - Next step: try a moderate window before abandoning extra-history splits.
