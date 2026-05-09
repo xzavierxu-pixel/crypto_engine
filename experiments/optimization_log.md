@@ -8121,3 +8121,27 @@ Main bottlenecks:
 - Git commit: `00e44e3`.
 - Interpretation: compact pressure features increase coverage and utility but reduce accepted precision. Do not add them.
 - Next step: move away from full-profile pressure additions; focus on transformations of already strong current-best features.
+
+## 20260510_codex_iter364_top10_percentile_rank_current_blend
+
+- Skill used: `tabular-rank-calibrated-blending` rank-space idea adapted to feature engineering.
+- Hypothesis: development-fitted percentile-rank transforms of the strongest current-best features may stabilize feature scale and improve accepted precision while preserving the original raw features.
+- Changed files: `experiments/configs/20260510_codex_iter364_top10_percentile_rank_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter364_top10_percentile_rank_split`.
+- Feature set: 526 features; current best 516 features plus development-fitted percentile-rank transforms for the top 10 current-best gain features; HTF/time features retained.
+- Split summary: `artifacts/data_v2/experiments/20260510_codex_iter364_top10_percentile_rank_split/top10_percentile_rank_summary.json`; quantiles: `artifacts/data_v2/experiments/20260510_codex_iter364_top10_percentile_rank_split/top10_percentile_rank_quantiles.json`.
+- Model settings: current best logit blend, DART, and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter364_top10_percentile_rank_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter364_top10_percentile_rank_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter364_top10_percentile_rank_current_blend --config experiments/configs/20260510_codex_iter364_top10_percentile_rank_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter364_top10_percentile_rank_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1778664601444009`.
+- Utility before / after: `0.07698289269051321` / `0.0734836702954899`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5885660731021556`.
+- Accepted count before / after: `3120` / `3201`.
+- Coverage before / after: `0.40435458786936235` / `0.41485225505443235`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; split summary records development-fitted quantile counts and zero NaN additions.
+- Git commit: pending.
+- Interpretation: rank transforms are used by the model and are less harmful than broad feature additions, but accepted precision remains below the best. Do not adopt the top10 rank pack.
+- Next step: if rank transforms are revisited, test a much narrower top3 subset.
