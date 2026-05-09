@@ -1859,3 +1859,24 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: the return-consistency features preserve reasonable accepted accuracy but reduce coverage and utility. They do not improve the objective.
 - Next step: continue with other feature/model approaches.
+
+## 20260509_codex_iter92_bottom20_seed43_catboost
+
+- Hypothesis: the bottom-20 feature-pruned near-miss may be seed-sensitive; seed 43 may improve the selection-score tradeoff.
+- Changed files: `experiments/configs/20260509_codex_iter92_bottom20_seed43_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter85_drop_bottom20_importance_split`.
+- Feature set: iteration 85 bottom-20 pruned feature set; HTF/time features retained.
+- Model settings: CatBoost `random_seed=43`, otherwise iteration 85 settings.
+- Config: `experiments/configs/20260509_codex_iter92_bottom20_seed43_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter85_drop_bottom20_importance_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter92_bottom20_seed43_catboost --config experiments/configs/20260509_codex_iter92_bottom20_seed43_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter92_bottom20_seed43_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.17118341139584678`.
+- Utility before / after: `0.0751684810782789` / `0.07244686365992745`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5841107433042432`.
+- Accepted count before / after: `3245` / `3323`.
+- Coverage before / after: `0.4205546915500259` / `0.43066355624676`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: seed 43 does not rescue the bottom-20 feature-pruning near-miss. Seed 42 remains better for that branch and iteration 43 remains best overall.
+- Next step: leave the bottom-20 pruning branch.
