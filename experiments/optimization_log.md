@@ -6057,3 +6057,26 @@ Main bottlenecks:
 - Git commit: `ef5ede4`.
 - Interpretation: volume-session relative features remain below the best; they broaden coverage slightly but lower accepted accuracy. Do not keep this feature pack.
 - Next step: leave session-relative feature expansion and inspect other already-built richer splits or data windows.
+
+## 20260509_codex_iter276_blend9770_regime_flags_platt_logit_c020
+
+- Skill used: `tabular-season-phase-labeling` style discretization applied to volatility/volume regimes.
+- Hypothesis: compact low/mid/high regime flags for `rv_5` and volume may expose regime context to the global model without the overfit seen from separate regime-specific models.
+- Changed files: `experiments/configs/20260509_codex_iter276_blend9770_regime_flags_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter64_regime_flags_split`.
+- Feature set: 522 features; current best 516 features plus six `rv5_regime_*` and `volume_regime_*` flags; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter276_blend9770_regime_flags_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter64_regime_flags_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter276_blend9770_regime_flags_platt_logit_c020 --config experiments/configs/20260509_codex_iter276_blend9770_regime_flags_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter276_blend9770_regime_flags_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17453278350968812`.
+- Utility before / after: `0.07698289269051321` / `0.07089165370658372`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5884254768832848`.
+- Accepted count before / after: `3120` / `3093`.
+- Coverage before / after: `0.40435458786936235` / `0.40085536547433903`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: compact regime flags do not recover the objective and leave coverage close to the floor. Do not keep this feature pack.
+- Next step: inspect remaining untested cached richer splits before creating new feature data.
