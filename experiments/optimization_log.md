@@ -6172,3 +6172,26 @@ Main bottlenecks:
 - Git commit: `b815328`.
 - Interpretation: collinearity pruning removes signal that the blend still uses and lowers accepted accuracy. Do not keep this feature filter.
 - Next step: test gentler importance-based pruning rather than correlation-only pruning.
+
+## 20260509_codex_iter281_blend9770_drop_bottom5_non_htf_time_platt_logit_c020
+
+- Skill used: `tabular-recursive-feature-elimination` as feature-selection discipline.
+- Hypothesis: removing only five low-importance non-HTF/time features may reduce noise without damaging the protected HTF/time context.
+- Changed files: `experiments/configs/20260509_codex_iter281_blend9770_drop_bottom5_non_htf_time_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter109_drop_bottom5_non_htf_time_split`.
+- Feature set: 511 features; five low-importance non-HTF/time features removed; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, nested CatBoost/DART unchanged, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter281_blend9770_drop_bottom5_non_htf_time_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter109_drop_bottom5_non_htf_time_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter281_blend9770_drop_bottom5_non_htf_time_platt_logit_c020 --config experiments/configs/20260509_codex_iter281_blend9770_drop_bottom5_non_htf_time_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter281_blend9770_drop_bottom5_non_htf_time_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.17227085050690963`.
+- Utility before / after: `0.07698289269051321` / `0.07205806117159153`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5853808353808354`.
+- Accepted count before / after: `3120` / `3256`.
+- Coverage before / after: `0.40435458786936235` / `0.42198030067392434`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: even gentle low-importance pruning lowers accepted accuracy. Keep the full current best 516-feature set.
+- Next step: inspect remaining available more-data splits under the current blend.
