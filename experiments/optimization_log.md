@@ -6744,6 +6744,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4275531363400726`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `ec8b880`.
 - Interpretation: seed averaging improves variance diagnostics relative to pure CatBoost history, but it lowers selection_score versus the current CatBoost/LGBM logit blend. Do not replace the best model.
 - Next step: if using multi-seed again, combine it with the LGBM blend only after implementing a dedicated blend plugin; otherwise continue with localized feature or calibration probes.
