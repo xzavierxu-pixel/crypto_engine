@@ -2474,3 +2474,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; calibration was fit only on development predictions.
 - Interpretation: this combination improves utility and coverage but loses enough accepted accuracy to trail Platt on the full current-best feature set.
 - Next step: keep full feature set + Platt as benchmark.
+
+## 20260509_codex_iter120_balanced_platt_calibration
+
+- Skill used: probability calibration workflow plus class-balance guidance from `tabular-balanced-log-loss`.
+- Hypothesis: the Balanced class-weight branch had higher utility/coverage; Platt calibration may recover enough accepted accuracy to beat the full-feature Platt benchmark.
+- Changed files: `experiments/configs/20260509_codex_iter120_balanced_platt_calibration.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: CatBoost `auto_class_weights: Balanced` plus `calibration.active_plugin: platt`.
+- Config: `experiments/configs/20260509_codex_iter120_balanced_platt_calibration.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter120_balanced_platt_calibration --config experiments/configs/20260509_codex_iter120_balanced_platt_calibration.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter120_balanced_platt_calibration/metrics.json`.
+- Score before: `0.18451203496023655`.
+- Score after: `0.1799434037197668`.
+- Utility before / after: `0.07465007776049763` / `0.07711249351995852`.
+- Accepted accuracy before / after: `0.59284332688588` / `0.5867599883347915`.
+- Accepted count before / after: `3102` / `3429`.
+- Coverage before / after: `0.4020217729393468` / `0.4444012441679627`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Interpretation: the combination improves utility but gives up too much accepted accuracy. Full-feature CatBoost + Platt remains the best result.
+- Next step: keep Platt benchmark and look for a model/data change that raises accuracy without crushing coverage.
