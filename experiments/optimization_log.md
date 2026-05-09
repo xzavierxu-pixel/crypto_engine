@@ -3249,3 +3249,27 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: more aggressive DART subsampling lowers accepted accuracy and score. Keep the original DART component from iteration 149.
 - Next step: avoid further DART component widening unless guided by new diagnostics.
+
+## 20260509_codex_iter154_ge5bp_dart_blend_platt_logit
+
+- Skill used: data-weighting/filtering guidance from `tabular-balanced-log-loss`, combined with the current best DART blend.
+- Hypothesis: because validation diagnostics score much better on realized `abs_return >= 5bp`, training only on higher-magnitude development examples may improve selective confidence when paired with the DART blend.
+- Changed files: `experiments/configs/20260509_codex_iter154_ge5bp_dart_blend_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter104_train_abs_return_ge5bp_split`.
+- Data processing: reused existing split where development rows with `abs(abs_return) < 0.0005` were removed; validation unchanged and `abs_return` is not a feature.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: current best DART blend (`catboost_weight: 0.985`) plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter154_ge5bp_dart_blend_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter104_train_abs_return_ge5bp_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter154_ge5bp_dart_blend_platt_logit --config experiments/configs/20260509_codex_iter154_ge5bp_dart_blend_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter154_ge5bp_dart_blend_platt_logit/metrics.json`.
+- Score before: `0.18682834549642668`.
+- Score after: `0.17694788166734995`.
+- Utility before / after: `0.0755572835666148` / `0.07296526697770866`.
+- Accepted accuracy before / after: `0.5938204055358867` / `0.5883275807969878`.
+- Accepted count before / after: `3107` / `3187`.
+- Coverage before / after: `0.40266977708657337` / `0.413037843442198`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: high-magnitude-only training still hurts accepted accuracy with the DART blend; keep full development data.
+- Next step: avoid low-return row filtering on this branch.
