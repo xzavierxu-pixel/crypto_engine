@@ -6837,6 +6837,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4129082426127527`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; split join summary reports unchanged row counts and no missing added HTF values.
-- Git commit: `pending`.
+- Git commit: `b3ec39a`.
 - Interpretation: isolated 30m HTF context still lowers accepted accuracy and selection_score. Keep the 15m HTF context only.
 - Next step: do not add broader HTF horizons without a stronger selection or interaction reason.
