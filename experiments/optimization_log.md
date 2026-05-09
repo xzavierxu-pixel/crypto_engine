@@ -4975,3 +4975,26 @@ Main bottlenecks:
 - Git commit: `67e017e`.
 - Interpretation: `border_count: 128` is neutral on the official validation metrics. The implementation passes nested CatBoost params through, but this knob did not move the accepted slice.
 - Next step: stop spending iterations on CatBoost-only schema knobs unless they are known to affect this plugin; return to data/feature/model changes with observed metric movement.
+
+## 20260509_codex_iter229_blend9765_drop_low12_nonprotected_platt_logit_c020
+
+- Skill used: `tabular-recursive-feature-elimination`.
+- Hypothesis: dropping only the 12 weakest non-protected importance-tail features may reduce noise while keeping required HTF/time context.
+- Changed files: `experiments/configs/20260509_codex_iter229_blend9765_drop_low12_nonprotected_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter229_drop_low12_nonprotected_split`.
+- Feature set: 504 features; dropped `stale_trade_share_5_rolling_z_12`, `sl_agg_large_sell_trade_count_5s`, `ret_relative_volume_product__ret_15__relative_volume_3`, `ret_relative_volume_product__ret_10__relative_volume_5`, `ret_vol_ratio__ret_1__rv_30`, `sl_agg_signed_large_notional_1s`, `ret_efficiency_product__ret_15__efficiency_10`, `ret_1_rolling_z_24`, `price_location_product__range_pos_3__close_z_10`, `max_up_ret_5_delta_1`, `ret_1_rolling_z_12`, `ret_relative_volume_product__ret_1__relative_volume_5`; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9765`, nested DART `reg_alpha: 1.2`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter229_blend9765_drop_low12_nonprotected_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter229_drop_low12_nonprotected_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter229_blend9765_drop_low12_nonprotected_platt_logit_c020 --config experiments/configs/20260509_codex_iter188_blend9765_dart_l1_12_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter229_blend9765_drop_low12_nonprotected_platt_logit_c020/metrics.json`.
+- Score before: `0.1890925935441257`.
+- Score after: `0.17832559840538859`.
+- Utility before / after: `0.07659409020217732` / `0.07322446863659923`.
+- Accepted accuracy before / after: `0.5946205571565802` / `0.5892011367224502`.
+- Accepted count before / after: `3123` / `3167`.
+- Coverage before / after: `0.4047433903576983` / `0.41044582685329184`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; feature filter summary saved at `artifacts/data_v2/experiments/20260509_codex_iter229_drop_low12_nonprotected_split/feature_filter_summary.json`.
+- Git commit: `pending`.
+- Interpretation: even a shallow low-importance prune increases coverage but lowers accepted accuracy enough to hurt selection_score. Keep the full 516-feature best split.
+- Next step: avoid further simple tail pruning; consider model-side or split-side changes with no feature-family removal.
