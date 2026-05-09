@@ -2904,3 +2904,26 @@ Main bottlenecks:
 - Git commit: $h.
 - Interpretation: `iterations: 900` is metric-neutral on this setup, likely because the fitted tree sequence is effectively unchanged by the training path. It does not improve the objective.
 - Next step: do not pursue simple iteration reduction further.
+
+## 20260509_codex_iter139_session_relative_platt_logit
+
+- Skill used: `tabular-relative-deviation-features` plus the current best logit-space calibration path.
+- Hypothesis: the near-miss session-relative feature split from iteration 66 may improve once probabilities are calibrated in logit space.
+- Changed files: `experiments/configs/20260509_codex_iter139_session_relative_platt_logit.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter66_session_relative_split`.
+- Feature set: current best VWAP-pruned top-500 split plus session-relative diff/ratio/z features for `rv_5`, `volume`, `relative_volume_20`, `htf_rv_15m`, and `dollar_vol_mean_20`; HTF/time features retained.
+- Model settings: iteration 66 CatBoost settings plus `calibration.active_plugin: platt_logit`, `C: 0.25`.
+- Config: `experiments/configs/20260509_codex_iter139_session_relative_platt_logit.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter66_session_relative_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter139_session_relative_platt_logit --config experiments/configs/20260509_codex_iter139_session_relative_platt_logit.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter139_session_relative_platt_logit/metrics.json`.
+- Score before: `0.1846861980124185`.
+- Score after: `0.1770827791259692`.
+- Utility before / after: `0.07477967858994294` / `0.07335406946604461`.
+- Accepted accuracy before / after: `0.592854843900869` / `0.5880522713130056`.
+- Accepted count before / after: `3107` / `3214`.
+- Coverage before / after: `0.40266977708657337` / `0.41653706583722133`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; calibration was fit only on development predictions.
+- Git commit: $h.
+- Interpretation: logit calibration does not rescue session-relative features; the best calibrated base split remains stronger.
+- Next step: continue with a different small model/data lever.
