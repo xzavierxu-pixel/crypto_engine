@@ -8869,3 +8869,26 @@ Main bottlenecks:
 - Git commit: `d81d480`.
 - Interpretation: narrower null-pruning is worse than drop20 and the best; it does not preserve enough accepted precision. Do not adopt drop10.
 - Next step: do not continue simple null-importance prefix sweeps without a new acceptance-boundary rationale.
+
+## 20260510_codex_iter395_nullimp_drop20_cat_l2_45_current_blend
+
+- Skill used: `tabular-null-importance-feature-selection` plus conservative CatBoost regularization.
+- Hypothesis: the null-importance drop20 split improved utility but lost accepted precision; increasing active CatBoost `l2_leaf_reg` to `45.0` may recover precision on the reduced feature set.
+- Changed files: `experiments/configs/20260510_codex_iter395_nullimp_drop20_cat_l2_45_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260510_codex_iter393_nullimp_drop20_split`.
+- Feature set: 496 features from iter393 nullimp drop20; HTF/time features retained.
+- Model settings: iter393 config except active nested CatBoost `l2_leaf_reg: 30.0 -> 45.0`; DART and calibration unchanged.
+- Config: `experiments/configs/20260510_codex_iter395_nullimp_drop20_cat_l2_45_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260510_codex_iter393_nullimp_drop20_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter395_nullimp_drop20_cat_l2_45_current_blend --config experiments/configs/20260510_codex_iter395_nullimp_drop20_cat_l2_45_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter395_nullimp_drop20_cat_l2_45_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.16960797567796343`.
+- Utility before / after: `0.07698289269051321` / `0.07089165370658373`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5843354918285538`.
+- Accepted count before / after: `3120` / `3243`.
+- Coverage before / after: `0.40435458786936235` / `0.4202954898911353`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: pending.
+- Interpretation: stronger CatBoost L2 does not recover precision on the null-pruned split and worsens both score and utility. Do not adopt this combined variant.
+- Next step: keep nullimp drop20 only as a diagnostic; return to data/feature hypotheses with direct accepted-precision rationale.
