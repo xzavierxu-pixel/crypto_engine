@@ -8991,3 +8991,26 @@ Main bottlenecks:
 - Git commit: `3c93042`.
 - Interpretation: the OOF direction meta-feature is valid but does not improve accepted precision enough to beat the incumbent. Do not adopt it.
 - Next step: avoid same-target OOF stacking as a single feature unless the base learner is materially stronger or more diverse.
+
+## 20260510_codex_iter400_isotonic_current_blend
+
+- Skill used: rank/calibration postprocess control inspired by `tabular-rank-calibrated-blending`.
+- Hypothesis: isotonic calibration may improve acceptance-boundary probability ordering versus Platt-logit calibration on the current best model.
+- Changed files: `experiments/configs/20260510_codex_iter400_isotonic_current_blend.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 incumbent features; HTF/time features retained.
+- Model settings: current best logit blend and DART unchanged; calibration changed from `platt_logit` to `isotonic`.
+- Config: `experiments/configs/20260510_codex_iter400_isotonic_current_blend.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260510_codex_iter400_isotonic_current_blend --config experiments/configs/20260510_codex_iter400_isotonic_current_blend.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260510_codex_iter400_isotonic_current_blend/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.1721394520298359`.
+- Utility before / after: `0.07698289269051321` / `0.07685329186106792`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5808122104115563`.
+- Accepted count before / after: `3120` / `3669`.
+- Coverage before / after: `0.40435458786936235` / `0.4755054432348367`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: pending.
+- Interpretation: isotonic calibration broadens acceptance and lowers accepted precision. Keep `platt_logit(C=0.2)`.
+- Next step: do not continue calibration-only controls without a new model-ranking change.
