@@ -6886,6 +6886,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40902021772939345`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; validation added-feature missing count is zero.
-- Git commit: `pending`.
+- Git commit: `95062df`.
 - Interpretation: rolling HTF volatility normalization lowers accepted accuracy and selection_score. Do not keep these added features.
 - Next step: stop HTF volatility variants unless paired with a narrower model-side selection mechanism.
