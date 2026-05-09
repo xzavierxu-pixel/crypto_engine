@@ -5873,3 +5873,26 @@ Main bottlenecks:
 - Git commit: `169ed36`.
 - Interpretation: lower CatBoost randomization also hurts accepted accuracy. Keep `random_strength: 2.0`.
 - Next step: inspect probability and feature diagnostics before selecting the next focused iteration.
+
+## 20260509_codex_iter268_blend9770_sample_min_weight020_platt_logit_c020
+
+- Skill used: none specific; this is an existing sample-weighting configuration experiment guided by boundary-slice diagnostics.
+- Hypothesis: lowering `sample_weighting.min_weight` from `0.35` to `0.20` may reduce the influence of ambiguous low-absolute-return rows, where slice diagnostics show much weaker accepted accuracy, without changing the fixed label rule.
+- Changed files: `experiments/configs/20260509_codex_iter268_blend9770_sample_min_weight020_platt_logit_c020.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: 516 features; HTF/time features retained.
+- Model settings: current best logit blend with `catboost_weight: 0.9770`, model params unchanged, `sample_weighting.min_weight: 0.20`, `calibration.active_plugin: platt_logit`, `C: 0.2`.
+- Config: `experiments/configs/20260509_codex_iter268_blend9770_sample_min_weight020_platt_logit_c020.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter268_blend9770_sample_min_weight020_platt_logit_c020 --config experiments/configs/20260509_codex_iter268_blend9770_sample_min_weight020_platt_logit_c020.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter268_blend9770_sample_min_weight020_platt_logit_c020/metrics.json`.
+- Score before: `0.19027803605274402`.
+- Score after: `0.19027803605274402`.
+- Utility before / after: `0.07698289269051321` / `0.07698289269051321`.
+- Accepted accuracy before / after: `0.5951923076923077` / `0.5951923076923077`.
+- Accepted count before / after: `3120` / `3120`.
+- Coverage before / after: `0.40435458786936235` / `0.40435458786936235`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training.
+- Git commit: `pending`.
+- Interpretation: exact tie to the current best; either this change does not affect the active model path materially, or it preserves identical threshold-selected predictions. Keep the simpler current best config.
+- Next step: inspect whether active training consumes sample weights before spending more iterations on sample-weighting brackets.
