@@ -1262,3 +1262,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: session flags increase accepted volume and utility slightly but reduce accepted accuracy, lowering the objective. Session-specific handling is not the current bottleneck.
 - Next step: move back to data-window or feature-family selection rather than further session features.
+
+## 20260509_codex_iter64_regime_flags_catboost
+
+- Skill used: `tabular-season-phase-labeling` adapted to train-fitted volatility and volume regimes.
+- Hypothesis: adding development-fitted `rv_5` and `volume` tercile flags may expose the regime-slice structure seen in the current best report without training separate models.
+- Changed files: `experiments/configs/20260509_codex_iter64_regime_flags_catboost.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260509_codex_iter64_regime_flags_split`.
+- Feature set: current best VWAP-pruned top-500 split plus six regime flags; HTF/time features retained.
+- Cutpoints: `rv_5` q33 `0.0003847713141339769`, q67 `0.0006854816179791311`; `volume` q33 `5.857366666666667`, q67 `14.411116666666665`.
+- Config: `experiments/configs/20260509_codex_iter64_regime_flags_catboost.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260509_codex_iter64_regime_flags_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter64_regime_flags_catboost --config experiments/configs/20260509_codex_iter64_regime_flags_catboost.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter64_regime_flags_catboost/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.1698404939306286`.
+- Utility before / after: `0.0751684810782789` / `0.07153965785381025`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5838905775075988`.
+- Accepted count before / after: `3245` / `3290`.
+- Coverage before / after: `0.4205546915500259` / `0.4263867288750648`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no code changes in this iteration.
+- Interpretation: regime flags are directionally reasonable but still reduce accepted accuracy relative to the best model. The underlying continuous features are likely sufficient for CatBoost.
+- Next step: test stricter recency weighting within the best 75-day split.
