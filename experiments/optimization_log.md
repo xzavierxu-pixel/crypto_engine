@@ -7455,6 +7455,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40383618455158116`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: pending.
+- Git commit: `bbb0e3d`.
 - Interpretation: stronger DART subsampling is close but slightly worse, mostly from lower accepted accuracy. Keep the current DART sampling.
 - Next step: test a small CatBoost random-strength increase on the unchanged 516-feature split.
