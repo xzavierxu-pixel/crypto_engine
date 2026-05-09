@@ -4052,6 +4052,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40383618455158116` / `0.4047433903576983`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; calibration was fit only on development predictions.
-- Git commit: pending.
+- Git commit: `294c8aa`.
 - Interpretation: a small increase in DART contribution improves utility enough to set a new best valid score.
 - Next step: test the opposite blend-weight side.
