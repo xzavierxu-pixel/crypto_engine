@@ -6583,6 +6583,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.40578019699326073`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training.
-- Git commit: `pending`.
+- Git commit: `14ef177`.
 - Interpretation: the additional prune further lowers selection_score; bottom-importance pruning is not improving the current blend.
 - Next step: pivot away from this pruning band and test a different data-processing axis.
