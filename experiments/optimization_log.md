@@ -2297,3 +2297,25 @@ Main bottlenecks:
 - Tests: DQC ran during training; no code changes in this iteration.
 - Interpretation: drift-driven feature removal lowers validation objective; these shifted features still carry useful directional signal.
 - Next step: use adversarial validation as diagnostic only, not as a blind removal rule.
+
+## 20260509_codex_iter112_catboost_rv5_regime
+
+- Skill used: `tabular-per-type-model-training`.
+- Hypothesis: validation diagnostics differ by `rv_5` volatility regime, so routing predictions through regime-specific CatBoost models may improve selective accuracy.
+- Changed files: `src/model/catboost_regime_plugin.py`, `src/model/registry.py`, `experiments/configs/20260509_codex_iter112_catboost_rv5_regime.yaml`, `experiments/optimization_log.md`.
+- Cached split: `artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split`.
+- Feature set: current best VWAP-pruned top-500 split; HTF/time features retained.
+- Model settings: new `catboost_regime` plugin with a global fallback model plus low/mid/high `rv_5` regime models using training-set tertiles and current best CatBoost parameters.
+- Config: `experiments/configs/20260509_codex_iter112_catboost_rv5_regime.yaml`.
+- Evaluation command: `rtk python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260508_codex_iter43_train75_drop_sl_vwap_split --output-dir artifacts/data_v2/experiments/20260509_codex_iter112_catboost_rv5_regime --config experiments/configs/20260509_codex_iter112_catboost_rv5_regime.yaml --horizon 5m --train-window-days 75 --validation-window-days 30`.
+- Evaluation report: `artifacts/data_v2/experiments/20260509_codex_iter112_catboost_rv5_regime/metrics.json`.
+- Score before: `0.1809240380968129`.
+- Score after: `0.12618394358065715`.
+- Utility before / after: `0.0751684810782789` / `0.05572835666148263`.
+- Accepted accuracy before / after: `0.5893814907872698` / `0.5625`.
+- Accepted count before / after: `3245` / `3440`.
+- Coverage before / after: `0.4205546915500259` / `0.44582685329186106`.
+- Coverage constraint satisfied: yes.
+- Tests: DQC ran during training; no separate unit test was added because this branch underperformed and should not become active.
+- Interpretation: regime routing overfits the development data and sharply reduces validation accepted accuracy. Do not expand this plugin direction without a better gating design.
+- Next step: keep the plugin available but inactive; return to config-only experiments.
