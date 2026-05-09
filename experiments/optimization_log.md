@@ -5410,6 +5410,6 @@ Main bottlenecks:
 - Coverage before / after: `0.40435458786936235` / `0.4152410575427683`.
 - Coverage constraint satisfied: yes.
 - Tests: DQC ran during training; feature-selection summary saved at `artifacts/data_v2/experiments/20260509_codex_iter247_train120_top700_importance_split/feature_select_summary.json`.
-- Git commit: `pending`.
+- Git commit: `69395d3`.
 - Interpretation: the selected extra feature set still lowers accepted accuracy. The 120-day rebuilt branch is not competitive on the current validation slice.
 - Next step: return to the 75-day recent-window branch and look for targeted feature additions rather than older-history expansion.
