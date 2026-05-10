@@ -62,7 +62,7 @@ execution_engine/
 
 ```bash
 cd /opt
-git clone <repo> crypto_engine
+git clone -b baseline <repo> crypto_engine
 cd /opt/crypto_engine
 ```
 
