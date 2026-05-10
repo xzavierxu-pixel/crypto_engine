@@ -47,6 +47,12 @@ class ScheduleConfig:
 
 
 @dataclass(frozen=True)
+class ThresholdConfig:
+    t_up: float | None = None
+    t_down: float | None = None
+
+
+@dataclass(frozen=True)
 class PolymarketConfig:
     host: str = "https://clob.polymarket.com"
     gamma_base_url: str = "https://gamma-api.polymarket.com"
@@ -96,6 +102,7 @@ class ExecutionEngineConfig:
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
     binance: BinanceConfig = field(default_factory=BinanceConfig)
     schedule: ScheduleConfig = field(default_factory=ScheduleConfig)
+    thresholds: ThresholdConfig = field(default_factory=ThresholdConfig)
     polymarket: PolymarketConfig = field(default_factory=PolymarketConfig)
     orders: OrdersConfig = field(default_factory=OrdersConfig)
     guards: GuardsConfig = field(default_factory=GuardsConfig)
@@ -130,8 +137,8 @@ def load_execution_config(path: str | Path) -> ExecutionEngineConfig:
         runtime=RuntimeConfig(**_payload_for(payload, "runtime")),
         binance=BinanceConfig(**_payload_for(payload, "binance")),
         schedule=ScheduleConfig(**_payload_for(payload, "schedule")),
+        thresholds=ThresholdConfig(**_payload_for(payload, "thresholds")),
         polymarket=PolymarketConfig(**_payload_for(payload, "polymarket")),
         orders=orders,
         guards=GuardsConfig(**_payload_for(payload, "guards")),
     )
-

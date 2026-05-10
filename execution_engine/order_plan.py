@@ -35,17 +35,25 @@ def build_two_limit_order_plan(
 ) -> OrderPlanResult:
     if not decision.should_trade or decision.side is None:
         return OrderPlanResult(orders=[], skipped=[{"reason": decision.reason}])
-    best_bid = quote.metadata.get("best_bid")
-    if best_bid is None:
-        return OrderPlanResult(orders=[], skipped=[{"reason": "missing_best_bid"}])
-
     tick_size = float(quote.metadata.get("tick_size") or config.tick_size_default)
+    best_bid = quote.metadata.get("best_bid")
+    best_ask = quote.metadata.get("best_ask")
+    if best_bid is None and best_ask is None:
+        return OrderPlanResult(orders=[], skipped=[{"reason": "missing_quote"}])
+
     target_token = select_target_token(decision, quote)
     orders: list[OrderRequest] = []
     skipped: list[dict] = []
 
     for name, leg in [("first", config.first), ("second", config.second)]:
-        raw_price = min(float(best_bid), leg.price_cap) + leg.offset
+        if best_bid is not None:
+            quote_reference = float(best_bid)
+            quote_source = "best_bid"
+            raw_price = min(quote_reference, leg.price_cap) + leg.offset
+        else:
+            quote_reference = float(best_ask)
+            quote_source = "best_ask"
+            raw_price = min(quote_reference, leg.price_cap) + leg.offset - tick_size
         price = floor_to_tick(raw_price, tick_size)
         if price < config.min_price or price > config.max_price:
             action = config.on_invalid_second_order if name == "second" else "skip"
@@ -57,6 +65,7 @@ def build_two_limit_order_plan(
                     {
                         "leg": name,
                         "reason": "invalid_price",
+                        "quote_source": quote_source,
                         "raw_price": raw_price,
                         "price": price,
                     }
@@ -71,7 +80,9 @@ def build_two_limit_order_plan(
                 signal_t0=signal.t0,
                 metadata={
                     "leg": name,
-                    "best_bid": float(best_bid),
+                    "quote_source": quote_source,
+                    "best_bid": None if best_bid is None else float(best_bid),
+                    "best_ask": None if best_ask is None else float(best_ask),
                     "tick_size": tick_size,
                     "p_up": signal.p_up,
                     "p_down": signal.p_down,
@@ -81,4 +92,3 @@ def build_two_limit_order_plan(
             )
         )
     return OrderPlanResult(orders=orders, skipped=skipped)
-

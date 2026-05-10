@@ -8,6 +8,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 REPO_ROOT = next(parent for parent in Path(__file__).resolve().parents if (parent / "src").is_dir())
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -25,10 +27,10 @@ from src.services.audit_service import AuditService
 from src.signal.policies import evaluate_selective_binary_signal
 
 
-def build_btc_5m_slug(t0: datetime) -> tuple[str, datetime, datetime]:
+def build_btc_5m_slug(t0: datetime, *, offset_windows: int = 0) -> tuple[str, datetime, datetime]:
     ts = t0.astimezone(UTC).replace(second=0, microsecond=0)
     minute = ts.minute - (ts.minute % 5)
-    window_start = ts.replace(minute=minute)
+    window_start = ts.replace(minute=minute) + timedelta(minutes=5 * offset_windows)
     window_end = window_start + timedelta(minutes=5)
     return f"btc-updown-5m-{int(window_start.timestamp())}", window_start, window_end
 
@@ -41,7 +43,11 @@ def audit_event(event_type: str, payload: dict[str, Any]) -> AuditEvent:
     return AuditEvent(event_type=event_type, timestamp=datetime.now(UTC), payload=payload)
 
 
-def run_once(config_path: str, mode_override: str | None = None) -> dict[str, Any]:
+def run_once(
+    config_path: str,
+    mode_override: str | None = None,
+    target_window_start: datetime | None = None,
+) -> dict[str, Any]:
     config = load_execution_config(config_path)
     mode = mode_override or config.runtime.mode
     baseline = load_baseline_artifact(config.baseline)
@@ -66,9 +72,22 @@ def run_once(config_path: str, mode_override: str | None = None) -> dict[str, An
         )
     )
 
-    inference = RuntimeInferenceEngine(settings, baseline)
-    result = inference.predict(minute_frame, second_frame, agg_trades_frame)
+    inference = RuntimeInferenceEngine(
+        settings,
+        baseline,
+        t_up=config.thresholds.t_up,
+        t_down=config.thresholds.t_down,
+    )
+    target_signal_t0 = None if target_window_start is None else target_window_start - timedelta(minutes=5)
+    result = inference.predict(
+        minute_frame,
+        second_frame,
+        agg_trades_frame,
+        signal_t0=None if target_signal_t0 is None else pd.Timestamp(target_signal_t0),
+    )
     signal = result.signal
+    t_up = float(signal.decision_context["t_up"])
+    t_down = float(signal.decision_context["t_down"])
     audit.append(
         audit_event(
             "signal_generated",
@@ -78,8 +97,10 @@ def run_once(config_path: str, mode_override: str | None = None) -> dict[str, An
                 "t0": signal.t0.isoformat(),
                 "p_up": signal.p_up,
                 "p_down": signal.p_down,
-                "t_up": baseline.t_up,
-                "t_down": baseline.t_down,
+                "t_up": t_up,
+                "t_down": t_down,
+                "artifact_t_up": baseline.t_up,
+                "artifact_t_down": baseline.t_down,
                 "feature_count": len(baseline.feature_columns),
                 "baseline_artifact_dir": str(baseline.artifact_dir),
             },
@@ -98,8 +119,10 @@ def run_once(config_path: str, mode_override: str | None = None) -> dict[str, An
             "t0": signal.t0.isoformat(),
             "p_up": signal.p_up,
             "p_down": signal.p_down,
-            "t_up": baseline.t_up,
-            "t_down": baseline.t_down,
+            "t_up": t_up,
+            "t_down": t_down,
+            "artifact_t_up": baseline.t_up,
+            "artifact_t_down": baseline.t_down,
         },
         "decision": asdict(decision),
         "market": None,
@@ -114,7 +137,10 @@ def run_once(config_path: str, mode_override: str | None = None) -> dict[str, An
         return write_summary(config.runtime.summary_dir, summary)
 
     polymarket = PolymarketV2Adapter(config.polymarket)
-    slug, window_start, window_end = build_btc_5m_slug(signal.t0)
+    if target_window_start is None:
+        slug, window_start, window_end = build_btc_5m_slug(signal.t0, offset_windows=1)
+    else:
+        slug, window_start, window_end = build_btc_5m_slug(target_window_start, offset_windows=0)
     market = polymarket.get_market_by_slug(slug)
     if market is None:
         reason = "market_not_found"
@@ -163,8 +189,8 @@ def run_once(config_path: str, mode_override: str | None = None) -> dict[str, An
     }
     audit.append(audit_event("market_mapped", summary["market"]))
 
-    if config.guards.require_best_bid and quote.metadata.get("best_bid") is None:
-        reason = "missing_best_bid"
+    if config.guards.require_best_bid and quote.metadata.get("best_bid") is None and quote.metadata.get("best_ask") is None:
+        reason = "missing_quote"
         summary["skipped"].append({"reason": reason})
         audit.append(audit_event("execution_skipped", {"reason": reason, "market": summary["market"]}))
         return write_summary(config.runtime.summary_dir, summary)
@@ -183,7 +209,7 @@ def run_once(config_path: str, mode_override: str | None = None) -> dict[str, An
     store = IdempotencyStore(config.runtime.idempotency_store_path)
     responses: list[dict[str, Any]] = []
     for order in order_plan.orders[: config.guards.max_orders_per_window]:
-        key = build_idempotency_key(signal.t0, order.market_id, order.side)
+        key = build_idempotency_key(window_start, order.market_id, order.side)
         if config.guards.enforce_idempotency and store.has(key):
             skipped = {"reason": "idempotency_key_already_seen", "key": key}
             summary["skipped"].append(skipped)
@@ -215,9 +241,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run one execution-engine cycle.")
     parser.add_argument("--config", default="execution_engine/config.yaml")
     parser.add_argument("--mode", choices=["paper", "live"], default=None)
+    parser.add_argument("--target-window-start", default=None)
     parser.add_argument("--print-json", action="store_true")
     args = parser.parse_args()
-    summary = run_once(args.config, mode_override=args.mode)
+    target_window_start = (
+        None
+        if args.target_window_start is None
+        else pd.Timestamp(args.target_window_start).tz_convert(UTC).to_pydatetime()
+    )
+    summary = run_once(args.config, mode_override=args.mode, target_window_start=target_window_start)
     if args.print_json:
         print(json.dumps(summary, indent=2, ensure_ascii=False, default=str))
     else:

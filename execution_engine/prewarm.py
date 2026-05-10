@@ -23,7 +23,12 @@ def prewarm(config_path: str, cache_output: str | None = None) -> dict:
     settings = load_settings(config.baseline.settings_path)
     client = BinanceRealtimeClient(config.binance)
     minute_frame, second_frame, agg_trades_frame = client.fetch_runtime_frames()
-    inference = RuntimeInferenceEngine(settings, baseline)
+    inference = RuntimeInferenceEngine(
+        settings,
+        baseline,
+        t_up=config.thresholds.t_up,
+        t_down=config.thresholds.t_down,
+    )
     feature_frame, second_level_frame = inference.build_feature_frame(minute_frame, second_frame, agg_trades_frame)
     summary = {
         "timestamp": datetime.now(UTC).isoformat(),

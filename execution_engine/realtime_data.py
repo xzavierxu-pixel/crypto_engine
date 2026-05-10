@@ -59,21 +59,39 @@ class BinanceRealtimeClient:
         end_time: datetime | pd.Timestamp | None = None,
         limit: int = 1000,
     ) -> pd.DataFrame:
-        params: dict[str, Any] = {
-            "symbol": self.config.symbol,
-            "interval": interval,
-            "startTime": int(pd.Timestamp(start_time).timestamp() * 1000),
-            "limit": limit,
-        }
-        if end_time is not None:
-            params["endTime"] = int(pd.Timestamp(end_time).timestamp() * 1000)
-        response = self.session.get(
-            f"{self.base_url}/api/v3/klines",
-            params=params,
-            timeout=self.config.request_timeout_seconds,
-        )
-        response.raise_for_status()
-        return normalize_binance_klines(response.json(), require_closed=False)
+        start = pd.Timestamp(start_time).tz_convert(UTC)
+        end = pd.Timestamp(end_time).tz_convert(UTC) if end_time is not None else None
+        frames: list[pd.DataFrame] = []
+        while True:
+            params: dict[str, Any] = {
+                "symbol": self.config.symbol,
+                "interval": interval,
+                "startTime": int(start.timestamp() * 1000),
+                "limit": limit,
+            }
+            if end is not None:
+                params["endTime"] = int(end.timestamp() * 1000)
+            response = self.session.get(
+                f"{self.base_url}/api/v3/klines",
+                params=params,
+                timeout=self.config.request_timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if not payload:
+                break
+            frame = normalize_binance_klines(payload, require_closed=False)
+            frames.append(frame)
+            last_close = pd.to_datetime(frame["close_time"].iloc[-1], utc=True)
+            next_start = last_close + pd.Timedelta(milliseconds=1)
+            if len(payload) < limit or (end is not None and next_start > end) or next_start <= start:
+                break
+            start = next_start
+        if not frames:
+            return pd.DataFrame(columns=[DEFAULT_TIMESTAMP_COLUMN, *KLINE_COLUMNS[1:-1]])
+        return pd.concat(frames, ignore_index=True).drop_duplicates(DEFAULT_TIMESTAMP_COLUMN).sort_values(
+            DEFAULT_TIMESTAMP_COLUMN
+        ).reset_index(drop=True)
 
     def fetch_recent_klines(
         self,

@@ -26,10 +26,19 @@ class FeatureBuildResult:
 
 
 class RuntimeInferenceEngine:
-    def __init__(self, settings: Settings, baseline: BaselineArtifact, horizon_name: str = "5m") -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        baseline: BaselineArtifact,
+        horizon_name: str = "5m",
+        t_up: float | None = None,
+        t_down: float | None = None,
+    ) -> None:
         self.settings = settings
         self.baseline = baseline
         self.horizon_name = horizon_name
+        self.t_up = baseline.t_up if t_up is None else float(t_up)
+        self.t_down = baseline.t_down if t_down is None else float(t_down)
         self.model = load_model_plugin(baseline.model_plugin, str(baseline.model_path))
         self.calibrator = load_calibration_plugin(baseline.calibration_plugin, str(baseline.calibrator_path))
 
@@ -61,6 +70,7 @@ class RuntimeInferenceEngine:
         minute_frame: pd.DataFrame,
         second_frame: pd.DataFrame,
         agg_trades_frame: pd.DataFrame | None = None,
+        signal_t0: pd.Timestamp | None = None,
     ) -> FeatureBuildResult:
         feature_frame, sampled_second = self.build_feature_frame(minute_frame, second_frame, agg_trades_frame)
         probabilities = predict_frame(
@@ -69,8 +79,18 @@ class RuntimeInferenceEngine:
             calibrator=self.calibrator,
             feature_columns=self.baseline.feature_columns,
         )
-        latest = feature_frame.iloc[-1]
-        p_up = float(probabilities.iloc[-1])
+        if signal_t0 is None:
+            row_index = feature_frame.index[-1]
+        else:
+            target_t0 = pd.Timestamp(signal_t0).tz_convert("UTC")
+            matches = feature_frame.index[
+                pd.to_datetime(feature_frame[DEFAULT_TIMESTAMP_COLUMN], utc=True) == target_t0
+            ]
+            if matches.empty:
+                raise RuntimeError(f"Feature frame does not include requested signal_t0 '{target_t0.isoformat()}'.")
+            row_index = matches[-1]
+        latest = feature_frame.loc[row_index]
+        p_up = float(probabilities.loc[row_index])
         signal = Signal(
             asset=str(latest["asset"]),
             horizon=str(latest["horizon"]),
@@ -84,8 +104,10 @@ class RuntimeInferenceEngine:
             decision_context={
                 "grid_id": latest["grid_id"],
                 "timestamp": latest[DEFAULT_TIMESTAMP_COLUMN].isoformat(),
-                "t_up": self.baseline.t_up,
-                "t_down": self.baseline.t_down,
+                "t_up": self.t_up,
+                "t_down": self.t_down,
+                "artifact_t_up": self.baseline.t_up,
+                "artifact_t_down": self.baseline.t_down,
                 "baseline_artifact_dir": str(self.baseline.artifact_dir),
             },
         )

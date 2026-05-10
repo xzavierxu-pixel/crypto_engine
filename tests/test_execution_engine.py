@@ -37,6 +37,8 @@ def test_execution_config_example_loads() -> None:
     assert config.orders.first.size == 5.0
     assert config.orders.second.offset == -0.1
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
+    assert config.thresholds.t_up == 0.5425
+    assert config.thresholds.t_down == 0.4175
 
 
 def test_normalize_binance_klines_outputs_shared_schema() -> None:
@@ -119,7 +121,25 @@ def test_two_limit_order_plan_skips_without_best_bid() -> None:
     )
 
     assert plan.orders == []
-    assert plan.skipped == [{"reason": "missing_best_bid"}]
+    assert plan.skipped == [{"reason": "missing_quote"}]
+
+
+def test_two_limit_order_plan_uses_best_ask_fallback_without_best_bid() -> None:
+    config = load_execution_config("execution_engine/config.example.yaml")
+    plan = build_two_limit_order_plan(
+        _signal(),
+        Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
+        MarketQuote(
+            market_id="yes-token",
+            yes_price=0.51,
+            no_price=0.49,
+            metadata={"yes_token_id": "yes-token", "best_ask": 0.48, "tick_size": "0.01"},
+        ),
+        config.orders,
+    )
+
+    assert [order.price for order in plan.orders] == [0.47, 0.37]
+    assert [order.metadata["quote_source"] for order in plan.orders] == ["best_ask", "best_ask"]
 
 
 def test_slug_and_idempotency_key_are_window_scoped() -> None:
@@ -130,6 +150,17 @@ def test_slug_and_idempotency_key_are_window_scoped() -> None:
     assert start == datetime(2026, 5, 10, 12, 35, tzinfo=UTC)
     assert end == datetime(2026, 5, 10, 12, 40, tzinfo=UTC)
     assert key == "2026-05-10T12:35:00+00:00:token-1:YES:two_limit_plan"
+
+
+def test_slug_can_target_next_5m_window() -> None:
+    slug, start, end = build_btc_5m_slug(
+        datetime(2026, 5, 10, 12, 37, 59, tzinfo=UTC),
+        offset_windows=1,
+    )
+
+    assert slug == f"btc-updown-5m-{int(start.timestamp())}"
+    assert start == datetime(2026, 5, 10, 12, 40, tzinfo=UTC)
+    assert end == datetime(2026, 5, 10, 12, 45, tzinfo=UTC)
 
 
 def test_gamma_market_normalization_extracts_tokens() -> None:
@@ -209,6 +240,223 @@ def test_polymarket_v2_adapter_places_gtc_buy(monkeypatch) -> None:
     assert response["response"]["success"] is True
 
 
+def test_polymarket_v2_adapter_uses_proxy_wallet_auth_when_deriving_creds(monkeypatch) -> None:
+    clob_package = types.ModuleType("py_clob_client_v2")
+    client_module = types.ModuleType("py_clob_client_v2.client")
+    clob_types_module = types.ModuleType("py_clob_client_v2.clob_types")
+    created_clients = []
+
+    class ApiCreds:
+        def __init__(self, api_key, api_secret, api_passphrase):
+            self.api_key = api_key
+            self.api_secret = api_secret
+            self.api_passphrase = api_passphrase
+
+    class ClobClient:
+        def __init__(self, host, chain_id, key, creds=None, signature_type=None, funder=None):
+            self.host = host
+            self.chain_id = chain_id
+            self.key = key
+            self.creds = creds
+            self.signature_type = signature_type
+            self.funder = funder
+            self.signer = object()
+            created_clients.append(self)
+
+        def create_or_derive_api_key(self):
+            return ApiCreds("api-key", "secret", "passphrase")
+
+    client_module.ClobClient = ClobClient
+    clob_types_module.ApiCreds = ApiCreds
+    monkeypatch.setitem(sys.modules, "py_clob_client_v2", clob_package)
+    monkeypatch.setitem(sys.modules, "py_clob_client_v2.client", client_module)
+    monkeypatch.setitem(sys.modules, "py_clob_client_v2.clob_types", clob_types_module)
+    monkeypatch.setenv("POLYMARKET_PRIVATE_KEY", "0xabc")
+    monkeypatch.setenv("POLYMARKET_SIGNATURE_TYPE", "1")
+    monkeypatch.setenv("POLYMARKET_FUNDER", "0xfunder")
+    monkeypatch.delenv("CLOB_API_KEY", raising=False)
+    monkeypatch.delenv("CLOB_SECRET", raising=False)
+    monkeypatch.delenv("CLOB_PASS_PHRASE", raising=False)
+
+    config = load_execution_config("execution_engine/config.example.yaml")
+    adapter = PolymarketV2Adapter(config.polymarket)
+    adapter._ensure_authenticated()
+
+    assert len(created_clients) == 2
+    assert created_clients[0].creds is None
+    assert created_clients[0].signature_type == 1
+    assert created_clients[0].funder == "0xfunder"
+    assert created_clients[1].creds.api_key == "api-key"
+    assert created_clients[1].signature_type == 1
+    assert created_clients[1].funder == "0xfunder"
+
+
+def test_polymarket_v2_adapter_uses_relayer_deposit_wallet_for_type_3(monkeypatch) -> None:
+    clob_package = types.ModuleType("py_clob_client_v2")
+    client_module = types.ModuleType("py_clob_client_v2.client")
+    clob_types_module = types.ModuleType("py_clob_client_v2.clob_types")
+    relayer_package = types.ModuleType("py_builder_relayer_client")
+    relayer_module = types.ModuleType("py_builder_relayer_client.client")
+    created_clients = []
+
+    class ApiCreds:
+        def __init__(self, api_key, api_secret, api_passphrase):
+            self.api_key = api_key
+            self.api_secret = api_secret
+            self.api_passphrase = api_passphrase
+
+    class ClobClient:
+        def __init__(self, host, chain_id, key, creds=None, signature_type=None, funder=None):
+            self.host = host
+            self.chain_id = chain_id
+            self.key = key
+            self.creds = creds
+            self.signature_type = signature_type
+            self.funder = funder
+            self.signer = object()
+            created_clients.append(self)
+
+        def create_or_derive_api_key(self):
+            return ApiCreds("api-key", "secret", "passphrase")
+
+    class RelayClient:
+        def __init__(self, relayer_url, chain_id, private_key, builder_config=None):
+            self.relayer_url = relayer_url
+            self.chain_id = chain_id
+            self.private_key = private_key
+            self.builder_config = builder_config
+
+        def get_expected_deposit_wallet(self):
+            return "0xdeposit"
+
+    client_module.ClobClient = ClobClient
+    clob_types_module.ApiCreds = ApiCreds
+    relayer_module.RelayClient = RelayClient
+    monkeypatch.setitem(sys.modules, "py_clob_client_v2", clob_package)
+    monkeypatch.setitem(sys.modules, "py_clob_client_v2.client", client_module)
+    monkeypatch.setitem(sys.modules, "py_clob_client_v2.clob_types", clob_types_module)
+    monkeypatch.setitem(sys.modules, "py_builder_relayer_client", relayer_package)
+    monkeypatch.setitem(sys.modules, "py_builder_relayer_client.client", relayer_module)
+    monkeypatch.setenv("POLYMARKET_PRIVATE_KEY", "0xabc")
+    monkeypatch.setenv("POLYMARKET_SIGNATURE_TYPE", "3")
+    monkeypatch.setenv("POLYMARKET_RELAYER_URL", "https://relayer.example")
+    monkeypatch.delenv("DEPOSIT_WALLET_ADDRESS", raising=False)
+    monkeypatch.delenv("POLYMARKET_FUNDER", raising=False)
+    monkeypatch.delenv("CLOB_API_KEY", raising=False)
+    monkeypatch.delenv("CLOB_SECRET", raising=False)
+    monkeypatch.delenv("CLOB_PASS_PHRASE", raising=False)
+
+    config = load_execution_config("execution_engine/config.example.yaml")
+    adapter = PolymarketV2Adapter(config.polymarket)
+    adapter._ensure_authenticated()
+
+    assert len(created_clients) == 2
+    assert created_clients[0].signature_type == 3
+    assert created_clients[0].funder == "0xdeposit"
+    assert created_clients[1].signature_type == 3
+    assert created_clients[1].funder == "0xdeposit"
+
+
+def test_polymarket_orderbook_accepts_bid_only_book() -> None:
+    config = load_execution_config("execution_engine/config.example.yaml")
+
+    class Level:
+        price = "0.42"
+
+    class OrderBook:
+        bids = [Level()]
+        asks = []
+        last_trade_price = None
+        asset_id = "token-1"
+        market = "market-1"
+        tick_size = "0.01"
+        hash = "hash-1"
+
+    class FakeClient:
+        def get_order_book(self, token_id):
+            return OrderBook()
+
+    quote = PolymarketV2Adapter(config.polymarket, client=FakeClient()).get_orderbook("token-1")
+
+    assert quote.yes_price == 0.42
+    assert quote.metadata["best_bid"] == 0.42
+    assert quote.metadata["best_ask"] is None
+
+
+def test_polymarket_orderbook_without_prices_allows_missing_bid_skip() -> None:
+    config = load_execution_config("execution_engine/config.example.yaml")
+
+    class OrderBook:
+        bids = []
+        asks = []
+        last_trade_price = None
+        asset_id = "token-1"
+        market = "market-1"
+        tick_size = "0.01"
+        hash = "hash-1"
+
+    class FakeClient:
+        def get_order_book(self, token_id):
+            return OrderBook()
+
+    quote = PolymarketV2Adapter(config.polymarket, client=FakeClient()).get_orderbook("token-1")
+    plan = build_two_limit_order_plan(
+        _signal(),
+        Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
+        quote,
+        config.orders,
+    )
+
+    assert quote.metadata["best_bid"] is None
+    assert quote.metadata["best_ask"] is None
+    assert plan.orders == []
+    assert plan.skipped == [{"reason": "missing_quote"}]
+
+
+def test_polymarket_orderbook_accepts_dict_payload_and_selects_best_prices() -> None:
+    config = load_execution_config("execution_engine/config.example.yaml")
+
+    class FakeClient:
+        def get_order_book(self, token_id):
+            return {
+                "asset_id": token_id,
+                "market": "market-1",
+                "hash": "hash-1",
+                "bids": [{"price": "0.01", "size": "10"}, {"price": "0.42", "size": "5"}],
+                "asks": [{"price": "0.99", "size": "10"}, {"price": "0.58", "size": "5"}],
+            }
+
+    quote = PolymarketV2Adapter(config.polymarket, client=FakeClient()).get_orderbook("token-1")
+
+    assert quote.yes_price == 0.58
+    assert quote.metadata["best_bid"] == 0.42
+    assert quote.metadata["best_ask"] == 0.58
+
+
+def test_polymarket_missing_orderbook_error_allows_missing_bid_skip() -> None:
+    config = load_execution_config("execution_engine/config.example.yaml")
+
+    class MissingOrderbookError(Exception):
+        status_code = 404
+
+    class FakeClient:
+        def get_order_book(self, token_id):
+            raise MissingOrderbookError("No orderbook exists for the requested token id")
+
+    quote = PolymarketV2Adapter(config.polymarket, client=FakeClient()).get_orderbook("token-1")
+    plan = build_two_limit_order_plan(
+        _signal(),
+        Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
+        quote,
+        config.orders,
+    )
+
+    assert quote.metadata["best_bid"] is None
+    assert "orderbook_error" in quote.metadata
+    assert plan.orders == []
+    assert plan.skipped == [{"reason": "missing_quote"}]
+
+
 def test_run_once_paper_flow_builds_order_plan_without_submit(monkeypatch, tmp_path) -> None:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
@@ -252,11 +500,12 @@ orders:
             return frame, frame, frame
 
     class FakeInference:
-        def __init__(self, settings, baseline):
+        def __init__(self, settings, baseline, **kwargs):
             self.settings = settings
             self.baseline = baseline
+            self.kwargs = kwargs
 
-        def predict(self, minute_frame, second_frame, agg_trades_frame=None):
+        def predict(self, minute_frame, second_frame, agg_trades_frame=None, signal_t0=None):
             return types.SimpleNamespace(
                 signal=_signal(0.60),
                 feature_frame=pd.DataFrame({"f1": [1.0]}),
@@ -305,6 +554,7 @@ orders:
     summary = run_once_module.run_once(str(config_path), mode_override="paper")
 
     assert summary["submitted"] is False
+    assert summary["market"]["slug"] == "btc-updown-5m-1778416800"
     assert summary["market"]["target_token_id"] == "yes-token"
     assert [order["price"] for order in summary["orders"]] == [0.5, 0.4]
     assert summary["skipped"] == [{"reason": "paper_mode_or_orders_disabled"}]

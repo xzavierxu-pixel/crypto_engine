@@ -29,6 +29,10 @@ schedule:
   max_data_wait_seconds: 20
   prewarm_seconds_before_trigger: 45
 
+thresholds:
+  t_up: 0.5425
+  t_down: 0.4175
+
 polymarket:
   host: https://clob.polymarket.com
   gamma_base_url: https://gamma-api.polymarket.com

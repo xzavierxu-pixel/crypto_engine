@@ -332,10 +332,17 @@ def _existing_partition_metadata(
 
 
 def _asof_to_decisions(features: pd.DataFrame, decision_timestamps: pd.Series) -> pd.DataFrame:
-    decisions = pd.DataFrame({DEFAULT_TIMESTAMP_COLUMN: pd.to_datetime(decision_timestamps, utc=True)})
+    decisions = pd.DataFrame(
+        {DEFAULT_TIMESTAMP_COLUMN: pd.to_datetime(decision_timestamps, utc=True).astype("datetime64[ns, UTC]")}
+    )
+    feature_rows = features.sort_index().reset_index().rename(columns={"index": DEFAULT_TIMESTAMP_COLUMN})
+    feature_rows[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(
+        feature_rows[DEFAULT_TIMESTAMP_COLUMN],
+        utc=True,
+    ).astype("datetime64[ns, UTC]")
     aligned = pd.merge_asof(
         decisions.sort_values(DEFAULT_TIMESTAMP_COLUMN),
-        features.sort_index().reset_index().rename(columns={"index": DEFAULT_TIMESTAMP_COLUMN}),
+        feature_rows,
         on=DEFAULT_TIMESTAMP_COLUMN,
         direction="backward",
     )
