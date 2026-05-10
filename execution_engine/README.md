@@ -62,17 +62,28 @@ execution_engine/
 
 ```bash
 cd /opt
-git clone -b baseline <repo> crypto_engine
-cd /opt/crypto_engine
+git clone -b baseline https://github.com/xzavierxu-pixel/crypto_engine.git crypto_engine
+cd opt/crypto_engine
 ```
 
 安装依赖：
 
 ```bash
+python3 --version
+sudo apt update
+sudo apt install -y python3.12-venv python3-pip git
+rm -rf .venv
 bash execution_engine/scripts/install_linux.sh
 ```
 
-脚本会从 `https://github.com/Polymarket/py-clob-client-v2.git` 安装 v2 CLOB client。当前 v2 README 的公开用法是从包根导入 `ApiCreds`、`ClobClient`、`OrderArgs`、`OrderType`、`PartialCreateOrderOptions` 和 `Side`。
+脚本会先安装 `execution_engine/requirements.txt` 中的运行时依赖，包括 `scikit-learn`、`catboost`、`lightgbm` 和 `xgboost`。这些包是加载当前 baseline 模型插件和校准器所需的依赖。
+脚本还会从 `https://github.com/Polymarket/py-clob-client-v2.git` 安装 v2 CLOB client。当前 v2 README 的公开用法是从包根导入 `ApiCreds`、`ClobClient`、`OrderArgs`、`OrderType`、`PartialCreateOrderOptions` 和 `Side`。
+
+如果已经创建过 `.venv` 且 prewarm 报 `ModuleNotFoundError: No module named 'sklearn'`，在服务器上补装依赖即可：
+```bash
+. .venv/bin/activate
+python -m pip install -r execution_engine/requirements.txt
+```
 
 检查并编辑配置：
 
@@ -252,5 +263,7 @@ rm artifacts/state/execution_engine/idempotency.json
 `Runtime feature frame is missing ... baseline features`：实时数据不能构造 baseline 所需特征，检查 1m/1s 字段、lookback 和 second-level profile。
 
 `py-clob-client-v2 is required`：部署环境缺少 v2 client，重新运行安装脚本。
+
+`ModuleNotFoundError: No module named 'sklearn'`：部署环境缺少模型/校准运行时依赖，执行 `. .venv/bin/activate` 后运行 `python -m pip install -r execution_engine/requirements.txt`。
 
 `idempotency_key_already_seen`：同一窗口同一 token 已提交过两单计划，默认跳过，防止重复下单。
