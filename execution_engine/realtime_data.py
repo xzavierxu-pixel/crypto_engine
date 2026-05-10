@@ -26,6 +26,17 @@ KLINE_COLUMNS = [
     "ignore",
 ]
 
+AGG_TRADE_COLUMNS = [
+    "agg_trade_id",
+    "price",
+    "quantity",
+    "first_trade_id",
+    "last_trade_id",
+    "transact_time",
+    "is_buyer_maker",
+    "is_best_match",
+]
+
 
 class BinanceRealtimeClient:
     def __init__(self, config: BinanceConfig, session: requests.Session | None = None) -> None:
@@ -78,32 +89,80 @@ class BinanceRealtimeClient:
             frame = filter_closed_klines(frame, server_time=end)
         return frame
 
-    def fetch_runtime_frames(self, end_time: datetime | pd.Timestamp | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def fetch_agg_trades(
+        self,
+        start_time: datetime | pd.Timestamp,
+        end_time: datetime | pd.Timestamp,
+        limit: int = 1000,
+    ) -> pd.DataFrame:
+        start = pd.Timestamp(start_time).tz_convert(UTC)
+        end = pd.Timestamp(end_time).tz_convert(UTC)
+        frames: list[pd.DataFrame] = []
+        while start <= end:
+            params: dict[str, Any] = {
+                "symbol": self.config.symbol,
+                "startTime": int(start.timestamp() * 1000),
+                "endTime": int(end.timestamp() * 1000),
+                "limit": limit,
+            }
+            response = self.session.get(
+                f"{self.base_url}/api/v3/aggTrades",
+                params=params,
+                timeout=self.config.request_timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if not payload:
+                break
+            frame = normalize_binance_agg_trades(payload)
+            frames.append(frame)
+            last_time = pd.to_datetime(frame["transact_time"].iloc[-1], utc=True)
+            next_start = last_time + pd.Timedelta(milliseconds=1)
+            if len(payload) < limit or next_start <= start:
+                break
+            start = next_start
+        if not frames:
+            return pd.DataFrame(columns=[DEFAULT_TIMESTAMP_COLUMN, *AGG_TRADE_COLUMNS])
+        return pd.concat(frames, ignore_index=True).drop_duplicates("agg_trade_id").sort_values(
+            DEFAULT_TIMESTAMP_COLUMN
+        ).reset_index(drop=True)
+
+    def fetch_recent_agg_trades(
+        self,
+        lookback: timedelta,
+        end_time: datetime | pd.Timestamp | None = None,
+    ) -> pd.DataFrame:
+        end = pd.Timestamp(end_time or self.server_time()).tz_convert(UTC)
+        return self.fetch_agg_trades(start_time=end - lookback, end_time=end)
+
+    def fetch_runtime_frames(self, end_time: datetime | pd.Timestamp | None = None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         lookback = timedelta(minutes=self.config.lookback_minutes)
+        end = pd.Timestamp(end_time or self.server_time()).tz_convert(UTC)
         one_minute = self.fetch_recent_klines(
             self.config.one_minute_interval,
             lookback=lookback,
-            end_time=end_time,
+            end_time=end,
         )
         one_second = self.fetch_recent_klines(
             self.config.one_second_interval,
             lookback=lookback,
-            end_time=end_time,
+            end_time=end,
         )
-        return one_minute, one_second
+        agg_trades = self.fetch_recent_agg_trades(lookback=lookback, end_time=end)
+        return one_minute, one_second, agg_trades
 
     def wait_for_closed_runtime_frames(
         self,
         end_time: datetime | pd.Timestamp | None = None,
         max_wait_seconds: float = 20.0,
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         deadline = time.monotonic() + max_wait_seconds
         last_error: Exception | None = None
         while True:
             try:
-                one_minute, one_second = self.fetch_runtime_frames(end_time=end_time)
-                if not one_minute.empty and not one_second.empty:
-                    return one_minute, one_second
+                one_minute, one_second, agg_trades = self.fetch_runtime_frames(end_time=end_time)
+                if not one_minute.empty and not one_second.empty and not agg_trades.empty:
+                    return one_minute, one_second, agg_trades
             except Exception as exc:  # pragma: no cover - exercised by integration smoke only.
                 last_error = exc
             if time.monotonic() >= deadline:
@@ -135,6 +194,36 @@ def normalize_binance_klines(payload: list[list[Any]], require_closed: bool = Fa
     frame = frame.drop(columns=["open_time", "ignore"])
     if require_closed:
         frame = filter_closed_klines(frame, server_time=pd.Timestamp.now(tz=UTC))
+    return frame.sort_values(DEFAULT_TIMESTAMP_COLUMN).reset_index(drop=True)
+
+
+def normalize_binance_agg_trades(payload: list[dict[str, Any]]) -> pd.DataFrame:
+    if not payload:
+        return pd.DataFrame(columns=[DEFAULT_TIMESTAMP_COLUMN, *AGG_TRADE_COLUMNS])
+    frame = pd.DataFrame(payload).rename(
+        columns={
+            "a": "agg_trade_id",
+            "p": "price",
+            "q": "quantity",
+            "f": "first_trade_id",
+            "l": "last_trade_id",
+            "T": "transact_time",
+            "m": "is_buyer_maker",
+            "M": "is_best_match",
+        }
+    )
+    for column in ("agg_trade_id", "first_trade_id", "last_trade_id"):
+        if column in frame.columns:
+            frame[column] = pd.to_numeric(frame[column], errors="coerce").astype("Int64")
+    for column in ("price", "quantity"):
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    frame[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(frame["transact_time"], unit="ms", utc=True)
+    frame["transact_time"] = frame[DEFAULT_TIMESTAMP_COLUMN]
+    frame["quote_quantity"] = frame["price"] * frame["quantity"]
+    if "is_buyer_maker" in frame.columns:
+        frame["is_buyer_maker"] = frame["is_buyer_maker"].astype(bool)
+    if "is_best_match" in frame.columns:
+        frame["is_best_match"] = frame["is_best_match"].astype(bool)
     return frame.sort_values(DEFAULT_TIMESTAMP_COLUMN).reset_index(drop=True)
 
 

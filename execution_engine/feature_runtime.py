@@ -10,7 +10,7 @@ from src.core.config import Settings
 from src.core.constants import DEFAULT_TIMESTAMP_COLUMN
 from src.core.schemas import Signal
 from src.data.second_level_features import (
-    build_second_level_kline_feature_store,
+    build_second_level_feature_store,
     sample_second_level_feature_store,
 )
 from src.features.builder import build_feature_frame
@@ -33,10 +33,16 @@ class RuntimeInferenceEngine:
         self.model = load_model_plugin(baseline.model_plugin, str(baseline.model_path))
         self.calibrator = load_calibration_plugin(baseline.calibration_plugin, str(baseline.calibrator_path))
 
-    def build_feature_frame(self, minute_frame: pd.DataFrame, second_frame: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def build_feature_frame(
+        self,
+        minute_frame: pd.DataFrame,
+        second_frame: pd.DataFrame,
+        agg_trades_frame: pd.DataFrame | None = None,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         decision_frame = minute_frame[[DEFAULT_TIMESTAMP_COLUMN]].copy()
-        second_store = build_second_level_kline_feature_store(
+        second_store = build_second_level_feature_store(
             kline_frame=second_frame,
+            agg_trades_frame=agg_trades_frame,
             feature_profile=self.settings.second_level.get_profile_payload(),
         )
         sampled_second = sample_second_level_feature_store(decision_frame, second_store)
@@ -50,8 +56,13 @@ class RuntimeInferenceEngine:
         self._validate_feature_columns(feature_frame)
         return feature_frame, sampled_second
 
-    def predict(self, minute_frame: pd.DataFrame, second_frame: pd.DataFrame) -> FeatureBuildResult:
-        feature_frame, sampled_second = self.build_feature_frame(minute_frame, second_frame)
+    def predict(
+        self,
+        minute_frame: pd.DataFrame,
+        second_frame: pd.DataFrame,
+        agg_trades_frame: pd.DataFrame | None = None,
+    ) -> FeatureBuildResult:
+        feature_frame, sampled_second = self.build_feature_frame(minute_frame, second_frame, agg_trades_frame)
         probabilities = predict_frame(
             feature_frame,
             self.model,

@@ -11,7 +11,7 @@ import execution_engine.run_once as run_once_module
 from execution_engine.config import load_execution_config
 from execution_engine.order_plan import build_two_limit_order_plan
 from execution_engine.polymarket_v2 import PolymarketV2Adapter, normalize_gamma_market
-from execution_engine.realtime_data import normalize_binance_klines
+from execution_engine.realtime_data import normalize_binance_agg_trades, normalize_binance_klines
 from execution_engine.run_once import build_btc_5m_slug, build_idempotency_key
 from src.core.schemas import Decision, MarketQuote, Signal
 
@@ -64,6 +64,29 @@ def test_normalize_binance_klines_outputs_shared_schema() -> None:
     assert frame["quote_volume"].iloc[0] == 201.0
     assert frame["trade_count"].iloc[0] == 3
     assert frame["taker_buy_base_volume"].iloc[0] == 1.2
+
+
+def test_normalize_binance_agg_trades_outputs_trade_schema() -> None:
+    frame = normalize_binance_agg_trades(
+        [
+            {
+                "a": 1,
+                "p": "100.0",
+                "q": "0.2",
+                "f": 10,
+                "l": 11,
+                "T": 1778400000123,
+                "m": False,
+                "M": True,
+            }
+        ]
+    )
+
+    assert frame["timestamp"].iloc[0].tzinfo is not None
+    assert frame["price"].iloc[0] == 100.0
+    assert frame["quantity"].iloc[0] == 0.2
+    assert frame["quote_quantity"].iloc[0] == 20.0
+    assert bool(frame["is_buyer_maker"].iloc[0]) is False
 
 
 def test_two_limit_order_plan_uses_target_token_best_bid_cap_and_offset() -> None:
@@ -226,14 +249,14 @@ orders:
 
         def wait_for_closed_runtime_frames(self, max_wait_seconds):
             frame = pd.DataFrame({"timestamp": [pd.Timestamp("2026-05-10T12:35:00Z")]})
-            return frame, frame
+            return frame, frame, frame
 
     class FakeInference:
         def __init__(self, settings, baseline):
             self.settings = settings
             self.baseline = baseline
 
-        def predict(self, minute_frame, second_frame):
+        def predict(self, minute_frame, second_frame, agg_trades_frame=None):
             return types.SimpleNamespace(
                 signal=_signal(0.60),
                 feature_frame=pd.DataFrame({"f1": [1.0]}),

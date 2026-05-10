@@ -22,17 +22,19 @@ def prewarm(config_path: str, cache_output: str | None = None) -> dict:
     baseline = load_baseline_artifact(config.baseline)
     settings = load_settings(config.baseline.settings_path)
     client = BinanceRealtimeClient(config.binance)
-    minute_frame, second_frame = client.fetch_runtime_frames()
+    minute_frame, second_frame, agg_trades_frame = client.fetch_runtime_frames()
     inference = RuntimeInferenceEngine(settings, baseline)
-    feature_frame, second_level_frame = inference.build_feature_frame(minute_frame, second_frame)
+    feature_frame, second_level_frame = inference.build_feature_frame(minute_frame, second_frame, agg_trades_frame)
     summary = {
         "timestamp": datetime.now(UTC).isoformat(),
         "minute_rows": len(minute_frame),
         "second_rows": len(second_frame),
+        "agg_trade_rows": len(agg_trades_frame),
         "feature_rows": len(feature_frame),
         "second_level_rows": len(second_level_frame),
         "minute_latest": None if minute_frame.empty else minute_frame["timestamp"].iloc[-1].isoformat(),
         "second_latest": None if second_frame.empty else second_frame["timestamp"].iloc[-1].isoformat(),
+        "agg_trade_latest": None if agg_trades_frame.empty else agg_trades_frame["timestamp"].iloc[-1].isoformat(),
         "feature_latest": None if feature_frame.empty else feature_frame["timestamp"].iloc[-1].isoformat(),
         "baseline_artifact_dir": str(baseline.artifact_dir),
         "feature_count": len(baseline.feature_columns),
@@ -43,6 +45,7 @@ def prewarm(config_path: str, cache_output: str | None = None) -> dict:
         output_dir.mkdir(parents=True, exist_ok=True)
         minute_frame.to_parquet(output_dir / "minute.parquet", index=False)
         second_frame.to_parquet(output_dir / "second.parquet", index=False)
+        agg_trades_frame.to_parquet(output_dir / "agg_trades.parquet", index=False)
         second_level_frame.to_parquet(output_dir / "second_level_sampled.parquet", index=False)
         feature_frame.to_parquet(output_dir / "features.parquet", index=False)
         (output_dir / "summary.json").write_text(

@@ -49,7 +49,7 @@ def run_once(config_path: str, mode_override: str | None = None) -> dict[str, An
     audit = AuditService(config.runtime.audit_log)
 
     binance = BinanceRealtimeClient(config.binance)
-    minute_frame, second_frame = binance.wait_for_closed_runtime_frames(
+    minute_frame, second_frame, agg_trades_frame = binance.wait_for_closed_runtime_frames(
         max_wait_seconds=config.schedule.max_data_wait_seconds,
     )
     audit.append(
@@ -58,14 +58,16 @@ def run_once(config_path: str, mode_override: str | None = None) -> dict[str, An
             {
                 "minute_rows": len(minute_frame),
                 "second_rows": len(second_frame),
+                "agg_trade_rows": len(agg_trades_frame),
                 "minute_latest": None if minute_frame.empty else minute_frame["timestamp"].iloc[-1].isoformat(),
                 "second_latest": None if second_frame.empty else second_frame["timestamp"].iloc[-1].isoformat(),
+                "agg_trade_latest": None if agg_trades_frame.empty else agg_trades_frame["timestamp"].iloc[-1].isoformat(),
             },
         )
     )
 
     inference = RuntimeInferenceEngine(settings, baseline)
-    result = inference.predict(minute_frame, second_frame)
+    result = inference.predict(minute_frame, second_frame, agg_trades_frame)
     signal = result.signal
     audit.append(
         audit_event(

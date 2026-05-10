@@ -62,8 +62,9 @@ execution_engine/
 
 ```bash
 cd /opt
+sudo mkdir crypto_engine
+sudo chown -R $USER:$USER /opt/crypto_engine
 git clone -b baseline https://github.com/xzavierxu-pixel/crypto_engine.git crypto_engine
-cd opt/crypto_engine
 ```
 
 安装依赖：
@@ -76,13 +77,18 @@ rm -rf .venv
 bash execution_engine/scripts/install_linux.sh
 ```
 
-脚本会先安装 `execution_engine/requirements.txt` 中的运行时依赖，包括 `scikit-learn`、`catboost`、`lightgbm` 和 `xgboost`。这些包是加载当前 baseline 模型插件和校准器所需的依赖。
+脚本会先安装 `execution_engine/requirements.txt` 中的运行时依赖，包括 `scikit-learn==1.7.2`、`catboost`、`lightgbm` 和 `xgboost`。这些包是加载当前 baseline 模型插件和校准器所需的依赖。
 脚本还会从 `https://github.com/Polymarket/py-clob-client-v2.git` 安装 v2 CLOB client。当前 v2 README 的公开用法是从包根导入 `ApiCreds`、`ClobClient`、`OrderArgs`、`OrderType`、`PartialCreateOrderOptions` 和 `Side`。
 
 如果已经创建过 `.venv` 且 prewarm 报 `ModuleNotFoundError: No module named 'sklearn'`，在服务器上补装依赖即可：
 ```bash
 . .venv/bin/activate
 python -m pip install -r execution_engine/requirements.txt
+```
+
+如果已经装到了其他 `scikit-learn` 版本，按 artifact 训练版本重装：
+```bash
+python -m pip install --force-reinstall scikit-learn==1.7.2
 ```
 
 检查并编辑配置：
@@ -138,7 +144,7 @@ orders:
 python execution_engine/prewarm.py --config execution_engine/config.yaml --cache-output artifacts/state/execution_engine/prewarm --print-json
 ```
 
-这会从 Binance 拉取当前 1m/1s 数据，使用 baseline 特征列构建 runtime feature frame，并写出 `minute.parquet`、`second.parquet`、`second_level_sampled.parquet`、`features.parquet` 和 `summary.json`。
+这会从 Binance 拉取当前 1m/1s kline 和 aggTrades 数据，使用 baseline 特征列构建 runtime feature frame，并写出 `minute.parquet`、`second.parquet`、`agg_trades.parquet`、`second_level_sampled.parquet`、`features.parquet` 和 `summary.json`。
 
 运行一次 paper cycle：
 
@@ -265,5 +271,7 @@ rm artifacts/state/execution_engine/idempotency.json
 `py-clob-client-v2 is required`：部署环境缺少 v2 client，重新运行安装脚本。
 
 `ModuleNotFoundError: No module named 'sklearn'`：部署环境缺少模型/校准运行时依赖，执行 `. .venv/bin/activate` 后运行 `python -m pip install -r execution_engine/requirements.txt`。
+
+`InconsistentVersionWarning` for `LabelEncoder` / `LogisticRegression`：当前 artifact 使用 `scikit-learn 1.7.2` 保存，执行 `python -m pip install --force-reinstall scikit-learn==1.7.2`。
 
 `idempotency_key_already_seen`：同一窗口同一 token 已提交过两单计划，默认跳过，防止重复下单。
