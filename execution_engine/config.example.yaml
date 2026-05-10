@@ -1,0 +1,65 @@
+baseline:
+  artifact_dir: execution_engine/deploy/baseline
+  settings_path: config/settings.yaml
+  model_file: catboost_lgbm_logit_blend.binary.pkl
+  calibrator_file: platt_logit.binary.pkl
+  manifest_file: artifact_manifest.json
+
+runtime:
+  mode: paper
+  timezone: UTC
+  audit_log: artifacts/logs/execution_engine/live.jsonl
+  summary_dir: artifacts/logs/execution_engine/summaries
+  idempotency_store_path: artifacts/state/execution_engine/idempotency.json
+
+binance:
+  base_url: https://api.binance.com
+  symbol: BTCUSDT
+  one_minute_interval: 1m
+  one_second_interval: 1s
+  request_timeout_seconds: 5
+  lookback_minutes: 360
+  require_closed_kline: true
+  max_clock_skew_seconds: 2
+  cache_path: artifacts/state/execution_engine/binance_cache.parquet
+
+schedule:
+  interval_minutes: 5
+  trigger_delay_seconds: 8
+  max_data_wait_seconds: 20
+  prewarm_seconds_before_trigger: 45
+
+polymarket:
+  host: https://clob.polymarket.com
+  gamma_base_url: https://gamma-api.polymarket.com
+  chain_id: 137
+  private_key_env: POLYMARKET_PRIVATE_KEY
+  api_key_env: CLOB_API_KEY
+  api_secret_env: CLOB_SECRET
+  api_passphrase_env: CLOB_PASS_PHRASE
+  signature_type: null
+  funder: null
+  timeout_seconds: 5
+  max_pages: 3
+
+orders:
+  enabled: false
+  mode: paper
+  first:
+    price_cap: 0.5
+    offset: 0.0
+    size: 5.0
+  second:
+    price_cap: 0.5
+    offset: -0.1
+    size: 5.0
+  min_price: 0.01
+  max_price: 0.99
+  tick_size_default: 0.01
+  on_invalid_second_order: skip
+
+guards:
+  require_market_accepting_orders: true
+  require_best_bid: true
+  max_orders_per_window: 2
+  enforce_idempotency: true

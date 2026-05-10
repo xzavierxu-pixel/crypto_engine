@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Crypto Engine execution cycle every 5 minutes
+
+[Timer]
+OnCalendar=*:0/5
+AccuracySec=1s
+RandomizedDelaySec=0
+Unit=execution-engine.service
+
+[Install]
+WantedBy=timers.target
+

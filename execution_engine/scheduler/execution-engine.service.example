@@ -1,0 +1,11 @@
+[Unit]
+Description=Crypto Engine Polymarket execution cycle
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/crypto_engine
+EnvironmentFile=/opt/crypto_engine/execution_engine/secrets.env
+ExecStart=/opt/crypto_engine/.venv/bin/python execution_engine/run_once.py --config execution_engine/config.yaml
+

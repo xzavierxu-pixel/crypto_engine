@@ -66,6 +66,12 @@ docs/deprecated/
 .env.*
 *.key
 config/freqtrade_config.json
+execution_engine/config.yaml
+execution_engine/secrets.env
+!execution_engine/deploy/
+!execution_engine/deploy/**
+!execution_engine/deploy/baseline/*.json
+!execution_engine/deploy/baseline/*.pkl
 
 # Virtual environments
 venv/
