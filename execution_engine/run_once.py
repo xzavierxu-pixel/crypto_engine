@@ -189,6 +189,8 @@ def run_once(
         "target_token_id": token_id,
         "yes_token_id": market.yes_token_id,
         "no_token_id": market.no_token_id,
+        "window_start": window_start.isoformat(),
+        "window_end": window_end.isoformat(),
         "best_bid": quote.metadata.get("best_bid"),
         "best_ask": quote.metadata.get("best_ask"),
         "tick_size": quote.metadata.get("tick_size"),

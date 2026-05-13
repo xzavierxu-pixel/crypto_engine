@@ -2,12 +2,21 @@ from __future__ import annotations
 
 import sys
 import types
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
 
 import execution_engine.run_once as run_once_module
+from execution_engine.scripts.evaluate_paper_results import (
+    GammaOutcomeClient,
+    load_predictions,
+    summarize_predictions,
+    threshold_search,
+)
+from execution_engine.scripts.run_paper_experiment import next_trigger_time
+from execution_engine.scripts import run_paper_experiment as paper_experiment_module
 from execution_engine.config import load_execution_config
 from execution_engine.order_plan import build_two_limit_order_plan
 from execution_engine.polymarket_v2 import PolymarketV2Adapter, normalize_gamma_market
@@ -38,7 +47,7 @@ def test_execution_config_example_loads() -> None:
     assert config.orders.second.offset == -0.1
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
     assert config.thresholds.t_up == 0.5425
-    assert config.thresholds.t_down == 0.4175
+    assert config.thresholds.t_down == 0.44
 
 
 def test_normalize_binance_klines_outputs_shared_schema() -> None:
@@ -569,6 +578,192 @@ orders:
     assert summary["submitted"] is False
     assert summary["market"]["slug"] == "btc-updown-5m-1778416500"
     assert summary["market"]["target_token_id"] == "yes-token"
+    assert summary["market"]["window_start"] == "2026-05-10T12:35:00+00:00"
+    assert summary["market"]["window_end"] == "2026-05-10T12:40:00+00:00"
     assert [order["price"] for order in summary["orders"]] == [0.5, 0.4]
     assert summary["skipped"] == [{"reason": "paper_mode_or_orders_disabled"}]
     assert Path(summary["summary_path"]).exists()
+
+
+def test_evaluate_paper_results_summarizes_hourly_goal(tmp_path) -> None:
+    summary_dir = tmp_path / "summaries"
+    summary_dir.mkdir()
+    outcomes = {}
+    for i in range(12):
+        t0 = pd.Timestamp("2026-05-10T12:00:00Z") + pd.Timedelta(minutes=5 * i)
+        slug, _, _ = build_btc_5m_slug(t0.to_pydatetime())
+        side = "YES" if i < 6 else None
+        actual_side = "YES" if i < 4 else "NO"
+        outcomes[slug] = actual_side
+        payload = {
+            "signal": {
+                "t0": t0.isoformat(),
+                "p_up": 0.60 if side == "YES" else 0.50,
+                "feature_timestamp": (t0 - pd.Timedelta(minutes=1)).isoformat(),
+            },
+            "decision": {
+                "should_trade": side is not None,
+                "side": side,
+                "reason": "selective_binary_signal_passed" if side else "selective_binary_abstain",
+            },
+            "market": {"slug": slug} if side else None,
+        }
+        (summary_dir / f"{i:02d}.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    predictions = load_predictions(summary_dir, outcome_fetcher=outcomes.get)
+    report = summarize_predictions(predictions)
+
+    assert report["sample_count"] == 12
+    assert report["accepted_count"] == 6
+    assert report["correct_count"] == 4
+    assert report["hourly_goal"]["passed_hour_count"] == 1
+
+
+def test_evaluate_paper_results_threshold_search_replays_abstains(tmp_path) -> None:
+    summary_dir = tmp_path / "summaries"
+    summary_dir.mkdir()
+    outcomes = {}
+    for i, p_up in enumerate([0.60, 0.55, 0.52, 0.51, 0.48, 0.47, 0.46, 0.45, 0.44, 0.43]):
+        t0 = pd.Timestamp("2026-05-10T12:00:00Z") + pd.Timedelta(minutes=5 * i)
+        slug, _, _ = build_btc_5m_slug(t0.to_pydatetime())
+        outcomes[slug] = "YES" if p_up >= 0.51 else "NO"
+        payload = {
+            "signal": {"t0": t0.isoformat(), "p_up": p_up},
+            "decision": {"should_trade": False, "side": None, "reason": "selective_binary_abstain"},
+            "market": None,
+        }
+        (summary_dir / f"{i:02d}.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    results = threshold_search(
+        summary_dir,
+        outcome_fetcher=outcomes.get,
+        t_up_min=0.51,
+        t_up_max=0.51,
+        t_down_min=0.48,
+        t_down_max=0.48,
+        step=0.005,
+        min_hourly_predictions=6,
+        min_hourly_correct=4,
+        min_available_per_hour=10,
+    )
+
+    assert results[0]["selected_t_up"] == 0.51
+    assert results[0]["selected_t_down"] == 0.48
+    assert results[0]["accepted_count"] == 10
+    assert results[0]["correct_count"] == 10
+    assert results[0]["passed_hour_count"] == 1
+
+
+def test_gamma_outcome_client_refreshes_unresolved_cache(tmp_path, monkeypatch) -> None:
+    cache_path = tmp_path / "outcomes.json"
+    cache_path.write_text(
+        json.dumps({"slug-1": {"slug": "slug-1", "resolved": False, "outcome": None}}),
+        encoding="utf-8",
+    )
+    client = GammaOutcomeClient(cache_path=cache_path)
+    calls = []
+
+    def fake_fetch(slug):
+        calls.append(slug)
+        return {"slug": slug, "resolved": True, "outcome": "YES"}
+
+    monkeypatch.setattr(client, "_fetch", fake_fetch)
+
+    assert client("slug-1") == "YES"
+    assert calls == ["slug-1"]
+
+
+def test_paper_experiment_next_trigger_time_aligns_to_5m_delay() -> None:
+    assert next_trigger_time(
+        datetime(2026, 5, 10, 12, 34, 50, tzinfo=UTC),
+        delay_seconds=23,
+    ) == datetime(2026, 5, 10, 12, 35, 23, tzinfo=UTC)
+    assert next_trigger_time(
+        datetime(2026, 5, 10, 12, 35, 24, tzinfo=UTC),
+        delay_seconds=23,
+    ) == datetime(2026, 5, 10, 12, 40, 23, tzinfo=UTC)
+
+
+def test_paper_experiment_last_window_momentum_policy_overrides_summary(monkeypatch, tmp_path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        f"""
+baseline:
+  artifact_dir: baseline-dir
+binance:
+  cache_path: {tmp_path.as_posix()}/binance_cache.parquet
+""",
+        encoding="utf-8",
+    )
+    cache_dir = tmp_path / "binance_cache"
+    cache_dir.mkdir()
+    pd.DataFrame(
+        {
+            "timestamp": [
+                pd.Timestamp("2026-05-10T12:30:00Z"),
+                pd.Timestamp("2026-05-10T12:34:00Z"),
+            ],
+            "open": [100.0, 105.0],
+            "close": [101.0, 110.0],
+        }
+    ).to_parquet(cache_dir / "minute.parquet", index=False)
+
+    summary_path = tmp_path / "summary.json"
+    summary = {
+        "summary_path": str(summary_path),
+        "signal": {"t0": "2026-05-10T12:35:00+00:00"},
+        "decision": {"should_trade": True, "side": "NO", "edge": 0.1, "reason": "model", "target_size": 5.0},
+    }
+    summary_path.write_text(json.dumps(summary), encoding="utf-8")
+
+    updated = paper_experiment_module.apply_experiment_policy(
+        summary,
+        policy="last-window-momentum",
+        config_path=str(config_path),
+    )
+
+    assert updated["decision"]["side"] == "YES"
+    assert updated["decision"]["reason"] == "last_window_momentum_signal_passed"
+    assert updated["experiment_policy"]["original_decision"]["side"] == "NO"
+    persisted = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert persisted["decision"]["side"] == "YES"
+
+
+def test_paper_experiment_prev3_momentum_policy_uses_closed_rows(tmp_path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        f"""
+baseline:
+  artifact_dir: baseline-dir
+binance:
+  cache_path: {tmp_path.as_posix()}/binance_cache.parquet
+""",
+        encoding="utf-8",
+    )
+    cache_dir = tmp_path / "binance_cache"
+    cache_dir.mkdir()
+    pd.DataFrame(
+        {
+            "timestamp": [
+                pd.Timestamp("2026-05-10T12:32:00Z"),
+                pd.Timestamp("2026-05-10T12:34:00Z"),
+            ],
+            "open": [100.0, 100.0],
+            "close": [110.0, 105.0],
+        }
+    ).to_parquet(cache_dir / "minute.parquet", index=False)
+
+    summary = {
+        "signal": {"t0": "2026-05-10T12:35:00+00:00"},
+        "decision": {"should_trade": True, "side": "YES", "edge": 0.1, "reason": "model", "target_size": 5.0},
+    }
+
+    updated = paper_experiment_module.apply_experiment_policy(
+        summary,
+        policy="prev3-momentum",
+        config_path=str(config_path),
+    )
+
+    assert updated["decision"]["side"] == "NO"
+    assert updated["decision"]["reason"] == "prev3_momentum_signal_passed"
+    assert updated["experiment_policy"]["original_decision"]["side"] == "YES"
