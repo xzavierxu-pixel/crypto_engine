@@ -31,7 +31,7 @@ schedule:
 
 thresholds:
   t_up: 0.5425
-  t_down: 0.4175
+  t_down: 0.44
 
 polymarket:
   host: https://clob.polymarket.com

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import time
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -153,20 +155,90 @@ class BinanceRealtimeClient:
         end = pd.Timestamp(end_time or self.server_time()).tz_convert(UTC)
         return self.fetch_agg_trades(start_time=end - lookback, end_time=end)
 
+    def _cache_dir(self) -> Path | None:
+        if not self.config.cache_path:
+            return None
+        path = Path(self.config.cache_path)
+        return path if path.suffix == "" else path.with_suffix("")
+
+    def _read_cache_frame(self, name: str) -> pd.DataFrame | None:
+        cache_dir = self._cache_dir()
+        if cache_dir is None:
+            return None
+        path = cache_dir / f"{name}.parquet"
+        if not path.exists():
+            return None
+        return pd.read_parquet(path)
+
+    def _write_cache_frame(self, name: str, frame: pd.DataFrame) -> None:
+        cache_dir = self._cache_dir()
+        if cache_dir is None:
+            return
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        path = cache_dir / f"{name}.parquet"
+        tmp_path = cache_dir / f".{name}.{os.getpid()}.tmp.parquet"
+        frame.to_parquet(tmp_path, index=False)
+        os.replace(tmp_path, path)
+
+    @staticmethod
+    def _merge_cached_frame(
+        cached: pd.DataFrame | None,
+        fresh: pd.DataFrame,
+        lookback_start: pd.Timestamp,
+        dedupe_column: str = DEFAULT_TIMESTAMP_COLUMN,
+    ) -> pd.DataFrame:
+        frames = [frame for frame in (cached, fresh) if frame is not None and not frame.empty]
+        if not frames:
+            return fresh
+        merged = pd.concat(frames, ignore_index=True)
+        merged[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(merged[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+        merged = merged.loc[merged[DEFAULT_TIMESTAMP_COLUMN] >= lookback_start]
+        return (
+            merged.drop_duplicates(dedupe_column, keep="last")
+            .sort_values(DEFAULT_TIMESTAMP_COLUMN)
+            .reset_index(drop=True)
+        )
+
+    @staticmethod
+    def _incremental_start(cached: pd.DataFrame | None, fallback: pd.Timestamp, overlap: pd.Timedelta) -> pd.Timestamp:
+        if cached is None or cached.empty:
+            return fallback
+        latest = pd.to_datetime(cached[DEFAULT_TIMESTAMP_COLUMN], utc=True).max()
+        return max(fallback, latest - overlap)
+
     def fetch_runtime_frames(self, end_time: datetime | pd.Timestamp | None = None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         lookback = timedelta(minutes=self.config.lookback_minutes)
         end = pd.Timestamp(end_time or self.server_time()).tz_convert(UTC)
-        one_minute = self.fetch_recent_klines(
+        lookback_start = end - lookback
+        cached_minute = self._read_cache_frame("minute")
+        cached_second = self._read_cache_frame("second")
+        cached_agg_trades = self._read_cache_frame("agg_trades")
+
+        minute_start = self._incremental_start(cached_minute, lookback_start, pd.Timedelta(minutes=2))
+        second_start = self._incremental_start(cached_second, lookback_start, pd.Timedelta(seconds=10))
+        agg_start = self._incremental_start(cached_agg_trades, lookback_start, pd.Timedelta(seconds=10))
+
+        one_minute_fresh = self.fetch_klines(
             self.config.one_minute_interval,
-            lookback=lookback,
+            start_time=minute_start,
             end_time=end,
         )
-        one_second = self.fetch_recent_klines(
+        one_minute_fresh = filter_closed_klines(one_minute_fresh, server_time=end)
+        one_second_fresh = self.fetch_klines(
             self.config.one_second_interval,
-            lookback=lookback,
+            start_time=second_start,
             end_time=end,
         )
-        agg_trades = self.fetch_recent_agg_trades(lookback=lookback, end_time=end)
+        one_second_fresh = filter_closed_klines(one_second_fresh, server_time=end)
+        agg_trades_fresh = self.fetch_agg_trades(start_time=agg_start, end_time=end)
+
+        one_minute = self._merge_cached_frame(cached_minute, one_minute_fresh, lookback_start)
+        one_second = self._merge_cached_frame(cached_second, one_second_fresh, lookback_start)
+        agg_trades = self._merge_cached_frame(cached_agg_trades, agg_trades_fresh, lookback_start, "agg_trade_id")
+
+        self._write_cache_frame("minute", one_minute)
+        self._write_cache_frame("second", one_second)
+        self._write_cache_frame("agg_trades", agg_trades)
         return one_minute, one_second, agg_trades
 
     def wait_for_closed_runtime_frames(

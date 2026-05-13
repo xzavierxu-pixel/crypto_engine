@@ -269,7 +269,11 @@ def main() -> None:
     }
     if args.clear_deposit_wallet:
         env_overrides["DEPOSIT_WALLET_ADDRESS"] = None
-    env_overrides = {key: value for key, value in env_overrides.items() if value is not None or key == "DEPOSIT_WALLET_ADDRESS"}
+    env_overrides = {
+        key: value
+        for key, value in env_overrides.items()
+        if value is not None or (key == "DEPOSIT_WALLET_ADDRESS" and args.clear_deposit_wallet)
+    }
     try:
         result = submit_min_price_order(
             args.config,

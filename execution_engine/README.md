@@ -61,11 +61,19 @@ execution_engine/
 准备代码：
 
 ```bash
-cd /opt
-sudo mkdir crypto_engine
-sudo chown -R $USER:$USER /opt/crypto_engine
+mkdir -p /home/ubuntu/opt
+cd /home/ubuntu/opt
 git clone -b baseline https://github.com/xzavierxu-pixel/crypto_engine.git crypto_engine
+cd /home/ubuntu/opt/crypto_engine
 ```
+
+Canonical deployment path:
+
+```text
+/home/ubuntu/opt/crypto_engine
+```
+
+Do not deploy or run production services from `/opt/crypto_engine`. If an old checkout exists there, stop any service using it and remove it after confirming `/home/ubuntu/opt/crypto_engine` is active.
 
 安装依赖：
 
@@ -243,6 +251,100 @@ journalctl -u execution-engine.service -n 100 --no-pager
 ```bash
 sudo systemctl disable --now execution-engine.timer
 ```
+
+Production server units should use the canonical path. Run prewarm at the 5-minute boundary, then run live execution 20 seconds later:
+
+```ini
+# /etc/systemd/system/execution-engine-prewarm.service
+[Unit]
+Description=Crypto Engine prewarm runtime features
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/opt/crypto_engine
+ExecStart=/home/ubuntu/opt/crypto_engine/.venv/bin/python execution_engine/prewarm.py --config execution_engine/config.yaml --cache-output artifacts/state/execution_engine/prewarm
+```
+
+```ini
+# /etc/systemd/system/execution-engine-prewarm.timer
+[Unit]
+Description=Prewarm Crypto Engine runtime features every 5 minutes
+
+[Timer]
+OnCalendar=*-*-* *:00/5:00
+AccuracySec=1s
+RandomizedDelaySec=0
+Persistent=false
+Unit=execution-engine-prewarm.service
+
+[Install]
+WantedBy=timers.target
+```
+
+```ini
+# /etc/systemd/system/execution-engine.service
+[Unit]
+Description=Crypto Engine Polymarket execution cycle
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/opt/crypto_engine
+EnvironmentFile=/home/ubuntu/opt/crypto_engine/execution_engine/secrets.env
+ExecStart=/home/ubuntu/opt/crypto_engine/.venv/bin/python execution_engine/run_once.py --config execution_engine/config.yaml --mode live
+```
+
+```ini
+# /etc/systemd/system/execution-engine.timer
+[Unit]
+Description=Run Crypto Engine execution cycle every 5 minutes
+
+[Timer]
+OnCalendar=*-*-* *:00/5:20
+AccuracySec=1s
+RandomizedDelaySec=0
+Persistent=false
+Unit=execution-engine.service
+
+[Install]
+WantedBy=timers.target
+```
+
+## Live Full-Flow Order Test
+
+Before enabling the timer on a live server, run the full flow once:
+
+```bash
+. .venv/bin/activate
+python execution_engine/scripts/test_full_flow_order_until_success.py \
+  --config execution_engine/config.yaml \
+  --secrets execution_engine/secrets.env \
+  --force-on-abstain \
+  --max-attempts 10 \
+  --sleep-seconds 30 \
+  --print-json
+```
+
+This test runs:
+
+```text
+prewarm -> run_once --mode live -> optional forced minimum-price order if run_once abstains
+```
+
+Interpretation:
+
+- `success_type=run_once_submitted`: the real strategy signal passed thresholds and submitted a live order.
+- `success_type=forced_order_submitted`: the strategy abstained, but the live Polymarket order path was verified with one minimum-price test order.
+- `425 service not ready`: Polymarket CLOB is not ready for that BTC 5m market yet; retry after a short delay.
+
+Do not print or copy `execution_engine/secrets.env` values while running this test.
 
 ## Maintenance
 

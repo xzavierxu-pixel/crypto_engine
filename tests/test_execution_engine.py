@@ -505,7 +505,16 @@ orders:
             self.baseline = baseline
             self.kwargs = kwargs
 
-        def predict(self, minute_frame, second_frame, agg_trades_frame=None, signal_t0=None):
+        def predict(
+            self,
+            minute_frame,
+            second_frame,
+            agg_trades_frame=None,
+            signal_t0=None,
+            use_latest_available_before_signal=False,
+        ):
+            assert use_latest_available_before_signal is True
+            assert pd.Timestamp(signal_t0) == pd.Timestamp("2026-05-10T12:35:00Z")
             return types.SimpleNamespace(
                 signal=_signal(0.60),
                 feature_frame=pd.DataFrame({"f1": [1.0]}),
@@ -551,10 +560,14 @@ orders:
         lambda signal, settings: Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
     )
 
-    summary = run_once_module.run_once(str(config_path), mode_override="paper")
+    summary = run_once_module.run_once(
+        str(config_path),
+        mode_override="paper",
+        target_window_start=datetime(2026, 5, 10, 12, 35, tzinfo=UTC),
+    )
 
     assert summary["submitted"] is False
-    assert summary["market"]["slug"] == "btc-updown-5m-1778416800"
+    assert summary["market"]["slug"] == "btc-updown-5m-1778416500"
     assert summary["market"]["target_token_id"] == "yes-token"
     assert [order["price"] for order in summary["orders"]] == [0.5, 0.4]
     assert summary["skipped"] == [{"reason": "paper_mode_or_orders_disabled"}]

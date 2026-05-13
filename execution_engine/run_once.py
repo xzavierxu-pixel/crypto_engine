@@ -35,6 +35,12 @@ def build_btc_5m_slug(t0: datetime, *, offset_windows: int = 0) -> tuple[str, da
     return f"btc-updown-5m-{int(window_start.timestamp())}", window_start, window_end
 
 
+def current_5m_window_start(now: datetime | None = None) -> datetime:
+    ts = (now or datetime.now(UTC)).astimezone(UTC).replace(second=0, microsecond=0)
+    minute = ts.minute - (ts.minute % 5)
+    return ts.replace(minute=minute)
+
+
 def build_idempotency_key(signal_t0: datetime, token_id: str, side: str) -> str:
     return f"{signal_t0.astimezone(UTC).isoformat()}:{token_id}:{side}:two_limit_plan"
 
@@ -50,6 +56,7 @@ def run_once(
 ) -> dict[str, Any]:
     config = load_execution_config(config_path)
     mode = mode_override or config.runtime.mode
+    target_window_start = target_window_start or current_5m_window_start()
     baseline = load_baseline_artifact(config.baseline)
     settings = load_settings(config.baseline.settings_path)
     audit = AuditService(config.runtime.audit_log)
@@ -78,12 +85,12 @@ def run_once(
         t_up=config.thresholds.t_up,
         t_down=config.thresholds.t_down,
     )
-    target_signal_t0 = None if target_window_start is None else target_window_start - timedelta(minutes=5)
     result = inference.predict(
         minute_frame,
         second_frame,
         agg_trades_frame,
-        signal_t0=None if target_signal_t0 is None else pd.Timestamp(target_signal_t0),
+        signal_t0=pd.Timestamp(target_window_start),
+        use_latest_available_before_signal=True,
     )
     signal = result.signal
     t_up = float(signal.decision_context["t_up"])
@@ -102,6 +109,7 @@ def run_once(
                 "artifact_t_up": baseline.t_up,
                 "artifact_t_down": baseline.t_down,
                 "feature_count": len(baseline.feature_columns),
+                "feature_timestamp": signal.decision_context.get("feature_timestamp"),
                 "baseline_artifact_dir": str(baseline.artifact_dir),
             },
         )
@@ -123,6 +131,7 @@ def run_once(
             "t_down": t_down,
             "artifact_t_up": baseline.t_up,
             "artifact_t_down": baseline.t_down,
+            "feature_timestamp": signal.decision_context.get("feature_timestamp"),
         },
         "decision": asdict(decision),
         "market": None,
@@ -137,10 +146,7 @@ def run_once(
         return write_summary(config.runtime.summary_dir, summary)
 
     polymarket = PolymarketV2Adapter(config.polymarket)
-    if target_window_start is None:
-        slug, window_start, window_end = build_btc_5m_slug(signal.t0, offset_windows=1)
-    else:
-        slug, window_start, window_end = build_btc_5m_slug(target_window_start, offset_windows=0)
+    slug, window_start, window_end = build_btc_5m_slug(signal.t0, offset_windows=0)
     market = polymarket.get_market_by_slug(slug)
     if market is None:
         reason = "market_not_found"
