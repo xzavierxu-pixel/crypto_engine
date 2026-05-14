@@ -114,17 +114,19 @@ class BinanceRealtimeClient:
         start_time: datetime | pd.Timestamp,
         end_time: datetime | pd.Timestamp,
         limit: int = 1000,
+        from_id: int | None = None,
     ) -> pd.DataFrame:
         start = pd.Timestamp(start_time).tz_convert(UTC)
         end = pd.Timestamp(end_time).tz_convert(UTC)
         frames: list[pd.DataFrame] = []
+        next_from_id = from_id
         while start <= end:
-            params: dict[str, Any] = {
-                "symbol": self.config.symbol,
-                "startTime": int(start.timestamp() * 1000),
-                "endTime": int(end.timestamp() * 1000),
-                "limit": limit,
-            }
+            params: dict[str, Any] = {"symbol": self.config.symbol, "limit": limit}
+            if next_from_id is None:
+                params["startTime"] = int(start.timestamp() * 1000)
+                params["endTime"] = int(end.timestamp() * 1000)
+            else:
+                params["fromId"] = int(next_from_id)
             response = self.session.get(
                 f"{self.base_url}/api/v3/aggTrades",
                 params=params,
@@ -135,8 +137,14 @@ class BinanceRealtimeClient:
             if not payload:
                 break
             frame = normalize_binance_agg_trades(payload)
+            if next_from_id is not None:
+                frame = _filter_before(frame, end, inclusive=True)
+                if frame.empty:
+                    break
             frames.append(frame)
             last_time = pd.to_datetime(frame["transact_time"].iloc[-1], utc=True)
+            last_id = int(frame["agg_trade_id"].dropna().iloc[-1])
+            next_from_id = last_id + 1
             next_start = last_time + pd.Timedelta(milliseconds=1)
             if len(payload) < limit or next_start <= start:
                 break
@@ -154,6 +162,18 @@ class BinanceRealtimeClient:
     ) -> pd.DataFrame:
         end = pd.Timestamp(end_time or self.server_time()).tz_convert(UTC)
         return self.fetch_agg_trades(start_time=end - lookback, end_time=end)
+
+    def fetch_agg_trades_from_id(
+        self,
+        from_id: int,
+        end_time: datetime | pd.Timestamp,
+        lookback_start: datetime | pd.Timestamp,
+    ) -> pd.DataFrame:
+        return self.fetch_agg_trades(
+            start_time=lookback_start,
+            end_time=end_time,
+            from_id=from_id,
+        )
 
     def _cache_dir(self) -> Path | None:
         if not self.config.cache_path:
@@ -241,6 +261,31 @@ class BinanceRealtimeClient:
         self._write_cache_frame("agg_trades", agg_trades)
         return one_minute, one_second, agg_trades
 
+    def _fetch_agg_trade_tail_until(
+        self,
+        agg_trades: pd.DataFrame,
+        required_timestamp: pd.Timestamp,
+        end_time: datetime | pd.Timestamp | None = None,
+    ) -> pd.DataFrame:
+        if agg_trades.empty or "agg_trade_id" not in agg_trades.columns:
+            return agg_trades
+        latest = pd.to_datetime(agg_trades[DEFAULT_TIMESTAMP_COLUMN], utc=True).max()
+        if latest >= required_timestamp:
+            return agg_trades
+        latest_id = pd.to_numeric(agg_trades["agg_trade_id"], errors="coerce").dropna()
+        if latest_id.empty:
+            return agg_trades
+        end = pd.Timestamp(end_time or self.server_time()).tz_convert(UTC)
+        lookback_start = end - timedelta(minutes=self.config.lookback_minutes)
+        fresh = self.fetch_agg_trades_from_id(
+            int(latest_id.max()) + 1,
+            end_time=end,
+            lookback_start=lookback_start,
+        )
+        merged = self._merge_cached_frame(agg_trades, fresh, lookback_start, "agg_trade_id")
+        self._write_cache_frame("agg_trades", merged)
+        return merged
+
     def wait_for_closed_runtime_frames(
         self,
         end_time: datetime | pd.Timestamp | None = None,
@@ -267,20 +312,36 @@ class BinanceRealtimeClient:
         end_time: datetime | pd.Timestamp | None = None,
         max_wait_seconds: float = 20.0,
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
-        deadline = time.monotonic() + max_wait_seconds
+        started = time.monotonic()
+        deadline = started + max_wait_seconds
+        agg_deadline = started + min(max_wait_seconds, self.config.agg_trade_wait_seconds)
         last_error: Exception | None = None
         while True:
             try:
                 one_minute, one_second, agg_trades = self.fetch_runtime_frames(end_time=end_time)
+                target = pd.Timestamp(signal_t0).tz_convert(UTC).floor("min")
+                required_second = target - pd.Timedelta(seconds=1)
+                required_agg = required_second - pd.Timedelta(seconds=self.config.max_agg_trade_lag_seconds)
+                if self.config.require_agg_trade_through_last_second:
+                    agg_trades = self._fetch_agg_trade_tail_until(agg_trades, required_agg, end_time=end_time)
                 finalized = finalize_runtime_frames_for_signal(
                     one_minute,
                     one_second,
                     agg_trades,
                     signal_t0=signal_t0,
+                    require_agg_trade_through_last_second=self.config.require_agg_trade_through_last_second,
+                    max_agg_trade_lag_seconds=self.config.max_agg_trade_lag_seconds,
                 )
                 return finalized
             except Exception as exc:  # pragma: no cover - exercised by integration smoke only.
                 last_error = exc
+            if (
+                self.config.require_agg_trade_through_last_second
+                and last_error is not None
+                and "agg trade" in str(last_error).lower()
+                and time.monotonic() >= agg_deadline
+            ):
+                raise last_error
             if time.monotonic() >= deadline:
                 if last_error is not None:
                     raise last_error
@@ -398,10 +459,14 @@ def finalize_runtime_frames_for_signal(
     second_frame: pd.DataFrame,
     agg_trades_frame: pd.DataFrame,
     signal_t0: datetime | pd.Timestamp,
+    *,
+    require_agg_trade_through_last_second: bool = True,
+    max_agg_trade_lag_seconds: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     target = pd.Timestamp(signal_t0).tz_convert(UTC).floor("min")
     required_minute = expected_latest_closed_minute(target)
     required_second = target - pd.Timedelta(seconds=1)
+    required_agg_trade = required_second - pd.Timedelta(seconds=max_agg_trade_lag_seconds)
 
     original_minute_latest = _latest_timestamp(minute_frame)
     original_second_latest = _latest_timestamp(second_frame)
@@ -434,6 +499,20 @@ def finalize_runtime_frames_for_signal(
             "Binance 1s frame is not complete through the last pre-signal second. "
             f"Required {required_second.isoformat()}, latest available {second_latest.isoformat()}."
         )
+    agg_latest = None if safe_agg.empty else pd.to_datetime(safe_agg[DEFAULT_TIMESTAMP_COLUMN], utc=True).max()
+    agg_lag_seconds = None if agg_latest is None else (required_second - agg_latest).total_seconds()
+    if require_agg_trade_through_last_second:
+        if agg_latest is None:
+            raise RuntimeError(
+                "Binance agg trade frame has no safe rows before signal_t0 "
+                f"{target.isoformat()}."
+            )
+        if agg_latest < required_agg_trade:
+            raise RuntimeError(
+                "Binance agg trade frame is not complete through the required pre-signal time. "
+                f"Required at least {required_agg_trade.isoformat()}, "
+                f"latest available {agg_latest.isoformat()}."
+            )
 
     finalized_minute = _append_synthetic_decision_minute(safe_minute, target)
     alignment = {
@@ -442,6 +521,7 @@ def finalize_runtime_frames_for_signal(
         "feature_timestamp": target.isoformat(),
         "required_latest_closed_minute": required_minute.isoformat(),
         "required_latest_closed_second": required_second.isoformat(),
+        "required_latest_agg_trade": required_agg_trade.isoformat(),
         "prewarm_base_until": (required_minute - pd.Timedelta(minutes=1)).isoformat(),
         "minute_latest_before_finalize": original_minute_latest,
         "second_latest_before_finalize": original_second_latest,
@@ -449,6 +529,8 @@ def finalize_runtime_frames_for_signal(
         "minute_latest": _latest_timestamp(safe_minute),
         "second_latest": _latest_timestamp(safe_second),
         "agg_trade_latest": _latest_timestamp(safe_agg),
+        "agg_trade_lag_seconds": agg_lag_seconds,
+        "max_agg_trade_lag_seconds": float(max_agg_trade_lag_seconds),
         "post_signal_second_rows_dropped": max(len(second_frame) - len(safe_second), 0),
         "post_signal_agg_trade_rows_dropped": max(len(agg_trades_frame) - len(safe_agg), 0),
         "synthetic_decision_row": True,

@@ -17,10 +17,11 @@ from execution_engine.scripts.evaluate_paper_results import (
 )
 from execution_engine.scripts.run_paper_experiment import next_trigger_time
 from execution_engine.scripts import run_paper_experiment as paper_experiment_module
-from execution_engine.config import load_execution_config
+from execution_engine.config import BinanceConfig, load_execution_config
 from execution_engine.order_plan import build_two_limit_order_plan
 from execution_engine.polymarket_v2 import PolymarketV2Adapter, normalize_gamma_market
 from execution_engine.realtime_data import (
+    BinanceRealtimeClient,
     finalize_runtime_frames_for_signal,
     normalize_binance_agg_trades,
     normalize_binance_klines,
@@ -54,6 +55,9 @@ def test_execution_config_example_loads() -> None:
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
     assert config.thresholds.t_up == 0.5425
     assert config.thresholds.t_down == 0.44
+    assert config.binance.require_agg_trade_through_last_second is True
+    assert config.binance.max_agg_trade_lag_seconds == 0
+    assert config.binance.agg_trade_wait_seconds == 8
 
 
 def test_normalize_binance_klines_outputs_shared_schema() -> None:
@@ -104,6 +108,83 @@ def test_normalize_binance_agg_trades_outputs_trade_schema() -> None:
     assert frame["quantity"].iloc[0] == 0.2
     assert frame["quote_quantity"].iloc[0] == 20.0
     assert bool(frame["is_buyer_maker"].iloc[0]) is False
+
+
+def test_fetch_agg_trades_from_id_uses_id_pagination_and_filters_after_end() -> None:
+    class FakeResponse:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self):
+            return self._payload
+
+    class FakeSession:
+        def __init__(self):
+            self.params = []
+
+        def get(self, url, params=None, timeout=None):
+            self.params.append(params)
+            before_end = int(pd.Timestamp("2026-05-10T12:00:59Z").timestamp() * 1000)
+            after_end = int(pd.Timestamp("2026-05-10T12:01:01Z").timestamp() * 1000)
+            return FakeResponse(
+                [
+                    {"a": 10, "p": "100.0", "q": "0.1", "f": 1, "l": 1, "T": before_end, "m": False, "M": True},
+                    {"a": 11, "p": "101.0", "q": "0.1", "f": 2, "l": 2, "T": after_end, "m": False, "M": True},
+                ]
+            )
+
+    session = FakeSession()
+    client = BinanceRealtimeClient(BinanceConfig(), session=session)
+
+    frame = client.fetch_agg_trades_from_id(
+        10,
+        end_time=pd.Timestamp("2026-05-10T12:00:59Z"),
+        lookback_start=pd.Timestamp("2026-05-10T11:55:00Z"),
+    )
+
+    assert session.params[0]["fromId"] == 10
+    assert "startTime" not in session.params[0]
+    assert frame["agg_trade_id"].tolist() == [10]
+
+
+def test_fetch_agg_trade_tail_until_merges_from_last_cached_id(tmp_path) -> None:
+    class TailClient(BinanceRealtimeClient):
+        def __init__(self, config):
+            super().__init__(config)
+            self.requested_from_id = None
+
+        def server_time(self) -> pd.Timestamp:
+            return pd.Timestamp("2026-05-10T12:35:08Z")
+
+        def fetch_agg_trades_from_id(self, from_id, end_time, lookback_start):
+            self.requested_from_id = from_id
+            return pd.DataFrame(
+                {
+                    "timestamp": pd.to_datetime(["2026-05-10T12:34:59.200Z"], utc=True),
+                    "agg_trade_id": [3],
+                    "price": [101.0],
+                    "quantity": [0.2],
+                }
+            )
+
+    client = TailClient(BinanceConfig(cache_path=str(tmp_path / "binance_cache.parquet")))
+    cached = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:34:55.638Z"], utc=True),
+            "agg_trade_id": [2],
+            "price": [100.0],
+            "quantity": [0.1],
+        }
+    )
+
+    merged = client._fetch_agg_trade_tail_until(cached, pd.Timestamp("2026-05-10T12:34:59Z"))
+
+    assert client.requested_from_id == 3
+    assert merged["agg_trade_id"].tolist() == [2, 3]
+    assert merged["timestamp"].max() == pd.Timestamp("2026-05-10T12:34:59.200Z")
 
 
 def test_finalize_runtime_frames_for_signal_appends_exact_t0_decision_row_and_truncates_post_signal_data() -> None:
@@ -173,6 +254,76 @@ def test_finalize_runtime_frames_for_signal_appends_exact_t0_decision_row_and_tr
     assert alignment["feature_timestamp"] == "2026-05-10T12:35:00+00:00"
     assert alignment["post_signal_second_rows_dropped"] == 1
     assert alignment["post_signal_agg_trade_rows_dropped"] == 1
+
+
+def test_finalize_runtime_frames_for_signal_requires_agg_trade_through_last_second() -> None:
+    minute = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:34:00Z"], utc=True),
+            "open": [102.0],
+            "high": [103.0],
+            "low": [101.0],
+            "close": [102.5],
+            "volume": [1.0],
+        }
+    )
+    second = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:34:59Z"], utc=True),
+            "open": [1.0],
+            "high": [1.0],
+            "low": [1.0],
+            "close": [1.0],
+        }
+    )
+    agg = pd.DataFrame({"timestamp": pd.to_datetime(["2026-05-10T12:34:55.638Z"], utc=True), "agg_trade_id": [1]})
+
+    try:
+        finalize_runtime_frames_for_signal(
+            minute,
+            second,
+            agg,
+            signal_t0=pd.Timestamp("2026-05-10T12:35:00Z"),
+        )
+    except RuntimeError as exc:
+        assert "Binance agg trade frame is not complete" in str(exc)
+        assert "latest available 2026-05-10T12:34:55.638000+00:00" in str(exc)
+    else:
+        raise AssertionError("finalize_runtime_frames_for_signal should reject stale agg trade data")
+
+
+def test_finalize_runtime_frames_for_signal_can_allow_configured_agg_lag() -> None:
+    minute = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:34:00Z"], utc=True),
+            "open": [102.0],
+            "high": [103.0],
+            "low": [101.0],
+            "close": [102.5],
+            "volume": [1.0],
+        }
+    )
+    second = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:34:59Z"], utc=True),
+            "open": [1.0],
+            "high": [1.0],
+            "low": [1.0],
+            "close": [1.0],
+        }
+    )
+    agg = pd.DataFrame({"timestamp": pd.to_datetime(["2026-05-10T12:34:58.500Z"], utc=True), "agg_trade_id": [1]})
+
+    _, _, _, alignment = finalize_runtime_frames_for_signal(
+        minute,
+        second,
+        agg,
+        signal_t0=pd.Timestamp("2026-05-10T12:35:00Z"),
+        max_agg_trade_lag_seconds=1.0,
+    )
+
+    assert alignment["required_latest_agg_trade"] == "2026-05-10T12:34:58+00:00"
+    assert alignment["agg_trade_lag_seconds"] == 0.5
 
 
 def test_finalize_runtime_frames_for_signal_requires_last_closed_minute() -> None:
