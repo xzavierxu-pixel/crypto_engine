@@ -13,16 +13,28 @@ if str(REPO_ROOT) not in sys.path:
 from execution_engine.artifacts import load_baseline_artifact
 from execution_engine.config import load_execution_config
 from execution_engine.feature_runtime import RuntimeInferenceEngine
-from execution_engine.realtime_data import BinanceRealtimeClient
+from execution_engine.realtime_data import BinanceRealtimeClient, finalize_runtime_frames_for_signal
 from src.core.config import load_settings
 
 
-def prewarm(config_path: str, cache_output: str | None = None) -> dict:
+def prewarm(
+    config_path: str,
+    cache_output: str | None = None,
+    target_window_start: datetime | str | None = None,
+) -> dict:
     config = load_execution_config(config_path)
     baseline = load_baseline_artifact(config.baseline)
     settings = load_settings(config.baseline.settings_path)
     client = BinanceRealtimeClient(config.binance)
     minute_frame, second_frame, agg_trades_frame = client.fetch_runtime_frames()
+    frame_alignment = None
+    if target_window_start is not None:
+        minute_frame, second_frame, agg_trades_frame, frame_alignment = finalize_runtime_frames_for_signal(
+            minute_frame,
+            second_frame,
+            agg_trades_frame,
+            signal_t0=target_window_start,
+        )
     inference = RuntimeInferenceEngine(
         settings,
         baseline,
@@ -44,6 +56,7 @@ def prewarm(config_path: str, cache_output: str | None = None) -> dict:
         "baseline_artifact_dir": str(baseline.artifact_dir),
         "feature_count": len(baseline.feature_columns),
         "cache_output": cache_output,
+        "frame_alignment": frame_alignment,
     }
     if cache_output:
         output_dir = Path(cache_output)
@@ -64,9 +77,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Prewarm Binance runtime data cache.")
     parser.add_argument("--config", default="execution_engine/config.yaml")
     parser.add_argument("--cache-output", default=None)
+    parser.add_argument("--target-window-start", default=None)
     parser.add_argument("--print-json", action="store_true")
     args = parser.parse_args()
-    summary = prewarm(args.config, cache_output=args.cache_output)
+    summary = prewarm(args.config, cache_output=args.cache_output, target_window_start=args.target_window_start)
     if args.print_json:
         print(json.dumps(summary, indent=2, ensure_ascii=False))
     else:

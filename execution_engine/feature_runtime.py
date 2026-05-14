@@ -73,6 +73,7 @@ class RuntimeInferenceEngine:
         agg_trades_frame: pd.DataFrame | None = None,
         signal_t0: pd.Timestamp | None = None,
         use_latest_available_before_signal: bool = False,
+        runtime_context: dict | None = None,
     ) -> FeatureBuildResult:
         feature_frame, sampled_second = self.build_feature_frame(
             minute_frame,
@@ -125,11 +126,17 @@ class RuntimeInferenceEngine:
                 "grid_id": latest["grid_id"],
                 "timestamp": signal_timestamp.isoformat(),
                 "feature_timestamp": latest[DEFAULT_TIMESTAMP_COLUMN].isoformat(),
+                "row_policy": (
+                    "latest_available_before_signal"
+                    if use_latest_available_before_signal
+                    else "exact_signal_t0"
+                ),
                 "t_up": self.t_up,
                 "t_down": self.t_down,
                 "artifact_t_up": self.baseline.t_up,
                 "artifact_t_down": self.baseline.t_down,
                 "baseline_artifact_dir": str(self.baseline.artifact_dir),
+                **(runtime_context or {}),
             },
         )
         return FeatureBuildResult(feature_frame=feature_frame, second_level_frame=sampled_second, signal=signal)

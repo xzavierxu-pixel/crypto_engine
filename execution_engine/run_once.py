@@ -62,7 +62,8 @@ def run_once(
     audit = AuditService(config.runtime.audit_log)
 
     binance = BinanceRealtimeClient(config.binance)
-    minute_frame, second_frame, agg_trades_frame = binance.wait_for_closed_runtime_frames(
+    minute_frame, second_frame, agg_trades_frame, frame_alignment = binance.wait_for_signal_runtime_frames(
+        signal_t0=target_window_start,
         max_wait_seconds=config.schedule.max_data_wait_seconds,
     )
     audit.append(
@@ -75,6 +76,7 @@ def run_once(
                 "minute_latest": None if minute_frame.empty else minute_frame["timestamp"].iloc[-1].isoformat(),
                 "second_latest": None if second_frame.empty else second_frame["timestamp"].iloc[-1].isoformat(),
                 "agg_trade_latest": None if agg_trades_frame.empty else agg_trades_frame["timestamp"].iloc[-1].isoformat(),
+                "frame_alignment": frame_alignment,
             },
         )
     )
@@ -90,7 +92,8 @@ def run_once(
         second_frame,
         agg_trades_frame,
         signal_t0=pd.Timestamp(target_window_start),
-        use_latest_available_before_signal=True,
+        use_latest_available_before_signal=False,
+        runtime_context=frame_alignment,
     )
     signal = result.signal
     t_up = float(signal.decision_context["t_up"])
@@ -110,6 +113,11 @@ def run_once(
                 "artifact_t_down": baseline.t_down,
                 "feature_count": len(baseline.feature_columns),
                 "feature_timestamp": signal.decision_context.get("feature_timestamp"),
+                "row_policy": signal.decision_context.get("row_policy"),
+                "required_latest_closed_minute": signal.decision_context.get("required_latest_closed_minute"),
+                "required_latest_closed_second": signal.decision_context.get("required_latest_closed_second"),
+                "post_signal_second_rows_dropped": signal.decision_context.get("post_signal_second_rows_dropped"),
+                "post_signal_agg_trade_rows_dropped": signal.decision_context.get("post_signal_agg_trade_rows_dropped"),
                 "baseline_artifact_dir": str(baseline.artifact_dir),
             },
         )
@@ -132,6 +140,13 @@ def run_once(
             "artifact_t_up": baseline.t_up,
             "artifact_t_down": baseline.t_down,
             "feature_timestamp": signal.decision_context.get("feature_timestamp"),
+            "row_policy": signal.decision_context.get("row_policy"),
+            "required_latest_closed_minute": signal.decision_context.get("required_latest_closed_minute"),
+            "required_latest_closed_second": signal.decision_context.get("required_latest_closed_second"),
+            "minute_latest": signal.decision_context.get("minute_latest"),
+            "second_latest": signal.decision_context.get("second_latest"),
+            "agg_trade_latest": signal.decision_context.get("agg_trade_latest"),
+            "prewarm_base_until": signal.decision_context.get("prewarm_base_until"),
         },
         "decision": asdict(decision),
         "market": None,

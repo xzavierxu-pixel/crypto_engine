@@ -50,7 +50,9 @@ def submit_forced_order_from_runtime(
     baseline = load_baseline_artifact(config.baseline)
     settings = load_settings(config.baseline.settings_path)
     binance = BinanceRealtimeClient(config.binance)
-    minute_frame, second_frame, agg_trades_frame = binance.wait_for_closed_runtime_frames(
+    slug, window_start, window_end = build_btc_5m_slug(datetime.now(UTC), offset_windows=0)
+    minute_frame, second_frame, agg_trades_frame, frame_alignment = binance.wait_for_signal_runtime_frames(
+        signal_t0=window_start,
         max_wait_seconds=config.schedule.max_data_wait_seconds,
     )
     inference = RuntimeInferenceEngine(
@@ -59,13 +61,13 @@ def submit_forced_order_from_runtime(
         t_up=config.thresholds.t_up,
         t_down=config.thresholds.t_down,
     )
-    slug, window_start, window_end = build_btc_5m_slug(datetime.now(UTC), offset_windows=0)
     result = inference.predict(
         minute_frame,
         second_frame,
         agg_trades_frame,
         signal_t0=pd.Timestamp(window_start),
-        use_latest_available_before_signal=True,
+        use_latest_available_before_signal=False,
+        runtime_context=frame_alignment,
     )
     signal = result.signal
     decision = Decision(

@@ -20,9 +20,15 @@ from execution_engine.scripts import run_paper_experiment as paper_experiment_mo
 from execution_engine.config import load_execution_config
 from execution_engine.order_plan import build_two_limit_order_plan
 from execution_engine.polymarket_v2 import PolymarketV2Adapter, normalize_gamma_market
-from execution_engine.realtime_data import normalize_binance_agg_trades, normalize_binance_klines
+from execution_engine.realtime_data import (
+    finalize_runtime_frames_for_signal,
+    normalize_binance_agg_trades,
+    normalize_binance_klines,
+)
 from execution_engine.run_once import build_btc_5m_slug, build_idempotency_key
+from src.core.config import FeatureProfileConfig
 from src.core.schemas import Decision, MarketQuote, Signal
+from src.features.momentum import MomentumFeaturePack
 
 
 def _signal(p_up: float = 0.60) -> Signal:
@@ -98,6 +104,147 @@ def test_normalize_binance_agg_trades_outputs_trade_schema() -> None:
     assert frame["quantity"].iloc[0] == 0.2
     assert frame["quote_quantity"].iloc[0] == 20.0
     assert bool(frame["is_buyer_maker"].iloc[0]) is False
+
+
+def test_finalize_runtime_frames_for_signal_appends_exact_t0_decision_row_and_truncates_post_signal_data() -> None:
+    minute = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                [
+                    "2026-05-10T12:32:00Z",
+                    "2026-05-10T12:33:00Z",
+                    "2026-05-10T12:34:00Z",
+                    "2026-05-10T12:35:00Z",
+                ],
+                utc=True,
+            ),
+            "open": [100.0, 101.0, 102.0, 999.0],
+            "high": [101.0, 102.0, 103.0, 999.0],
+            "low": [99.0, 100.0, 101.0, 999.0],
+            "close": [100.5, 101.5, 102.5, 999.0],
+            "volume": [1.0, 1.0, 1.0, 999.0],
+            "close_time": pd.to_datetime(
+                [
+                    "2026-05-10T12:32:59.999Z",
+                    "2026-05-10T12:33:59.999Z",
+                    "2026-05-10T12:34:59.999Z",
+                    "2026-05-10T12:35:59.999Z",
+                ],
+                utc=True,
+            ),
+        }
+    )
+    second = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                ["2026-05-10T12:34:58Z", "2026-05-10T12:34:59Z", "2026-05-10T12:35:00Z"],
+                utc=True,
+            ),
+            "open": [1.0, 2.0, 999.0],
+            "high": [1.0, 2.0, 999.0],
+            "low": [1.0, 2.0, 999.0],
+            "close": [1.0, 2.0, 999.0],
+            "volume": [1.0, 2.0, 999.0],
+        }
+    )
+    agg = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                ["2026-05-10T12:34:59.500Z", "2026-05-10T12:35:00.000Z"],
+                utc=True,
+            ),
+            "agg_trade_id": [1, 2],
+        }
+    )
+
+    finalized_minute, finalized_second, finalized_agg, alignment = finalize_runtime_frames_for_signal(
+        minute,
+        second,
+        agg,
+        signal_t0=pd.Timestamp("2026-05-10T12:35:00Z"),
+    )
+
+    assert finalized_minute["timestamp"].iloc[-1] == pd.Timestamp("2026-05-10T12:35:00Z")
+    assert finalized_minute["timestamp"].iloc[-2] == pd.Timestamp("2026-05-10T12:34:00Z")
+    assert pd.isna(finalized_minute["close"].iloc[-1])
+    assert finalized_second["timestamp"].max() == pd.Timestamp("2026-05-10T12:34:59Z")
+    assert finalized_agg["timestamp"].max() == pd.Timestamp("2026-05-10T12:34:59.500Z")
+    assert alignment["required_latest_closed_minute"] == "2026-05-10T12:34:00+00:00"
+    assert alignment["feature_timestamp"] == "2026-05-10T12:35:00+00:00"
+    assert alignment["post_signal_second_rows_dropped"] == 1
+    assert alignment["post_signal_agg_trade_rows_dropped"] == 1
+
+
+def test_finalize_runtime_frames_for_signal_requires_last_closed_minute() -> None:
+    minute = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:33:00Z"], utc=True),
+            "open": [101.0],
+            "high": [102.0],
+            "low": [100.0],
+            "close": [101.5],
+        }
+    )
+    second = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:34:59Z"], utc=True),
+            "open": [1.0],
+            "high": [1.0],
+            "low": [1.0],
+            "close": [1.0],
+        }
+    )
+
+    try:
+        finalize_runtime_frames_for_signal(
+            minute,
+            second,
+            pd.DataFrame({"timestamp": pd.to_datetime(["2026-05-10T12:34:59Z"], utc=True)}),
+            signal_t0=pd.Timestamp("2026-05-10T12:35:00Z"),
+        )
+    except RuntimeError as exc:
+        assert "Required closed minute 2026-05-10T12:34:00+00:00" in str(exc)
+    else:
+        raise AssertionError("finalize_runtime_frames_for_signal should reject missing t0-1 minute")
+
+
+def test_finalized_signal_row_keeps_offline_momentum_window_semantics() -> None:
+    timestamps = pd.date_range("2026-05-10T12:29:00Z", periods=7, freq="min")
+    minute = pd.DataFrame(
+        {
+            "timestamp": timestamps,
+            "open": [100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 999.0],
+            "high": [100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 999.0],
+            "low": [100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 999.0],
+            "close": [100.0, 101.0, 102.0, 103.0, 104.0, 106.0, 999.0],
+            "volume": [1.0] * 7,
+        }
+    )
+    second = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:34:59Z"], utc=True),
+            "open": [1.0],
+            "high": [1.0],
+            "low": [1.0],
+            "close": [1.0],
+        }
+    )
+    finalized_minute, _, _, _ = finalize_runtime_frames_for_signal(
+        minute,
+        second,
+        pd.DataFrame({"timestamp": pd.to_datetime(["2026-05-10T12:34:59Z"], utc=True)}),
+        signal_t0=pd.Timestamp("2026-05-10T12:35:00Z"),
+    )
+
+    features = MomentumFeaturePack().transform(
+        finalized_minute,
+        settings=object(),
+        profile=FeatureProfileConfig(packs=["momentum"], momentum_windows=[3]),
+    )
+
+    expected = 106.0 / 102.0 - 1.0
+    assert finalized_minute["timestamp"].iloc[-1] == pd.Timestamp("2026-05-10T12:35:00Z")
+    assert features["ret_3"].iloc[-1] == expected
 
 
 def test_two_limit_order_plan_uses_target_token_best_bid_cap_and_offset() -> None:
@@ -504,9 +651,15 @@ orders:
         def __init__(self, config):
             self.config = config
 
-        def wait_for_closed_runtime_frames(self, max_wait_seconds):
+        def wait_for_signal_runtime_frames(self, signal_t0, max_wait_seconds):
+            assert pd.Timestamp(signal_t0) == pd.Timestamp("2026-05-10T12:35:00Z")
             frame = pd.DataFrame({"timestamp": [pd.Timestamp("2026-05-10T12:35:00Z")]})
-            return frame, frame, frame
+            return frame, frame, frame, {
+                "row_policy": "exact_signal_t0_with_synthetic_decision_row",
+                "feature_timestamp": "2026-05-10T12:35:00+00:00",
+                "required_latest_closed_minute": "2026-05-10T12:34:00+00:00",
+                "required_latest_closed_second": "2026-05-10T12:34:59+00:00",
+            }
 
     class FakeInference:
         def __init__(self, settings, baseline, **kwargs):
@@ -521,9 +674,11 @@ orders:
             agg_trades_frame=None,
             signal_t0=None,
             use_latest_available_before_signal=False,
+            runtime_context=None,
         ):
-            assert use_latest_available_before_signal is True
+            assert use_latest_available_before_signal is False
             assert pd.Timestamp(signal_t0) == pd.Timestamp("2026-05-10T12:35:00Z")
+            assert runtime_context["required_latest_closed_minute"] == "2026-05-10T12:34:00+00:00"
             return types.SimpleNamespace(
                 signal=_signal(0.60),
                 feature_frame=pd.DataFrame({"f1": [1.0]}),

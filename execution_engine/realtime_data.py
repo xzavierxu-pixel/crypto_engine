@@ -261,6 +261,32 @@ class BinanceRealtimeClient:
                 raise RuntimeError("Timed out waiting for closed Binance klines.")
             time.sleep(0.2)
 
+    def wait_for_signal_runtime_frames(
+        self,
+        signal_t0: datetime | pd.Timestamp,
+        end_time: datetime | pd.Timestamp | None = None,
+        max_wait_seconds: float = 20.0,
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+        deadline = time.monotonic() + max_wait_seconds
+        last_error: Exception | None = None
+        while True:
+            try:
+                one_minute, one_second, agg_trades = self.fetch_runtime_frames(end_time=end_time)
+                finalized = finalize_runtime_frames_for_signal(
+                    one_minute,
+                    one_second,
+                    agg_trades,
+                    signal_t0=signal_t0,
+                )
+                return finalized
+            except Exception as exc:  # pragma: no cover - exercised by integration smoke only.
+                last_error = exc
+            if time.monotonic() >= deadline:
+                if last_error is not None:
+                    raise last_error
+                raise RuntimeError("Timed out waiting for Binance runtime frames aligned to signal_t0.")
+            time.sleep(0.2)
+
 
 def normalize_binance_klines(payload: list[list[Any]], require_closed: bool = False) -> pd.DataFrame:
     if not payload:
@@ -323,3 +349,108 @@ def filter_closed_klines(frame: pd.DataFrame, server_time: pd.Timestamp) -> pd.D
     server_ts = pd.Timestamp(server_time).tz_convert(UTC)
     closed = frame.loc[pd.to_datetime(frame["close_time"], utc=True) <= server_ts]
     return closed.reset_index(drop=True)
+
+
+def expected_latest_closed_minute(signal_t0: datetime | pd.Timestamp) -> pd.Timestamp:
+    target = pd.Timestamp(signal_t0).tz_convert(UTC).floor("min")
+    return target - pd.Timedelta(minutes=1)
+
+
+def _latest_timestamp(frame: pd.DataFrame) -> str | None:
+    if frame.empty or DEFAULT_TIMESTAMP_COLUMN not in frame.columns:
+        return None
+    return pd.to_datetime(frame[DEFAULT_TIMESTAMP_COLUMN], utc=True).max().isoformat()
+
+
+def _filter_before(frame: pd.DataFrame, timestamp: pd.Timestamp, *, inclusive: bool) -> pd.DataFrame:
+    if frame.empty or DEFAULT_TIMESTAMP_COLUMN not in frame.columns:
+        return frame.copy()
+    timestamps = pd.to_datetime(frame[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+    mask = timestamps <= timestamp if inclusive else timestamps < timestamp
+    return frame.loc[mask].copy().reset_index(drop=True)
+
+
+def _append_synthetic_decision_minute(minute_frame: pd.DataFrame, signal_t0: pd.Timestamp) -> pd.DataFrame:
+    if minute_frame.empty:
+        raise RuntimeError("Cannot append signal decision row to an empty 1m frame.")
+    decision_row = minute_frame.iloc[[-1]].copy()
+    for column in (
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "quote_volume",
+        "trade_count",
+        "taker_buy_base_volume",
+        "taker_buy_quote_volume",
+    ):
+        if column in decision_row.columns:
+            decision_row[column] = pd.NA
+    decision_row[DEFAULT_TIMESTAMP_COLUMN] = signal_t0
+    if "close_time" in decision_row.columns:
+        decision_row["close_time"] = pd.NaT
+    return pd.concat([minute_frame, decision_row], ignore_index=True)
+
+
+def finalize_runtime_frames_for_signal(
+    minute_frame: pd.DataFrame,
+    second_frame: pd.DataFrame,
+    agg_trades_frame: pd.DataFrame,
+    signal_t0: datetime | pd.Timestamp,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    target = pd.Timestamp(signal_t0).tz_convert(UTC).floor("min")
+    required_minute = expected_latest_closed_minute(target)
+    required_second = target - pd.Timedelta(seconds=1)
+
+    original_minute_latest = _latest_timestamp(minute_frame)
+    original_second_latest = _latest_timestamp(second_frame)
+    original_agg_latest = _latest_timestamp(agg_trades_frame)
+
+    safe_minute = _filter_before(minute_frame, required_minute, inclusive=True)
+    safe_second = _filter_before(second_frame, target, inclusive=False)
+    safe_agg = _filter_before(agg_trades_frame, target, inclusive=False)
+
+    if safe_minute.empty:
+        raise RuntimeError(
+            "Binance 1m frame has no closed rows available before signal_t0 "
+            f"{target.isoformat()}."
+        )
+    minute_timestamps = pd.to_datetime(safe_minute[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+    if not minute_timestamps.eq(required_minute).any():
+        raise RuntimeError(
+            "Binance 1m frame is not aligned to signal_t0. "
+            f"Required closed minute {required_minute.isoformat()}, "
+            f"latest available {_latest_timestamp(safe_minute)}."
+        )
+    if safe_second.empty:
+        raise RuntimeError(
+            "Binance 1s frame has no safe rows before signal_t0 "
+            f"{target.isoformat()}."
+        )
+    second_latest = pd.to_datetime(safe_second[DEFAULT_TIMESTAMP_COLUMN], utc=True).max()
+    if second_latest < required_second:
+        raise RuntimeError(
+            "Binance 1s frame is not complete through the last pre-signal second. "
+            f"Required {required_second.isoformat()}, latest available {second_latest.isoformat()}."
+        )
+
+    finalized_minute = _append_synthetic_decision_minute(safe_minute, target)
+    alignment = {
+        "signal_t0": target.isoformat(),
+        "row_policy": "exact_signal_t0_with_synthetic_decision_row",
+        "feature_timestamp": target.isoformat(),
+        "required_latest_closed_minute": required_minute.isoformat(),
+        "required_latest_closed_second": required_second.isoformat(),
+        "prewarm_base_until": (required_minute - pd.Timedelta(minutes=1)).isoformat(),
+        "minute_latest_before_finalize": original_minute_latest,
+        "second_latest_before_finalize": original_second_latest,
+        "agg_trade_latest_before_finalize": original_agg_latest,
+        "minute_latest": _latest_timestamp(safe_minute),
+        "second_latest": _latest_timestamp(safe_second),
+        "agg_trade_latest": _latest_timestamp(safe_agg),
+        "post_signal_second_rows_dropped": max(len(second_frame) - len(safe_second), 0),
+        "post_signal_agg_trade_rows_dropped": max(len(agg_trades_frame) - len(safe_agg), 0),
+        "synthetic_decision_row": True,
+    }
+    return finalized_minute, safe_second, safe_agg, alignment
