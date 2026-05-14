@@ -386,7 +386,7 @@ def _append_synthetic_decision_minute(minute_frame: pd.DataFrame, signal_t0: pd.
         "taker_buy_quote_volume",
     ):
         if column in decision_row.columns:
-            decision_row[column] = pd.NA
+            decision_row[column] = float("nan")
     decision_row[DEFAULT_TIMESTAMP_COLUMN] = signal_t0
     if "close_time" in decision_row.columns:
         decision_row["close_time"] = pd.NaT

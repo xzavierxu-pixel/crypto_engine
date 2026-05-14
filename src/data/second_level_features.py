@@ -1312,11 +1312,19 @@ def sample_second_level_feature_store(decision_frame: pd.DataFrame, feature_stor
     if DEFAULT_TIMESTAMP_COLUMN not in feature_store.columns:
         raise ValueError("Second-level feature store requires a timestamp column.")
     training_columns = [DEFAULT_TIMESTAMP_COLUMN, *[column for column in feature_store.columns if column.startswith("sl_")]]
+    store = feature_store[training_columns].copy()
+    store[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(store[DEFAULT_TIMESTAMP_COLUMN], utc=True).astype("datetime64[ns, UTC]")
+    decisions = decision_frame[[DEFAULT_TIMESTAMP_COLUMN]].assign(
+        **{
+            DEFAULT_TIMESTAMP_COLUMN: pd.to_datetime(
+                decision_frame[DEFAULT_TIMESTAMP_COLUMN],
+                utc=True,
+            ).astype("datetime64[ns, UTC]")
+        }
+    )
     sampled = pd.merge_asof(
-        decision_frame[[DEFAULT_TIMESTAMP_COLUMN]].assign(
-            **{DEFAULT_TIMESTAMP_COLUMN: pd.to_datetime(decision_frame[DEFAULT_TIMESTAMP_COLUMN], utc=True)}
-        ).sort_values(DEFAULT_TIMESTAMP_COLUMN),
-        feature_store[training_columns].sort_values(DEFAULT_TIMESTAMP_COLUMN),
+        decisions.sort_values(DEFAULT_TIMESTAMP_COLUMN),
+        store.sort_values(DEFAULT_TIMESTAMP_COLUMN),
         on=DEFAULT_TIMESTAMP_COLUMN,
         direction="backward",
     )

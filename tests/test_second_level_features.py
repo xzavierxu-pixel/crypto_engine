@@ -226,6 +226,30 @@ def test_second_level_feature_store_uses_kline_backbone_and_samples_backward() -
     assert sampled.loc[0, "timestamp"] == pd.Timestamp("2024-01-01T00:00:04.500Z")
 
 
+def test_sample_second_level_feature_store_normalizes_timestamp_resolution() -> None:
+    decisions = pd.DataFrame(
+        {
+            "timestamp": pd.Series(
+                pd.to_datetime(["2026-05-10T12:35:00Z"]),
+                dtype="datetime64[us, UTC]",
+            )
+        }
+    )
+    store = pd.DataFrame(
+        {
+            "timestamp": pd.Series(
+                pd.to_datetime(["2026-05-10T12:34:59Z"]),
+                dtype="datetime64[ms, UTC]",
+            ),
+            "sl_example": [1.0],
+        }
+    )
+
+    sampled = sample_second_level_feature_store(decisions, store)
+
+    assert sampled.loc[0, "sl_example"] == 1.0
+
+
 def test_split_second_level_stores_isolate_kline_and_agg_features() -> None:
     kline = pd.DataFrame(
         {
