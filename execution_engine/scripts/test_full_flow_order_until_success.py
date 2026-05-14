@@ -119,13 +119,14 @@ def submit_forced_order_from_runtime(
 
     order = plan.orders[0]
     store = IdempotencyStore(config.runtime.idempotency_store_path)
-    key = f"{build_idempotency_key(window_start, order.market_id, order.side)}:{idempotency_suffix}"
+    leg = str(order.metadata.get("leg", "order"))
+    key = f"{build_idempotency_key(window_start, order.market_id, order.side, leg)}:{idempotency_suffix}"
     if config.guards.enforce_idempotency and store.has(key):
         raise RuntimeError(f"Idempotency key already seen: {key}")
 
     response = polymarket.place_limit_order(order)
     if config.guards.enforce_idempotency:
-        store.record(key, {"market_id": order.market_id, "side": order.side, "price": order.price})
+        store.record(key, {"market_id": order.market_id, "side": order.side, "price": order.price, "leg": leg})
 
     return {
         "submitted": True,

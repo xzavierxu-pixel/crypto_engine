@@ -41,8 +41,8 @@ def current_5m_window_start(now: datetime | None = None) -> datetime:
     return ts.replace(minute=minute)
 
 
-def build_idempotency_key(signal_t0: datetime, token_id: str, side: str) -> str:
-    return f"{signal_t0.astimezone(UTC).isoformat()}:{token_id}:{side}:two_limit_plan"
+def build_idempotency_key(signal_t0: datetime, token_id: str, side: str, leg: str = "order") -> str:
+    return f"{signal_t0.astimezone(UTC).isoformat()}:{token_id}:{side}:{leg}:two_limit_plan"
 
 
 def audit_event(event_type: str, payload: dict[str, Any]) -> AuditEvent:
@@ -235,7 +235,8 @@ def run_once(
     store = IdempotencyStore(config.runtime.idempotency_store_path)
     responses: list[dict[str, Any]] = []
     for order in order_plan.orders[: config.guards.max_orders_per_window]:
-        key = build_idempotency_key(window_start, order.market_id, order.side)
+        leg = str(order.metadata.get("leg", "order"))
+        key = build_idempotency_key(window_start, order.market_id, order.side, leg)
         if config.guards.enforce_idempotency and store.has(key):
             skipped = {"reason": "idempotency_key_already_seen", "key": key}
             summary["skipped"].append(skipped)
@@ -244,7 +245,7 @@ def run_once(
         response = polymarket.place_limit_order(order)
         responses.append(response)
         if config.guards.enforce_idempotency:
-            store.record(key, {"market_id": order.market_id, "side": order.side, "price": order.price})
+            store.record(key, {"market_id": order.market_id, "side": order.side, "price": order.price, "leg": leg})
         audit.append(audit_event("order_submitted", {"order": asdict(order), "response": response}))
 
     summary["submitted"] = bool(responses)

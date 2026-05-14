@@ -451,12 +451,13 @@ def test_two_limit_order_plan_uses_best_ask_fallback_without_best_bid() -> None:
 
 def test_slug_and_idempotency_key_are_window_scoped() -> None:
     slug, start, end = build_btc_5m_slug(datetime(2026, 5, 10, 12, 37, 59, tzinfo=UTC))
-    key = build_idempotency_key(start, "token-1", "YES")
+    key = build_idempotency_key(start, "token-1", "YES", "first")
 
     assert slug == f"btc-updown-5m-{int(start.timestamp())}"
     assert start == datetime(2026, 5, 10, 12, 35, tzinfo=UTC)
     assert end == datetime(2026, 5, 10, 12, 40, tzinfo=UTC)
-    assert key == "2026-05-10T12:35:00+00:00:token-1:YES:two_limit_plan"
+    assert key == "2026-05-10T12:35:00+00:00:token-1:YES:first:two_limit_plan"
+    assert build_idempotency_key(start, "token-1", "YES", "second") != key
 
 
 def test_slug_can_target_next_5m_window() -> None:
@@ -764,20 +765,20 @@ def test_polymarket_missing_orderbook_error_allows_missing_bid_skip() -> None:
     assert plan.skipped == [{"reason": "missing_quote"}]
 
 
-def test_run_once_paper_flow_builds_order_plan_without_submit(monkeypatch, tmp_path) -> None:
+def test_run_once_live_flow_submits_both_order_legs_with_distinct_idempotency_keys(monkeypatch, tmp_path) -> None:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         f"""
 baseline:
   artifact_dir: baseline-dir
 runtime:
-  mode: paper
+  mode: live
   audit_log: {tmp_path.as_posix()}/audit.jsonl
   summary_dir: {tmp_path.as_posix()}/summaries
   idempotency_store_path: {tmp_path.as_posix()}/idempotency.json
 orders:
-  enabled: false
-  mode: paper
+  enabled: true
+  mode: live
   first:
     price_cap: 0.5
     offset: 0.0
@@ -877,17 +878,24 @@ orders:
 
     summary = run_once_module.run_once(
         str(config_path),
-        mode_override="paper",
+        mode_override="live",
         target_window_start=datetime(2026, 5, 10, 12, 35, tzinfo=UTC),
     )
 
-    assert summary["submitted"] is False
+    assert summary["submitted"] is True
     assert summary["market"]["slug"] == "btc-updown-5m-1778416500"
     assert summary["market"]["target_token_id"] == "yes-token"
     assert summary["market"]["window_start"] == "2026-05-10T12:35:00+00:00"
     assert summary["market"]["window_end"] == "2026-05-10T12:40:00+00:00"
     assert [order["price"] for order in summary["orders"]] == [0.5, 0.4]
-    assert summary["skipped"] == [{"reason": "paper_mode_or_orders_disabled"}]
+    assert [order["metadata"]["leg"] for order in summary["orders"]] == ["first", "second"]
+    assert len(summary["responses"]) == 2
+    assert summary["skipped"] == []
+    idempotency_payload = json.loads((tmp_path / "idempotency.json").read_text())
+    assert sorted(idempotency_payload) == [
+        "2026-05-10T12:35:00+00:00:yes-token:YES:first:two_limit_plan",
+        "2026-05-10T12:35:00+00:00:yes-token:YES:second:two_limit_plan",
+    ]
     assert Path(summary["summary_path"]).exists()
 
 
