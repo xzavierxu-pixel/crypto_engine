@@ -1,8 +1,8 @@
 baseline:
   artifact_dir: execution_engine/deploy/baseline
   settings_path: config/settings.yaml
-  model_file: catboost_lgbm_logit_blend.binary.pkl
-  calibrator_file: platt_logit.binary.pkl
+  model_file: lightgbm.binary.pkl
+  calibrator_file: none.binary.pkl
   manifest_file: artifact_manifest.json
 
 runtime:
@@ -28,13 +28,13 @@ binance:
 
 schedule:
   interval_minutes: 5
-  trigger_delay_seconds: 8
+  trigger_delay_seconds: 68
   max_data_wait_seconds: 20
   prewarm_seconds_before_trigger: 45
 
 thresholds:
-  t_up: 0.5425
-  t_down: 0.44
+  t_up: null
+  t_down: null
 
 polymarket:
   host: https://clob.polymarket.com

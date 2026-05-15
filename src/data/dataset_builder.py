@@ -27,6 +27,11 @@ from src.labels.registry import get_label_builder
 
 BASE_DATASET_COLUMNS = {
     DEFAULT_TIMESTAMP_COLUMN,
+    "market_t0",
+    "feature_timestamp",
+    "decision_time",
+    "decision_alignment_mode",
+    "feature_offset_minutes",
     "open",
     "high",
     "low",
@@ -36,6 +41,7 @@ BASE_DATASET_COLUMNS = {
     DEFAULT_HORIZON_COLUMN,
     DEFAULT_GRID_ID_COLUMN,
     "grid_t0",
+    "market_grid_id",
     "is_grid_t0",
     "feature_version",
     "label_version",
@@ -91,6 +97,16 @@ LEAKAGE_FEATURE_COLUMNS = {
     "stage1_target",
     DEFAULT_STAGE2_TARGET_COLUMN,
 }
+
+
+def _decision_feature_offset(settings: Settings) -> pd.Timedelta:
+    alignment = settings.decision_alignment
+    if not alignment.enabled:
+        return pd.Timedelta(0)
+    offset = int(alignment.feature_offset_minutes)
+    if offset < 0:
+        raise ValueError("decision_alignment.feature_offset_minutes must be >= 0.")
+    return pd.Timedelta(minutes=offset)
 
 
 def is_allowed_feature_column(column: str) -> bool:
@@ -195,28 +211,63 @@ def build_training_frame(
 ) -> TrainingFrame:
     horizon = get_horizon_spec(settings, horizon_name)
     normalized = normalize_ohlcv_frame(raw_df, timestamp_column=DEFAULT_TIMESTAMP_COLUMN, require_volume=False)
+    feature_offset = _decision_feature_offset(settings)
 
     feature_frame = build_feature_frame(
         normalized,
         settings,
         horizon_name=horizon.name,
-        select_grid_only=True,
+        select_grid_only=False if feature_offset else True,
         derivatives_frame=derivatives_frame,
         second_level_features_frame=second_level_features_frame,
     )
     label_builder = get_label_builder(horizon.label_builder)
     label_frame = label_builder.build(normalized, settings, horizon, select_grid_only=True)
 
-    training_frame = feature_frame.merge(
-        label_frame[[DEFAULT_TIMESTAMP_COLUMN, DEFAULT_TARGET_COLUMN, "label_version"]],
-        on=DEFAULT_TIMESTAMP_COLUMN,
+    label_columns = label_frame[[DEFAULT_TIMESTAMP_COLUMN, DEFAULT_TARGET_COLUMN, "label_version"]].copy()
+    if feature_offset:
+        label_columns = label_columns.rename(columns={DEFAULT_TIMESTAMP_COLUMN: "market_t0"})
+        label_columns["feature_timestamp"] = pd.to_datetime(label_columns["market_t0"], utc=True) + feature_offset
+        feature_columns_frame = feature_frame.rename(columns={DEFAULT_TIMESTAMP_COLUMN: "feature_timestamp"})
+        training_frame = label_columns.merge(
+            feature_columns_frame,
+            on="feature_timestamp",
+            how="left",
+            validate="one_to_one",
+        )
+        training_frame[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(training_frame["market_t0"], utc=True)
+        training_frame["decision_time"] = training_frame["feature_timestamp"]
+        training_frame["decision_alignment_mode"] = settings.decision_alignment.mode
+        training_frame["feature_offset_minutes"] = int(settings.decision_alignment.feature_offset_minutes)
+    else:
+        training_frame = feature_frame.merge(
+            label_columns,
+            on=DEFAULT_TIMESTAMP_COLUMN,
+            how="left",
+            validate="one_to_one",
+        )
+        training_frame["market_t0"] = pd.to_datetime(training_frame[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+        training_frame["feature_timestamp"] = pd.to_datetime(training_frame[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+        training_frame["decision_time"] = training_frame["feature_timestamp"]
+        training_frame["decision_alignment_mode"] = "exact_signal_t0"
+        training_frame["feature_offset_minutes"] = 0
+    training_frame = training_frame.merge(
+        label_frame[[DEFAULT_TIMESTAMP_COLUMN, "grid_id"]].rename(
+            columns={DEFAULT_TIMESTAMP_COLUMN: "market_t0", "grid_id": "market_grid_id"}
+        ),
+        on="market_t0",
         how="left",
         validate="one_to_one",
     )
     abs_return_frame = build_abs_return_frame(normalized, horizon)
+    if feature_offset:
+        abs_return_frame = abs_return_frame.rename(columns={DEFAULT_TIMESTAMP_COLUMN: "market_t0"})
+        abs_return_merge_column = "market_t0"
+    else:
+        abs_return_merge_column = DEFAULT_TIMESTAMP_COLUMN
     training_frame = training_frame.merge(
         abs_return_frame,
-        on=DEFAULT_TIMESTAMP_COLUMN,
+        on=abs_return_merge_column,
         how="left",
         validate="one_to_one",
     )

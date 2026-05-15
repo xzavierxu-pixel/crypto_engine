@@ -59,12 +59,19 @@ def run_once(
     target_window_start = target_window_start or current_5m_window_start()
     baseline = load_baseline_artifact(config.baseline)
     settings = load_settings(config.baseline.settings_path)
+    alignment = getattr(settings, "decision_alignment", None)
+    feature_offset_minutes = (
+        int(getattr(alignment, "feature_offset_minutes", 0))
+        if alignment is not None and getattr(alignment, "enabled", False)
+        else 0
+    )
     audit = AuditService(config.runtime.audit_log)
 
     binance = BinanceRealtimeClient(config.binance)
     minute_frame, second_frame, agg_trades_frame, frame_alignment = binance.wait_for_signal_runtime_frames(
         signal_t0=target_window_start,
         max_wait_seconds=config.schedule.max_data_wait_seconds,
+        feature_offset_minutes=feature_offset_minutes,
     )
     audit.append(
         audit_event(
@@ -113,6 +120,8 @@ def run_once(
                 "artifact_t_down": baseline.t_down,
                 "feature_count": len(baseline.feature_columns),
                 "feature_timestamp": signal.decision_context.get("feature_timestamp"),
+                "decision_time": signal.decision_context.get("decision_time"),
+                "market_t0": signal.decision_context.get("market_t0"),
                 "row_policy": signal.decision_context.get("row_policy"),
                 "required_latest_closed_minute": signal.decision_context.get("required_latest_closed_minute"),
                 "required_latest_closed_second": signal.decision_context.get("required_latest_closed_second"),
@@ -140,6 +149,10 @@ def run_once(
             "artifact_t_up": baseline.t_up,
             "artifact_t_down": baseline.t_down,
             "feature_timestamp": signal.decision_context.get("feature_timestamp"),
+            "decision_time": signal.decision_context.get("decision_time"),
+            "market_t0": signal.decision_context.get("market_t0"),
+            "decision_alignment_mode": signal.decision_context.get("decision_alignment_mode"),
+            "feature_offset_minutes": signal.decision_context.get("feature_offset_minutes"),
             "row_policy": signal.decision_context.get("row_policy"),
             "required_latest_closed_minute": signal.decision_context.get("required_latest_closed_minute"),
             "required_latest_closed_second": signal.decision_context.get("required_latest_closed_second"),

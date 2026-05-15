@@ -145,6 +145,16 @@ def _threshold_constraint_report(threshold_search: dict) -> dict:
     }
 
 
+def _with_signal_aliases(metrics: dict) -> dict:
+    enriched = dict(metrics)
+    enriched.setdefault("up_signal_count", enriched.get("up_prediction_count", 0.0))
+    enriched.setdefault("down_signal_count", enriched.get("down_prediction_count", 0.0))
+    enriched.setdefault("total_signal_count", enriched.get("accepted_count", 0.0))
+    enriched.setdefault("signal_coverage", enriched.get("coverage", 0.0))
+    enriched.setdefault("overall_signal_accuracy", enriched.get("accepted_sample_accuracy", 0.0))
+    return enriched
+
+
 def main() -> None:
     _configure_logging()
     parser = argparse.ArgumentParser(description="Train the BTC 5m weighted binary selective direction model.")
@@ -295,10 +305,13 @@ def main() -> None:
     )
 
     logging.info("Writing artifacts to %s", output_dir)
+    train_metrics = _with_signal_aliases(artifacts.train_metrics)
+    validation_metrics = _with_signal_aliases(artifacts.validation_metrics)
     model_name = settings.model.resolve_plugin(stage="binary")
     model_path = output_dir / f"{model_name}.binary.pkl"
     calibrator_path = output_dir / f"{artifacts.calibrator.name}.binary.pkl"
     manifest_path = output_dir / "artifact_manifest.json"
+    report_path = output_dir / "report.json"
     metrics_path = output_dir / "metrics.json"
     threshold_search_path = output_dir / "threshold_search.json"
     threshold_frontier_path = output_dir / "threshold_frontier.csv"
@@ -321,8 +334,17 @@ def main() -> None:
     artifacts.false_down_slices.to_csv(false_down_slices_path, index=False)
     probability_reference_path.write_text(json.dumps(artifacts.probability_reference, indent=2), encoding="utf-8")
     metrics_payload = {
-        "train": artifacts.train_metrics,
-        "validation": artifacts.validation_metrics,
+        "train": train_metrics,
+        "validation": validation_metrics,
+        "decision_alignment": {
+            "mode": settings.decision_alignment.mode,
+            "enabled": settings.decision_alignment.enabled,
+            "feature_offset_minutes": settings.decision_alignment.feature_offset_minutes,
+            "row_policy": settings.decision_alignment.row_policy,
+            "coverage_constraint_min": float(settings.objective.min_coverage),
+            "validation_threshold_tuned": True,
+            "validation_result_optimistic": True,
+        },
         "thresholds": {"t_up": artifacts.t_up, "t_down": artifacts.t_down},
         "threshold_search": artifacts.threshold_search["best"],
     }
@@ -375,6 +397,18 @@ def main() -> None:
         "base_rate": artifacts.base_rate,
         "threshold_constraint_report": _threshold_constraint_report(artifacts.threshold_search),
         "threshold_search_constraints": artifacts.threshold_search,
+        "decision_alignment": {
+            "mode": settings.decision_alignment.mode,
+            "enabled": settings.decision_alignment.enabled,
+            "feature_offset_minutes": settings.decision_alignment.feature_offset_minutes,
+            "row_policy": settings.decision_alignment.row_policy,
+            "coverage_constraint_min": float(settings.objective.min_coverage),
+            "coverage_constraint_satisfied": bool(
+                artifacts.validation_metrics.get("coverage", 0.0) >= float(settings.objective.min_coverage)
+            ),
+            "validation_threshold_tuned": True,
+            "validation_result_optimistic": True,
+        },
         "metrics_path": metrics_path.name,
         "threshold_search_path": threshold_search_path.name,
         "threshold_frontier_path": threshold_frontier_path.name,
@@ -386,12 +420,25 @@ def main() -> None:
         "false_down_slices_path": false_down_slices_path.name,
         "probability_summary": artifacts.probability_summary,
         "probability_reference_path": probability_reference_path.name,
-        "train_metrics": artifacts.train_metrics,
+        "train_metrics": train_metrics,
         "train_window": artifacts.train_window,
         "validation_window": artifacts.validation_window,
-        "validation_metrics": artifacts.validation_metrics,
+        "validation_metrics": validation_metrics,
     }
     manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
+    report_payload = {
+        "train_metrics": train_metrics,
+        "train_window": artifacts.train_window,
+        "validation_metrics": validation_metrics,
+        "validation_window": artifacts.validation_window,
+        "threshold_search": artifacts.threshold_search,
+        "thresholds": {"t_up": artifacts.t_up, "t_down": artifacts.t_down},
+        "decision_alignment": manifest_payload["decision_alignment"],
+        "config_hash": manifest_payload["config_hash"],
+        "feature_count": manifest_payload["feature_count"],
+        "feature_columns": manifest_payload["feature_columns"],
+    }
+    report_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
     logging.info(
         "Training finished: t_up=%.4f, t_down=%.4f, coverage=%.4f, selection_score=%.4f, utility=%.4f, accepted_accuracy=%.4f",
         artifacts.t_up,

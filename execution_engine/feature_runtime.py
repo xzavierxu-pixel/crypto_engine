@@ -50,12 +50,15 @@ class RuntimeInferenceEngine:
         select_grid_only: bool = True,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
         decision_frame = minute_frame[[DEFAULT_TIMESTAMP_COLUMN]].copy()
-        second_store = build_second_level_feature_store(
-            kline_frame=second_frame,
-            agg_trades_frame=agg_trades_frame,
-            feature_profile=self.settings.second_level.get_profile_payload(),
-        )
-        sampled_second = sample_second_level_feature_store(decision_frame, second_store)
+        if self.settings.second_level.enabled:
+            second_store = build_second_level_feature_store(
+                kline_frame=second_frame,
+                agg_trades_frame=agg_trades_frame,
+                feature_profile=self.settings.second_level.get_profile_payload(),
+            )
+            sampled_second = sample_second_level_feature_store(decision_frame, second_store)
+        else:
+            sampled_second = decision_frame.iloc[0:0].copy()
         feature_frame = build_feature_frame(
             minute_frame,
             self.settings,
@@ -75,11 +78,13 @@ class RuntimeInferenceEngine:
         use_latest_available_before_signal: bool = False,
         runtime_context: dict | None = None,
     ) -> FeatureBuildResult:
+        runtime_context = runtime_context or {}
+        feature_offset_minutes = int(runtime_context.get("feature_offset_minutes", 0) or 0)
         feature_frame, sampled_second = self.build_feature_frame(
             minute_frame,
             second_frame,
             agg_trades_frame,
-            select_grid_only=not use_latest_available_before_signal,
+            select_grid_only=not use_latest_available_before_signal and feature_offset_minutes == 0,
         )
         probabilities = predict_frame(
             feature_frame,
@@ -90,7 +95,12 @@ class RuntimeInferenceEngine:
         if signal_t0 is None:
             row_index = feature_frame.index[-1]
         else:
-            target_t0 = pd.Timestamp(signal_t0).tz_convert("UTC")
+            market_t0 = pd.Timestamp(signal_t0).tz_convert("UTC")
+            context_feature_timestamp = (runtime_context or {}).get("feature_timestamp")
+            if context_feature_timestamp is not None and not use_latest_available_before_signal:
+                target_t0 = pd.Timestamp(context_feature_timestamp).tz_convert("UTC")
+            else:
+                target_t0 = market_t0
             feature_timestamps = pd.to_datetime(feature_frame[DEFAULT_TIMESTAMP_COLUMN], utc=True)
             if use_latest_available_before_signal:
                 matches = feature_frame.index[feature_timestamps < target_t0]
@@ -103,13 +113,16 @@ class RuntimeInferenceEngine:
             else:
                 matches = feature_frame.index[feature_timestamps == target_t0]
                 if matches.empty:
-                    raise RuntimeError(f"Feature frame does not include requested signal_t0 '{target_t0.isoformat()}'.")
+                    raise RuntimeError(
+                        "Feature frame does not include requested feature timestamp "
+                        f"'{target_t0.isoformat()}'."
+                    )
                 row_index = matches[-1]
         latest = feature_frame.loc[row_index]
         p_up = float(probabilities.loc[row_index])
         signal_timestamp = (
             pd.Timestamp(signal_t0).tz_convert("UTC").to_pydatetime()
-            if signal_t0 is not None and use_latest_available_before_signal
+            if signal_t0 is not None
             else latest[DEFAULT_TIMESTAMP_COLUMN].to_pydatetime()
         )
         signal = Signal(
@@ -125,18 +138,20 @@ class RuntimeInferenceEngine:
             decision_context={
                 "grid_id": latest["grid_id"],
                 "timestamp": signal_timestamp.isoformat(),
+                "market_t0": signal_timestamp.isoformat(),
+                "decision_time": runtime_context.get("decision_time", latest[DEFAULT_TIMESTAMP_COLUMN].isoformat()),
                 "feature_timestamp": latest[DEFAULT_TIMESTAMP_COLUMN].isoformat(),
                 "row_policy": (
                     "latest_available_before_signal"
                     if use_latest_available_before_signal
-                    else "exact_signal_t0"
+                    else runtime_context.get("row_policy", "exact_signal_t0")
                 ),
                 "t_up": self.t_up,
                 "t_down": self.t_down,
                 "artifact_t_up": self.baseline.t_up,
                 "artifact_t_down": self.baseline.t_down,
                 "baseline_artifact_dir": str(self.baseline.artifact_dir),
-                **(runtime_context or {}),
+                **runtime_context,
             },
         )
         return FeatureBuildResult(feature_frame=feature_frame, second_level_frame=sampled_second, signal=signal)

@@ -93,6 +93,15 @@ class ValidationConfig:
 
 
 @dataclass(frozen=True)
+class DecisionAlignmentConfig:
+    enabled: bool = False
+    mode: str = "exact_signal_t0"
+    feature_offset_minutes: int = 0
+    order_delay_seconds_after_feature_time: int = 0
+    row_policy: str = "exact_signal_t0_with_synthetic_decision_row"
+
+
+@dataclass(frozen=True)
 class ReportingConfig:
     include_precision_coverage_frontier: bool = True
     include_boundary_slices: bool = True
@@ -359,6 +368,7 @@ class Settings:
     sample_weighting: SampleWeightingConfig
     threshold_search: ThresholdSearchConfig
     validation: ValidationConfig
+    decision_alignment: DecisionAlignmentConfig
     features: FeaturesConfig
     labels: LabelsConfig
     derivatives: DerivativesConfig
@@ -409,6 +419,7 @@ class Settings:
             sample_weighting=SampleWeightingConfig(**payload.get("sample_weighting", {})),
             threshold_search=ThresholdSearchConfig(**payload.get("threshold_search", {})),
             validation=ValidationConfig(**payload.get("validation", {})),
+            decision_alignment=DecisionAlignmentConfig(**payload.get("decision_alignment", {})),
             features=features,
             labels=LabelsConfig(
                 two_stage=TwoStageLabelsConfig(**payload.get("labels", {}).get("two_stage", {}))

@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import pandas as pd
 
-from src.core.config import DatasetConfig, load_settings
+from src.core.config import DatasetConfig, DecisionAlignmentConfig, load_settings
 from src.data.dataset_builder import (
     TrainingFrame,
     assert_feature_quality,
@@ -80,6 +80,48 @@ def test_build_training_frame_respects_dataset_timerange() -> None:
     assert training.frame["timestamp"].min() >= pd.Timestamp("2024-01-01T14:00:00Z")
     assert training.frame["timestamp"].max() <= pd.Timestamp("2024-01-01T15:00:00Z")
     assert training.frame["target"].eq(1.0).all()
+
+
+def test_build_training_frame_can_align_label_t0_to_feature_t1() -> None:
+    base_settings = load_settings()
+    settings = replace(
+        base_settings,
+        dataset=replace(
+            base_settings.dataset,
+            train_start="2024-01-01T12:00:00Z",
+            train_end="2024-01-01T23:59:00Z",
+            drop_incomplete_candles=False,
+        ),
+        derivatives=replace(base_settings.derivatives, enabled=False),
+        second_level=replace(base_settings.second_level, enabled=False),
+        decision_alignment=DecisionAlignmentConfig(
+            enabled=True,
+            mode="delayed_feature_offset",
+            feature_offset_minutes=1,
+            row_policy="delayed_1m_synthetic_decision_row",
+        ),
+    )
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=720, freq="1min"),
+            "open": [100.0 + index for index in range(720)],
+            "high": [101.0 + index for index in range(720)],
+            "low": [99.0 + index for index in range(720)],
+            "close": [100.0 + index for index in range(720)],
+            "volume": [10.0 + index for index in range(720)],
+        }
+    )
+
+    training = build_training_frame(frame, settings, horizon_name="5m")
+    row = training.frame.loc[training.frame["timestamp"] == pd.Timestamp("2024-01-01T12:05:00Z")].iloc[0]
+
+    assert row["market_t0"] == pd.Timestamp("2024-01-01T12:05:00Z")
+    assert row["feature_timestamp"] == pd.Timestamp("2024-01-01T12:06:00Z")
+    assert row["decision_time"] == pd.Timestamp("2024-01-01T12:06:00Z")
+    assert row["target"] == 1.0
+    assert row["ret_1"] == (105.0 / 104.0) - 1.0
+    assert "feature_timestamp" not in training.feature_columns
+    assert "market_t0" not in training.feature_columns
 
 
 def test_stage1_training_frame_uses_boundary_weight_only() -> None:

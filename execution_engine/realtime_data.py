@@ -311,6 +311,7 @@ class BinanceRealtimeClient:
         signal_t0: datetime | pd.Timestamp,
         end_time: datetime | pd.Timestamp | None = None,
         max_wait_seconds: float = 20.0,
+        feature_offset_minutes: int = 0,
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
         started = time.monotonic()
         deadline = started + max_wait_seconds
@@ -319,7 +320,7 @@ class BinanceRealtimeClient:
         while True:
             try:
                 one_minute, one_second, agg_trades = self.fetch_runtime_frames(end_time=end_time)
-                target = pd.Timestamp(signal_t0).tz_convert(UTC).floor("min")
+                target = decision_timestamp(signal_t0, feature_offset_minutes=feature_offset_minutes)
                 required_second = target - pd.Timedelta(seconds=1)
                 required_agg = required_second - pd.Timedelta(seconds=self.config.max_agg_trade_lag_seconds)
                 if self.config.require_agg_trade_through_last_second:
@@ -329,6 +330,7 @@ class BinanceRealtimeClient:
                     one_second,
                     agg_trades,
                     signal_t0=signal_t0,
+                    feature_offset_minutes=feature_offset_minutes,
                     require_agg_trade_through_last_second=self.config.require_agg_trade_through_last_second,
                     max_agg_trade_lag_seconds=self.config.max_agg_trade_lag_seconds,
                 )
@@ -412,8 +414,23 @@ def filter_closed_klines(frame: pd.DataFrame, server_time: pd.Timestamp) -> pd.D
     return closed.reset_index(drop=True)
 
 
-def expected_latest_closed_minute(signal_t0: datetime | pd.Timestamp) -> pd.Timestamp:
+def decision_timestamp(
+    signal_t0: datetime | pd.Timestamp,
+    *,
+    feature_offset_minutes: int = 0,
+) -> pd.Timestamp:
+    if feature_offset_minutes < 0:
+        raise ValueError("feature_offset_minutes must be >= 0.")
     target = pd.Timestamp(signal_t0).tz_convert(UTC).floor("min")
+    return target + pd.Timedelta(minutes=int(feature_offset_minutes))
+
+
+def expected_latest_closed_minute(
+    signal_t0: datetime | pd.Timestamp,
+    *,
+    feature_offset_minutes: int = 0,
+) -> pd.Timestamp:
+    target = decision_timestamp(signal_t0, feature_offset_minutes=feature_offset_minutes)
     return target - pd.Timedelta(minutes=1)
 
 
@@ -431,7 +448,7 @@ def _filter_before(frame: pd.DataFrame, timestamp: pd.Timestamp, *, inclusive: b
     return frame.loc[mask].copy().reset_index(drop=True)
 
 
-def _append_synthetic_decision_minute(minute_frame: pd.DataFrame, signal_t0: pd.Timestamp) -> pd.DataFrame:
+def _append_synthetic_decision_minute(minute_frame: pd.DataFrame, decision_time: pd.Timestamp) -> pd.DataFrame:
     if minute_frame.empty:
         raise RuntimeError("Cannot append signal decision row to an empty 1m frame.")
     decision_row = minute_frame.iloc[[-1]].copy()
@@ -448,7 +465,7 @@ def _append_synthetic_decision_minute(minute_frame: pd.DataFrame, signal_t0: pd.
     ):
         if column in decision_row.columns:
             decision_row[column] = float("nan")
-    decision_row[DEFAULT_TIMESTAMP_COLUMN] = signal_t0
+    decision_row[DEFAULT_TIMESTAMP_COLUMN] = decision_time
     if "close_time" in decision_row.columns:
         decision_row["close_time"] = pd.NaT
     return pd.concat([minute_frame, decision_row], ignore_index=True)
@@ -460,11 +477,16 @@ def finalize_runtime_frames_for_signal(
     agg_trades_frame: pd.DataFrame,
     signal_t0: datetime | pd.Timestamp,
     *,
+    feature_offset_minutes: int = 0,
     require_agg_trade_through_last_second: bool = True,
     max_agg_trade_lag_seconds: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
-    target = pd.Timestamp(signal_t0).tz_convert(UTC).floor("min")
-    required_minute = expected_latest_closed_minute(target)
+    market_t0 = pd.Timestamp(signal_t0).tz_convert(UTC).floor("min")
+    target = decision_timestamp(market_t0, feature_offset_minutes=feature_offset_minutes)
+    required_minute = expected_latest_closed_minute(
+        market_t0,
+        feature_offset_minutes=feature_offset_minutes,
+    )
     required_second = target - pd.Timedelta(seconds=1)
     required_agg_trade = required_second - pd.Timedelta(seconds=max_agg_trade_lag_seconds)
 
@@ -479,18 +501,18 @@ def finalize_runtime_frames_for_signal(
     if safe_minute.empty:
         raise RuntimeError(
             "Binance 1m frame has no closed rows available before signal_t0 "
-            f"{target.isoformat()}."
+            f"{market_t0.isoformat()} and decision_time {target.isoformat()}."
         )
     minute_timestamps = pd.to_datetime(safe_minute[DEFAULT_TIMESTAMP_COLUMN], utc=True)
     if not minute_timestamps.eq(required_minute).any():
         raise RuntimeError(
-            "Binance 1m frame is not aligned to signal_t0. "
+            "Binance 1m frame is not aligned to decision_time. "
             f"Required closed minute {required_minute.isoformat()}, "
             f"latest available {_latest_timestamp(safe_minute)}."
         )
     if safe_second.empty:
         raise RuntimeError(
-            "Binance 1s frame has no safe rows before signal_t0 "
+            "Binance 1s frame has no safe rows before decision_time "
             f"{target.isoformat()}."
         )
     second_latest = pd.to_datetime(safe_second[DEFAULT_TIMESTAMP_COLUMN], utc=True).max()
@@ -504,7 +526,7 @@ def finalize_runtime_frames_for_signal(
     if require_agg_trade_through_last_second:
         if agg_latest is None:
             raise RuntimeError(
-                "Binance agg trade frame has no safe rows before signal_t0 "
+                "Binance agg trade frame has no safe rows before decision_time "
                 f"{target.isoformat()}."
             )
         if agg_latest < required_agg_trade:
@@ -516,9 +538,19 @@ def finalize_runtime_frames_for_signal(
 
     finalized_minute = _append_synthetic_decision_minute(safe_minute, target)
     alignment = {
-        "signal_t0": target.isoformat(),
-        "row_policy": "exact_signal_t0_with_synthetic_decision_row",
+        "signal_t0": market_t0.isoformat(),
+        "market_t0": market_t0.isoformat(),
+        "decision_time": target.isoformat(),
+        "decision_alignment_mode": "delayed_feature_offset" if feature_offset_minutes else "exact_signal_t0",
+        "feature_offset_minutes": int(feature_offset_minutes),
+        "row_policy": (
+            "delayed_1m_synthetic_decision_row"
+            if int(feature_offset_minutes) == 1
+            else "exact_signal_t0_with_synthetic_decision_row"
+        ),
         "feature_timestamp": target.isoformat(),
+        "market_window_start": market_t0.isoformat(),
+        "market_window_end": (market_t0 + pd.Timedelta(minutes=5)).isoformat(),
         "required_latest_closed_minute": required_minute.isoformat(),
         "required_latest_closed_second": required_second.isoformat(),
         "required_latest_agg_trade": required_agg_trade.isoformat(),

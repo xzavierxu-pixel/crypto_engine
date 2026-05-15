@@ -53,8 +53,8 @@ def test_execution_config_example_loads() -> None:
     assert config.orders.first.size == 5.0
     assert config.orders.second.offset == -0.1
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
-    assert config.thresholds.t_up == 0.5425
-    assert config.thresholds.t_down == 0.44
+    assert config.thresholds.t_up is None
+    assert config.thresholds.t_down is None
     assert config.binance.require_agg_trade_through_last_second is True
     assert config.binance.max_agg_trade_lag_seconds == 0
     assert config.binance.agg_trade_wait_seconds == 8
@@ -254,6 +254,52 @@ def test_finalize_runtime_frames_for_signal_appends_exact_t0_decision_row_and_tr
     assert alignment["feature_timestamp"] == "2026-05-10T12:35:00+00:00"
     assert alignment["post_signal_second_rows_dropped"] == 1
     assert alignment["post_signal_agg_trade_rows_dropped"] == 1
+
+
+def test_finalize_runtime_frames_for_signal_delays_feature_row_by_one_minute() -> None:
+    minute = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                ["2026-05-10T12:34:00Z", "2026-05-10T12:35:00Z", "2026-05-10T12:36:00Z"],
+                utc=True,
+            ),
+            "open": [102.0, 103.0, 999.0],
+            "high": [103.0, 104.0, 999.0],
+            "low": [101.0, 102.0, 999.0],
+            "close": [102.5, 103.5, 999.0],
+            "volume": [1.0, 1.0, 999.0],
+        }
+    )
+    second = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:35:59Z", "2026-05-10T12:36:00Z"], utc=True),
+            "open": [1.0, 999.0],
+            "high": [1.0, 999.0],
+            "low": [1.0, 999.0],
+            "close": [1.0, 999.0],
+        }
+    )
+    agg = pd.DataFrame({"timestamp": pd.to_datetime(["2026-05-10T12:35:59.500Z"], utc=True), "agg_trade_id": [1]})
+
+    finalized_minute, finalized_second, finalized_agg, alignment = finalize_runtime_frames_for_signal(
+        minute,
+        second,
+        agg,
+        signal_t0=pd.Timestamp("2026-05-10T12:35:00Z"),
+        feature_offset_minutes=1,
+    )
+
+    assert finalized_minute["timestamp"].iloc[-1] == pd.Timestamp("2026-05-10T12:36:00Z")
+    assert finalized_minute["timestamp"].iloc[-2] == pd.Timestamp("2026-05-10T12:35:00Z")
+    assert pd.isna(finalized_minute["close"].iloc[-1])
+    assert finalized_second["timestamp"].max() == pd.Timestamp("2026-05-10T12:35:59Z")
+    assert finalized_agg["timestamp"].max() == pd.Timestamp("2026-05-10T12:35:59.500Z")
+    assert alignment["signal_t0"] == "2026-05-10T12:35:00+00:00"
+    assert alignment["market_t0"] == "2026-05-10T12:35:00+00:00"
+    assert alignment["feature_timestamp"] == "2026-05-10T12:36:00+00:00"
+    assert alignment["required_latest_closed_minute"] == "2026-05-10T12:35:00+00:00"
+    assert alignment["required_latest_closed_second"] == "2026-05-10T12:35:59+00:00"
+    assert alignment["row_policy"] == "delayed_1m_synthetic_decision_row"
 
 
 def test_finalize_runtime_frames_for_signal_requires_agg_trade_through_last_second() -> None:
@@ -803,8 +849,9 @@ orders:
         def __init__(self, config):
             self.config = config
 
-        def wait_for_signal_runtime_frames(self, signal_t0, max_wait_seconds):
+        def wait_for_signal_runtime_frames(self, signal_t0, max_wait_seconds, feature_offset_minutes=0):
             assert pd.Timestamp(signal_t0) == pd.Timestamp("2026-05-10T12:35:00Z")
+            assert feature_offset_minutes == 0
             frame = pd.DataFrame({"timestamp": [pd.Timestamp("2026-05-10T12:35:00Z")]})
             return frame, frame, frame, {
                 "row_policy": "exact_signal_t0_with_synthetic_decision_row",
