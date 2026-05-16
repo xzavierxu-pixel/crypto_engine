@@ -1,550 +1,462 @@
 # execution_engine 完整流程与时间线说明
 
-本文档解释当前 `execution_engine` 的线上执行流程，重点说明 5 分钟窗口、Binance 数据时间、特征行时间、Polymarket 市场窗口之间的对齐关系，并分析当前实现是否存在线上漂移风险。
+本文档说明当前 `execution_engine` 的线上执行流程，以及离线标签、Binance 实时数据、线上特征行、模型信号和 Polymarket BTC 5 分钟市场之间的时间对齐关系。
 
-## 1. 总体结论
+最重要的当前实现事实是：线上推理现在使用 **`signal_t0` 上的 synthetic decision row**。这和旧文档里“选择 `signal_t0` 之前最后一行特征”的描述不同。
 
-当前执行链路不是独立重写特征或模型，而是：
-
-```text
-Binance 实时数据
-  -> execution_engine.realtime_data 规范化为共享 schema
-  -> execution_engine.feature_runtime 调用 src/ 共享特征 builder
-  -> baseline artifact 模型 + calibrator 推理
-  -> src.signal.policies 阈值判断
-  -> Polymarket BTC 5m slug 映射
-  -> order_plan 生成两档限价单
-  -> paper/live 提交或跳过
-```
-
-核心对齐规则是：
+## 1. 当前主流程
 
 ```text
-要交易 Polymarket 窗口 [T, T+5m)
-模型 signal_t0 = T
-线上实际使用的最后一根 1m 特征行 = T-1m 这一分钟 bar
-该 bar 的 timestamp = T-1m
-该 bar 的 close_time = T-1ms
-因此它只应在 T 之后才被线上使用
+systemd timer / 手动运行
+  -> execution_engine/run_once.py
+  -> 读取 execution_engine/config.yaml
+  -> 读取 baseline artifact 和 config/settings.yaml
+  -> 拉取并对齐 Binance runtime frames
+  -> 在 signal_t0 追加 synthetic 1m decision row
+  -> 调用 src/ 共享 feature builder 构建特征
+  -> artifact model + calibrator 推理
+  -> 调用共享 selective binary signal policy
+  -> 将 signal_t0 映射到 Polymarket BTC 5m slug
+  -> 生成最多两档 BUY limit orders
+  -> 仅在 mode=live 且 orders.enabled=true 时提交订单
+  -> 写 audit 和 summary JSON
 ```
 
-举例：
+execution layer 不重新实现 BTC 特征公式，也不重新计算 label。线上特征路径复用共享 core：
 
 ```text
-目标市场: 2026-05-10 10:05:00Z 到 10:10:00Z
-signal_t0: 2026-05-10 10:05:00Z
-最后可用 1m bar:
-  timestamp/open_time = 2026-05-10 10:04:00Z
-  close_time          = 2026-05-10 10:04:59.999Z
-线上触发建议时间:
-  2026-05-10 10:05:08Z 到 10:05:20Z
-推理时选择:
-  feature_timestamp < signal_t0 的最后一行，即 10:04:00Z
-Polymarket slug:
-  btc-updown-5m-<10:05:00Z unix timestamp>
+execution_engine.feature_runtime.RuntimeInferenceEngine
+  -> src.data.second_level_features.build_second_level_feature_store
+  -> src.data.second_level_features.sample_second_level_feature_store
+  -> src.features.builder.build_feature_frame
+  -> src.model.infer.predict_frame
+  -> src.signal.policies.evaluate_selective_binary_signal
 ```
 
-在这个定义下，当前实现的主路径没有看到“使用未来 OHLCV/未来收益/label 派生列”的直接证据；但存在几个需要明确监控的漂移风险：
+## 2. 离线标签定义
 
-1. 配置里的 `thresholds.t_up/t_down` 如果非空，会覆盖 artifact 阈值，可能造成线上阈值与训练报告不一致。
-2. `second-level` 线上只使用 Binance `1s kline + aggTrades`，而 artifact manifest 显示 derivatives disabled，但包含 flow proxy 与 second-level 特征；如果训练时某些 second-level 扩展源在线上不可用，会以缺失/0 填充形式产生分布漂移。
-3. 手动或 timer 在错误时间触发时，`current_5m_window_start()` 会按当前时间取最近 5m 窗口；如果运行太晚，可能仍映射到已经接近结束的市场。
-4. `feature_timestamp` 是 bar 开盘时间，不是数据可用时间；审计时必须同时看 Binance latest closed 数据和执行触发时间，不能误以为 `10:04:00` 在 `10:04:00` 已可用。
-
-## 2. 入口和配置加载
-
-主入口是 `execution_engine/run_once.py` 的 `run_once()`。
-
-运行参数：
-
-```bash
-python execution_engine/run_once.py --config execution_engine/config.yaml --mode paper --print-json
-```
-
-流程开始时会读取：
+当前项目标签保持不变：
 
 ```text
-execution_engine/config.py::load_execution_config
-execution_engine/artifacts.py::load_baseline_artifact
-src.core.config::load_settings
+y = 1{close[t0 + 4m] >= open[t0]}
 ```
 
-关键配置：
+对 5 分钟 grid 点 `T`：
+
+```text
+offline t0              = T
+offline input row time  = T 及之前的历史行
+label open              = T 这一分钟 candle 的 open
+label future close      = T+4m 这一分钟 candle 的 close
+对应市场窗口           = [T, T+5m)
+```
+
+示例：
+
+```text
+T = 2026-05-14T12:00:00Z
+label 比较:
+  open  at 2026-05-14T12:00:00Z
+  close at 2026-05-14T12:04:00Z candle close
+
+Polymarket window:
+  2026-05-14T12:00:00Z <= market < 2026-05-14T12:05:00Z
+```
+
+这是训练和评估用的标签。`execution_engine` 线上不计算这个标签。
+
+## 3. 线上目标窗口
+
+`run_once()` 选择目标窗口：
+
+```text
+target_window_start = current_5m_window_start()
+signal_t0           = target_window_start
+slug                = btc-updown-5m-<signal_t0 unix timestamp>
+```
+
+`build_btc_5m_slug(signal.t0, offset_windows=0)` 会把信号映射到正好从 `signal_t0` 开始的 Polymarket 市场。
+
+示例：
+
+```text
+run starts at       2026-05-14T12:00:20Z
+signal_t0           2026-05-14T12:00:00Z
+Polymarket slug     btc-updown-5m-1778760000
+market window       [2026-05-14T12:00:00Z, 2026-05-14T12:05:00Z)
+```
+
+当前执行路径没有向后偏移一个窗口。
+
+## 4. Binance Runtime 数据对齐
+
+`BinanceRealtimeClient.wait_for_signal_runtime_frames()` 会把所有 runtime 输入对齐到 `signal_t0`。
+
+对目标 `T = signal_t0`，需要的最新安全输入是：
+
+```text
+required_latest_closed_minute = T - 1 minute
+required_latest_closed_second = T - 1 second
+required_latest_agg_trade     = T - 1 second - max_agg_trade_lag_seconds
+```
+
+推理前代码会过滤：
+
+```text
+safe_minute = minute rows with timestamp <= T-1m
+safe_second = second rows with timestamp <  T
+safe_agg    = agg trades with timestamp <  T
+```
+
+然后强校验：
+
+```text
+safe_minute 必须包含 T-1m
+safe_second 最新 timestamp 必须 >= T-1s
+safe_agg 最新 timestamp 必须 >= required_latest_agg_trade
+  当 require_agg_trade_through_last_second=true 时
+```
+
+如果这些输入不满足要求，本轮会 raise，不会为该窗口写正常 summary 或下单。
+
+## 5. Synthetic Decision Row 的含义
+
+安全输入检查通过后，`finalize_runtime_frames_for_signal()` 会在 1m frame 末尾追加一行 synthetic decision row：
+
+```text
+timestamp  = T
+OHLCV      = NaN
+close_time = NaT
+```
+
+它的目的，是让共享 feature builder 在目标市场起点 `T` 上生成一行可推理的 grid decision row。它不是 Binance 真实 candle，也不包含未来 OHLCV。
+
+summary 中会记录：
+
+```text
+row_policy        = exact_signal_t0_with_synthetic_decision_row
+feature_timestamp = T
+```
+
+关键解释：
+
+```text
+feature_timestamp == signal_t0
+```
+
+并不表示模型用了 `T` 这一分钟尚未收盘的 OHLCV。它表示被选中的特征行是 timestamp 标记为 `T` 的 synthetic decision row。真实可用市场数据在构建前已经被限制为：
+
+```text
+1m data      through T-1m
+1s data      through T-1s
+aggTrades    through T-1s, subject to max_agg_trade_lag_seconds
+```
+
+因此，当前线上审计不能只看 `feature_timestamp == signal_t0` 就判断泄漏；必须同时看 `row_policy` 和 required/latest pre-signal 字段。
+
+## 6. Runtime 特征行选择
+
+当前 `run_once()` 调用推理时使用：
+
+```python
+result = inference.predict(
+    minute_frame,
+    second_frame,
+    agg_trades_frame,
+    signal_t0=pd.Timestamp(target_window_start),
+    use_latest_available_before_signal=False,
+    runtime_context=frame_alignment,
+)
+```
+
+因为 `use_latest_available_before_signal=False`，`RuntimeInferenceEngine.predict()` 会选择：
+
+```text
+feature_frame.timestamp == signal_t0
+```
+
+这行之所以存在，是因为 runtime 层已经追加了 synthetic decision row。
+
+代码里仍保留旧模式：
+
+```text
+use_latest_available_before_signal=True
+```
+
+该模式会选择 `feature_timestamp < signal_t0` 的最后一行。但当前 live `run_once()` 主路径不使用这个模式。
+
+## 7. 完整时间线示例
+
+以 `[12:00:00Z, 12:05:00Z)` 市场为例：
+
+```text
+11:59:00Z - 11:59:59.999Z
+  最后一根必需的 1m candle 形成。
+
+11:59:59Z
+  最后一秒必需的 1s kline / agg trade 时间目标。
+
+12:00:00Z
+  Polymarket BTC 5m 市场开始。
+  signal_t0 = 12:00:00Z。
+
+12:00:08Z - 12:00:20Z
+  timer 通常触发 run_once。
+  Binance closed data 被拉取和过滤。
+  需要满足:
+    minute_latest    = 11:59:00Z
+    second_latest    >= 11:59:59Z
+    agg_trade_latest >= 11:59:59Z，除非 lag config 允许更晚缺口
+
+  runtime 追加 synthetic 1m decision row:
+    timestamp = 12:00:00Z
+    OHLCV     = NaN
+
+  共享 feature builder 生成 decision feature row。
+  模型对 signal_t0=12:00:00Z 输出 p_up。
+  signal policy 决定 YES、NO 或 NO-SIGNAL。
+  若信号通过，映射到 slug btc-updown-5m-1778760000。
+```
+
+线上语义是：
+
+```text
+只用 T 之前已经安全可用的数据，预测并交易 [T, T+5m) 市场。
+```
+
+## 8. Summary 对齐审计字段
+
+排查线上/线下对齐时，应同时看这些字段：
+
+```text
+signal.t0
+signal.feature_timestamp
+signal.row_policy
+signal.required_latest_closed_minute
+signal.required_latest_closed_second
+signal.required_latest_agg_trade
+signal.minute_latest
+signal.second_latest
+signal.agg_trade_latest
+signal.agg_trade_lag_seconds
+signal.post_signal_second_rows_dropped
+signal.post_signal_agg_trade_rows_dropped
+market.slug
+market.window_start
+market.window_end
+signal.t_up / signal.t_down
+signal.artifact_t_up / signal.artifact_t_down
+decision.reason
+submitted
+```
+
+当前工作流下，一个健康的对齐 summary 应满足：
+
+```text
+signal.row_policy == exact_signal_t0_with_synthetic_decision_row
+signal.feature_timestamp == signal.t0
+signal.required_latest_closed_minute == signal.t0 - 1 minute
+signal.required_latest_closed_second == signal.t0 - 1 second
+signal.minute_latest == signal.t0 - 1 minute
+signal.second_latest >= signal.t0 - 1 second
+market.window_start == signal.t0
+```
+
+aggTrades 对齐规则：
+
+```text
+agg_trade_latest >= required_latest_agg_trade
+```
+
+当 `require_agg_trade_through_last_second=true` 时必须满足。
+
+## 9. 阈值来源
+
+有效阈值选择逻辑是：
+
+```text
+effective t_up   = artifact.t_up   if config.thresholds.t_up   is null else config.thresholds.t_up
+effective t_down = artifact.t_down if config.thresholds.t_down is null else config.thresholds.t_down
+```
+
+因此 `execution_engine/config.yaml` 可以有意覆盖 artifact 阈值。若线上要复现 artifact 行为，应设置：
 
 ```yaml
-baseline:
-  artifact_dir: execution_engine/deploy/baseline
-  settings_path: config/settings.yaml
-
-runtime:
-  mode: paper
-
-binance:
-  lookback_minutes: 360
-  require_closed_kline: true
-
-schedule:
-  interval_minutes: 5
-  trigger_delay_seconds: 8
-  max_data_wait_seconds: 20
-
 thresholds:
   t_up: null
   t_down: null
 ```
 
-注意：当前 `config.example.yaml` 里 `thresholds.t_up/t_down` 是非空示例值。代码逻辑是“配置非空则覆盖 artifact，否则用 artifact”。如果生产目标是完全复现 artifact 阈值，应把生产 `config.yaml` 里的阈值设为 `null`。
-
-## 3. 目标窗口如何确定
-
-`run_once()` 接受可选参数 `target_window_start`。如果没有显式传入，就调用：
+除非正在明确做 live threshold experiment，否则 recent summary 应检查：
 
 ```text
-current_5m_window_start(now)
+signal.t_up == signal.artifact_t_up
+signal.t_down == signal.artifact_t_down
 ```
 
-该函数会把当前 UTC 时间向下取整到最近的 5 分钟边界。
+## 10. Signal 与订单映射
 
-例子：
+二分类信号规则：
 
 ```text
-当前时间 10:05:08Z -> target_window_start = 10:05:00Z
-当前时间 10:09:59Z -> target_window_start = 10:05:00Z
-当前时间 10:10:00Z -> target_window_start = 10:10:00Z
+p_down = 1 - p_up
+
+YES / UP signal  if p_up >= t_up
+NO / DOWN signal if p_up <= t_down
+NO-SIGNAL        otherwise
 ```
 
-之后：
+通过阈值后映射到 Polymarket token：
 
 ```text
-signal_t0 = target_window_start
-slug = btc-updown-5m-<signal_t0 unix timestamp>
+YES -> yes_token_id
+NO  -> no_token_id
 ```
 
-也就是说，当前实现交易的是 `signal_t0` 开始的 Polymarket 5m 市场，`build_btc_5m_slug(signal.t0, offset_windows=0)` 没有向后偏移一个窗口。
-
-## 4. Binance 实时数据时间语义
-
-`BinanceRealtimeClient` 拉取三类数据：
+order planner 最多生成两档 BUY limit orders。只有同时满足以下条件才会真实提交：
 
 ```text
-1m kline      -> 主 OHLCV 特征和 5m grid
-1s kline      -> second-level kline 特征
-aggTrades     -> second-level event enrichment
+runtime mode is live
+orders.enabled is true
 ```
 
-`normalize_binance_klines()` 把 Binance kline 的 `open_time` 改名为共享字段 `timestamp`，同时保留 `close_time`。
+paper mode 仍会写 signal、market、order-plan 和 skipped 字段，但不会提交订单。
 
-因此一根 1m kline 的含义是：
+## 11. 线上与线下一致性
+
+当前线上路径和离线共享 core 保持一致的部分：
 
 ```text
-timestamp = 10:04:00Z
-close_time = 10:04:59.999Z
-open/high/low/close/volume = 10:04:00Z 到 10:04:59.999Z 内的完整数据
+Feature formulas:
+  online uses src.features.builder.build_feature_frame
+
+Second-level feature logic:
+  online uses src.data.second_level_features builders and asof sampler
+
+Model inference:
+  online uses src.model.infer.predict_frame
+
+Signal policy:
+  online uses src.signal.policies.evaluate_selective_binary_signal
+
+Label logic:
+  online does not calculate labels
 ```
 
-`filter_closed_klines(frame, server_time)` 只保留：
+主要差异是预期差异：
 
 ```text
-close_time <= server_time
+offline training row at T:
+  完整历史数据集中，T 这一分钟真实 OHLCV 已经存在
+  label 是 close[T+4m] >= open[T]
+
+online decision row at T:
+  timestamp=T 的 synthetic row 被追加
+  真实 pre-signal 数据只允许到 T-1m / T-1s
+  特征必须只能从 pre-signal 历史中计算
 ```
 
-所以只要 `server_time` 来自 Binance server time，并且 `require_closed_kline=true`，线上不会使用未收盘 kline。
+这要求 feature builder 对 decision row 不依赖当前窗口真实 OHLCV。synthetic row 里的 NaN OHLCV 是防止把未完成或未来 `T` candle 注入线上推理的保护机制。
 
-## 5. 特征构建完整链路
+## 12. 泄漏与漂移检查
 
-`RuntimeInferenceEngine.predict()` 调用：
+在声明 live 性能改善前，至少检查：
 
 ```text
-RuntimeInferenceEngine.build_feature_frame()
+features 中没有 target、future_close、abs_return、signed_return、
+stage1_target、stage2_target 或其他 label-derived 字段。
+
+runtime feature 没有使用未完成的 T candle OHLCV。
+
+timestamp >= T 的 second-level 数据没有进入被选中的决策行。
+
+market.window_start == signal.t0。
+
+Polymarket outcome 评估优先使用 summary 中实际 market slug。
+
+阈值来自 artifact，或来自明确记录的 config override。
 ```
 
-内部步骤：
+最近检查过的 2026-05-14 / 2026-05-15 live summaries 显示：
 
 ```text
-1. decision_frame = minute_frame[["timestamp"]]
-2. build_second_level_feature_store(1s kline, aggTrades)
-3. sample_second_level_feature_store(decision_frame, second_store)
-4. src.features.builder.build_feature_frame(
-     minute_frame,
-     settings,
-     second_level_features_frame=sampled_second
-   )
-5. 校验 baseline.feature_columns 全部存在
-6. predict_frame(feature_frame, model, calibrator, feature_columns)
+signal_t0 == market.window_start
+row_policy == exact_signal_t0_with_synthetic_decision_row
+feature_timestamp == signal_t0
+minute_latest == signal_t0 - 1 minute
+second_latest and agg_trade_latest before signal_t0
 ```
 
-这里最重要的是第 3 步。
+这些证据支持当前 summary 的线上时间对齐是正确的。
 
-`sample_second_level_feature_store()` 使用：
+## 13. 已知运行风险
+
+### 阈值漂移
+
+如果生产 config 覆盖 artifact 阈值，live coverage 和 accepted accuracy 会和 artifact report 明显不同。应把这种覆盖视为实验并记录。
+
+### 触发过晚
+
+`current_5m_window_start()` 会把当前时间向下取整到 5 分钟边界。如果 run 在窗口内很晚才开始，例如 `12:04:30Z`，仍会映射到 `[12:00, 12:05)` 市场。这和接近开盘时交易的市场状态不同。
+
+建议增加 guard：
 
 ```text
-pd.merge_asof(..., direction="backward")
+skip if now - signal_t0 exceeds a configured maximum age
 ```
 
-含义是：对每个 1m decision timestamp，选择时间小于等于该 timestamp 的最近一条 second-level 特征。
+### Runtime 数据覆盖不足
 
-例子：
+现在 engine 会在 pre-signal minute/second/agg 数据不足时 raise。这比在不完整对齐上交易更安全，但会降低 coverage，需要监控失败次数。
+
+### Synthetic Row 特征语义
+
+任何隐式依赖当前行 OHLCV 的特征都要谨慎。因为 synthetic row 的 OHLCV 是 NaN，这类特征应该变成 NaN/imputed，而不是静默使用未来值。应监控关键 runtime features 的 NaN/zero ratio。
+
+### 数据源漂移
+
+线上数据来自 live Binance REST/cache，而离线训练数据可能来自历史采集任务。两者仍可能有分布差异。Polymarket settlement 源也可能在极近边界处和 Binance label 不一致，尽管最近检查样本里二者匹配。
+
+## 14. 推荐 Smoke Test
+
+对单个 live 或 paper summary，检查：
 
 ```text
-decision timestamp: 10:04:00Z
-可用 1s second_store:
-  10:03:58Z
-  10:03:59Z
-  10:04:00Z
-  10:04:01Z
-
-采样结果:
-  选择 10:04:00Z，不会选择 10:04:01Z
+signal.t0:                            T
+signal.row_policy:                    exact_signal_t0_with_synthetic_decision_row
+signal.feature_timestamp:             T
+signal.required_latest_closed_minute: T-1m
+signal.minute_latest:                 T-1m
+signal.required_latest_closed_second: T-1s
+signal.second_latest:                 >= T-1s and < T
+signal.agg_trade_latest:              >= required_latest_agg_trade and < T
+market.window_start:                  T
 ```
 
-因此 second-level 对齐方向是向后取最近值，不会从 decision timestamp 之后取未来秒级数据。
-
-## 6. 推理时选择哪一行特征
-
-`run_once()` 调用推理时固定传入：
-
-```python
-use_latest_available_before_signal=True
-signal_t0=pd.Timestamp(target_window_start)
-```
-
-`RuntimeInferenceEngine.predict()` 在这种模式下不会要求 `feature_timestamp == signal_t0`，而是选择：
+如果信号通过，还要检查：
 
 ```text
-feature_timestamp < signal_t0 的最后一行
+decision.side in {YES, NO}
+order token matches decision.side
+idempotency key uses window_start, token_id, side, and leg
 ```
 
-举例：
+## 15. 最终解释
+
+当前 workflow 是：
 
 ```text
-target_window_start / signal_t0 = 10:05:00Z
-feature_frame timestamps:
-  09:59:00Z
-  10:00:00Z
-  10:01:00Z
-  10:02:00Z
-  10:03:00Z
-  10:04:00Z
-
-选择 row:
-  10:04:00Z
-
-Signal 中记录:
-  signal.t0 = 10:05:00Z
-  decision_context.timestamp = 10:05:00Z
-  decision_context.feature_timestamp = 10:04:00Z
+在 5 分钟边界 T 刚过后，
+只使用 T 之前已经安全闭合/可用的 Binance 数据，
+追加 timestamp=T 的 synthetic decision row，
+预测 Polymarket [T, T+5m) 市场，
+并只在 artifact/config 阈值接受信号时交易 YES 或 NO。
 ```
 
-这个设计是为了满足“用上一根已收盘的 1m bar 预测当前刚开始的 5m Polymarket 市场”的线上约束。
-
-## 7. 10:00 到 10:15 的完整时间线示例
-
-下面假设 timer 在每个 5m 边界后 20 秒运行 `run_once`，prewarm 在边界前运行。
-
-### 7.1 预测 10:05-10:10 市场
+因此，在当前 summary 里看到 `feature_timestamp == signal_t0` 是预期行为，不能单独据此判断未来数据泄漏。真正证明对齐的是：
 
 ```text
-10:00:00Z
-  10:00-10:05 市场开始。
-  可以开始为 10:05-10:10 市场做 prewarm。
-
-10:04:00Z 到 10:04:59.999Z
-  形成最后一根输入 1m bar。
-  这根 bar 的 timestamp 是 10:04:00Z。
-
-10:05:00Z 后
-  Binance server_time 已超过 10:04:59.999Z。
-  filter_closed_klines 允许 10:04:00Z 这一行进入 runtime frame。
-
-10:05:08Z 到 10:05:20Z
-  run_once 触发。
-  current_5m_window_start = 10:05:00Z。
-  feature row = 10:04:00Z。
-  signal.t0 = 10:05:00Z。
-  slug = btc-updown-5m-<10:05:00Z unix>。
-  如果 p_up >= t_up，下 YES/UP token。
-  如果 p_up <= t_down，下 NO/DOWN token。
-  否则 NO-SIGNAL。
-
-10:05:20Z 之后
-  当前实现只提交 GTC limit order。
-  不追单、不撤单、不改价。
-```
-
-### 7.2 预测 10:10-10:15 市场
-
-```text
-10:05:00Z
-  10:05-10:10 市场开始。
-  可以开始为 10:10-10:15 市场 prewarm。
-
-10:09:00Z 到 10:09:59.999Z
-  最后一根输入 1m bar。
-
-10:10:08Z 到 10:10:20Z
-  run_once 触发。
-  signal_t0 = 10:10:00Z。
-  feature_timestamp = 10:09:00Z。
-  slug = btc-updown-5m-<10:10:00Z unix>。
-```
-
-## 8. Polymarket 市场映射
-
-信号通过阈值后，`run_once()` 调用：
-
-```text
-build_btc_5m_slug(signal.t0, offset_windows=0)
-```
-
-该函数将 `signal.t0` 向下取整到 5m 边界，生成：
-
-```text
-btc-updown-5m-<window_start_unix_timestamp>
-```
-
-然后：
-
-```text
-PolymarketV2Adapter.get_market_by_slug(slug)
-```
-
-如果市场不存在、未 active、closed、或不 accepting_orders，则跳过下单并写 audit/summary。
-
-方向映射：
-
-```text
-模型 p_up >= t_up  -> Decision side = YES -> yes_token_id
-模型 p_up <= t_down -> Decision side = NO  -> no_token_id
-```
-
-下单前会读取目标 token 的 order book，取 best bid 或 best ask fallback，然后生成最多两档 BUY GTC limit order。
-
-## 9. 线上与离线特征是否一致
-
-从代码路径看，当前实现做到了关键的一致性：
-
-```text
-线上主特征:
-  execution_engine.feature_runtime
-    -> src.features.builder.build_feature_frame
-
-线上 second-level:
-  execution_engine.feature_runtime
-    -> src.data.second_level_features.build_second_level_feature_store
-    -> src.data.second_level_features.sample_second_level_feature_store
-
-线上推理:
-  src.model.infer.predict_frame
-
-线上 signal policy:
-  src.signal.policies.evaluate_selective_binary_signal
-```
-
-也就是说，execution layer 没有自己重写 BTC 特征公式，符合“共享 core 是单一事实来源”的要求。
-
-需要注意的是，线上数据源与离线数据源仍可能有分布差异：
-
-```text
-离线 second-level store:
-  可能来自已落盘的历史 1s/agg/book/扩展源
-
-线上 runtime:
-  当前只拉 Binance 1m kline、1s kline、aggTrades
-  没有显式接入 book/depth/cross-market/ETH/derivatives
-```
-
-如果 baseline feature columns 需要某些线上没有的列，当前 `_validate_feature_columns()` 会直接报错。若列存在但由缺失值填 0，则不会报错，但可能产生分布漂移。当前 artifact manifest 显示：
-
-```text
-feature_count = 516
-second_level.enabled = true
-second_level.feature_count = 182
-derivatives.enabled = false
-```
-
-因此 derivatives 不应成为当前线上特征缺口；主要风险集中在 second-level profile 是否与训练时完全一致、aggTrades 是否稳定覆盖、以及 1s kline REST 数据是否完整。
-
-## 10. 是否存在未来函数或时间泄漏
-
-基于当前读取到的代码，主执行链路的防未来机制包括：
-
-```text
-1. Binance kline 使用 close_time <= server_time 过滤闭合 bar。
-2. 推理选择 feature_timestamp < signal_t0，而不是 signal_t0 或之后。
-3. second-level 采样使用 merge_asof direction="backward"。
-4. feature_frame 使用 baseline.feature_columns，缺列直接报错。
-5. execution_engine 不重新计算 label，不读取 target/future_close。
-```
-
-因此，按推荐 timer 在 5m 边界之后运行时，没有看到明显未来函数。
-
-但有一个容易误判的点：
-
-```text
-feature_timestamp = 10:04:00Z
-```
-
-这并不表示线上在 `10:04:00Z` 就知道该行完整 OHLCV。它表示 10:04 这一分钟 bar 的开盘时间。该行在线上真正可用时间应接近：
-
-```text
-10:05:00Z 之后
-```
-
-所以审计时不能只比较 `feature_timestamp` 和 `signal_t0`，还要确认 `run_timestamp >= close_time`。
-
-## 11. 线上漂移风险分析
-
-### 11.1 阈值漂移
-
-`RuntimeInferenceEngine.__init__()` 的逻辑是：
-
-```text
-self.t_up = baseline.t_up if config.thresholds.t_up is None else config.thresholds.t_up
-self.t_down = baseline.t_down if config.thresholds.t_down is None else config.thresholds.t_down
-```
-
-这意味着配置可以覆盖 artifact 阈值。
-
-风险：
-
-```text
-训练报告/manifest 阈值: t_up=0.585, t_down=0.335
-生产 config 阈值:       t_up=0.5425, t_down=0.44
-```
-
-如果生产配置确实这样设置，线上 signal coverage、accepted accuracy、selection_score 都会偏离 artifact 报告。严格复现实验时，应将生产 `thresholds` 设为 `null`，让 artifact 统一控制阈值。
-
-### 11.2 时间窗口漂移
-
-当前 `run_once()` 默认交易当前 5m 窗口：
-
-```text
-now = 10:05:20Z -> signal_t0 = 10:05:00Z -> 交易 10:05-10:10 市场
-```
-
-如果 timer 严格在边界后十几秒运行，这是预期行为。
-
-风险场景：
-
-```text
-now = 10:09:40Z
-current_5m_window_start = 10:05:00Z
-仍会映射 10:05-10:10 市场
-```
-
-此时市场即将结束，价格、流动性、成交机会都已与训练/验证假设不同。建议在文档和监控中增加“最晚允许触发时间”，例如窗口开始后 180 秒内，否则跳过。
-
-### 11.3 数据源漂移
-
-线上依赖 Binance public REST：
-
-```text
-/api/v3/klines interval=1m
-/api/v3/klines interval=1s
-/api/v3/aggTrades
-```
-
-风险：
-
-```text
-1. REST 返回延迟导致 latest closed bar 缺失。
-2. aggTrades 分页或限流导致最近事件不完整。
-3. 本地 cache 合并时，如果缓存损坏或旧 schema 残留，可能影响 runtime frame。
-```
-
-当前实现会等到三类 frame 都非空，但没有在 `wait_for_closed_runtime_frames()` 中强校验“latest minute 是否达到 signal_t0-1m”。因此 summary/audit 里的 `minute_latest`、`second_latest`、`agg_trade_latest` 很重要。
-
-### 11.4 缺失值填充漂移
-
-`sample_second_level_feature_store()` 对 `sl_` 列做：
-
-```text
-replace inf -> NaN -> fillna(0.0)
-```
-
-如果线上某段秒级数据缺失，部分 second-level 特征可能被填成 0。这个行为可能与训练时缺失处理一致，也可能造成线上分布集中到 0。建议在 summary 中长期监控：
-
-```text
-second-level sl_ 列 NaN/zero ratio
-has_agg_trade_enrichment
-agg_trade_gap_flag
-kline_gap_flag
-```
-
-### 11.5 模型与依赖版本漂移
-
-baseline 使用 pickle artifact：
-
-```text
-catboost_lgbm_logit_blend.binary.pkl
-platt_logit.binary.pkl
-```
-
-如果生产 venv 中 `scikit-learn`、`lightgbm`、`catboost` 版本与 artifact 保存环境差异过大，可能出现加载警告或推理行为差异。当前 README 已提示 `scikit-learn==1.7.2`。
-
-## 12. 推荐审计字段
-
-每次 summary/audit 中已经包含部分关键字段。排查时间漂移时，应重点看：
-
-```text
-signal.t0
-signal.feature_timestamp
-minute_latest
-second_latest
-agg_trade_latest
-p_up / p_down
-t_up / t_down
-artifact_t_up / artifact_t_down
-market.slug
-market.window_start / market.window_end
-decision.reason
-orders_enabled / mode
-submitted
-```
-
-判断是否正确对齐的简单规则：
-
-```text
-feature_timestamp == signal.t0 - 1 minute
-minute_latest >= signal.t0 - 1 minute
-second_latest >= signal.t0 - 1 second 或至少覆盖到 signal.t0 附近
+row_policy == exact_signal_t0_with_synthetic_decision_row
+required/latest pre-signal data fields 对齐
 market.window_start == signal.t0
-t_up/t_down 与 artifact_t_up/artifact_t_down 是否按预期一致
 ```
-
-注意：`second_latest` 可能大于 `signal.t0`，因为 runtime 拉取的是当前 lookback 窗口内的最新秒级数据；最终模型行仍由 `feature_timestamp < signal_t0` 控制，不会选择 signal_t0 之后的 feature row。
-
-## 13. 建议改进项
-
-不改变模型、不改变特征语义的前提下，建议优先做这些低风险增强：
-
-1. 在 `run_once()` 中显式校验 `feature_timestamp == signal_t0 - 1 minute`，否则跳过并记录原因。
-2. 增加“窗口开始后最晚执行秒数”配置，避免在市场快结束时仍对当前窗口下单。
-3. 生产配置将 `thresholds.t_up/t_down` 设为 `null`，除非明确要做线上阈值覆盖实验。
-4. 在 summary 中增加 second-level 覆盖率、零值率、最新数据滞后秒数。
-5. 增加一个离线回放测试：用同一段历史数据模拟 runtime 输入，比较线上构建出的最后一行 feature 与离线 feature store 对齐后的行。
-
-## 14. 最终判断
-
-当前 `execution_engine` 主路径的时间线设计是合理的：
-
-```text
-用 T-1m 已闭合 bar 的特征
-在 T 之后预测并交易 [T, T+5m) Polymarket 市场
-second-level 只向后 asof 对齐
-特征公式复用 src/ 共享 builder
-```
-
-因此没有看到明显的线上未来函数。
-
-但当前实现还不能完全排除线上漂移，主要风险不是 label 泄漏，而是：
-
-```text
-阈值配置覆盖 artifact
-错误触发时间导致市场窗口过晚
-实时 Binance 秒级/aggTrades 覆盖不足
-second-level 缺失值填 0 带来的分布漂移
-依赖版本与 artifact 环境不一致
-```
-
-上线前应把这些风险纳入 summary 检查和 smoke test，而不是只看是否成功提交订单。
