@@ -56,10 +56,10 @@ sample_weighting:
 
 threshold_search:
   enabled: true
-  t_up_min: 0.45
-  t_up_max: 0.70
-  t_down_min: 0.30
-  t_down_max: 0.55
+  t_up_min: 0.595
+  t_up_max: 0.595
+  t_down_min: 0.37
+  t_down_max: 0.37
   step: 0.005
   enforce_min_side_share: false
   min_side_share: 0.20

@@ -1,5 +1,22 @@
 # PRD: T+1 Delayed Feature Decision For BTC 5m Direction
 
+## 2026-05-16 Revision: T+2 Deployment
+
+The implementation has been advanced one additional minute beyond the original T+1 convention.
+The live and offline convention is now:
+
+```text
+market_t0 / Polymarket window start = T
+target window                       = [T, T+5m)
+label                               = 1{ close[T+4m] >= open[T] }
+feature_timestamp                   = T+2m
+decision_time                       = T+2m
+required_latest_closed_minute       = T+1m
+row_policy                          = delayed_2m_synthetic_decision_row
+```
+
+All requirements below still apply, but every `T+1` feature/decision reference is superseded by `T+2` for the current deployed system.
+
 ## Summary
 
 Change the BTC/USDT 5-minute direction system from deciding at the market window start `T` to deciding at `T+1m`, while still predicting the same Polymarket market window `[T, T+5m)`.

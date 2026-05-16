@@ -28,7 +28,7 @@ binance:
 
 schedule:
   interval_minutes: 5
-  trigger_delay_seconds: 68
+  trigger_delay_seconds: 128
   max_data_wait_seconds: 20
   prewarm_seconds_before_trigger: 45
 

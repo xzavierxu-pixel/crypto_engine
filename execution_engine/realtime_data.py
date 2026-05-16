@@ -544,8 +544,8 @@ def finalize_runtime_frames_for_signal(
         "decision_alignment_mode": "delayed_feature_offset" if feature_offset_minutes else "exact_signal_t0",
         "feature_offset_minutes": int(feature_offset_minutes),
         "row_policy": (
-            "delayed_1m_synthetic_decision_row"
-            if int(feature_offset_minutes) == 1
+            f"delayed_{int(feature_offset_minutes)}m_synthetic_decision_row"
+            if int(feature_offset_minutes) > 0
             else "exact_signal_t0_with_synthetic_decision_row"
         ),
         "feature_timestamp": target.isoformat(),
