@@ -37,7 +37,7 @@ class BinanceConfig:
     max_clock_skew_seconds: float = 2.0
     cache_path: str | None = "artifacts/state/execution_engine/binance_cache.parquet"
     require_agg_trade_through_last_second: bool = True
-    max_agg_trade_lag_seconds: float = 0.0
+    max_agg_trade_lag_seconds: float = 2.0
     agg_trade_wait_seconds: float = 8.0
 
 

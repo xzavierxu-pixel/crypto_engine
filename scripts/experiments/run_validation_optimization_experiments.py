@@ -36,6 +36,9 @@ from scripts.experiments.run_balanced_precision_holdout_experiment import (
 
 BASELINE = {
     "balanced_precision": 0.5627267617149574,
+    "accepted_sample_accuracy": 0.6911073510058282,
+    "selection_score": 0.5802688116904466,
+    "utility": 0.2721188595904163,
     "precision_up": 0.6060606060606061,
     "precision_down": 0.5193929173693086,
     "signal_coverage": 0.6108836985311823,
@@ -358,6 +361,14 @@ def _select_correlation_top_features(
 
 
 def _constraints_satisfied(metrics: dict[str, Any], settings: Any) -> bool:
+    if str(settings.objective.optimize_metric) in {
+        "score",
+        "selection_score",
+        "threshold_score",
+        "threshold_selection_score",
+        "downside_adjusted_return",
+    }:
+        return metrics["signal_coverage"] >= settings.objective.min_coverage
     return (
         metrics["up_signal_count"] >= settings.threshold_search.min_up_signals
         and metrics["down_signal_count"] >= settings.threshold_search.min_down_signals
@@ -495,6 +506,9 @@ def _run_variant(
         "validation_window": _window_dict(split_info, "validation"),
         "validation_delta_vs_baseline": {
             "balanced_precision": validation_metrics["balanced_precision"] - BASELINE["balanced_precision"],
+            "accepted_sample_accuracy": validation_metrics["accepted_sample_accuracy"] - BASELINE["accepted_sample_accuracy"],
+            "selection_score": validation_metrics["selection_score"] - BASELINE["selection_score"],
+            "utility": validation_metrics["utility"] - BASELINE["utility"],
             "precision_up": validation_metrics["precision_up"] - BASELINE["precision_up"],
             "precision_down": validation_metrics["precision_down"] - BASELINE["precision_down"],
             "signal_coverage": validation_metrics["signal_coverage"] - BASELINE["signal_coverage"],
@@ -519,6 +533,10 @@ def _run_variant(
         "report_path": str(report_path),
         "config_path": str(config_path),
         "validation_balanced_precision": validation_metrics["balanced_precision"],
+        "validation_accepted_sample_accuracy": validation_metrics["accepted_sample_accuracy"],
+        "validation_selection_score": validation_metrics["selection_score"],
+        "validation_utility": validation_metrics["utility"],
+        "validation_downside_risk": validation_metrics["downside_risk"],
         "validation_precision_up": validation_metrics["precision_up"],
         "validation_precision_down": validation_metrics["precision_down"],
         "validation_signal_coverage": validation_metrics["signal_coverage"],
@@ -534,6 +552,9 @@ def _run_variant(
         "train_log_loss": metrics["development"].get("log_loss"),
         "constraints_satisfied": constraints_satisfied,
         "delta_balanced_precision": validation_metrics["balanced_precision"] - BASELINE["balanced_precision"],
+        "delta_accepted_sample_accuracy": validation_metrics["accepted_sample_accuracy"] - BASELINE["accepted_sample_accuracy"],
+        "delta_selection_score": validation_metrics["selection_score"] - BASELINE["selection_score"],
+        "delta_utility": validation_metrics["utility"] - BASELINE["utility"],
         "feature_count": len(feature_columns),
         "dropped_feature_count": len(dropped_columns),
         "top_n_features": variant.get("top_n_features"),
@@ -549,8 +570,11 @@ def _write_variant_summary(path: Path, report: dict[str, Any]) -> None:
         f"# Validation Optimization Variant: {report['variant']['name']}",
         "",
         f"- category: `{report['variant']['category']}`",
+        f"- selection_score: `{validation['selection_score']:.6f}`",
+        f"- accepted_sample_accuracy: `{validation['accepted_sample_accuracy']:.6f}`",
+        f"- utility: `{validation['utility']:.6f}`",
         f"- balanced_precision: `{validation['balanced_precision']:.6f}`",
-        f"- delta_vs_baseline: `{report['validation_delta_vs_baseline']['balanced_precision']:.6f}`",
+        f"- delta_selection_score_vs_baseline: `{report['validation_delta_vs_baseline']['selection_score']:.6f}`",
         f"- precision_up: `{validation['precision_up']:.6f}`",
         f"- precision_down: `{validation['precision_down']:.6f}`",
         f"- signal_coverage: `{validation['signal_coverage']:.6f}`",
@@ -565,8 +589,8 @@ def _write_variant_summary(path: Path, report: dict[str, Any]) -> None:
 def _write_leaderboard(output_root: Path, records: list[dict[str, Any]], *, experiment_id: str) -> None:
     df = pd.DataFrame.from_records(records)
     ranked = df.sort_values(
-        ["constraints_satisfied", "validation_balanced_precision", "validation_signal_coverage"],
-        ascending=[False, False, False],
+        ["constraints_satisfied", "validation_selection_score", "validation_utility", "validation_signal_coverage"],
+        ascending=[False, False, False, False],
     )
     leaderboard_path = output_root / "leaderboard.csv"
     ranked.to_csv(leaderboard_path, index=False)
@@ -574,9 +598,15 @@ def _write_leaderboard(output_root: Path, records: list[dict[str, Any]], *, expe
     summary = {
         "experiment_id": experiment_id,
         "baseline": BASELINE,
-        "target_balanced_precision": 0.60,
+        "target_accepted_sample_accuracy": 0.75,
+        "target_signal_coverage": 0.70,
         "best": best,
-        "target_reached": bool(best and best["constraints_satisfied"] and best["validation_balanced_precision"] >= 0.60),
+        "target_reached": bool(
+            best
+            and best["constraints_satisfied"]
+            and best["validation_accepted_sample_accuracy"] >= 0.75
+            and best["validation_signal_coverage"] >= 0.70
+        ),
         "leaderboard_path": str(leaderboard_path),
         "record_count": int(len(records)),
         "git": _git_info(),
@@ -586,28 +616,31 @@ def _write_leaderboard(output_root: Path, records: list[dict[str, Any]], *, expe
         "# Validation Optimization Leaderboard",
         "",
         f"- experiment_id: `{experiment_id}`",
-        f"- target_balanced_precision: `0.600000`",
-        f"- baseline_balanced_precision: `{BASELINE['balanced_precision']:.6f}`",
+        f"- target_accepted_sample_accuracy: `0.750000`",
+        f"- target_signal_coverage: `0.700000`",
+        f"- baseline_selection_score: `{BASELINE['selection_score']:.6f}`",
+        f"- baseline_accepted_sample_accuracy: `{BASELINE['accepted_sample_accuracy']:.6f}`",
     ]
     if best:
         lines.extend(
             [
                 f"- best_variant: `{best['name']}`",
-                f"- best_balanced_precision: `{best['validation_balanced_precision']:.6f}`",
-                f"- best_delta: `{best['delta_balanced_precision']:.6f}`",
+                f"- best_selection_score: `{best['validation_selection_score']:.6f}`",
+                f"- best_accepted_sample_accuracy: `{best['validation_accepted_sample_accuracy']:.6f}`",
+                f"- best_delta_selection_score: `{best['delta_selection_score']:.6f}`",
                 f"- best_coverage: `{best['validation_signal_coverage']:.6f}`",
                 f"- target_reached: `{summary['target_reached']}`",
             ]
         )
     lines.extend(["", "## Top 10", ""])
     lines.append(
-        "| rank | variant | category | balanced_precision | precision_up | precision_down | coverage | UP | DOWN | total | constraints |"
+        "| rank | variant | category | selection_score | accepted_accuracy | utility | coverage | UP | DOWN | total | constraints |"
     )
     lines.append("| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |")
     for rank, row in enumerate(ranked.head(10).to_dict(orient="records"), start=1):
         lines.append(
-            "| {rank} | `{name}` | `{category}` | {validation_balanced_precision:.6f} | "
-            "{validation_precision_up:.6f} | {validation_precision_down:.6f} | "
+            "| {rank} | `{name}` | `{category}` | {validation_selection_score:.6f} | "
+            "{validation_accepted_sample_accuracy:.6f} | {validation_utility:.6f} | "
             "{validation_signal_coverage:.6f} | {validation_up_signal_count} | "
             "{validation_down_signal_count} | {validation_total_signal_count} | {constraints_satisfied} |".format(
                 rank=rank, **row

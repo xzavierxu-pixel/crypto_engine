@@ -56,7 +56,7 @@ def test_execution_config_example_loads() -> None:
     assert config.thresholds.t_up is None
     assert config.thresholds.t_down is None
     assert config.binance.require_agg_trade_through_last_second is True
-    assert config.binance.max_agg_trade_lag_seconds == 0
+    assert config.binance.max_agg_trade_lag_seconds == 2.0
     assert config.binance.agg_trade_wait_seconds == 8
 
 
@@ -370,6 +370,39 @@ def test_finalize_runtime_frames_for_signal_can_allow_configured_agg_lag() -> No
 
     assert alignment["required_latest_agg_trade"] == "2026-05-10T12:34:58+00:00"
     assert alignment["agg_trade_lag_seconds"] == 0.5
+
+
+def test_finalize_runtime_frames_for_signal_allows_small_default_agg_lag() -> None:
+    minute = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:34:00Z"], utc=True),
+            "open": [102.0],
+            "high": [103.0],
+            "low": [101.0],
+            "close": [102.5],
+            "volume": [1.0],
+        }
+    )
+    second = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2026-05-10T12:34:59Z"], utc=True),
+            "open": [1.0],
+            "high": [1.0],
+            "low": [1.0],
+            "close": [1.0],
+        }
+    )
+    agg = pd.DataFrame({"timestamp": pd.to_datetime(["2026-05-10T12:34:57.500Z"], utc=True), "agg_trade_id": [1]})
+
+    _, _, _, alignment = finalize_runtime_frames_for_signal(
+        minute,
+        second,
+        agg,
+        signal_t0=pd.Timestamp("2026-05-10T12:35:00Z"),
+    )
+
+    assert alignment["required_latest_agg_trade"] == "2026-05-10T12:34:57+00:00"
+    assert alignment["agg_trade_lag_seconds"] == 1.5
 
 
 def test_finalize_runtime_frames_for_signal_requires_last_closed_minute() -> None:

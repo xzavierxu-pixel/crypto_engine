@@ -479,7 +479,7 @@ def finalize_runtime_frames_for_signal(
     *,
     feature_offset_minutes: int = 0,
     require_agg_trade_through_last_second: bool = True,
-    max_agg_trade_lag_seconds: float = 0.0,
+    max_agg_trade_lag_seconds: float = 2.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     market_t0 = pd.Timestamp(signal_t0).tz_convert(UTC).floor("min")
     target = decision_timestamp(market_t0, feature_offset_minutes=feature_offset_minutes)
