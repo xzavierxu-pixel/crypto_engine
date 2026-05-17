@@ -1,0 +1,32 @@
+{
+  "input_frames": [
+    "C:\\Users\\ROG\\Desktop\\crypto_engine\\artifacts\\data_v2\\experiments\\20260515_t_plus_1_delayed_validation\\development_frame.parquet",
+    "C:\\Users\\ROG\\Desktop\\crypto_engine\\artifacts\\data_v2\\experiments\\20260515_t_plus_1_delayed_validation\\validation_frame.parquet"
+  ],
+  "output_frame": "artifacts\\data_v2\\experiments\\20260517_polymarket_resolved_labels_frame\\polymarket_resolved_training_frame.parquet",
+  "output_split_dir": "artifacts\\data_v2\\experiments\\20260517_polymarket_resolved_labels_split",
+  "split_outputs": {
+    "development_frame": "artifacts\\data_v2\\experiments\\20260517_polymarket_resolved_labels_split\\development_frame.parquet",
+    "validation_frame": "artifacts\\data_v2\\experiments\\20260517_polymarket_resolved_labels_split\\validation_frame.parquet"
+  },
+  "audit_csv": "artifacts\\data_v2\\experiments\\20260517_polymarket_resolved_labels_frame\\label_audit.csv",
+  "source_rows": 23731,
+  "resolved_rows": 23164,
+  "missing_or_unresolved_rows": 567,
+  "mismatch_count": 689,
+  "mismatch_rate": 0.029744431013641857,
+  "resolved_target_mean": 0.5134691763080642,
+  "split_counts": {
+    "C:\\Users\\ROG\\Desktop\\crypto_engine\\artifacts\\data_v2\\experiments\\20260515_t_plus_1_delayed_validation\\development_frame.parquet": 15696,
+    "C:\\Users\\ROG\\Desktop\\crypto_engine\\artifacts\\data_v2\\experiments\\20260515_t_plus_1_delayed_validation\\validation_frame.parquet": 7468
+  },
+  "fetch": {
+    "start": "2026-02-09T23:55:00Z",
+    "end": "2026-05-10T23:55:00Z",
+    "market_count": 0,
+    "seed_resolved_count": 23164,
+    "fetch_slug_count": 567,
+    "matched_slug_count": 0,
+    "win_threshold": 0.99
+  }
+}
