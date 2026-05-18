@@ -1,0 +1,87 @@
+{
+  "paper_filled_or_simulated_count": 4,
+  "filled_shares": 45.714285714285715,
+  "average_fill_price": 0.35,
+  "weighted_fill_accuracy": 1.0,
+  "paper_realized_or_replayed_pnl": 29.714285714285715,
+  "pnl_by_side": {
+    "YES": {
+      "fills": 3,
+      "shares": 34.285714285714285,
+      "pnl": 22.285714285714285
+    },
+    "NO": {
+      "fills": 1,
+      "shares": 11.428571428571429,
+      "pnl": 7.428571428571429
+    }
+  },
+  "pnl_by_leg": {
+    "first": {
+      "fills": 4,
+      "shares": 45.714285714285715,
+      "pnl": 29.714285714285715
+    }
+  },
+  "fills": [
+    {
+      "summary_path": "artifacts\\logs\\execution_engine\\summaries\\2026-05-18T160500Z0000.json",
+      "signal_t0": "2026-05-18T16:05:00+00:00",
+      "slug": "btc-updown-5m-1779120300",
+      "side": "YES",
+      "actual_side": "YES",
+      "price": 0.35,
+      "size": 11.428571428571429,
+      "notional": 4.0,
+      "pnl": 7.428571428571429,
+      "correct": true,
+      "leg": "first"
+    },
+    {
+      "summary_path": "artifacts\\logs\\execution_engine\\summaries\\2026-05-18T161000Z0000.json",
+      "signal_t0": "2026-05-18T16:10:00+00:00",
+      "slug": "btc-updown-5m-1779120600",
+      "side": "YES",
+      "actual_side": "YES",
+      "price": 0.35,
+      "size": 11.428571428571429,
+      "notional": 4.0,
+      "pnl": 7.428571428571429,
+      "correct": true,
+      "leg": "first"
+    },
+    {
+      "summary_path": "artifacts\\logs\\execution_engine\\summaries\\2026-05-18T161500Z0000.json",
+      "signal_t0": "2026-05-18T16:15:00+00:00",
+      "slug": "btc-updown-5m-1779120900",
+      "side": "YES",
+      "actual_side": "YES",
+      "price": 0.35,
+      "size": 11.428571428571429,
+      "notional": 4.0,
+      "pnl": 7.428571428571429,
+      "correct": true,
+      "leg": "first"
+    },
+    {
+      "summary_path": "artifacts\\logs\\execution_engine\\summaries\\2026-05-18T162500Z0000.json",
+      "signal_t0": "2026-05-18T16:25:00+00:00",
+      "slug": "btc-updown-5m-1779121500",
+      "side": "NO",
+      "actual_side": "NO",
+      "price": 0.35,
+      "size": 11.428571428571429,
+      "notional": 4.0,
+      "pnl": 7.428571428571429,
+      "correct": true,
+      "leg": "first"
+    }
+  ],
+  "start_time": "2026-05-18T16:01:25.274353+00:00",
+  "end_time": "2026-05-18T16:31:11.237779+00:00",
+  "elapsed_minutes": 29.766057149999998,
+  "paper_signal_count": 6,
+  "paper_order_count": 5,
+  "stop_target_pnl": 25.0,
+  "stop_reason": "pnl_target_reached"
+}
