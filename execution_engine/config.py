@@ -92,11 +92,30 @@ class OrdersConfig:
 
 
 @dataclass(frozen=True)
+class ExecutionEdgeConfig:
+    enabled: bool = True
+    min_edge: float = 0.08
+    max_buy_price: float | None = 0.5
+    max_spread: float | None = 0.08
+    max_order_notional: float | None = 4.0
+    size_to_max_notional: bool = False
+    apply_to_first_leg: bool = True
+    apply_to_second_leg: bool = True
+
+
+@dataclass(frozen=True)
 class GuardsConfig:
     require_market_accepting_orders: bool = True
     require_best_bid: bool = True
     max_orders_per_window: int = 2
     enforce_idempotency: bool = True
+
+
+@dataclass(frozen=True)
+class PaperTestConfig:
+    max_duration_minutes: int = 60
+    stop_when_pnl_gt: float = 25.0
+    report_to_user: bool = True
 
 
 @dataclass(frozen=True)
@@ -108,7 +127,9 @@ class ExecutionEngineConfig:
     thresholds: ThresholdConfig = field(default_factory=ThresholdConfig)
     polymarket: PolymarketConfig = field(default_factory=PolymarketConfig)
     orders: OrdersConfig = field(default_factory=OrdersConfig)
+    execution_edge: ExecutionEdgeConfig = field(default_factory=ExecutionEdgeConfig)
     guards: GuardsConfig = field(default_factory=GuardsConfig)
+    paper_test: PaperTestConfig = field(default_factory=PaperTestConfig)
 
 
 def _payload_for(payload: dict[str, Any], key: str) -> dict[str, Any]:
@@ -143,5 +164,7 @@ def load_execution_config(path: str | Path) -> ExecutionEngineConfig:
         thresholds=ThresholdConfig(**_payload_for(payload, "thresholds")),
         polymarket=PolymarketConfig(**_payload_for(payload, "polymarket")),
         orders=orders,
+        execution_edge=ExecutionEdgeConfig(**_payload_for(payload, "execution_edge")),
         guards=GuardsConfig(**_payload_for(payload, "guards")),
+        paper_test=PaperTestConfig(**_payload_for(payload, "paper_test")),
     )

@@ -139,6 +139,55 @@ class GammaOutcomeClient:
         }
 
 
+class BinanceBtcOutcomeClient:
+    def __init__(
+        self,
+        *,
+        base_url: str = "https://api.binance.com",
+        symbol: str = "BTCUSDT",
+        timeout_seconds: float = 10.0,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.symbol = symbol
+        self.timeout_seconds = timeout_seconds
+        self.session = requests.Session()
+
+    def __call__(self, slug: str) -> str | None:
+        window_start = market_start_from_slug(slug)
+        if datetime.now(UTC) < window_start + timedelta(minutes=5):
+            return None
+        response = self.session.get(
+            f"{self.base_url}/api/v3/klines",
+            params={
+                "symbol": self.symbol,
+                "interval": "1m",
+                "startTime": int(window_start.timestamp() * 1000),
+                "endTime": int((window_start + timedelta(minutes=5)).timestamp() * 1000),
+                "limit": 6,
+            },
+            timeout=self.timeout_seconds,
+        )
+        response.raise_for_status()
+        klines = response.json()
+        if len(klines) < 5:
+            return None
+        open_t0 = float(klines[0][1])
+        close_t4 = float(klines[4][4])
+        return "YES" if close_t4 >= open_t0 else "NO"
+
+
+class FallbackOutcomeClient:
+    def __init__(self, primary: OutcomeFetcher, fallback: OutcomeFetcher) -> None:
+        self.primary = primary
+        self.fallback = fallback
+
+    def __call__(self, slug: str) -> str | None:
+        outcome = self.primary(slug)
+        if outcome in {"YES", "NO"}:
+            return outcome
+        return self.fallback(slug)
+
+
 def _json_list(value: Any) -> list[Any]:
     if value is None:
         return []
@@ -310,10 +359,84 @@ def threshold_search(
     return results
 
 
+def summarize_order_pnl(
+    summary_dir: str | Path,
+    *,
+    outcome_fetcher: OutcomeFetcher,
+    since: datetime | None = None,
+    until: datetime | None = None,
+) -> dict[str, Any]:
+    fills: list[dict[str, Any]] = []
+    for path in sorted(Path(summary_dir).glob("*.json")):
+        payload = load_json(path)
+        signal = payload.get("signal") or {}
+        if signal.get("t0") is None:
+            continue
+        signal_t0 = parse_timestamp(signal["t0"])
+        if since is not None and signal_t0 < since:
+            continue
+        if until is not None and signal_t0 > until:
+            continue
+        market = payload.get("market") or {}
+        slug = market.get("slug")
+        if not slug:
+            continue
+        actual_side = outcome_fetcher(slug)
+        if actual_side not in {"YES", "NO"}:
+            continue
+        for order in payload.get("orders") or []:
+            side = order.get("side")
+            if side not in {"YES", "NO"}:
+                continue
+            price = float(order["price"])
+            size = float(order["size"])
+            if size <= 0:
+                continue
+            pnl = size * (1.0 - price) if side == actual_side else -size * price
+            fills.append(
+                {
+                    "summary_path": str(path),
+                    "signal_t0": signal_t0.isoformat(),
+                    "slug": slug,
+                    "side": side,
+                    "actual_side": actual_side,
+                    "price": price,
+                    "size": size,
+                    "notional": price * size,
+                    "pnl": pnl,
+                    "correct": side == actual_side,
+                    "leg": (order.get("metadata") or {}).get("leg"),
+                }
+            )
+
+    by_side: dict[str, dict[str, float | int]] = defaultdict(lambda: {"fills": 0, "shares": 0.0, "pnl": 0.0})
+    by_leg: dict[str, dict[str, float | int]] = defaultdict(lambda: {"fills": 0, "shares": 0.0, "pnl": 0.0})
+    for fill in fills:
+        for group, key in [(by_side, str(fill["side"])), (by_leg, str(fill["leg"]))]:
+            group[key]["fills"] += 1
+            group[key]["shares"] += float(fill["size"])
+            group[key]["pnl"] += float(fill["pnl"])
+
+    total_shares = sum(float(fill["size"]) for fill in fills)
+    weighted_correct = sum(float(fill["size"]) for fill in fills if fill["correct"])
+    notional = sum(float(fill["notional"]) for fill in fills)
+    return {
+        "paper_filled_or_simulated_count": len(fills),
+        "filled_shares": total_shares,
+        "average_fill_price": notional / total_shares if total_shares else 0.0,
+        "weighted_fill_accuracy": weighted_correct / total_shares if total_shares else 0.0,
+        "paper_realized_or_replayed_pnl": sum(float(fill["pnl"]) for fill in fills),
+        "pnl_by_side": dict(by_side),
+        "pnl_by_leg": dict(by_leg),
+        "fills": fills,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate execution_engine paper/live summaries against resolved markets.")
     parser.add_argument("--summary-dir", default="artifacts/logs/execution_engine/summaries")
     parser.add_argument("--gamma-base-url", default="https://gamma-api.polymarket.com")
+    parser.add_argument("--binance-base-url", default="https://api.binance.com")
     parser.add_argument("--cache-path", default="artifacts/state/execution_engine/outcome_cache.json")
     parser.add_argument("--output-json", default=None)
     parser.add_argument("--min-hourly-predictions", type=int, default=6)
@@ -327,7 +450,10 @@ def main() -> None:
     parser.add_argument("--step", type=float, default=0.005)
     args = parser.parse_args()
 
-    outcome_client = GammaOutcomeClient(base_url=args.gamma_base_url, cache_path=args.cache_path)
+    outcome_client = FallbackOutcomeClient(
+        GammaOutcomeClient(base_url=args.gamma_base_url, cache_path=args.cache_path),
+        BinanceBtcOutcomeClient(base_url=args.binance_base_url),
+    )
     predictions = load_predictions(args.summary_dir, outcome_fetcher=outcome_client)
     report = summarize_predictions(
         predictions,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import types
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -10,8 +11,10 @@ import pandas as pd
 
 import execution_engine.run_once as run_once_module
 from execution_engine.scripts.evaluate_paper_results import (
+    FallbackOutcomeClient,
     GammaOutcomeClient,
     load_predictions,
+    summarize_order_pnl,
     summarize_predictions,
     threshold_search,
 )
@@ -50,14 +53,21 @@ def test_execution_config_example_loads() -> None:
 
     assert config.runtime.mode == "paper"
     assert config.orders.enabled is False
-    assert config.orders.first.size == 5.0
-    assert config.orders.second.offset == -0.1
+    assert config.orders.first.size == 8.0
+    assert config.orders.second.offset == 0.0
+    assert config.orders.second.size == 0.0
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
     assert config.thresholds.t_up is None
     assert config.thresholds.t_down is None
     assert config.binance.require_agg_trade_through_last_second is True
     assert config.binance.max_agg_trade_lag_seconds == 2.0
     assert config.binance.agg_trade_wait_seconds == 8
+    assert config.execution_edge.enabled is True
+    assert config.execution_edge.min_edge == 0.08
+    assert config.execution_edge.max_order_notional == 4.0
+    assert config.execution_edge.size_to_max_notional is True
+    assert config.paper_test.max_duration_minutes == 60
+    assert config.paper_test.stop_when_pnl_gt == 25.0
 
 
 def test_normalize_binance_klines_outputs_shared_schema() -> None:
@@ -491,10 +501,89 @@ def test_two_limit_order_plan_uses_target_token_best_bid_cap_and_offset() -> Non
         config.orders,
     )
 
-    assert [order.market_id for order in plan.orders] == ["yes-token", "yes-token"]
-    assert [order.price for order in plan.orders] == [0.5, 0.4]
-    assert [order.size for order in plan.orders] == [5.0, 5.0]
-    assert plan.skipped == []
+    assert [order.market_id for order in plan.orders] == ["yes-token"]
+    assert [order.price for order in plan.orders] == [0.35]
+    assert [order.size for order in plan.orders] == [8.0]
+    assert plan.skipped == [{"leg": "second", "reason": "disabled_leg", "size": 0.0}]
+
+
+def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
+    config = load_execution_config("execution_engine/config.example.yaml")
+    expensive_plan = build_two_limit_order_plan(
+        _signal(0.40),
+        Decision(True, "YES", 0.06, "selective_binary_signal_passed", 5.0),
+        MarketQuote(
+            market_id="yes-token",
+            yes_price=0.51,
+            no_price=0.49,
+            metadata={
+                "yes_token_id": "yes-token",
+                "no_token_id": "no-token",
+                "best_bid": 0.90,
+                "best_ask": 0.92,
+                "tick_size": "0.01",
+            },
+        ),
+        config.orders,
+        config.execution_edge,
+    )
+
+    assert expensive_plan.orders == []
+    assert expensive_plan.skipped[0]["reason"] == "edge_below_minimum"
+    assert expensive_plan.skipped[0]["edge"] == 0.050000000000000044
+
+    high_price_orders = replace(config.orders, first=replace(config.orders.first, price_cap=0.9))
+    high_price_edge = replace(config.execution_edge, max_buy_price=0.99, size_to_max_notional=False)
+    notional_plan = build_two_limit_order_plan(
+        _signal(0.99),
+        Decision(True, "YES", 0.45, "selective_binary_signal_passed", 5.0),
+        MarketQuote(
+            market_id="yes-token",
+            yes_price=0.51,
+            no_price=0.49,
+            metadata={
+                "yes_token_id": "yes-token",
+                "no_token_id": "no-token",
+                "best_bid": 0.90,
+                "best_ask": 0.92,
+                "tick_size": "0.01",
+            },
+        ),
+        high_price_orders,
+        high_price_edge,
+    )
+
+    assert notional_plan.orders == []
+    assert notional_plan.skipped[0]["reason"] == "notional_above_max_order"
+    assert notional_plan.skipped[0]["notional"] == 7.2
+
+
+def test_two_limit_order_plan_can_size_to_notional_cap() -> None:
+    config = load_execution_config("execution_engine/config.example.yaml")
+    plan = build_two_limit_order_plan(
+        _signal(0.80),
+        Decision(True, "YES", 0.30, "selective_binary_signal_passed", 5.0),
+        MarketQuote(
+            market_id="yes-token",
+            yes_price=0.51,
+            no_price=0.49,
+            metadata={
+                "yes_token_id": "yes-token",
+                "no_token_id": "no-token",
+                "best_bid": 0.40,
+                "best_ask": 0.41,
+                "tick_size": "0.01",
+            },
+        ),
+        config.orders,
+        config.execution_edge,
+    )
+
+    assert len(plan.orders) == 1
+    assert plan.orders[0].price == 0.35
+    assert plan.orders[0].size == 4.0 / 0.35
+    assert plan.orders[0].metadata["configured_size"] == 8.0
+    assert plan.orders[0].metadata["size_to_max_notional"] is True
 
 
 def test_two_limit_order_plan_skips_without_best_bid() -> None:
@@ -524,8 +613,9 @@ def test_two_limit_order_plan_uses_best_ask_fallback_without_best_bid() -> None:
         config.orders,
     )
 
-    assert [order.price for order in plan.orders] == [0.47, 0.37]
-    assert [order.metadata["quote_source"] for order in plan.orders] == ["best_ask", "best_ask"]
+    assert [order.price for order in plan.orders] == [0.34]
+    assert [order.metadata["quote_source"] for order in plan.orders] == ["best_ask"]
+    assert plan.skipped == [{"leg": "second", "reason": "disabled_leg", "size": 0.0}]
 
 
 def test_slug_and_idempotency_key_are_window_scoped() -> None:
@@ -1011,6 +1101,60 @@ def test_evaluate_paper_results_summarizes_hourly_goal(tmp_path) -> None:
     assert report["accepted_count"] == 6
     assert report["correct_count"] == 4
     assert report["hourly_goal"]["passed_hour_count"] == 1
+
+
+def test_evaluate_paper_results_summarizes_order_pnl(tmp_path) -> None:
+    summary_dir = tmp_path / "summaries"
+    summary_dir.mkdir()
+    t0 = pd.Timestamp("2026-05-10T12:00:00Z")
+    slug, _, _ = build_btc_5m_slug(t0.to_pydatetime())
+    payload = {
+        "signal": {"t0": t0.isoformat(), "p_up": 0.70},
+        "decision": {"should_trade": True, "side": "YES", "reason": "selective_binary_signal_passed"},
+        "market": {"slug": slug},
+        "orders": [
+            {
+                "side": "YES",
+                "price": 0.40,
+                "size": 5.0,
+                "metadata": {"leg": "first"},
+            },
+            {
+                "side": "NO",
+                "price": 0.30,
+                "size": 5.0,
+                "metadata": {"leg": "first"},
+            },
+        ],
+    }
+    (summary_dir / "summary.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    report = summarize_order_pnl(summary_dir, outcome_fetcher={slug: "YES"}.get)
+
+    assert report["paper_filled_or_simulated_count"] == 2
+    assert report["filled_shares"] == 10.0
+    assert report["average_fill_price"] == 0.35
+    assert report["weighted_fill_accuracy"] == 0.5
+    assert report["paper_realized_or_replayed_pnl"] == 1.5
+    assert report["pnl_by_side"]["YES"]["pnl"] == 3.0
+    assert report["pnl_by_side"]["NO"]["pnl"] == -1.5
+
+
+def test_fallback_outcome_client_uses_fallback_when_primary_unresolved() -> None:
+    calls: list[str] = []
+
+    def primary(slug: str) -> str | None:
+        calls.append(f"primary:{slug}")
+        return None
+
+    def fallback(slug: str) -> str | None:
+        calls.append(f"fallback:{slug}")
+        return "YES"
+
+    client = FallbackOutcomeClient(primary, fallback)
+
+    assert client("btc-updown-5m-1779115200") == "YES"
+    assert calls == ["primary:btc-updown-5m-1779115200", "fallback:btc-updown-5m-1779115200"]
 
 
 def test_evaluate_paper_results_threshold_search_replays_abstains(tmp_path) -> None:

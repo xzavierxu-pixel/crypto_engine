@@ -17,6 +17,12 @@ if str(REPO_ROOT) not in sys.path:
 
 from execution_engine.config import load_execution_config
 from execution_engine.run_once import current_5m_window_start, run_once
+from execution_engine.scripts.evaluate_paper_results import (
+    BinanceBtcOutcomeClient,
+    FallbackOutcomeClient,
+    GammaOutcomeClient,
+    summarize_order_pnl,
+)
 from src.core.schemas import Decision
 
 
@@ -142,15 +148,36 @@ def run_paper_experiment(
     output_jsonl: str,
     policy: str = "model",
     dry_run: bool = False,
+    max_duration_minutes: int | None = None,
+    stop_pnl_gt: float | None = None,
+    report_json: str | None = None,
+    outcome_cache_path: str = "artifacts/state/execution_engine/outcome_cache.json",
 ) -> list[dict[str, Any]]:
     config = load_execution_config(config_path)
     resolved_delay = config.schedule.trigger_delay_seconds if delay_seconds is None else delay_seconds
+    resolved_max_duration = config.paper_test.max_duration_minutes if max_duration_minutes is None else max_duration_minutes
+    resolved_stop_pnl = config.paper_test.stop_when_pnl_gt if stop_pnl_gt is None else stop_pnl_gt
     output_path = Path(output_jsonl)
     records: list[dict[str, Any]] = []
+    experiment_started_at = datetime.now(UTC)
+    deadline = experiment_started_at + timedelta(minutes=resolved_max_duration)
+    outcome_client = FallbackOutcomeClient(
+        GammaOutcomeClient(cache_path=outcome_cache_path),
+        BinanceBtcOutcomeClient(
+            base_url=config.binance.base_url,
+            symbol=config.binance.symbol,
+            timeout_seconds=config.binance.request_timeout_seconds,
+        ),
+    )
+    latest_report: dict[str, Any] | None = None
 
     for index in range(cycles):
+        if datetime.now(UTC) >= deadline:
+            break
         trigger = next_trigger_time(datetime.now(UTC), delay_seconds=resolved_delay)
         wait_seconds = max(0.0, (trigger - datetime.now(UTC)).total_seconds())
+        if datetime.now(UTC) + timedelta(seconds=wait_seconds) > deadline:
+            break
         if wait_seconds > 0:
             time.sleep(wait_seconds)
         target_window_start = current_5m_window_start(datetime.now(UTC))
@@ -178,6 +205,7 @@ def run_paper_experiment(
                         "decision": summary.get("decision"),
                         "signal": summary.get("signal"),
                         "market": summary.get("market"),
+                        "orders": summary.get("orders"),
                         "skipped": summary.get("skipped"),
                         "submitted": summary.get("submitted"),
                     }
@@ -186,6 +214,49 @@ def run_paper_experiment(
                 record.update({"ok": False, "error": repr(exc)})
         append_jsonl(output_path, record)
         records.append(record)
+        latest_report = summarize_order_pnl(
+            config.runtime.summary_dir,
+            outcome_fetcher=outcome_client,
+            since=experiment_started_at,
+            until=datetime.now(UTC),
+        )
+        latest_report.update(
+            {
+                "start_time": experiment_started_at.isoformat(),
+                "end_time": datetime.now(UTC).isoformat(),
+                "elapsed_minutes": (datetime.now(UTC) - experiment_started_at).total_seconds() / 60.0,
+                "paper_signal_count": len(records),
+                "paper_order_count": sum(len(record.get("orders") or []) for record in records),
+                "stop_target_pnl": resolved_stop_pnl,
+                "stop_reason": "running",
+            }
+        )
+        if latest_report["paper_realized_or_replayed_pnl"] > resolved_stop_pnl:
+            latest_report["stop_reason"] = "pnl_target_reached"
+            break
+
+    if latest_report is None:
+        latest_report = {
+            "start_time": experiment_started_at.isoformat(),
+            "end_time": datetime.now(UTC).isoformat(),
+            "elapsed_minutes": (datetime.now(UTC) - experiment_started_at).total_seconds() / 60.0,
+            "paper_signal_count": len(records),
+            "paper_order_count": 0,
+            "paper_filled_or_simulated_count": 0,
+            "paper_realized_or_replayed_pnl": 0.0,
+            "average_fill_price": 0.0,
+            "weighted_fill_accuracy": 0.0,
+            "pnl_by_side": {},
+            "pnl_by_leg": {},
+            "stop_target_pnl": resolved_stop_pnl,
+            "stop_reason": "duration_elapsed" if datetime.now(UTC) >= deadline else "no_cycles_run",
+        }
+    elif latest_report["stop_reason"] == "running":
+        latest_report["stop_reason"] = "duration_elapsed" if datetime.now(UTC) >= deadline else "cycle_limit_reached"
+    if report_json is not None:
+        report_path = Path(report_json)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(latest_report, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
     return records
 
 
@@ -204,6 +275,16 @@ def main() -> None:
         default="model",
     )
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--max-duration-minutes", type=int, default=None)
+    parser.add_argument("--stop-pnl-gt", type=float, default=None)
+    parser.add_argument(
+        "--report-json",
+        default="artifacts/reports/execution_engine/paper_test_report.json",
+    )
+    parser.add_argument(
+        "--outcome-cache-path",
+        default="artifacts/state/execution_engine/outcome_cache.json",
+    )
     args = parser.parse_args()
 
     records = run_paper_experiment(
@@ -213,8 +294,15 @@ def main() -> None:
         output_jsonl=args.output_jsonl,
         policy=args.policy,
         dry_run=args.dry_run,
+        max_duration_minutes=args.max_duration_minutes,
+        stop_pnl_gt=args.stop_pnl_gt,
+        report_json=args.report_json,
+        outcome_cache_path=args.outcome_cache_path,
     )
-    print(json.dumps({"records": records}, indent=2, ensure_ascii=False, default=str))
+    report = None
+    if args.report_json and Path(args.report_json).exists():
+        report = json.loads(Path(args.report_json).read_text(encoding="utf-8"))
+    print(json.dumps({"records": records, "report": report}, indent=2, ensure_ascii=False, default=str))
 
 
 if __name__ == "__main__":

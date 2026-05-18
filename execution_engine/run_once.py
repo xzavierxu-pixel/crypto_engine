@@ -234,7 +234,7 @@ def run_once(
         audit.append(audit_event("execution_skipped", {"reason": reason, "market": summary["market"]}))
         return write_summary(config.runtime.summary_dir, summary)
 
-    order_plan = build_two_limit_order_plan(signal, decision, quote, config.orders)
+    order_plan = build_two_limit_order_plan(signal, decision, quote, config.orders, config.execution_edge)
     summary["orders"] = [asdict(order) for order in order_plan.orders]
     summary["skipped"].extend(order_plan.skipped)
     audit.append(audit_event("order_plan_created", {"orders": summary["orders"], "skipped": order_plan.skipped}))
