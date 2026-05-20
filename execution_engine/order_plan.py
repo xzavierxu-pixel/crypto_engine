@@ -48,6 +48,9 @@ def build_two_limit_order_plan(
     edge_config = edge_config or ExecutionEdgeConfig()
 
     for name, leg in [("first", config.first), ("second", config.second)]:
+        if not leg.enabled:
+            skipped.append({"leg": name, "reason": "disabled_leg", "enabled": False})
+            continue
         if leg.size <= 0:
             skipped.append({"leg": name, "reason": "disabled_leg", "size": float(leg.size)})
             continue

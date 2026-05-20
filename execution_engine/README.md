@@ -70,10 +70,18 @@ In `execution_engine/config.yaml`, keep `baseline.model_file` and `baseline.cali
 
 ```yaml
 baseline:
+  active_artifact: split_validation
   artifact_dir: execution_engine/deploy/baseline
+  artifacts:
+    split_validation:
+      artifact_dir: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline
+    full_train:
+      artifact_dir: execution_engine/deploy/baseline
   model_file: null
   calibrator_file: null
 ```
+
+`baseline.active_artifact` selects which artifact entry supplies the runtime `artifact_dir`. Use `split_validation` for the accepted split model and `full_train` for the full-data deploy retrain.
 
 ---
 
@@ -90,12 +98,14 @@ orders:
   enabled: false
   mode: paper
   first:
+    enabled: true
     price_cap: 0.75
     offset: 0.01
     reference_multiplier: 1.0
     round_decimals: null
     size: 5.0
   second:
+    enabled: false
     price_cap: 0.20
     offset: 0.0
     reference_multiplier: 0.25
@@ -124,7 +134,7 @@ If the selected token has no `best_bid` but has `best_ask`, the first leg falls 
 first_price = max(min(best_ask - 0.01, 0.75), 0.10)
 ```
 
-Both orders have `size = 5.0`. The lower price bound is `0.10` for both legs. Prices are floored to the configured tick size after formula evaluation and lower-bound clamping.
+The first leg is enabled by default. The second leg is disabled by default and must be explicitly enabled with `orders.second.enabled: true`. Both legs have `size = 5.0` when enabled. The lower price bound is `0.10` for both legs. Prices are floored to the configured tick size after formula evaluation and lower-bound clamping.
 
 `execution_edge.enabled` is false by default because the current workflow defines order placement after direction acceptance. Re-enabling edge guards can skip one or both configured orders and should be treated as a separate execution-policy change.
 

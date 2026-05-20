@@ -14,6 +14,8 @@ class BaselineConfig:
     model_file: str | None = None
     calibrator_file: str | None = None
     manifest_file: str = "artifact_manifest.json"
+    active_artifact: str | None = None
+    artifacts: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,7 @@ class PolymarketConfig:
 
 @dataclass(frozen=True)
 class OrderLegConfig:
+    enabled: bool = True
     price_cap: float = 0.75
     offset: float = 0.01
     size: float = 5.0
@@ -86,6 +89,7 @@ class OrdersConfig:
     first: OrderLegConfig = field(default_factory=OrderLegConfig)
     second: OrderLegConfig = field(
         default_factory=lambda: OrderLegConfig(
+            enabled=False,
             price_cap=0.20,
             offset=0.0,
             size=5.0,
@@ -145,14 +149,40 @@ def _payload_for(payload: dict[str, Any], key: str) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _order_leg_config(payload: dict[str, Any], *, enabled_default: bool) -> OrderLegConfig:
+    leg_payload = dict(payload)
+    leg_payload.setdefault("enabled", enabled_default)
+    return OrderLegConfig(**leg_payload)
+
+
+def _baseline_config(payload: dict[str, Any]) -> BaselineConfig:
+    baseline_payload = dict(payload)
+    active_artifact = baseline_payload.get("active_artifact")
+    artifacts = baseline_payload.get("artifacts") or {}
+    if active_artifact is not None:
+        if not isinstance(artifacts, dict) or active_artifact not in artifacts:
+            raise ValueError(f"baseline.active_artifact '{active_artifact}' is not defined in baseline.artifacts.")
+        selected = artifacts[active_artifact]
+        if not isinstance(selected, dict):
+            raise ValueError(f"baseline.artifacts.{active_artifact} must be a mapping.")
+        selected_dir = selected.get("artifact_dir")
+        if not selected_dir:
+            raise ValueError(f"baseline.artifacts.{active_artifact}.artifact_dir is required.")
+        baseline_payload["artifact_dir"] = selected_dir
+        for key in ("model_file", "calibrator_file", "manifest_file", "settings_path"):
+            if selected.get(key) is not None:
+                baseline_payload[key] = selected[key]
+    return BaselineConfig(**baseline_payload)
+
+
 def load_execution_config(path: str | Path) -> ExecutionEngineConfig:
     resolved = Path(path)
     with resolved.open("r", encoding="utf-8") as handle:
         payload = yaml.safe_load(handle) or {}
 
     orders_payload = _payload_for(payload, "orders")
-    first = OrderLegConfig(**_payload_for(orders_payload, "first"))
-    second = OrderLegConfig(**_payload_for(orders_payload, "second"))
+    first = _order_leg_config(_payload_for(orders_payload, "first"), enabled_default=True)
+    second = _order_leg_config(_payload_for(orders_payload, "second"), enabled_default=False)
     orders = OrdersConfig(
         enabled=orders_payload.get("enabled", False),
         mode=orders_payload.get("mode", "paper"),
@@ -165,7 +195,7 @@ def load_execution_config(path: str | Path) -> ExecutionEngineConfig:
     )
 
     return ExecutionEngineConfig(
-        baseline=BaselineConfig(**payload["baseline"]),
+        baseline=_baseline_config(payload["baseline"]),
         runtime=RuntimeConfig(**_payload_for(payload, "runtime")),
         binance=BinanceConfig(**_payload_for(payload, "binance")),
         schedule=ScheduleConfig(**_payload_for(payload, "schedule")),

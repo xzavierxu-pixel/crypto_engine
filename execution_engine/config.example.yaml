@@ -1,5 +1,11 @@
 baseline:
+  active_artifact: split_validation
   artifact_dir: execution_engine/deploy/baseline
+  artifacts:
+    split_validation:
+      artifact_dir: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline
+    full_train:
+      artifact_dir: execution_engine/deploy/baseline
   settings_path: config/settings.yaml
   model_file: null
   calibrator_file: null
@@ -53,12 +59,14 @@ orders:
   enabled: false
   mode: paper
   first:
+    enabled: true
     price_cap: 0.75
     offset: 0.01
     reference_multiplier: 1.0
     round_decimals: null
     size: 5.0
   second:
+    enabled: false
     price_cap: 0.20
     offset: 0.0
     reference_multiplier: 0.25
