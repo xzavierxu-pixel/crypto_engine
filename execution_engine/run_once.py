@@ -261,6 +261,7 @@ def run_once(
 
     store = IdempotencyStore(config.runtime.idempotency_store_path)
     responses: list[dict[str, Any]] = []
+    order_statuses: list[dict[str, Any]] = []
     for order in order_plan.orders[: config.guards.max_orders_per_window]:
         leg = str(order.metadata.get("leg", "order"))
         key = build_idempotency_key(window_start, order.market_id, order.side, leg)
@@ -270,14 +271,45 @@ def run_once(
             audit.append(audit_event("execution_skipped", skipped))
             continue
         response = polymarket.place_limit_order(order)
+        response_payload = _order_response_payload(response)
+        order_id = response_payload.get("orderID")
+        if not _order_response_success(response):
+            skipped = {
+                "leg": leg,
+                "reason": "order_submission_failed",
+                "order_id": order_id,
+                "status": response_payload.get("status"),
+                "error": response_payload.get("errorMsg") or response_payload.get("error"),
+            }
+            summary["skipped"].append(skipped)
+            audit.append(audit_event("order_submission_failed", {"order": asdict(order), "response": response}))
+            responses.append(response)
+            continue
         responses.append(response)
+        if order_id and hasattr(polymarket, "get_order_status"):
+            try:
+                order_statuses.append({"leg": leg, "order_id": order_id, **polymarket.get_order_status(order_id)})
+            except Exception as exc:
+                order_statuses.append({"leg": leg, "order_id": order_id, "status_lookup_error": repr(exc)})
         if config.guards.enforce_idempotency:
             store.record(key, {"market_id": order.market_id, "side": order.side, "price": order.price, "leg": leg})
         audit.append(audit_event("order_submitted", {"order": asdict(order), "response": response}))
 
-    summary["submitted"] = bool(responses)
+    summary["submitted"] = any(_order_response_success(response) for response in responses)
     summary["responses"] = responses
+    if order_statuses:
+        summary["order_statuses"] = order_statuses
     return write_summary(config.runtime.summary_dir, summary)
+
+
+def _order_response_payload(response: dict[str, Any]) -> dict[str, Any]:
+    payload = response.get("response", response)
+    return payload if isinstance(payload, dict) else {}
+
+
+def _order_response_success(response: dict[str, Any]) -> bool:
+    payload = _order_response_payload(response)
+    return bool(payload.get("success") is True and payload.get("orderID"))
 
 
 def write_summary(summary_dir: str, summary: dict[str, Any]) -> dict[str, Any]:

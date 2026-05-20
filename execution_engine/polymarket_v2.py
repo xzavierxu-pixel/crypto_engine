@@ -194,6 +194,45 @@ class PolymarketV2Adapter:
             "response": response,
         }
 
+    def get_order_status(self, order_id: str) -> dict[str, Any]:
+        self._ensure_authenticated()
+        status = self.client.get_order(order_id)
+        if isinstance(status, dict):
+            return {
+                key: status.get(key)
+                for key in [
+                    "id",
+                    "status",
+                    "size_matched",
+                    "original_size",
+                    "price",
+                    "side",
+                    "asset_id",
+                    "outcome",
+                    "created_at",
+                    "expiration",
+                    "type",
+                ]
+                if key in status
+            }
+        return {
+            key: getattr(status, key)
+            for key in [
+                "id",
+                "status",
+                "size_matched",
+                "original_size",
+                "price",
+                "side",
+                "asset_id",
+                "outcome",
+                "created_at",
+                "expiration",
+                "type",
+            ]
+            if hasattr(status, key)
+        }
+
     def _ensure_authenticated(self) -> None:
         if getattr(self.client, "creds", None) is not None:
             return

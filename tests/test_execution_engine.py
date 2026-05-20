@@ -1094,7 +1094,13 @@ orders:
 
         def place_limit_order(self, order):
             self.submitted.append(order)
-            return {"success": True}
+            return {
+                "request": {"token_id": order.market_id, "side": "BUY", "price": order.price, "size": order.size},
+                "response": {"success": True, "orderID": f"order-{len(self.submitted)}", "status": "live"},
+            }
+
+        def get_order_status(self, order_id):
+            return {"id": order_id, "status": "LIVE", "size_matched": "0", "original_size": "5"}
 
     monkeypatch.setattr(run_once_module, "load_baseline_artifact", lambda config: FakeBaseline())
     monkeypatch.setattr(run_once_module, "load_settings", lambda path: object())
@@ -1121,6 +1127,7 @@ orders:
     assert [order["price"] for order in summary["orders"]] == [0.58, 0.14]
     assert [order["metadata"]["leg"] for order in summary["orders"]] == ["first", "second"]
     assert len(summary["responses"]) == 2
+    assert [status["status"] for status in summary["order_statuses"]] == ["LIVE", "LIVE"]
     assert summary["skipped"] == []
     idempotency_payload = json.loads((tmp_path / "idempotency.json").read_text())
     assert sorted(idempotency_payload) == [
