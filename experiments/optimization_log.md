@@ -9361,4 +9361,4 @@ Result: `65 passed`.
 
 Interpretation: accepted. The migrated blend improves the current Polymarket resolved validation baseline while satisfying the hard coverage constraint and using a freshly trained artifact under the current label semantics.
 
-Git commit: 49d4041
+Git commit: 17916c4
