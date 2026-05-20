@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -41,6 +42,12 @@ def current_5m_window_start(now: datetime | None = None) -> datetime:
     return ts.replace(minute=minute)
 
 
+def seconds_until_configured_trigger(now: datetime, *, delay_seconds: int) -> float:
+    ts = now.astimezone(UTC)
+    trigger_time = current_5m_window_start(ts) + timedelta(seconds=delay_seconds)
+    return max(0.0, (trigger_time - ts).total_seconds())
+
+
 def build_idempotency_key(signal_t0: datetime, token_id: str, side: str, leg: str = "order") -> str:
     return f"{signal_t0.astimezone(UTC).isoformat()}:{token_id}:{side}:{leg}:two_limit_plan"
 
@@ -56,7 +63,14 @@ def run_once(
 ) -> dict[str, Any]:
     config = load_execution_config(config_path)
     mode = mode_override or config.runtime.mode
-    target_window_start = target_window_start or current_5m_window_start()
+    if target_window_start is None:
+        wait_seconds = seconds_until_configured_trigger(
+            datetime.now(UTC),
+            delay_seconds=config.schedule.trigger_delay_seconds,
+        )
+        if wait_seconds > 0:
+            time.sleep(wait_seconds)
+        target_window_start = current_5m_window_start()
     baseline = load_baseline_artifact(config.baseline)
     settings = load_settings(config.baseline.settings_path)
     alignment = getattr(settings, "decision_alignment", None)

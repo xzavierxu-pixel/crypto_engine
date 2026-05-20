@@ -29,7 +29,7 @@ from execution_engine.realtime_data import (
     normalize_binance_agg_trades,
     normalize_binance_klines,
 )
-from execution_engine.run_once import build_btc_5m_slug, build_idempotency_key
+from execution_engine.run_once import build_btc_5m_slug, build_idempotency_key, seconds_until_configured_trigger
 from src.core.config import FeatureProfileConfig
 from src.core.schemas import Decision, MarketQuote, Signal
 from src.features.momentum import MomentumFeaturePack
@@ -62,12 +62,38 @@ def test_execution_config_example_loads() -> None:
     assert config.binance.require_agg_trade_through_last_second is True
     assert config.binance.max_agg_trade_lag_seconds == 2.0
     assert config.binance.agg_trade_wait_seconds == 8
+    assert config.schedule.trigger_delay_seconds == 68
+    assert config.schedule.prewarm_seconds_before_trigger == 45
     assert config.execution_edge.enabled is True
-    assert config.execution_edge.min_edge == 0.08
+    assert config.execution_edge.min_edge == 0.04
+    assert config.execution_edge.max_buy_price == 0.8
     assert config.execution_edge.max_order_notional == 4.0
     assert config.execution_edge.size_to_max_notional is True
     assert config.paper_test.max_duration_minutes == 60
     assert config.paper_test.stop_when_pnl_gt == 25.0
+
+
+def test_run_once_configured_trigger_wait_seconds_aligns_after_full_window_data() -> None:
+    assert seconds_until_configured_trigger(
+        datetime(2026, 5, 10, 12, 35, 59, tzinfo=UTC),
+        delay_seconds=68,
+    ) == 9.0
+    assert seconds_until_configured_trigger(
+        datetime(2026, 5, 10, 12, 36, 8, tzinfo=UTC),
+        delay_seconds=68,
+    ) == 0.0
+
+
+def test_systemd_examples_align_with_configured_execution_and_prewarm_delays() -> None:
+    execution_timer = Path("execution_engine/scheduler/execution-engine.timer.example").read_text(encoding="utf-8")
+    prewarm_timer = Path("execution_engine/scheduler/execution-engine-prewarm.timer.example").read_text(encoding="utf-8")
+    prewarm_service = Path("execution_engine/scheduler/execution-engine-prewarm.service.example").read_text(
+        encoding="utf-8"
+    )
+
+    assert "OnCalendar=*-*-* *:01/5:08" in execution_timer
+    assert "OnCalendar=*-*-* *:00/5:23" in prewarm_timer
+    assert "execution_engine/prewarm.py" in prewarm_service
 
 
 def test_normalize_binance_klines_outputs_shared_schema() -> None:
@@ -510,7 +536,7 @@ def test_two_limit_order_plan_uses_target_token_best_bid_cap_and_offset() -> Non
 def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
     config = load_execution_config("execution_engine/config.example.yaml")
     expensive_plan = build_two_limit_order_plan(
-        _signal(0.40),
+        _signal(0.38),
         Decision(True, "YES", 0.06, "selective_binary_signal_passed", 5.0),
         MarketQuote(
             market_id="yes-token",
@@ -530,7 +556,7 @@ def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
 
     assert expensive_plan.orders == []
     assert expensive_plan.skipped[0]["reason"] == "edge_below_minimum"
-    assert expensive_plan.skipped[0]["edge"] == 0.050000000000000044
+    assert expensive_plan.skipped[0]["edge"] == 0.030000000000000027
 
     high_price_orders = replace(config.orders, first=replace(config.orders.first, price_cap=0.9))
     high_price_edge = replace(config.execution_edge, max_buy_price=0.99, size_to_max_notional=False)

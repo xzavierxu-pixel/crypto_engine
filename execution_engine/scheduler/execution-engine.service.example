@@ -5,7 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=/opt/crypto_engine
-EnvironmentFile=/opt/crypto_engine/execution_engine/secrets.env
-ExecStart=/opt/crypto_engine/.venv/bin/python execution_engine/run_once.py --config execution_engine/config.yaml
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/opt/crypto_engine
+EnvironmentFile=/home/ubuntu/opt/crypto_engine/execution_engine/secrets.env
+ExecStart=/home/ubuntu/opt/crypto_engine/.venv/bin/python execution_engine/run_once.py --config execution_engine/config.yaml
 

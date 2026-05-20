@@ -9310,3 +9310,55 @@ Coverage constraint satisfied: yes.
 Interpretation: accepted as the migration baseline for the new label semantics. This result uses Polymarket resolved outcome as `target`, not BTC OHLCV direction, so it must not be compared as a same-target score against the old BTC-derived-label baseline.
 
 Git commit: baf069f
+
+
+## 2026-05-20 - Polymarket resolved best blend rebuild
+
+Objective: rebuild the historical best `catboost_lgbm_logit_blend + platt_logit` candidate on the current Polymarket resolved label split, preserving `selection_score` optimization with `coverage >= 0.70`.
+
+Changed files/artifacts:
+- `experiments/configs/20260520_polymarket_resolved_best_blend_rebuild.yaml`
+- `artifacts/data_v2/experiments/20260520_polymarket_resolved_best_blend_rebuild/report.json`
+- `artifacts/data_v2/experiments/20260520_polymarket_resolved_best_blend_rebuild/threshold_search.json`
+- `execution_engine/config.py`
+- `execution_engine/config.example.yaml`
+- `execution_engine/run_once.py`
+- `execution_engine/scheduler/execution-engine.service.example`
+- `execution_engine/scheduler/execution-engine.timer.example`
+- `execution_engine/scheduler/execution-engine-prewarm.service.example`
+- `execution_engine/scheduler/execution-engine-prewarm.timer.example`
+- `tests/test_execution_engine.py`
+
+Config notes: copied the current Polymarket resolved `config/settings.yaml` into an experiment-specific config, changed only the model/calibration sections to `catboost_lgbm_logit_blend` with `catboost_weight=0.9770`, DART LightGBM params, and `platt_logit C=0.2`. The label builder remains `polymarket_resolved`, label version remains `polymarket_resolved_gamma_v1`, decision alignment remains T+1 delayed, and `objective.min_coverage` remains `0.70`.
+
+Execution notes: set execution edge defaults to `min_edge=0.04` and `max_buy_price=0.8`; aligned `schedule.trigger_delay_seconds=68` with systemd execution at `*:01/5:08`; added prewarm service/timer examples at `*:00/5:23`; and made `run_once.py` wait until the configured trigger delay when launched early without an explicit target window.
+
+Official command:
+
+```powershell
+rtk proxy powershell -NoProfile -Command "python scripts\model\train_model.py --cached-split-dir artifacts\data_v2\experiments\20260517_polymarket_resolved_labels_split --output-dir artifacts\data_v2\experiments\20260520_polymarket_resolved_best_blend_rebuild --config experiments\configs\20260520_polymarket_resolved_best_blend_rebuild.yaml"
+```
+
+Baseline before: selection_score `0.5657774529`, utility `0.2647295126`, accepted_sample_accuracy `0.6883933676`, accepted_count `5247`, coverage `0.7025977504`.
+
+After: selection_score `0.5732331693`, utility `0.2692822710`, accepted_sample_accuracy `0.6894667420`, accepted_count `5307`, coverage `0.7106320300`, up/down counts `2374/2933`, thresholds `0.640/0.440`.
+
+Signal coverage: `0.7106320300`.
+
+Coverage constraint satisfied: yes.
+
+Label source: `polymarket_resolved`.
+
+Target semantics: `target is Polymarket resolved outcome, not BTC OHLCV direction`.
+
+Tests:
+
+```powershell
+rtk proxy powershell -NoProfile -Command "python -m pytest -q tests/test_binary_selective_model.py tests/test_model_pipeline.py tests/test_model_artifacts.py tests/test_polymarket_resolved_training_frame.py tests/test_execution_engine.py"
+```
+
+Result: `65 passed`.
+
+Interpretation: accepted. The migrated blend improves the current Polymarket resolved validation baseline while satisfying the hard coverage constraint and using a freshly trained artifact under the current label semantics.
+
+Git commit: 49d4041

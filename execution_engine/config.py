@@ -44,7 +44,7 @@ class BinanceConfig:
 @dataclass(frozen=True)
 class ScheduleConfig:
     interval_minutes: int = 5
-    trigger_delay_seconds: int = 8
+    trigger_delay_seconds: int = 68
     max_data_wait_seconds: int = 20
     prewarm_seconds_before_trigger: int = 45
 
@@ -94,8 +94,8 @@ class OrdersConfig:
 @dataclass(frozen=True)
 class ExecutionEdgeConfig:
     enabled: bool = True
-    min_edge: float = 0.08
-    max_buy_price: float | None = 0.5
+    min_edge: float = 0.04
+    max_buy_price: float | None = 0.8
     max_spread: float | None = 0.08
     max_order_notional: float | None = 4.0
     size_to_max_notional: bool = False

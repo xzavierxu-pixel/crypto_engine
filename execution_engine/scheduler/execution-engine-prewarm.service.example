@@ -1,0 +1,11 @@
+[Unit]
+Description=Crypto Engine prewarm runtime features
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/opt/crypto_engine
+ExecStart=/home/ubuntu/opt/crypto_engine/.venv/bin/python execution_engine/prewarm.py --config execution_engine/config.yaml --cache-output artifacts/state/execution_engine/prewarm
