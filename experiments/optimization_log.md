@@ -9309,4 +9309,4 @@ Coverage constraint satisfied: yes.
 
 Interpretation: accepted as the migration baseline for the new label semantics. This result uses Polymarket resolved outcome as `target`, not BTC OHLCV direction, so it must not be compared as a same-target score against the old BTC-derived-label baseline.
 
-Git commit: c6e0e9b
+Git commit: baf069f
