@@ -679,6 +679,102 @@ def train_binary_selective_model_from_split(
     )
 
 
+def train_binary_selective_model_full_train(
+    training: TrainingFrame,
+    settings: Settings,
+    *,
+    t_up: float,
+    t_down: float,
+    weighted: bool = True,
+) -> BinarySelectiveTrainingArtifacts:
+    """Fit the deploy model on all accepted offline rows with fixed thresholds."""
+    train_frame = _with_sample_weight(training, weighted=weighted)
+    model = _fit_model(train_frame, settings, stage="binary", validation=None)
+    raw_train_proba = model.predict_proba(train_frame.X)
+    calibrator = create_calibration_plugin(settings, stage="binary")
+    calibrator.fit(raw_train_proba, train_frame.y.astype(int))
+    train_proba = calibrator.transform(raw_train_proba)
+    full_metrics = compute_selective_binary_metrics(train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down)
+    threshold_search = {
+        "selection_data": "offline_validation_artifact",
+        "objective": settings.objective.optimize_metric,
+        "min_coverage": float(settings.objective.min_coverage),
+        "fixed_thresholds": True,
+        "t_up": float(t_up),
+        "t_down": float(t_down),
+        "best": {
+            "constraint_satisfied": bool(full_metrics.get("coverage", 0.0) >= float(settings.objective.min_coverage)),
+            "fallback_reason": None,
+            "objective": str(settings.objective.optimize_metric),
+            "t_up": float(t_up),
+            "t_down": float(t_down),
+            "selection_score": float(full_metrics["selection_score"]),
+            "utility": float(full_metrics["utility"]),
+            "downside_risk": float(full_metrics["downside_risk"]),
+            "accepted_sample_accuracy": float(full_metrics["accepted_sample_accuracy"]),
+            "balanced_precision": float(full_metrics["balanced_precision"]),
+            "coverage": float(full_metrics["coverage"]),
+            "precision_up": float(full_metrics["precision_up"]),
+            "precision_down": float(full_metrics["precision_down"]),
+            "up_prediction_count": float(full_metrics["up_prediction_count"]),
+            "down_prediction_count": float(full_metrics["down_prediction_count"]),
+            "accepted_count": float(full_metrics["accepted_count"]),
+        },
+        "side_guarded_best": {
+            "constraint_satisfied": bool(full_metrics.get("coverage", 0.0) >= float(settings.objective.min_coverage)),
+            "fallback_reason": None,
+            "objective": str(settings.objective.optimize_metric),
+            "t_up": float(t_up),
+            "t_down": float(t_down),
+            "selection_score": float(full_metrics["selection_score"]),
+            "utility": float(full_metrics["utility"]),
+            "downside_risk": float(full_metrics["downside_risk"]),
+            "accepted_sample_accuracy": float(full_metrics["accepted_sample_accuracy"]),
+            "balanced_precision": float(full_metrics["balanced_precision"]),
+            "coverage": float(full_metrics["coverage"]),
+            "precision_up": float(full_metrics["precision_up"]),
+            "precision_down": float(full_metrics["precision_down"]),
+            "up_prediction_count": float(full_metrics["up_prediction_count"]),
+            "down_prediction_count": float(full_metrics["down_prediction_count"]),
+            "accepted_count": float(full_metrics["accepted_count"]),
+        },
+    }
+    frontier = pd.DataFrame.from_records([{"t_up": float(t_up), "t_down": float(t_down), **full_metrics}])
+    probability_summary = {
+        "p_up_train": _summarize_probability_series(train_proba),
+        "p_up_full_train": _summarize_probability_series(train_proba),
+        "p_up_ks": {"train_vs_validation": 0.0},
+    }
+    probability_reference = {
+        "p_up_train": _serialize_probability_reference(train_proba),
+        "p_up_full_train": _serialize_probability_reference(train_proba),
+    }
+    window = _window_summary(train_frame.frame)
+    return BinarySelectiveTrainingArtifacts(
+        model=model,
+        calibrator=calibrator,
+        feature_columns=train_frame.feature_columns,
+        t_up=float(t_up),
+        t_down=float(t_down),
+        train_metrics=full_metrics,
+        validation_metrics=full_metrics,
+        train_window=window,
+        validation_window=window,
+        threshold_search=threshold_search,
+        threshold_frontier=frontier,
+        boundary_slices=_build_boundary_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        regime_slices=_build_regime_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        feature_importance=_build_feature_importance(model, train_frame.feature_columns),
+        probability_deciles=_build_probability_deciles(train_frame.frame, train_proba),
+        false_up_slices=_build_false_side_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down, side="UP"),
+        false_down_slices=_build_false_side_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down, side="DOWN"),
+        probability_summary=probability_summary,
+        probability_reference=probability_reference,
+        base_rate=float(train_frame.y.astype(int).mean()) if not train_frame.frame.empty else 0.0,
+        weighted=weighted,
+    )
+
+
 def train_binary_selective_model(
     training: TrainingFrame,
     settings: Settings,

@@ -1,8 +1,8 @@
 baseline:
   artifact_dir: execution_engine/deploy/baseline
   settings_path: config/settings.yaml
-  model_file: lightgbm.binary.pkl
-  calibrator_file: none.binary.pkl
+  model_file: null
+  calibrator_file: null
   manifest_file: artifact_manifest.json
 
 runtime:

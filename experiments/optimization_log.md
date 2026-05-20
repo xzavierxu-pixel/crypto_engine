@@ -9405,3 +9405,81 @@ Result: `65 passed`.
 Interpretation: accepted as the current default offline artifact path.
 
 Git commit: 61ada49
+
+
+## 2026-05-20 - Polymarket resolved extended-history baseline and online full train
+
+Objective: expand the Polymarket resolved BTC 5m label history request window back to `2025-10-01`, rebuild the offline baseline with the expanded label store, then generate a separate full-data deploy artifact for `execution_engine/deploy/baseline`.
+
+Important label-store note: Gamma slug probing found no BTC 5m markets before `2025-12-18 04:25:00+00:00`, so the requested window starts at 2025-10-01 but the actual resolved label history starts at `2025-12-18 04:25:00+00:00`.
+
+Changed files/artifacts:
+- `experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml`
+- `scripts/model/train_online_full_train.py`
+- `src/model/train.py`
+- `execution_engine/config.example.yaml`
+- `execution_engine/deploy/baseline/artifact_manifest.json`
+- `execution_engine/deploy/baseline/report.json`
+- `execution_engine/deploy/baseline/metrics.json`
+- `execution_engine/deploy/baseline/catboost_lgbm_logit_blend.binary.pkl`
+- `execution_engine/deploy/baseline/platt_logit.binary.pkl`
+- `tests/test_model_pipeline.py`
+- `execution_engine/README.md`
+- `experiments/optimization_log.md`
+
+Data artifacts:
+- Label store: `artifacts/data_v2/labels/polymarket_resolved/btc_updown_5m.parquet`
+- Requested slug grid: `artifacts/data_v2/labels/polymarket_resolved/requested_btc_updown_5m_20251001_20260510.parquet`
+- Binance 1m input: `artifacts/data_v2/normalized/binance/spot/BTCUSDT/klines/BTCUSDT-1m.parquet`
+- Expanded training frame: `artifacts/data_v2/datasets/market=BTCUSDT/horizon=5m/polymarket_resolved_extended_training_frame.parquet`
+- Offline report: `artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/report.json`
+- Deploy report: `execution_engine/deploy/baseline/report.json`
+
+Config notes: copied `config/settings.yaml` to the experiment config and changed only the train-window setting from 60 days to 115 days in both `dataset.train_window_days` and `validation.train_days`. Label source, feature profile, model plugin, calibration plugin, threshold search grid, decision alignment, and `objective.min_coverage: 0.70` are unchanged between the split training and the online full-train deploy step.
+
+Label/training-frame summary:
+- Label store rows: `36763`, resolved status only, actual earliest market `2025-12-18 04:25:00+00:00`, latest `2026-05-10 23:50:00+00:00`.
+- Expanded training frame rows: `31718`, timestamp range `2025-12-18 04:25:00+00:00` to `2026-05-10 23:50:00+00:00`, feature count `1016`, feature schema QA passed with zero leakage features.
+- Split used for acceptance: development rows `24249` from `2025-12-18 04:25:00+00:00` to `2026-04-10 23:40:00+00:00`; validation rows `7468` from `2026-04-11 00:15:00+00:00` to `2026-05-10 23:50:00+00:00`.
+
+Offline baseline command:
+
+```powershell
+rtk proxy powershell -NoProfile -Command "python scripts/model/train_model.py --cached-split-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline --output-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline --config experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml --horizon 5m"
+```
+
+Offline acceptance result: selection_score `0.5748509217`, utility `0.2674076058`, downside_risk `0.4651773107`, accepted_sample_accuracy `0.6909542934`, accepted_count `5229`, coverage `0.7001874665`, up/down counts `2648/2581`, thresholds `0.620/0.415`.
+
+Previous default comparison: `current_default_polymarket_resolved` selection_score `0.5732331693`, utility `0.2692822710`, accepted_sample_accuracy `0.6894667420`, accepted_count `5307`, coverage `0.7106320300`, thresholds `0.640/0.440`.
+
+Coverage constraint satisfied: yes.
+
+Online full-train deploy command:
+
+```powershell
+rtk proxy powershell -NoProfile -Command "python scripts/model/train_online_full_train.py --cached-split-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline --accepted-artifact-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline --output-dir execution_engine/deploy/baseline --config experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml --horizon 5m"
+```
+
+Deploy artifact notes:
+- `training_mode: online_full_train`
+- `model_plugin: catboost_lgbm_logit_blend`
+- `calibration_plugin: platt_logit`
+- `t_up: 0.62`
+- `t_down: 0.415`
+- `config_hash: 344c70c6a3c1`
+- `accepted_offline_config_hash: 344c70c6a3c1`
+- Full-train rows: `31717`
+- Full-train diagnostic selection_score: `0.7523651248`
+- The deploy artifact records the accepted split score under `offline_validation_metrics`; the full-train score is in-sample and must not replace the acceptance score.
+
+Tests:
+
+```powershell
+rtk proxy powershell -NoProfile -Command "python -m pytest -q tests/test_model_pipeline.py::test_online_full_train_script_uses_accepted_thresholds_and_writes_deploy_artifacts tests/test_model_artifacts.py::test_load_binary_selective_artifacts_from_manifest_and_directory tests/test_execution_engine.py::test_execution_config_example_loads"
+```
+
+Result: `3 passed`.
+
+Interpretation: accepted as the current offline baseline and deploy artifact flow. The offline validation score improved slightly from `0.5732331693` to `0.5748509217` under the hard `coverage >= 0.70` constraint. The execution engine should use the second-stage full-train artifact in `execution_engine/deploy/baseline`, while acceptance remains tied to the split validation metrics.
+
+Git commit: pending

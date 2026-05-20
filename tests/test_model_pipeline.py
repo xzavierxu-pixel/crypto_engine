@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from scripts.model import train_model as train_model_script
+from scripts.model import train_online_full_train as online_full_train_script
 from src.core.config import load_settings
 from src.core.config import DatasetConfig
 from src.core.constants import (
@@ -259,3 +260,61 @@ def test_cached_split_dqc_uses_cached_split_source_and_current_output(tmp_path: 
     assert str(split_dir / "validation_frame.parquet") in command
     assert str(output_dir / "data_quality") in command
     assert captured["check"] is True
+
+
+def test_online_full_train_script_uses_accepted_thresholds_and_writes_deploy_artifacts(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    input_path = tmp_path / "input.csv"
+    accepted_dir = tmp_path / "accepted"
+    deploy_dir = tmp_path / "deploy"
+    _build_frame(3500).to_csv(input_path, index=False)
+    monkeypatch.setattr(train_model_script, "load_settings", lambda _path="config/settings.yaml": _unit_settings())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "train_model.py",
+            "--input",
+            str(input_path),
+            "--output-dir",
+            str(accepted_dir),
+            "--train-window-days",
+            "1",
+            "--validation-window-days",
+            "1",
+        ],
+    )
+    train_model_script.main()
+    accepted_manifest = json.loads((accepted_dir / "artifact_manifest.json").read_text(encoding="utf-8"))
+
+    monkeypatch.setattr(online_full_train_script, "load_settings", lambda _path="config/settings.yaml": _unit_settings())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "train_online_full_train.py",
+            "--cached-split-dir",
+            str(accepted_dir),
+            "--accepted-artifact-dir",
+            str(accepted_dir),
+            "--output-dir",
+            str(deploy_dir),
+        ],
+    )
+    online_full_train_script.main()
+
+    deploy_manifest = json.loads((deploy_dir / "artifact_manifest.json").read_text(encoding="utf-8"))
+    deploy_report = json.loads((deploy_dir / "report.json").read_text(encoding="utf-8"))
+    assert deploy_manifest["training_mode"] == "online_full_train"
+    assert deploy_manifest["t_up"] == accepted_manifest["t_up"]
+    assert deploy_manifest["t_down"] == accepted_manifest["t_down"]
+    assert deploy_manifest["threshold_source"]["artifact_dir"] == str(accepted_dir)
+    assert deploy_manifest["accepted_validation_window"] == accepted_manifest["validation_window"]
+    assert deploy_manifest["full_train_window"]["row_count"] == (
+        accepted_manifest["train_window"]["row_count"] + accepted_manifest["validation_window"]["row_count"]
+    )
+    assert deploy_report["offline_validation_metrics"]["selection_score"] == accepted_manifest["validation_metrics"]["selection_score"]
+    assert (deploy_dir / "lightgbm.binary.pkl").exists()
+    assert (deploy_dir / "none.binary.pkl").exists()
