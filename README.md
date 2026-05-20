@@ -1,151 +1,217 @@
 # crypto_engine
 
-Agent-oriented overview for the `crypto_engine` repo.
+Agent-oriented overview for the current `crypto_engine` repo.
 
-`crypto_engine` exists to predict the next 5-minute BTC/USDT direction from Binance 1-minute market data, then use that prediction in a separate execution layer that can place or simulate actions on Polymarket.
+`crypto_engine` predicts BTC 5-minute Polymarket UP/DOWN settlement outcomes from Binance BTCUSDT market data, then passes the calibrated decision to a separate execution layer that can paper trade, audit, or submit Polymarket orders.
 
-The repo is intentionally narrow in V1: one asset, one base timeframe, one horizon, one primary label, one shared feature pipeline, one model family baseline. The point is not to be a generic trading framework. The point is to keep training, backtesting, and live inference on the same logic so model behavior stays explainable and operationally safe.
+The repo is intentionally narrow: one asset, one base timeframe, one horizon, one primary resolved-market label, one shared feature pipeline, and one production deploy artifact. The priority is offline/online parity and reproducible validation, not a generic trading framework.
 
-> Architecture context: [docs/project_architecture_overview.md](docs/project_architecture_overview.md). Data pipeline details: [DATA_PIPELINE.md](DATA_PIPELINE.md). Working rules: [AGENTS.md](AGENTS.md). This file is the fast orientation guide for coding agents.
-
----
-
-## What this system does
-
-- Ingests BTC/USDT market history from Binance as the modeling source of truth.
-- Builds a shared feature frame and a shared label frame for both offline training and online inference.
-- Trains a binary classifier that answers: "will the 5-minute candle close above its open?"
-- Optionally calibrates model outputs and converts them into a decision.
-- Hands the final decision to a thin execution layer that submits, simulates, or audits actions for Polymarket.
-
-## What matters most for agents
-
-- This is a **shared-core prediction system** with an execution adapter, not an execution-first bot.
-- The most important invariant is parity: offline dataset construction and online inference must use the same feature and label logic.
-- Most changes should happen in `src/core/`, `src/features/`, `src/labels/`, `src/data/`, `src/model/`, or `src/services/`.
-- `src/strategies/` and `src/execution/` are downstream consumers. They should stay thin and should not invent their own BTC feature logic.
-- `config/settings.yaml` is the only place for business parameters such as thresholds, horizons, and feature settings.
+See also: [AGENTS.md](AGENTS.md), [DATA_PIPELINE.md](DATA_PIPELINE.md), [scripts/README.md](scripts/README.md), and [docs/project_architecture_overview.md](docs/project_architecture_overview.md).
 
 ---
 
-## Prediction target
+## Current Baseline
 
-$$y_t = \mathbb{1}\{\text{close}_{t_0+4m} >= \text{open}_{t_0}\}$$
+Current accepted validation baseline:
 
-- Asset: `BTC/USDT`, base timeframe `1m`, horizon `5m`.
-- `t₀` must sit on the 5-minute grid (`minute % 5 == 0`).
-- Baseline model: LightGBM (swappable: CatBoost / LogReg).
+```yaml
+experiment_id: 20260520_polymarket_resolved_extended_history_baseline
+config_path: experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml
+report_path: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/report.json
+label_source: polymarket_resolved
+model_plugin: catboost_lgbm_logit_blend
+calibration_plugin: platt_logit
+feature_count: 1016
+t_up: 0.62
+t_down: 0.415
+selection_score: 0.5748509217
+coverage: 0.7001874665
+accepted_sample_accuracy: 0.6909542934
+utility: 0.2674076058
+```
 
-## High-level flow
+Current deploy artifact:
+
+```yaml
+artifact_dir: execution_engine/deploy/baseline
+training_mode: online_full_train
+threshold_source: offline_validation
+offline_validation_selection_score: 0.5748509217
+full_train_selection_score: 0.7523651248  # diagnostic only
+```
+
+Do not compare `full_train_selection_score` against validation acceptance scores. Full-train metrics are in-sample diagnostics.
+
+---
+
+## What This System Does
+
+- Ingests BTCUSDT market history from Binance.
+- Builds a shared feature frame on 5-minute grid decision rows.
+- Joins resolved Polymarket BTC 5-minute UP/DOWN labels.
+- Trains a binary selective model with validation threshold search.
+- Retrains the accepted configuration on all split rows for deployment.
+- Loads the deploy artifact in `execution_engine` for paper, shadow, or live Polymarket execution.
+
+---
+
+## Prediction Target
+
+Current default target:
 
 ```text
-Binance 1m data
-    -> shared preprocessing and time-grid alignment
+y_t = resolved Polymarket BTC 5m UP/DOWN settlement outcome
+```
+
+Key settings:
+
+```yaml
+asset: BTC/USDT
+base_timeframe: 1m
+horizon: 5m
+label_builder: polymarket_resolved
+label_version: polymarket_resolved_gamma_v1
+label_store_path: artifacts/data_v2/labels/polymarket_resolved/btc_updown_5m.parquet
+```
+
+Historical BTC OHLCV direction, `1{close[t0 + 4m] >= open[t0]}`, is diagnostic only unless explicitly selected for an experiment.
+
+---
+
+## High-Level Flow
+
+```text
+Binance BTCUSDT 1m data
+    -> normalized Parquet
     -> shared feature builder
-    -> shared label builder
-    -> model training or live inference
-    -> calibration and decisioning
+    -> Polymarket resolved label join
+    -> chronological split training and validation threshold search
+    -> accepted thresholds and offline validation metrics
+    -> online_full_train deploy artifact
+    -> execution_engine/deploy/baseline
     -> Polymarket execution or shadow/audit output
 ```
 
-If you are changing anything that affects the meaning of the training frame, assume it can affect both historical experiments and live behavior.
+Acceptance and deployment are intentionally separate:
 
-## Non-negotiable rules (from [AGENTS.md](AGENTS.md))
+- `scripts/model/train_model.py` performs split train/validation training and threshold search. Validation is the acceptance set.
+- `scripts/model/train_online_full_train.py` retrains on development + validation rows and writes the deploy artifact.
+- The deploy manifest copies `offline_validation_metrics` from the accepted split artifact.
+- Full-train metrics are not acceptance metrics.
 
-1. Online and offline logic must be identical — share the same feature builder and label builder.
-2. All business parameters live **only** in [config/settings.yaml](config/settings.yaml).
-3. Never duplicate feature or label logic.
-4. Keep the Freqtrade strategy thin — adapter only, no business logic.
-5. Single source of truth for time grid, labels, features and schemas is `src/core/`.
-6. The execution layer must not recompute BTC features.
-7. Prefer `rtk` for shell commands (see [RTK.md](RTK.md)).
+---
 
-## Architecture (condensed)
+## Non-Negotiable Rules
 
+1. Offline and online logic must share the same feature and label builders.
+2. Business parameters live in `config/settings.yaml` or an experiment-specific config copied from it.
+3. Do not duplicate feature or label logic in scripts, execution code, or strategy adapters.
+4. Keep Freqtrade and execution adapters thin.
+5. The execution layer must not recompute BTC features.
+6. Thresholds must come from config or artifact, never hard-coded `0.5`.
+7. Validation `coverage` must be at least `0.70`; reject lower-coverage results even if `selection_score` is higher.
+8. Use `rtk` for verbose shell commands.
+
+---
+
+## Architecture
+
+```text
+config/settings.yaml
+    -> src/core/        schemas, timegrid, constants, validation
+    -> src/features/    shared FeaturePacks and registry
+    -> src/labels/      polymarket_resolved primary label, grid_direction diagnostics
+    -> src/data/        loaders, preprocessing, dataset_builder.TrainingFrame
+    -> src/model/       plugin models and training functions
+    -> src/calibration/ platt, isotonic, none
+    -> src/services/    shared signal service
+    -> execution_engine deploy/runtime adapter
 ```
-config/settings.yaml              ← single source of business parameters
-        │
-        ▼
-src/core/        schemas / timegrid / versioning / validation   (zero deps)
-src/features/    28 FeaturePacks + registry (spot, derivatives, microstructure, interactions)
-src/labels/      grid_direction (primary), abs_return, three_class_direction helpers
-src/horizons/    HorizonSpec (metadata for "5m")
-src/data/        loaders → preprocess → dataset_builder.TrainingFrame
-src/model/       plugin arch: lightgbm / catboost / logreg + train.py
-src/calibration/ platt / isotonic / none
-src/signal/      decision_engine (edge / threshold)
-src/sizing/      fixed_fraction
-src/services/    SignalService (features + model + calibration, shared online/offline)
-src/execution/   guards / idempotency / order_router / adapters/polymarket
-src/strategies/  thin Freqtrade adapter
+
+Dependency direction is one-way:
+
+```text
+core -> features/labels/horizons -> data -> model/calibration -> services -> execution/strategies
 ```
 
-Dependency direction is strictly one-way:
-`core ← features/labels/horizons ← data ← model/calibration ← services ← execution/strategies`.
+---
 
-## Where to start by task
+## Main Entry Points
 
-- Feature engineering: [src/features/base.py](src/features/base.py), [src/features/registry.py](src/features/registry.py), then the specific feature pack file.
-- Label logic: [src/labels/grid_direction.py](src/labels/grid_direction.py).
-- Dataset assembly: [src/data/](src/data/) and [scripts/data/step4_features/build_dataset.py](scripts/data/step4_features/build_dataset.py).
-- Model training and artifact persistence: [src/model/](src/model/) and [scripts/model/train_model.py](scripts/model/train_model.py).
-- Shared online inference path: [src/services/](src/services/) and [scripts/runtime/run_live_signal.py](scripts/runtime/run_live_signal.py).
-- Execution and order routing: [src/execution/](src/execution/).
-- Tests to read first: [tests/](tests/), especially the closest `test_*.py` file for the area you are touching.
-
-## Core schemas ([src/core/schemas.py](src/core/schemas.py))
-
-`Signal` · `Decision` · `MarketQuote` · `OrderRequest` · `GuardResult` · `AuditEvent` · `RiskState` — all frozen dataclasses, passed across module boundaries.
-
-## Script entry points ([scripts/](scripts/))
-
-The script directory is grouped by workflow stage. See [scripts/README.md](scripts/README.md) for the full map.
-
-| Path | Purpose |
+| Task | Path |
 |---|---|
-| `scripts/data/step1_acquire/` | Download or backfill raw market and derivatives data |
-| `scripts/data/step2_normalize/` | Normalize raw archives into stable Parquet datasets |
-| `scripts/data/step3_quality/` | Run data quality checks |
-| `scripts/data/step4_features/` | Build second-level stores and final training frames |
-| `scripts/model/train_model.py` | Train and persist model artifacts |
-| `scripts/model/run_binary_rolling_validation.py` | Walk-forward rolling validation |
-| `scripts/runtime/run_live_signal.py` | Online inference + Polymarket order submission |
-| `scripts/runtime/run_shadow.py` | Shadow mode (no orders, audit only) |
-| `scripts/experiments/` | One-off and research experiment runners |
+| Feature builder | `src/features/builder.py` |
+| Feature registry | `src/features/registry.py` |
+| Polymarket label builder | `src/labels/polymarket_resolved.py` |
+| BTC direction diagnostic label | `src/labels/grid_direction.py` |
+| Training frame assembly | `src/data/dataset_builder.py` |
+| Dataset build script | `scripts/data/step4_features/build_dataset.py` |
+| Split training and threshold search | `scripts/model/train_model.py` |
+| Full-train deploy generation | `scripts/model/train_online_full_train.py` |
+| Execution artifact loader | `execution_engine/artifacts.py` |
+| Runtime config example | `execution_engine/config.example.yaml` |
+| Execution docs | `execution_engine/README.md` |
 
-All scripts share: `--config config/settings.yaml`, `--horizon 5m`. Most accept `--input` / `--output` or `--output-dir`.
+---
 
-## Dev quickstart
+## Quick Commands
 
-```bash
-# Run tests
-rtk pytest -q
+Build the current extended training frame:
 
-# Build dataset locally
-rtk python scripts/data/step4_features/build_dataset.py \
-    --input data/raw/BTCUSDT_1m.parquet \
-    --output data/training/BTCUSDT_5m.parquet \
-    --config config/settings.yaml --horizon 5m
-
-# Train
-rtk python scripts/model/train_model.py \
-    --input data/training/BTCUSDT_5m.parquet \
-    --output-dir artifacts/models/local \
-    --config config/settings.yaml --horizon 5m
+```powershell
+rtk python scripts/data/step4_features/build_dataset.py `
+  --input artifacts/data_v2/normalized/binance/spot/BTCUSDT/klines/BTCUSDT-1m.parquet `
+  --output artifacts/data_v2/datasets/market=BTCUSDT/horizon=5m/polymarket_resolved_extended_training_frame.parquet `
+  --config config/settings.yaml `
+  --horizon 5m
 ```
 
-## Before you change code
+Run accepted split training:
 
-- Add/modify a **feature** → edit [src/features/base.py](src/features/base.py) + register in [src/features/registry.py](src/features/registry.py); bump `CORE_FEATURE_VERSION` in [src/core/constants.py](src/core/constants.py).
-- Modify a **label** → edit [src/labels/grid_direction.py](src/labels/grid_direction.py); bump `CORE_LABEL_VERSION`.
-- Add a **model** → implement the [src/model/base.py](src/model/base.py) interface and register in [src/model/registry.py](src/model/registry.py).
-- Add a **calibrator / horizon / label / execution adapter** → use the matching `*/registry.py`.
-- Change **business parameters** → edit `config/settings.yaml` only; never hard-code thresholds in code.
-- For any change: first read the matching `tests/test_*.py`, then run `rtk pytest -q` after editing.
+```powershell
+rtk python scripts/model/train_model.py `
+  --cached-split-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline `
+  --output-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline `
+  --config experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml `
+  --horizon 5m
+```
 
-## Do NOT
+Regenerate the deploy artifact:
 
-- Do NOT recompute features inside `src/strategies/` or `src/execution/`.
-- Do NOT duplicate feature/label logic in scripts — always go through `build_feature_frame` and the registered label builder.
-- Do NOT bypass `src/core/timegrid.py` grid checks.
-- Do NOT add speculative abstractions, comments, or type annotations that were not requested.
+```powershell
+rtk python scripts/model/train_online_full_train.py `
+  --cached-split-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline `
+  --accepted-artifact-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline `
+  --output-dir execution_engine/deploy/baseline `
+  --config experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml `
+  --horizon 5m
+```
+
+Run focused verification:
+
+```powershell
+rtk python -m pytest -q `
+  tests/test_model_pipeline.py::test_online_full_train_script_uses_accepted_thresholds_and_writes_deploy_artifacts `
+  tests/test_model_artifacts.py::test_load_binary_selective_artifacts_from_manifest_and_directory `
+  tests/test_execution_engine.py::test_execution_config_example_loads
+```
+
+---
+
+## Before Changing Code
+
+- Feature changes: edit the relevant `src/features/` pack, update `src/features/registry.py`, and bump `CORE_FEATURE_VERSION` when semantics change.
+- Label changes: edit the relevant `src/labels/` builder and bump `CORE_LABEL_VERSION` when semantics change.
+- Model changes: implement `src/model/base.py` and register in `src/model/registry.py`.
+- Business parameter changes: copy `config/settings.yaml` to `experiments/configs/<timestamp>_<description>.yaml` for experiments.
+- Deploy changes: regenerate `execution_engine/deploy/baseline` only after a split artifact is accepted.
+
+---
+
+## Do Not
+
+- Do not recompute BTC features inside `execution_engine` or `src/strategies`.
+- Do not silently switch labels between Polymarket resolved outcomes and BTC OHLCV direction.
+- Do not use full-train metrics as acceptance metrics.
+- Do not bypass `src/core/timegrid.py`.
+- Do not hard-code thresholds in execution code.

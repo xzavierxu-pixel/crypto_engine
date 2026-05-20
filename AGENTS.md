@@ -2,7 +2,7 @@
 
 ## Context
 
-This is an existing, complete BTC/USDT 5-minute direction prediction project. Do not treat it as a greenfield build.
+This is an existing, complete BTC/USDT 5-minute Polymarket settlement-direction project. Do not treat it as a greenfield build.
 
 Codex should improve the current system with small, measurable, low-risk changes. Do not rewrite the architecture unless clearly necessary.
 
@@ -13,6 +13,14 @@ Core architecture:
 - plugin-friendly model layer
 - separate Polymarket execution layer
 - shared core is the single source of truth
+
+Current default workflow:
+
+1. Build a BTCUSDT 1m feature frame on 5-minute grid decision rows.
+2. Join resolved Polymarket BTC 5m UP/DOWN outcomes from `artifacts/data_v2/labels/polymarket_resolved/btc_updown_5m.parquet`.
+3. Run split training with `scripts/model/train_model.py`; validation is the only acceptance set.
+4. If accepted, run `scripts/model/train_online_full_train.py` with the same config and accepted split artifact. This retrains on all split rows and writes deploy artifacts to `execution_engine/deploy/baseline`.
+5. Execution loads the deploy artifact manifest. It must not recompute BTC features.
 
 ---
 
@@ -176,7 +184,7 @@ Optimization ranking:
 - Do not silently change label, horizon, timestamp alignment, or feature semantics.
 - Do not introduce future-looking features.
 - Prefer small, local, testable changes.
-- Do not add advanced models before the LightGBM baseline is clean, tested, and evaluated.
+- Do not add new model complexity unless it is isolated, reproducible, and evaluated against the current accepted Polymarket validation baseline.
 
 ---
 
@@ -190,7 +198,7 @@ The project already supports:
 - 5m horizon
 - shared feature builders
 - shared label builders
-- LightGBM baseline
+- current production baseline: `catboost_lgbm_logit_blend` with `platt_logit`
 - unified settings file
 - model artifacts
 - inference path
@@ -199,24 +207,40 @@ The project already supports:
 
 Codex should focus on controlled optimization, validation, leakage checks, threshold tuning, reporting, and ablation.
 
-Current validation baseline:
+Current accepted validation baseline:
 
 ```yaml
-experiment_id: 20260502_balanced_precision_holdout
-config_path: experiments/configs/20260502_balanced_precision_holdout.yaml
-report_path: artifacts/data_v2/experiments/20260502_balanced_precision_holdout/report.json
+experiment_id: 20260520_polymarket_resolved_extended_history_baseline
+config_path: experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml
+report_path: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/report.json
 split_used_for_baseline: validation
-t_up: 0.56
-t_down: 0.50
-precision_up: 0.6060606061
-precision_down: 0.5193929174
-balanced_precision: 0.5627267617
-up_signal_count: 165
-down_signal_count: 2372
-total_signal_count: 2537
-signal_coverage: 0.6108836985
-overall_signal_accuracy: 0.5250295625
+t_up: 0.62
+t_down: 0.415
+selection_score: 0.5748509217
+utility: 0.2674076058
+downside_risk: 0.4651773107
+accepted_sample_accuracy: 0.6909542934
+precision_up: 0.7065709970
+precision_down: 0.6749321968
+balanced_precision: 0.6907515969
+up_prediction_count: 2648
+down_prediction_count: 2581
+accepted_count: 5229
+coverage: 0.7001874665
 coverage_constraint_satisfied: true
+```
+
+Current deploy artifact:
+
+```yaml
+artifact_dir: execution_engine/deploy/baseline
+training_mode: online_full_train
+model_plugin: catboost_lgbm_logit_blend
+calibration_plugin: platt_logit
+feature_count: 1016
+threshold_source: offline_validation
+offline_validation_selection_score: 0.5748509217
+full_train_selection_score: 0.7523651248  # diagnostic only, not acceptance
 ```
 
 ---
@@ -226,10 +250,14 @@ coverage_constraint_satisfied: true
 Do not change the current label unless explicitly instructed:
 
 ```text
-y = 1{close[t0 + 4m] >= open[t0]}
+y = resolved Polymarket BTC 5m UP/DOWN settlement outcome
+label_builder = polymarket_resolved
+label_version = polymarket_resolved_gamma_v1
 ```
 
-Do not change it to `close[t0 + 5m]`, `open[t0 + 5m]`, log return, thresholded return, or any other label automatically.
+The historical BTC OHLCV direction rule `1{close[t0 + 4m] >= open[t0]}` is no longer the default acceptance target. It may be used only as a diagnostic or explicitly requested experiment. Do not silently switch between Polymarket resolved labels and BTC OHLCV direction labels.
+
+Do not change the label to `close[t0 + 5m]`, `open[t0 + 5m]`, log return, thresholded return, BTC settlement direction, or any other label automatically.
 
 ---
 
@@ -312,6 +340,9 @@ Rules:
 - Do not keep or add a separate holdout unless explicitly requested.
 - Clearly mark validation metrics as threshold-tuned and optimistic.
 - Compare future experiments against the current validation baseline recorded in this file.
+- After acceptance, `train_online_full_train.py` may retrain on development + validation rows for deployment only.
+- Full-train metrics are in-sample diagnostics. They must not be compared against validation acceptance scores.
+- The full-train deploy manifest must copy `offline_validation_metrics` from the accepted split artifact and use those metrics for acceptance reporting.
 
 ---
 
@@ -389,6 +420,7 @@ After each experiment run, Codex must:
 3. record the feature set, thresholds, split dates, and model settings used
 4. create a git commit for the completed experiment
 5. include the commit hash in the experiment summary
+6. if a deploy artifact is regenerated, record the accepted offline artifact used as threshold source
 
 Do not overwrite the only copy of an experiment config.
 
@@ -407,6 +439,8 @@ report_path
 primary_metric
 signal_coverage
 coverage_constraint_satisfied
+deploy_training_mode
+offline_validation_metric_source
 ```
 
 A result is not considered complete unless the corresponding config and commit can reproduce it.
@@ -423,7 +457,7 @@ Example:
 
 ```yaml
 objective:
-  label: settlement_direction
+  label: polymarket_resolved_btc_updown_5m
   optimize_metric: selection_score
   min_coverage: 0.70
   tie_breaker_metric: coverage
@@ -431,21 +465,27 @@ objective:
 
 threshold_search:
   enabled: true
-  t_up_min: 0.50
-  t_up_max: 0.60
-  t_down_min: 0.40
-  t_down_max: 0.50
+  t_up_min: 0.45
+  t_up_max: 0.70
+  t_down_min: 0.30
+  t_down_max: 0.55
   step: 0.005
   enforce_min_side_share: false
   min_side_share: 0.20
-  min_up_signals: 50
-  min_down_signals: 50
-  min_total_signals: 150
+  min_up_signals: 1000
+  min_down_signals: 1000
+  min_total_signals: 4000
 
 validation:
   mode: chronological_validation
-  train_days: 30
+  train_days: 60
   validation_days: 30
+
+decision_alignment:
+  enabled: true
+  mode: delayed_feature_offset
+  feature_offset_minutes: 1
+  row_policy: delayed_1m_synthetic_decision_row
 
 signal:
   policies:
@@ -454,7 +494,10 @@ signal:
       t_down: null
 
 model:
-  active_plugin: lightgbm
+  active_plugin: catboost_lgbm_logit_blend
+
+calibration:
+  active_plugin: platt_logit
 ```
 
 Do not hardcode thresholds, horizons, feature lists, coverage limits, or label rules.
