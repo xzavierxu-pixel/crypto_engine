@@ -58,7 +58,10 @@ def build_two_limit_order_plan(
         else:
             quote_reference = float(best_ask)
             quote_source = "best_ask"
-            raw_price = min((quote_reference * leg.reference_multiplier) + leg.offset - tick_size, leg.price_cap)
+            if name == "first":
+                raw_price = min(quote_reference - tick_size, leg.price_cap)
+            else:
+                raw_price = min((quote_reference * leg.reference_multiplier) + leg.offset - tick_size, leg.price_cap)
         if leg.round_decimals is not None:
             raw_price = round(raw_price, int(leg.round_decimals))
         price = floor_to_tick(raw_price, tick_size)

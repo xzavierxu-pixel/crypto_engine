@@ -652,7 +652,7 @@ def test_two_limit_order_plan_uses_best_ask_fallback_without_best_bid() -> None:
         config.orders,
     )
 
-    assert [order.price for order in plan.orders] == [0.48, 0.11]
+    assert [order.price for order in plan.orders] == [0.47, 0.11]
     assert [order.metadata["quote_source"] for order in plan.orders] == ["best_ask", "best_ask"]
     assert plan.skipped == []
 

@@ -118,6 +118,12 @@ first_price  = max(min(best_bid + 0.01, 0.75), 0.10)
 second_price = max(min(round(0.25 * best_bid, 2), 0.20), 0.10)
 ```
 
+If the selected token has no `best_bid` but has `best_ask`, the first leg falls back to:
+
+```text
+first_price = max(min(best_ask - 0.01, 0.75), 0.10)
+```
+
 Both orders have `size = 5.0`. The lower price bound is `0.10` for both legs. Prices are floored to the configured tick size after formula evaluation and lower-bound clamping.
 
 `execution_edge.enabled` is false by default because the current workflow defines order placement after direction acceptance. Re-enabling edge guards can skip one or both configured orders and should be treated as a separate execution-policy change.
