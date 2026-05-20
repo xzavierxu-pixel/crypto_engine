@@ -102,7 +102,7 @@ def test_threshold_search_enforces_min_signal_counts() -> None:
     assert "signal-count" in str(impossible_best["fallback_reason"])
 
 
-def test_threshold_search_selection_score_uses_coverage_as_only_hard_constraint() -> None:
+def test_threshold_search_selection_score_ignores_side_share_and_signal_count_guards() -> None:
     y_true = pd.Series([1, 1, 0, 0], dtype="int64")
     probabilities = pd.Series([0.61, 0.56, 0.39, 0.44], dtype="float64")
     t_up, t_down, _, best = search_selective_binary_thresholds(
@@ -127,6 +127,45 @@ def test_threshold_search_selection_score_uses_coverage_as_only_hard_constraint(
     assert best["objective"] == "selection_score"
     assert best["constraint_satisfied"] is True
     assert best["coverage"] == 1.0
+
+
+def test_threshold_search_requires_coverage_070_and_positive_utility() -> None:
+    y_true = pd.Series([1, 1, 0, 0], dtype="int64")
+    probabilities = pd.Series([0.61, 0.56, 0.39, 0.44], dtype="float64")
+
+    _, _, _, low_coverage_best = search_selective_binary_thresholds(
+        y_true,
+        probabilities,
+        t_up_min=0.60,
+        t_up_max=0.60,
+        t_down_min=0.40,
+        t_down_max=0.40,
+        step=0.05,
+        min_coverage=0.70,
+        tie_tolerance=0.002,
+        optimize_metric="selection_score",
+    )
+
+    assert low_coverage_best["coverage"] < 0.70
+    assert low_coverage_best["constraint_satisfied"] is False
+
+    _, _, _, weak_accuracy_best = search_selective_binary_thresholds(
+        pd.Series([1, 0, 1, 0], dtype="int64"),
+        pd.Series([0.61, 0.56, 0.39, 0.44], dtype="float64"),
+        t_up_min=0.55,
+        t_up_max=0.55,
+        t_down_min=0.45,
+        t_down_max=0.45,
+        step=0.05,
+        min_coverage=0.70,
+        tie_tolerance=0.002,
+        optimize_metric="selection_score",
+    )
+
+    assert weak_accuracy_best["coverage"] >= 0.70
+    assert weak_accuracy_best["accepted_sample_accuracy"] <= 0.50
+    assert weak_accuracy_best["utility"] <= 0.0
+    assert weak_accuracy_best["constraint_satisfied"] is False
 
 
 def test_recent_split_uses_30_day_train_and_30_day_validation_windows() -> None:

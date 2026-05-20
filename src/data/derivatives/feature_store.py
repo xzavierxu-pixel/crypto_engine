@@ -251,6 +251,17 @@ def _load_archive_frame(
     resolved_archive_path = Path(archive_path)
     if not resolved_archive_path.exists():
         return None
+    if resolved_archive_path.is_file():
+        if source_name == "funding":
+            return load_funding_frame(resolved_archive_path)
+        if source_name == "basis":
+            return load_basis_frame(resolved_archive_path)
+        if source_name == "oi":
+            return load_oi_frame(resolved_archive_path)
+        if source_name == "options":
+            return load_options_frame(resolved_archive_path)
+        if source_name == "book_ticker":
+            return load_book_ticker_frame(resolved_archive_path)
     if source_name == "funding":
         return load_archive_funding_frame(resolved_archive_path, symbol=symbol)
     if source_name == "basis":

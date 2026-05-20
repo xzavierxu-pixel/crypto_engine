@@ -155,6 +155,59 @@ def _with_signal_aliases(metrics: dict) -> dict:
     return enriched
 
 
+def _label_metadata_report(frame: pd.DataFrame, settings, *, horizon_name: str, label_store_path: str | None = None) -> dict:
+    horizon_config = settings.horizons.get_active_spec(horizon_name)
+    configured_label_source = (
+        "polymarket_resolved"
+        if horizon_config.label_builder == "polymarket_resolved"
+        or str(settings.objective.label).startswith("polymarket_resolved")
+        else "btc_ohlcv_grid_direction"
+    )
+    payload = {
+        "label_source": configured_label_source,
+        "label_version": horizon_config.label_params.get("label_version"),
+        "label_store_path": label_store_path,
+        "resolved_label_count": 0,
+        "unresolved_or_missing_label_count": 0,
+        "label_mismatch_count_vs_btc_direction": 0,
+        "label_mismatch_rate_vs_btc_direction": None,
+        "polymarket_target_mean": None,
+        "coverage_constraint_min": float(settings.objective.min_coverage),
+        "target_semantics": "target is BTC OHLCV direction",
+    }
+    if configured_label_source != "polymarket_resolved" and "label_version" in frame.columns and frame["label_version"].notna().any():
+        payload["label_version"] = str(frame["label_version"].dropna().iloc[0])
+    if "label_source" in frame.columns and frame["label_source"].notna().any():
+        payload["label_source"] = str(frame["label_source"].dropna().iloc[0])
+    elif "polymarket_label_status" in frame.columns and "polymarket_slug" in frame.columns:
+        payload["label_source"] = "polymarket_resolved"
+    if "label_store_path" in frame.columns and frame["label_store_path"].notna().any():
+        payload["label_store_path"] = str(frame["label_store_path"].dropna().iloc[0])
+    if payload["label_source"] == "polymarket_resolved":
+        mismatch = frame.get("label_mismatch_vs_btc_direction", frame.get("label_mismatch"))
+        unresolved_count = (
+            int(frame["unresolved_or_missing_label_count"].dropna().iloc[0])
+            if "unresolved_or_missing_label_count" in frame.columns and frame["unresolved_or_missing_label_count"].notna().any()
+            else int(frame.attrs.get("unresolved_or_missing_label_count", 0))
+        )
+        payload.update(
+            {
+                "resolved_label_count": int(len(frame)),
+                "unresolved_or_missing_label_count": unresolved_count,
+                "label_mismatch_count_vs_btc_direction": int(mismatch.sum()) if mismatch is not None and len(mismatch) else 0,
+                "label_mismatch_rate_vs_btc_direction": float(mismatch.mean()) if mismatch is not None and len(mismatch) else None,
+                "polymarket_target_mean": float(frame["target"].mean()) if len(frame) else None,
+                "target_semantics": "target is Polymarket resolved outcome, not BTC OHLCV direction",
+            }
+        )
+    return payload
+
+
+def _configured_label_store_path(settings, horizon_name: str) -> str | None:
+    horizon = settings.horizons.get_active_spec(horizon_name)
+    return horizon.label_params.get("label_store_path")
+
+
 def main() -> None:
     _configure_logging()
     parser = argparse.ArgumentParser(description="Train the BTC 5m weighted binary selective direction model.")
@@ -307,6 +360,14 @@ def main() -> None:
     logging.info("Writing artifacts to %s", output_dir)
     train_metrics = _with_signal_aliases(artifacts.train_metrics)
     validation_metrics = _with_signal_aliases(artifacts.validation_metrics)
+    label_store_path = _configured_label_store_path(settings, args.horizon)
+    combined_training_frame = pd.concat([development.frame, validation.frame], ignore_index=True)
+    label_metadata = _label_metadata_report(
+        combined_training_frame,
+        settings,
+        horizon_name=args.horizon,
+        label_store_path=label_store_path,
+    )
     model_name = settings.model.resolve_plugin(stage="binary")
     model_path = output_dir / f"{model_name}.binary.pkl"
     calibrator_path = output_dir / f"{artifacts.calibrator.name}.binary.pkl"
@@ -347,6 +408,7 @@ def main() -> None:
         },
         "thresholds": {"t_up": artifacts.t_up, "t_down": artifacts.t_down},
         "threshold_search": artifacts.threshold_search["best"],
+        "label_metadata": label_metadata,
     }
     metrics_path.write_text(json.dumps(metrics_payload, indent=2), encoding="utf-8")
     manifest_payload = {
@@ -359,6 +421,8 @@ def main() -> None:
         "feature_columns": artifacts.feature_columns,
         "raw_metadata_feature_count": sum(1 for column in artifacts.feature_columns if column in RAW_METADATA_FEATURE_COLUMNS),
         "data_availability": _build_data_availability_report(artifacts.feature_columns, derivatives_paths),
+        **label_metadata,
+        "label_metadata": label_metadata,
         "model_plugin": model_name,
         "calibration_plugin": artifacts.calibrator.name,
         "config_hash": hash_config(settings),
@@ -434,6 +498,8 @@ def main() -> None:
         "threshold_search": artifacts.threshold_search,
         "thresholds": {"t_up": artifacts.t_up, "t_down": artifacts.t_down},
         "decision_alignment": manifest_payload["decision_alignment"],
+        **label_metadata,
+        "label_metadata": label_metadata,
         "config_hash": manifest_payload["config_hash"],
         "feature_count": manifest_payload["feature_count"],
         "feature_columns": manifest_payload["feature_columns"],

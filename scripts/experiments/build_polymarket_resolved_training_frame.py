@@ -12,6 +12,13 @@ from typing import Any
 import pandas as pd
 import requests
 
+from src.labels.polymarket_resolved import (
+    add_polymarket_slugs,
+    apply_resolved_labels,
+    label_frame_from_markets,
+    parse_json_list,
+    resolved_btc_up_label,
+)
 
 GAMMA_BASE = "https://gamma-api.polymarket.com"
 MARKETS_KEYSET_URL = f"{GAMMA_BASE}/markets/keyset"
@@ -36,21 +43,7 @@ TRAINING_AUDIT_COLUMNS = {
 
 
 def _parse_json_list(value: Any) -> list[Any] | None:
-    if value is None:
-        return None
-    if isinstance(value, list):
-        return value
-    text = str(value).strip()
-    if not text or text.lower() in {"nan", "none", "null"}:
-        return None
-    for parser in (json.loads, ast.literal_eval):
-        try:
-            parsed = parser(text)
-        except Exception:
-            continue
-        if isinstance(parsed, list):
-            return parsed
-    return None
+    return parse_json_list(value)
 
 
 def _iso_utc(ts: pd.Timestamp | datetime) -> str:
@@ -195,26 +188,8 @@ def _fetch_closed_markets_by_time_slices(
 
 
 def _resolved_btc_up_label(market: dict[str, Any], *, win_threshold: float) -> tuple[int | None, str]:
-    if not bool(market.get("closed")):
-        return None, "not_closed"
-    outcomes = _parse_json_list(market.get("outcomes"))
-    prices = _parse_json_list(market.get("outcomePrices"))
-    if not outcomes or not prices or len(outcomes) != 2 or len(prices) != 2:
-        return None, "missing_or_non_binary_outcomes"
-    try:
-        prices_f = [float(price) for price in prices]
-    except Exception:
-        return None, "bad_outcome_prices"
-    max_price = max(prices_f)
-    min_price = min(prices_f)
-    if max_price < win_threshold or min_price > (1.0 - win_threshold):
-        return None, "ambiguous_outcome_prices"
-    winner = str(outcomes[prices_f.index(max_price)]).strip().lower()
-    if "up" in winner or winner == "yes":
-        return 1, "resolved"
-    if "down" in winner or winner == "no":
-        return 0, "resolved"
-    return None, f"unknown_winner:{winner}"
+    target, status, _ = resolved_btc_up_label(market, win_threshold=win_threshold)
+    return target, status
 
 
 def _load_frames(paths: list[Path]) -> pd.DataFrame:
@@ -229,13 +204,7 @@ def _load_frames(paths: list[Path]) -> pd.DataFrame:
 
 
 def _frame_with_polymarket_slugs(frame: pd.DataFrame) -> pd.DataFrame:
-    market_t0 = pd.to_datetime(frame["market_t0"] if "market_t0" in frame.columns else frame["timestamp"], utc=True)
-    slugs = pd.Series(
-        (market_t0.astype("int64") // 10**9).map(lambda epoch: f"btc-updown-5m-{epoch}"),
-        index=frame.index,
-    )
-    enriched = frame.copy()
-    enriched["polymarket_slug"] = slugs
+    enriched = add_polymarket_slugs(frame)
     enriched["original_target"] = enriched["target"]
     return enriched
 
@@ -246,31 +215,14 @@ def _label_frame_from_markets(
     wanted_slugs: set[str],
     win_threshold: float,
 ) -> pd.DataFrame:
-    rows: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for market in markets:
-        slug = str(market.get("slug") or "")
-        if slug not in wanted_slugs or slug in seen:
-            continue
-        seen.add(slug)
-        label, status = _resolved_btc_up_label(market, win_threshold=win_threshold)
-        rows.append(
-            {
-                "polymarket_slug": slug,
-                "market_id": market.get("id"),
-                "condition_id": market.get("conditionId"),
-                "question": market.get("question"),
-                "endDate": market.get("endDate"),
-                "closedTime": market.get("closedTime"),
-                "closed": market.get("closed"),
-                "umaResolutionStatus": market.get("umaResolutionStatus"),
-                "outcomes": market.get("outcomes"),
-                "outcomePrices": market.get("outcomePrices"),
-                "polymarket_target": label,
-                "polymarket_label_status": status,
-            }
-        )
-    return pd.DataFrame(rows)
+    labels = label_frame_from_markets(
+        markets,
+        wanted_slugs=wanted_slugs,
+        win_threshold=win_threshold,
+    )
+    if "target" in labels.columns:
+        labels["polymarket_target"] = labels["target"]
+    return labels
 
 
 def _apply_resolved_labels(frame: pd.DataFrame, label_frame: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:

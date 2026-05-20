@@ -15,8 +15,17 @@ from src.data.dataset_builder import (
 from src.model.train import _build_stage1_training_frame
 
 
+def _legacy_grid_settings(settings):
+    settings.horizons.specs["5m"] = replace(
+        settings.horizons.specs["5m"],
+        label_builder="grid_direction",
+        label_params={"label_version": "settlement_direction_t0_open_to_t4_close_tie_up_v2"},
+    )
+    return settings
+
+
 def test_build_training_frame_drops_incomplete_rows_and_exposes_feature_columns() -> None:
-    base_settings = load_settings()
+    base_settings = _legacy_grid_settings(load_settings())
     settings = replace(
         base_settings,
         dataset=replace(
@@ -53,7 +62,7 @@ def test_build_training_frame_drops_incomplete_rows_and_exposes_feature_columns(
 
 
 def test_build_training_frame_respects_dataset_timerange() -> None:
-    base_settings = load_settings()
+    base_settings = _legacy_grid_settings(load_settings())
     settings = replace(base_settings, derivatives=replace(base_settings.derivatives, enabled=False))
     custom_dataset = DatasetConfig(
         train_start="2024-01-01T14:00:00Z",
@@ -83,7 +92,7 @@ def test_build_training_frame_respects_dataset_timerange() -> None:
 
 
 def test_build_training_frame_can_align_label_t0_to_feature_t1() -> None:
-    base_settings = load_settings()
+    base_settings = _legacy_grid_settings(load_settings())
     settings = replace(
         base_settings,
         dataset=replace(

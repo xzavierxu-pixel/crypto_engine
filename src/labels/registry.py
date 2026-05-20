@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from src.labels.base import LabelBuilder
 from src.labels.grid_direction import GridDirectionLabelBuilder
+from src.labels.polymarket_resolved import PolymarketResolvedLabelBuilder
 
 
 LABEL_BUILDERS: dict[str, LabelBuilder] = {
     "grid_direction": GridDirectionLabelBuilder(),
+    "polymarket_resolved": PolymarketResolvedLabelBuilder(),
 }
 
 

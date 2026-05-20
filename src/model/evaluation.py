@@ -332,7 +332,14 @@ def search_selective_binary_thresholds(
                 and record["down_prediction_count"] >= min_down_signals
                 and record["accepted_count"] >= min_total_signals
             )
-            if record["coverage"] >= min_coverage and side_share_ok and signal_counts_ok:
+            objective_quality_ok = (
+                not uses_selection_score
+                or (
+                    record["accepted_sample_accuracy"] > 0.50
+                    and record["utility"] > 0.0
+                )
+            )
+            if record["coverage"] >= min_coverage and side_share_ok and signal_counts_ok and objective_quality_ok:
                 eligible.append(record)
 
     if not records:
@@ -358,7 +365,7 @@ def search_selective_binary_thresholds(
     fallback_reason = None
     if not eligible:
         fallback_reason = (
-            "no threshold set satisfied coverage constraints"
+            "no threshold set satisfied coverage/accuracy/utility constraints"
             if uses_selection_score
             else "no threshold set satisfied coverage/side-share/signal-count constraints"
         )

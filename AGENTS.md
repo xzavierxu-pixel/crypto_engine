@@ -29,7 +29,7 @@ Score = Utility / Downside Risk
 Subject to:
 
 ```text
-coverage >= 0.40
+coverage >= 0.70
 ```
 
 Where:
@@ -43,7 +43,7 @@ Downside Risk            = sqrt(coverage * (1 - accepted_sample_accuracy))
 
 YES/NO balance, AUC, logloss, Brier, F1, and generic accuracy are diagnostics only. Do not optimize primarily for them.
 
-Reject any result where coverage falls below 0.40, even if score improves.
+Reject any result where coverage falls below 0.70, even if score improves.
 
 YES/NO balance should be recorded for diagnosis, but it is not part of the objective.
 
@@ -148,7 +148,7 @@ Minimum valid result:
 
 ```yaml
 objective:
-  min_coverage: 0.40
+  min_coverage: 0.70
 
 threshold_search:
   hard_constraint: coverage_only
@@ -335,7 +335,7 @@ If a feature cannot be built online at decision time, it must not be used offlin
 
 Prefer these before adding complex models:
 
-- threshold tuning for selection_score with coverage >= 0.40
+- threshold tuning for selection_score with coverage >= 0.70
 - validation discipline
 - feature ablation
 - feature importance review
@@ -357,7 +357,7 @@ Before changing code, state:
 metric being improved
 files affected
 reason it may improve selection_score
-how coverage >= 0.40 is preserved
+how coverage >= 0.70 is preserved
 tests or reports to verify it
 ```
 
@@ -425,7 +425,7 @@ Example:
 objective:
   label: settlement_direction
   optimize_metric: selection_score
-  min_coverage: 0.40
+  min_coverage: 0.70
   tie_breaker_metric: coverage
   balanced_precision_tie_tolerance: 0.002
 
@@ -471,7 +471,7 @@ Tests should cover:
 - threshold search
 - UP / DOWN / NO-SIGNAL decisions
 - selection_score, utility, downside_risk, and coverage calculation
-- invalid result when coverage < 0.40
+- invalid result when coverage < 0.70
 - artifact save/load and artifact thresholds
 - execution layer does not recompute features
 
@@ -502,7 +502,7 @@ A change is complete only when:
 2. labels and features remain centralized
 3. thresholds come from config or artifact
 4. selection_score, utility, accepted_sample_accuracy, signal counts, and coverage are reported
-5. coverage >= 0.40
+5. coverage >= 0.70
 6. tests pass
 7. no leakage columns are used
 8. result is compared against the previous baseline

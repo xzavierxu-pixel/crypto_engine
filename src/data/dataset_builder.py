@@ -22,6 +22,7 @@ from src.data.preprocess import drop_incomplete_samples, filter_by_timerange
 from src.features.builder import build_feature_frame
 from src.horizons.registry import get_horizon_spec
 from src.labels.abs_return import build_abs_return_frame
+from src.labels.polymarket_resolved import POLYMARKET_LABEL_AUDIT_COLUMNS
 from src.labels.registry import get_label_builder
 
 
@@ -98,6 +99,8 @@ LEAKAGE_FEATURE_COLUMNS = {
     DEFAULT_STAGE2_TARGET_COLUMN,
 }
 
+LABEL_METADATA_FEATURE_COLUMNS = set(POLYMARKET_LABEL_AUDIT_COLUMNS)
+
 
 def _decision_feature_offset(settings: Settings) -> pd.Timedelta:
     alignment = settings.decision_alignment
@@ -110,7 +113,7 @@ def _decision_feature_offset(settings: Settings) -> pd.Timedelta:
 
 
 def is_allowed_feature_column(column: str) -> bool:
-    if column in BASE_DATASET_COLUMNS or column in RAW_METADATA_FEATURE_COLUMNS:
+    if column in BASE_DATASET_COLUMNS or column in RAW_METADATA_FEATURE_COLUMNS or column in LABEL_METADATA_FEATURE_COLUMNS:
         return False
     for suffix in ("_x", "_y"):
         if column.endswith(suffix) and column[: -len(suffix)] in RAW_METADATA_FEATURE_COLUMNS:
@@ -224,7 +227,19 @@ def build_training_frame(
     label_builder = get_label_builder(horizon.label_builder)
     label_frame = label_builder.build(normalized, settings, horizon, select_grid_only=True)
 
-    label_columns = label_frame[[DEFAULT_TIMESTAMP_COLUMN, DEFAULT_TARGET_COLUMN, "label_version"]].copy()
+    label_column_names = [
+        column
+        for column in label_frame.columns
+        if column
+        in {
+            DEFAULT_TIMESTAMP_COLUMN,
+            DEFAULT_TARGET_COLUMN,
+            "label_version",
+            *LABEL_METADATA_FEATURE_COLUMNS,
+        }
+    ]
+    label_column_names = [column for column in label_column_names if column != "market_t0"]
+    label_columns = label_frame[label_column_names].copy()
     if feature_offset:
         label_columns = label_columns.rename(columns={DEFAULT_TIMESTAMP_COLUMN: "market_t0"})
         label_columns["feature_timestamp"] = pd.to_datetime(label_columns["market_t0"], utc=True) + feature_offset

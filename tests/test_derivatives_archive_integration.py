@@ -9,6 +9,7 @@ from src.core.config import load_settings
 from src.data.dataset_builder import build_training_frame
 from src.data.derivatives.feature_store import load_derivatives_frame_from_settings
 from src.services.feature_service import FeatureService
+from conftest import use_legacy_grid_5m_label
 
 
 def _write_archive_frame(path: Path, frame: pd.DataFrame) -> None:
@@ -104,7 +105,7 @@ def _build_archive_root(tmp_path: Path) -> Path:
 
 def _build_archive_settings(tmp_path: Path):
     archive_root = _build_archive_root(tmp_path)
-    settings = load_settings()
+    settings = use_legacy_grid_5m_label(load_settings())
     return replace(
         settings,
         dataset=replace(

@@ -10,6 +10,7 @@ import pandas as pd
 
 from scripts.model import train_model as train_model_script
 from src.core.config import load_settings
+from src.core.config import DatasetConfig
 from src.core.constants import (
     DEFAULT_ABS_RETURN_COLUMN,
     DEFAULT_SIGNED_RETURN_COLUMN,
@@ -35,7 +36,21 @@ def _build_frame(length: int = 2500) -> pd.DataFrame:
 
 def _unit_settings():
     settings = load_settings()
-    return replace(settings, derivatives=replace(settings.derivatives, enabled=False))
+    settings.horizons.specs["5m"] = replace(
+        settings.horizons.specs["5m"],
+        label_builder="grid_direction",
+        label_params={"label_version": "settlement_direction_t0_open_to_t4_close_tie_up_v2"},
+    )
+    return replace(
+        settings,
+        dataset=DatasetConfig(
+            train_start="2024-01-01T12:00:00Z",
+            train_end="2024-01-04T00:00:00Z",
+            strict_grid_only=True,
+            drop_incomplete_candles=True,
+        ),
+        derivatives=replace(settings.derivatives, enabled=False),
+    )
 
 
 def test_train_model_pipeline_and_roundtrip() -> None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pandas as pd
 
 from src.core.config import load_settings
@@ -9,9 +11,17 @@ from src.labels.abs_return import build_abs_return_frame
 from src.labels.grid_direction import GridDirectionLabelBuilder
 
 
+def _grid_horizon(horizon):
+    return replace(
+        horizon,
+        label_builder="grid_direction",
+        label_params={"label_version": "settlement_direction_t0_open_to_t4_close_tie_up_v2"},
+    )
+
+
 def test_grid_direction_label_uses_t0_open_and_t4_close_for_5m_market() -> None:
     settings = load_settings()
-    horizon = get_horizon_spec(settings, "5m")
+    horizon = _grid_horizon(get_horizon_spec(settings, "5m"))
     frame = pd.DataFrame(
         {
             "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=11, freq="1min"),
@@ -38,7 +48,7 @@ def test_grid_direction_label_uses_t0_open_and_t4_close_for_5m_market() -> None:
 
 def test_abs_return_uses_same_t4_close_as_5m_direction_label() -> None:
     settings = load_settings()
-    horizon = get_horizon_spec(settings, "5m")
+    horizon = _grid_horizon(get_horizon_spec(settings, "5m"))
     frame = pd.DataFrame(
         {
             "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=11, freq="1min"),
@@ -85,7 +95,7 @@ def test_grid_direction_label_supports_15m_horizon() -> None:
 
 def test_grid_direction_label_uses_pure_direction_without_threshold_multiplier() -> None:
     settings = load_settings()
-    horizon = get_horizon_spec(settings, "5m")
+    horizon = _grid_horizon(get_horizon_spec(settings, "5m"))
     frame = pd.DataFrame(
         {
             "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=10, freq="1min"),

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pandas as pd
 
 from src.core.config import load_settings
@@ -9,6 +11,15 @@ from src.services.feature_service import FeatureService
 
 def test_train_and_live_feature_paths_match_for_15m_horizon() -> None:
     settings = load_settings()
+    settings = replace(
+        settings,
+        decision_alignment=replace(
+            settings.decision_alignment,
+            enabled=False,
+            mode="exact_signal_t0",
+            feature_offset_minutes=0,
+        ),
+    )
     spot = pd.DataFrame(
         {
             "timestamp": pd.date_range("2026-01-01T00:00:00Z", periods=240, freq="1min"),

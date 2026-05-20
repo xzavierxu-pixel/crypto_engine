@@ -8,10 +8,11 @@ from src.core.config import load_settings
 from src.data.dataset_builder import build_training_frame
 from src.data.derivatives.aligner import merge_derivatives_frames
 from src.services.feature_service import FeatureService
+from conftest import use_legacy_grid_5m_label
 
 
 def test_train_and_live_feature_paths_match_with_options() -> None:
-    settings = load_settings()
+    settings = use_legacy_grid_5m_label(load_settings())
     settings = replace(
         settings,
         dataset=replace(

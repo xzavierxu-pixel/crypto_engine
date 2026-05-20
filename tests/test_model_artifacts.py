@@ -8,14 +8,25 @@ import numpy as np
 import pandas as pd
 
 from src.core.config import load_settings
+from src.core.config import DatasetConfig
 from src.data.dataset_builder import build_training_frame
 from src.model.artifacts import discover_latest_artifact_dir, load_binary_selective_artifacts
 from src.model.train import train_binary_selective_model
+from conftest import use_legacy_grid_5m_label
 
 
 def _train_artifacts():
-    settings = load_settings()
-    settings = replace(settings, derivatives=replace(settings.derivatives, enabled=False))
+    settings = use_legacy_grid_5m_label(load_settings())
+    settings = replace(
+        settings,
+        dataset=DatasetConfig(
+            train_start="2024-01-01T12:00:00Z",
+            train_end="2024-01-04T00:00:00Z",
+            strict_grid_only=True,
+            drop_incomplete_candles=True,
+        ),
+        derivatives=replace(settings.derivatives, enabled=False),
+    )
     frame = pd.DataFrame(
         {
             "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=3500, freq="1min"),

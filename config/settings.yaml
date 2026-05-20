@@ -8,7 +8,7 @@ market:
   timeframe: 1m
 
 objective:
-  label: settlement_direction
+  label: polymarket_resolved_btc_updown_5m
   optimize_metric: selection_score
   min_coverage: 0.70
   tie_breaker_metric: coverage
@@ -20,9 +20,13 @@ horizons:
     "5m":
       minutes: 5
       grid_minutes: 5
-      label_builder: grid_direction
+      label_builder: polymarket_resolved
       label_params:
-        label_version: settlement_direction_t0_open_to_t4_close_tie_up_v2
+        label_version: polymarket_resolved_gamma_v1
+        label_store_path: ./artifacts/data_v2/labels/polymarket_resolved/btc_updown_5m.parquet
+        slug_template: btc-updown-5m-{epoch}
+        unresolved_policy: drop
+        win_threshold: 0.99
       feature_profile: core_5m
       signal_policy: selective_binary_policy
       sizing_plugin: fixed_fraction

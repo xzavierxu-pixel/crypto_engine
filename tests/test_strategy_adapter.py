@@ -5,10 +5,19 @@ from types import SimpleNamespace
 import pandas as pd
 
 from src.strategies.BTCGridFreqAIStrategy import BTCGridFreqAIStrategy
+from src.core.config import load_settings
+from conftest import use_legacy_grid_5m_label
+
+
+def _legacy_strategy(**kwargs):
+    return BTCGridFreqAIStrategy(
+        settings=use_legacy_grid_5m_label(load_settings()),
+        **kwargs,
+    )
 
 
 def test_strategy_builds_freqai_columns_and_sets_grid_target() -> None:
-    strategy = BTCGridFreqAIStrategy(config={"candle_type_def": "spot"})
+    strategy = _legacy_strategy(config={"candle_type_def": "spot"})
     frame = pd.DataFrame(
         {
             "date": pd.date_range("2024-01-01T12:00:00Z", periods=30, freq="1min"),
@@ -36,7 +45,7 @@ def test_strategy_builds_freqai_columns_and_sets_grid_target() -> None:
 
 
 def test_strategy_custom_exit_matches_5m_horizon() -> None:
-    strategy = BTCGridFreqAIStrategy(config={"candle_type_def": "spot"})
+    strategy = _legacy_strategy(config={"candle_type_def": "spot"})
     trade = SimpleNamespace(open_date_utc=pd.Timestamp("2024-01-01T12:00:00Z").to_pydatetime())
 
     assert strategy.custom_exit("BTC/USDT", trade, pd.Timestamp("2024-01-01T12:04:00Z").to_pydatetime(), 0, 0) is None
@@ -44,7 +53,7 @@ def test_strategy_custom_exit_matches_5m_horizon() -> None:
 
 
 def test_strategy_populate_indicators_accepts_timestamp_alias() -> None:
-    strategy = BTCGridFreqAIStrategy(config={"candle_type_def": "spot"})
+    strategy = _legacy_strategy(config={"candle_type_def": "spot"})
     frame = pd.DataFrame(
         {
             "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=20, freq="1min"),
