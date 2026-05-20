@@ -50,6 +50,8 @@ def _unit_settings():
             drop_incomplete_candles=True,
         ),
         derivatives=replace(settings.derivatives, enabled=False),
+        model=replace(settings.model, active_plugin="lightgbm"),
+        calibration=replace(settings.calibration, active_plugin="none", plugins={}),
     )
 
 

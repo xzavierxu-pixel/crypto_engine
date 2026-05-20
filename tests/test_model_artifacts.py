@@ -26,6 +26,8 @@ def _train_artifacts():
             drop_incomplete_candles=True,
         ),
         derivatives=replace(settings.derivatives, enabled=False),
+        model=replace(settings.model, active_plugin="lightgbm"),
+        calibration=replace(settings.calibration, active_plugin="none", plugins={}),
     )
     frame = pd.DataFrame(
         {

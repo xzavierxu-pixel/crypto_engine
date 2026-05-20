@@ -9362,3 +9362,46 @@ Result: `65 passed`.
 Interpretation: accepted. The migrated blend improves the current Polymarket resolved validation baseline while satisfying the hard coverage constraint and using a freshly trained artifact under the current label semantics.
 
 Git commit: 17916c4
+
+
+## 2026-05-20 - Polymarket resolved blend promoted to default
+
+Objective: promote the accepted Polymarket resolved best blend rebuild to the default offline configuration and regenerate a canonical default artifact.
+
+Changed files/artifacts:
+- `config/settings.yaml`
+- `artifacts/data_v2/experiments/current_default_polymarket_resolved/report.json`
+- `artifacts/data_v2/experiments/current_default_polymarket_resolved/threshold_search.json`
+- `artifacts/data_v2/experiments/current_default_polymarket_resolved/artifact_manifest.json`
+
+Config notes: default model is now `catboost_lgbm_logit_blend` with `catboost_weight=0.9770`, DART LightGBM params, and `platt_logit C=0.2`. Polymarket resolved label settings, T+1 delayed decision alignment, feature profile, dataset window, and `objective.min_coverage: 0.70` are unchanged.
+
+Official command:
+
+```powershell
+rtk proxy powershell -NoProfile -Command "python scripts\model\train_model.py --cached-split-dir artifacts\data_v2\experiments\20260517_polymarket_resolved_labels_split --output-dir artifacts\data_v2\experiments\current_default_polymarket_resolved --config config\settings.yaml"
+```
+
+Baseline before: selection_score `0.5657774529`, utility `0.2647295126`, accepted_sample_accuracy `0.6883933676`, accepted_count `5247`, coverage `0.7025977504`.
+
+After: selection_score `0.5732331693`, utility `0.2692822710`, accepted_sample_accuracy `0.6894667420`, accepted_count `5307`, coverage `0.7106320300`, up/down counts `2374/2933`, thresholds `0.640/0.440`.
+
+Signal coverage: `0.7106320300`.
+
+Coverage constraint satisfied: yes.
+
+Label source: `polymarket_resolved`.
+
+Target semantics: `target is Polymarket resolved outcome, not BTC OHLCV direction`.
+
+Tests:
+
+```powershell
+rtk proxy powershell -NoProfile -Command "python -m pytest -q tests/test_binary_selective_model.py tests/test_model_pipeline.py tests/test_model_artifacts.py tests/test_polymarket_resolved_training_frame.py tests/test_execution_engine.py"
+```
+
+Result: `65 passed`.
+
+Interpretation: accepted as the current default offline artifact path.
+
+Git commit: TBD
