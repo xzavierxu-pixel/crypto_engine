@@ -9482,4 +9482,4 @@ Result: `3 passed`.
 
 Interpretation: accepted as the current offline baseline and deploy artifact flow. The offline validation score improved slightly from `0.5732331693` to `0.5748509217` under the hard `coverage >= 0.70` constraint. The execution engine should use the second-stage full-train artifact in `execution_engine/deploy/baseline`, while acceptance remains tied to the split validation metrics.
 
-Git commit: pending
+Git commit: cac386b
