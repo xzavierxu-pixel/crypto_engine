@@ -53,32 +53,36 @@ orders:
   enabled: false
   mode: paper
   first:
-    price_cap: 0.35
-    offset: 0.0
-    size: 8.0
+    price_cap: 0.75
+    offset: 0.01
+    reference_multiplier: 1.0
+    round_decimals: null
+    size: 5.0
   second:
-    price_cap: 0.3
+    price_cap: 0.20
     offset: 0.0
-    size: 0.0
-  min_price: 0.01
+    reference_multiplier: 0.25
+    round_decimals: 2
+    size: 5.0
+  min_price: 0.10
   max_price: 0.99
   tick_size_default: 0.01
   on_invalid_second_order: skip
 
 execution_edge:
-  enabled: true
+  enabled: false
   min_edge: 0.04
   max_buy_price: 0.8
   max_spread: 0.08
   max_order_notional: 4.0
-  size_to_max_notional: true
+  size_to_max_notional: false
   apply_to_first_leg: true
   apply_to_second_leg: true
 
 guards:
   require_market_accepting_orders: true
   require_best_bid: true
-  max_orders_per_window: 1
+  max_orders_per_window: 2
   enforce_idempotency: true
 
 paper_test:

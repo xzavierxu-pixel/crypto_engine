@@ -110,7 +110,7 @@ def submit_forced_order_from_runtime(
     min_price_orders = replace(
         config.orders,
         first=replace(config.orders.first, price_cap=float(config.orders.min_price), offset=0.0),
-        second=replace(config.orders.second, price_cap=0.0, offset=0.0),
+        second=replace(config.orders.second, price_cap=0.0, offset=0.0, size=0.0),
         on_invalid_second_order="skip",
     )
     plan = build_two_limit_order_plan(signal, decision, quote, min_price_orders)

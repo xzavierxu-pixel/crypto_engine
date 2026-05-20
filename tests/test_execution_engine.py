@@ -53,9 +53,18 @@ def test_execution_config_example_loads() -> None:
 
     assert config.runtime.mode == "paper"
     assert config.orders.enabled is False
-    assert config.orders.first.size == 8.0
+    assert config.baseline.model_file is None
+    assert config.baseline.calibrator_file is None
+    assert config.orders.first.price_cap == 0.75
+    assert config.orders.first.offset == 0.01
+    assert config.orders.first.reference_multiplier == 1.0
+    assert config.orders.first.size == 5.0
     assert config.orders.second.offset == 0.0
-    assert config.orders.second.size == 0.0
+    assert config.orders.second.price_cap == 0.20
+    assert config.orders.second.reference_multiplier == 0.25
+    assert config.orders.second.round_decimals == 2
+    assert config.orders.second.size == 5.0
+    assert config.orders.min_price == 0.10
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
     assert config.thresholds.t_up is None
     assert config.thresholds.t_down is None
@@ -64,11 +73,11 @@ def test_execution_config_example_loads() -> None:
     assert config.binance.agg_trade_wait_seconds == 8
     assert config.schedule.trigger_delay_seconds == 68
     assert config.schedule.prewarm_seconds_before_trigger == 45
-    assert config.execution_edge.enabled is True
+    assert config.execution_edge.enabled is False
     assert config.execution_edge.min_edge == 0.04
     assert config.execution_edge.max_buy_price == 0.8
     assert config.execution_edge.max_order_notional == 4.0
-    assert config.execution_edge.size_to_max_notional is True
+    assert config.execution_edge.size_to_max_notional is False
     assert config.paper_test.max_duration_minutes == 60
     assert config.paper_test.stop_when_pnl_gt == 25.0
 
@@ -527,16 +536,18 @@ def test_two_limit_order_plan_uses_target_token_best_bid_cap_and_offset() -> Non
         config.orders,
     )
 
-    assert [order.market_id for order in plan.orders] == ["yes-token"]
-    assert [order.price for order in plan.orders] == [0.35]
-    assert [order.size for order in plan.orders] == [8.0]
-    assert plan.skipped == [{"leg": "second", "reason": "disabled_leg", "size": 0.0}]
+    assert [order.market_id for order in plan.orders] == ["yes-token", "yes-token"]
+    assert [order.price for order in plan.orders] == [0.58, 0.14]
+    assert [order.size for order in plan.orders] == [5.0, 5.0]
+    assert [order.metadata["leg"] for order in plan.orders] == ["first", "second"]
+    assert plan.skipped == []
 
 
 def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
     config = load_execution_config("execution_engine/config.example.yaml")
+    edge_config = replace(config.execution_edge, enabled=True)
     expensive_plan = build_two_limit_order_plan(
-        _signal(0.38),
+        _signal(0.10),
         Decision(True, "YES", 0.06, "selective_binary_signal_passed", 5.0),
         MarketQuote(
             market_id="yes-token",
@@ -551,15 +562,15 @@ def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
             },
         ),
         config.orders,
-        config.execution_edge,
+        edge_config,
     )
 
     assert expensive_plan.orders == []
     assert expensive_plan.skipped[0]["reason"] == "edge_below_minimum"
-    assert expensive_plan.skipped[0]["edge"] == 0.030000000000000027
+    assert expensive_plan.skipped[0]["edge"] == -0.65
 
     high_price_orders = replace(config.orders, first=replace(config.orders.first, price_cap=0.9))
-    high_price_edge = replace(config.execution_edge, max_buy_price=0.99, size_to_max_notional=False)
+    high_price_edge = replace(edge_config, max_buy_price=0.99, size_to_max_notional=False)
     notional_plan = build_two_limit_order_plan(
         _signal(0.99),
         Decision(True, "YES", 0.45, "selective_binary_signal_passed", 5.0),
@@ -579,13 +590,15 @@ def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
         high_price_edge,
     )
 
-    assert notional_plan.orders == []
+    assert [order.metadata["leg"] for order in notional_plan.orders] == ["second"]
     assert notional_plan.skipped[0]["reason"] == "notional_above_max_order"
-    assert notional_plan.skipped[0]["notional"] == 7.2
+    assert notional_plan.skipped[0]["leg"] == "first"
+    assert notional_plan.skipped[0]["notional"] == 4.5
 
 
 def test_two_limit_order_plan_can_size_to_notional_cap() -> None:
     config = load_execution_config("execution_engine/config.example.yaml")
+    edge_config = replace(config.execution_edge, enabled=True, size_to_max_notional=True)
     plan = build_two_limit_order_plan(
         _signal(0.80),
         Decision(True, "YES", 0.30, "selective_binary_signal_passed", 5.0),
@@ -602,13 +615,13 @@ def test_two_limit_order_plan_can_size_to_notional_cap() -> None:
             },
         ),
         config.orders,
-        config.execution_edge,
+        edge_config,
     )
 
-    assert len(plan.orders) == 1
-    assert plan.orders[0].price == 0.35
-    assert plan.orders[0].size == 4.0 / 0.35
-    assert plan.orders[0].metadata["configured_size"] == 8.0
+    assert len(plan.orders) == 2
+    assert plan.orders[0].price == 0.41
+    assert plan.orders[0].size == 4.0 / 0.41
+    assert plan.orders[0].metadata["configured_size"] == 5.0
     assert plan.orders[0].metadata["size_to_max_notional"] is True
 
 
@@ -639,9 +652,28 @@ def test_two_limit_order_plan_uses_best_ask_fallback_without_best_bid() -> None:
         config.orders,
     )
 
-    assert [order.price for order in plan.orders] == [0.34]
-    assert [order.metadata["quote_source"] for order in plan.orders] == ["best_ask"]
-    assert plan.skipped == [{"leg": "second", "reason": "disabled_leg", "size": 0.0}]
+    assert [order.price for order in plan.orders] == [0.48, 0.11]
+    assert [order.metadata["quote_source"] for order in plan.orders] == ["best_ask", "best_ask"]
+    assert plan.skipped == []
+
+
+def test_two_limit_order_plan_clamps_both_legs_to_min_price() -> None:
+    config = load_execution_config("execution_engine/config.example.yaml")
+    plan = build_two_limit_order_plan(
+        _signal(),
+        Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
+        MarketQuote(
+            market_id="yes-token",
+            yes_price=0.51,
+            no_price=0.49,
+            metadata={"yes_token_id": "yes-token", "best_bid": 0.02, "tick_size": "0.01"},
+        ),
+        config.orders,
+    )
+
+    assert [order.price for order in plan.orders] == [0.10, 0.10]
+    assert [order.size for order in plan.orders] == [5.0, 5.0]
+    assert plan.skipped == []
 
 
 def test_slug_and_idempotency_key_are_window_scoped() -> None:
@@ -975,12 +1007,15 @@ orders:
   enabled: true
   mode: live
   first:
-    price_cap: 0.5
-    offset: 0.0
+    price_cap: 0.75
+    offset: 0.01
+    reference_multiplier: 1.0
     size: 5.0
   second:
-    price_cap: 0.5
-    offset: -0.1
+    price_cap: 0.2
+    offset: 0.0
+    reference_multiplier: 0.25
+    round_decimals: 2
     size: 5.0
 """,
         encoding="utf-8",
@@ -1083,7 +1118,7 @@ orders:
     assert summary["market"]["target_token_id"] == "yes-token"
     assert summary["market"]["window_start"] == "2026-05-10T12:35:00+00:00"
     assert summary["market"]["window_end"] == "2026-05-10T12:40:00+00:00"
-    assert [order["price"] for order in summary["orders"]] == [0.5, 0.4]
+    assert [order["price"] for order in summary["orders"]] == [0.58, 0.14]
     assert [order["metadata"]["leg"] for order in summary["orders"]] == ["first", "second"]
     assert len(summary["responses"]) == 2
     assert summary["skipped"] == []

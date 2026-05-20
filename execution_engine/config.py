@@ -72,9 +72,11 @@ class PolymarketConfig:
 
 @dataclass(frozen=True)
 class OrderLegConfig:
-    price_cap: float = 0.5
-    offset: float = 0.0
+    price_cap: float = 0.75
+    offset: float = 0.01
     size: float = 5.0
+    reference_multiplier: float = 1.0
+    round_decimals: int | None = None
 
 
 @dataclass(frozen=True)
@@ -83,9 +85,15 @@ class OrdersConfig:
     mode: str = "paper"
     first: OrderLegConfig = field(default_factory=OrderLegConfig)
     second: OrderLegConfig = field(
-        default_factory=lambda: OrderLegConfig(price_cap=0.5, offset=-0.1, size=5.0)
+        default_factory=lambda: OrderLegConfig(
+            price_cap=0.20,
+            offset=0.0,
+            size=5.0,
+            reference_multiplier=0.25,
+            round_decimals=2,
+        )
     )
-    min_price: float = 0.01
+    min_price: float = 0.10
     max_price: float = 0.99
     tick_size_default: float = 0.01
     on_invalid_second_order: str = "skip"
@@ -93,7 +101,7 @@ class OrdersConfig:
 
 @dataclass(frozen=True)
 class ExecutionEdgeConfig:
-    enabled: bool = True
+    enabled: bool = False
     min_edge: float = 0.04
     max_buy_price: float | None = 0.8
     max_spread: float | None = 0.08

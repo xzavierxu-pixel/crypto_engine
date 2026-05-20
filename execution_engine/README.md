@@ -77,6 +77,53 @@ baseline:
 
 ---
 
+## Default Order Policy
+
+After the model produces a tradeable direction, the default execution plan creates two limit BUY orders on the selected outcome token.
+
+For a YES signal, the selected token is the market YES token. For a NO signal, the selected token is the market NO token. Both orders use the target token `best_bid` when available.
+
+Current default order config:
+
+```yaml
+orders:
+  enabled: false
+  mode: paper
+  first:
+    price_cap: 0.75
+    offset: 0.01
+    reference_multiplier: 1.0
+    round_decimals: null
+    size: 5.0
+  second:
+    price_cap: 0.20
+    offset: 0.0
+    reference_multiplier: 0.25
+    round_decimals: 2
+    size: 5.0
+  min_price: 0.10
+  max_price: 0.99
+  tick_size_default: 0.01
+guards:
+  max_orders_per_window: 2
+execution_edge:
+  enabled: false
+  size_to_max_notional: false
+```
+
+Price formulas:
+
+```text
+first_price  = max(min(best_bid + 0.01, 0.75), 0.10)
+second_price = max(min(round(0.25 * best_bid, 2), 0.20), 0.10)
+```
+
+Both orders have `size = 5.0`. The lower price bound is `0.10` for both legs. Prices are floored to the configured tick size after formula evaluation and lower-bound clamping.
+
+`execution_edge.enabled` is false by default because the current workflow defines order placement after direction acceptance. Re-enabling edge guards can skip one or both configured orders and should be treated as a separate execution-policy change.
+
+---
+
 ## Runtime Files
 
 ```text
@@ -272,7 +319,23 @@ orders:
 
 ## Systemd Timer
 
-Use systemd timers for production scheduling. Prewarm at the 5-minute boundary, then run live execution 20 seconds later.
+Use systemd timers for production scheduling. The current production timing is a delayed decision flow:
+
+```text
+T+00:23  prewarm runtime data/cache
+T+01:08  run live execution for market window [T, T+5m)
+```
+
+This matches the current model alignment:
+
+```yaml
+decision_alignment:
+  mode: delayed_feature_offset
+  feature_offset_minutes: 1
+  row_policy: delayed_1m_synthetic_decision_row
+```
+
+For a market window starting at `T`, execution waits until after `T+1m` so the full `T` minute is closed and available. The runtime then builds a synthetic feature row at `T+1m`, while the Polymarket market slug remains the `[T, T+5m)` market.
 
 ```ini
 # /etc/systemd/system/execution-engine-prewarm.service
@@ -295,7 +358,7 @@ ExecStart=/home/ubuntu/opt/crypto_engine/.venv/bin/python execution_engine/prewa
 Description=Prewarm Crypto Engine runtime features every 5 minutes
 
 [Timer]
-OnCalendar=*-*-* *:00/5:00
+OnCalendar=*-*-* *:00/5:23
 AccuracySec=1s
 RandomizedDelaySec=0
 Persistent=false
@@ -327,7 +390,7 @@ ExecStart=/home/ubuntu/opt/crypto_engine/.venv/bin/python execution_engine/run_o
 Description=Run Crypto Engine execution cycle every 5 minutes
 
 [Timer]
-OnCalendar=*-*-* *:00/5:20
+OnCalendar=*-*-* *:01/5:08
 AccuracySec=1s
 RandomizedDelaySec=0
 Persistent=false
