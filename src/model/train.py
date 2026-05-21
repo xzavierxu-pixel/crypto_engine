@@ -86,6 +86,8 @@ class BinarySelectiveTrainingArtifacts:
     probability_deciles: pd.DataFrame
     false_up_slices: pd.DataFrame
     false_down_slices: pd.DataFrame
+    train_predictions: pd.DataFrame
+    validation_predictions: pd.DataFrame
     probability_summary: dict[str, dict[str, float]]
     probability_reference: dict[str, Any]
     base_rate: float
@@ -525,6 +527,48 @@ def _build_reversal_trend_slices(
     return pd.DataFrame.from_records(records)
 
 
+def _build_selective_prediction_frame(
+    frame: pd.DataFrame,
+    probabilities: pd.Series,
+    *,
+    t_up: float,
+    t_down: float,
+) -> pd.DataFrame:
+    p_up = probabilities.reindex(frame.index).astype("float64")
+    decisions = evaluate_selective_binary_decisions(p_up, t_up=t_up, t_down=t_down)
+    output = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(frame["timestamp"], utc=True),
+            DEFAULT_TARGET_COLUMN: frame[DEFAULT_TARGET_COLUMN].astype(int),
+            "p_up": p_up,
+            "p_down": 1.0 - p_up,
+            "decision": decisions,
+            "accepted": decisions != "ABSTAIN",
+            "predicted_side": decisions.replace({"UP": "YES", "DOWN": "NO"}),
+            "selected_t_up": float(t_up),
+            "selected_t_down": float(t_down),
+            "first_minute_return": _first_minute_return(frame),
+        },
+        index=frame.index,
+    )
+    first_minute_up = output["first_minute_return"] >= 0.0
+    output["first_minute_side"] = pd.Series(np.where(first_minute_up, "YES", "NO"), index=frame.index).mask(
+        output["first_minute_return"].isna()
+    )
+    output["resolved_side"] = pd.Series(np.where(output[DEFAULT_TARGET_COLUMN] == 1, "YES", "NO"), index=frame.index)
+    output["trend_following"] = output["first_minute_side"] == output["resolved_side"]
+    output["post_first_minute_reversal"] = ~output["trend_following"]
+    output.loc[output["first_minute_side"].isna(), ["trend_following", "post_first_minute_reversal"]] = False
+    output["correct"] = (
+        ((decisions == "UP") & (output[DEFAULT_TARGET_COLUMN] == 1))
+        | ((decisions == "DOWN") & (output[DEFAULT_TARGET_COLUMN] == 0))
+    )
+    for column in ("market_t0", "feature_timestamp", "decision_time", "grid_id", "market_grid_id"):
+        if column in frame.columns:
+            output[column] = frame[column]
+    return output.reset_index(drop=True)
+
+
 def _build_feature_importance(model: ModelPlugin, feature_columns: list[str]) -> pd.DataFrame:
     wrapped_model = getattr(model, "model", None)
     booster = getattr(wrapped_model, "booster_", None)
@@ -756,6 +800,8 @@ def train_binary_selective_model_from_split(
         probability_deciles=_build_probability_deciles(valid_frame.frame, valid_proba),
         false_up_slices=_build_false_side_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down, side="UP"),
         false_down_slices=_build_false_side_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down, side="DOWN"),
+        train_predictions=_build_selective_prediction_frame(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        validation_predictions=_build_selective_prediction_frame(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
         probability_summary=probability_summary,
         probability_reference=probability_reference,
         base_rate=float(train_frame.y.astype(int).mean()) if not train_frame.frame.empty else 0.0,
@@ -859,6 +905,8 @@ def train_binary_selective_model_full_train(
         probability_deciles=_build_probability_deciles(train_frame.frame, train_proba),
         false_up_slices=_build_false_side_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down, side="UP"),
         false_down_slices=_build_false_side_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down, side="DOWN"),
+        train_predictions=_build_selective_prediction_frame(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        validation_predictions=_build_selective_prediction_frame(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
         probability_summary=probability_summary,
         probability_reference=probability_reference,
         base_rate=float(train_frame.y.astype(int).mean()) if not train_frame.frame.empty else 0.0,

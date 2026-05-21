@@ -183,7 +183,7 @@
     "coverage_constraint_min": 0.9,
     "target_semantics": "target is Polymarket resolved outcome, not BTC OHLCV direction"
   },
-  "config_hash": "a30081acac83",
+  "config_hash": "9e7e390a0ce0",
   "feature_count": 1016,
   "feature_columns": [
     "ret_1",
@@ -1202,5 +1202,43 @@
     "downward_mid_drift",
     "positive_basis_pressure",
     "negative_basis_pressure"
-  ]
+  ],
+  "second_level_availability": {
+    "enabled": false,
+    "feature_store_path": "./artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT",
+    "feature_store_exists": false,
+    "second_level_feature_count": 0,
+    "required_existing_families": {
+      "second_level_price_slope": false,
+      "second_level_signed_dollar_flow": false,
+      "second_level_volume_burst": false,
+      "price_direction_flips_30s": false,
+      "last_second_reversal_flag": false,
+      "late_window_acceleration_flag": false,
+      "micro_ret_5s": true,
+      "micro_ret_10s": true,
+      "micro_ret_30s": true,
+      "micro_ret_60s": true,
+      "micro_rv_30s": true,
+      "taker_imbalance": true,
+      "prev_bar_taker_imbalance": true,
+      "prev_bar_taker_buy_ratio": true
+    },
+    "required_existing_families_available": false,
+    "first_minute_impulse_features": {
+      "fm_ret": false,
+      "fm_taker_imbalance": false,
+      "fm_signed_dollar_flow": false,
+      "fm_book_imbalance_last": false,
+      "fm_continuation_pressure_score": false,
+      "fm_reversal_pressure_score": false
+    },
+    "first_minute_impulse_features_available": false,
+    "require_agg_trade_through_last_second": true,
+    "max_agg_trade_lag_seconds": 2.0,
+    "offline_feature_availability": false,
+    "online_feature_availability": "requires runtime second-level store/live aggTrade audit"
+  },
+  "train_predictions_path": "train_predictions.parquet",
+  "validation_predictions_path": "validation_predictions.parquet"
 }

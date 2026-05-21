@@ -101,6 +101,8 @@ def _write_artifacts(
     probability_deciles_path = output_dir / "probability_deciles.csv"
     false_up_slices_path = output_dir / "false_up_slices.csv"
     false_down_slices_path = output_dir / "false_down_slices.csv"
+    train_predictions_path = output_dir / "train_predictions.parquet"
+    validation_predictions_path = output_dir / "validation_predictions.parquet"
     probability_reference_path = output_dir / "probability_reference.json"
 
     artifacts.model.save(model_path)
@@ -114,6 +116,8 @@ def _write_artifacts(
     artifacts.probability_deciles.to_csv(probability_deciles_path, index=False)
     artifacts.false_up_slices.to_csv(false_up_slices_path, index=False)
     artifacts.false_down_slices.to_csv(false_down_slices_path, index=False)
+    artifacts.train_predictions.to_parquet(train_predictions_path, index=False)
+    artifacts.validation_predictions.to_parquet(validation_predictions_path, index=False)
     probability_reference_path.write_text(json.dumps(artifacts.probability_reference, indent=2), encoding="utf-8")
 
     accepted_validation_window = accepted_report.get("validation_window", {})
@@ -205,6 +209,8 @@ def _write_artifacts(
         "probability_deciles_path": probability_deciles_path.name,
         "false_up_slices_path": false_up_slices_path.name,
         "false_down_slices_path": false_down_slices_path.name,
+        "train_predictions_path": train_predictions_path.name,
+        "validation_predictions_path": validation_predictions_path.name,
         "probability_summary": artifacts.probability_summary,
         "probability_reference_path": probability_reference_path.name,
         "train_metrics": train_metrics,

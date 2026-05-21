@@ -203,6 +203,58 @@ def _label_metadata_report(frame: pd.DataFrame, settings, *, horizon_name: str, 
     return payload
 
 
+def _build_second_level_availability_report(feature_columns: list[str], settings, second_level_store_path) -> dict:
+    prefixes = ("sl_", "fm_")
+    feature_set = set(feature_columns)
+    required_existing = {
+        "second_level_price_slope": any(column.startswith("sl_price_slope_") for column in feature_columns),
+        "second_level_signed_dollar_flow": any(column.startswith("sl_signed_dollar_flow") for column in feature_columns),
+        "second_level_volume_burst": "sl_volume_burst_30s" in feature_set,
+        "price_direction_flips_30s": "sl_direction_flips_30s" in feature_set,
+        "last_second_reversal_flag": "sl_last_second_reversal_flag" in feature_set,
+        "late_window_acceleration_flag": "sl_late_window_acceleration_flag" in feature_set,
+        "micro_ret_5s": "sl_return_5s" in feature_set or "micro_ret_5s" in feature_set,
+        "micro_ret_10s": "sl_return_10s" in feature_set or "micro_ret_10s" in feature_set,
+        "micro_ret_30s": "sl_return_30s" in feature_set or "micro_ret_30s" in feature_set,
+        "micro_ret_60s": "sl_return_60s" in feature_set or "micro_ret_60s" in feature_set,
+        "micro_rv_30s": "sl_rv_30s" in feature_set or "micro_rv_30s" in feature_set,
+        "taker_imbalance": "sl_taker_imbalance_30s" in feature_set or "taker_imbalance" in feature_set,
+        "prev_bar_taker_imbalance": "prev_bar_taker_imbalance" in feature_set,
+        "prev_bar_taker_buy_ratio": "prev_bar_taker_buy_ratio" in feature_set,
+    }
+    required_first_minute = [
+        "fm_ret",
+        "fm_taker_imbalance",
+        "fm_signed_dollar_flow",
+        "fm_book_imbalance_last",
+        "fm_continuation_pressure_score",
+        "fm_reversal_pressure_score",
+    ]
+    path = Path(second_level_store_path) if second_level_store_path else None
+    return {
+        "enabled": bool(settings.second_level.enabled),
+        "feature_store_path": str(second_level_store_path) if second_level_store_path else None,
+        "feature_store_exists": bool(path and path.exists()),
+        "second_level_feature_count": sum(1 for column in feature_columns if column.startswith(prefixes)),
+        "required_existing_families": required_existing,
+        "required_existing_families_available": all(required_existing.values()),
+        "first_minute_impulse_features": {
+            name: name in feature_set
+            for name in required_first_minute
+        },
+        "first_minute_impulse_features_available": all(name in feature_set for name in required_first_minute),
+        "require_agg_trade_through_last_second": bool(settings.second_level.require_agg_trade_through_last_second),
+        "max_agg_trade_lag_seconds": float(settings.second_level.max_agg_trade_lag_seconds),
+        "offline_feature_availability": bool(
+            settings.second_level.enabled
+            and path
+            and path.exists()
+            and any(column.startswith(prefixes) for column in feature_columns)
+        ),
+        "online_feature_availability": "requires runtime second-level store/live aggTrade audit",
+    }
+
+
 def _configured_label_store_path(settings, horizon_name: str) -> str | None:
     horizon = settings.horizons.get_active_spec(horizon_name)
     return horizon.label_params.get("label_store_path")
@@ -383,6 +435,8 @@ def main() -> None:
     probability_deciles_path = output_dir / "probability_deciles.csv"
     false_up_slices_path = output_dir / "false_up_slices.csv"
     false_down_slices_path = output_dir / "false_down_slices.csv"
+    train_predictions_path = output_dir / "train_predictions.parquet"
+    validation_predictions_path = output_dir / "validation_predictions.parquet"
     probability_reference_path = output_dir / "probability_reference.json"
     artifacts.model.save(model_path)
     artifacts.calibrator.save(calibrator_path)
@@ -395,6 +449,8 @@ def main() -> None:
     artifacts.probability_deciles.to_csv(probability_deciles_path, index=False)
     artifacts.false_up_slices.to_csv(false_up_slices_path, index=False)
     artifacts.false_down_slices.to_csv(false_down_slices_path, index=False)
+    artifacts.train_predictions.to_parquet(train_predictions_path, index=False)
+    artifacts.validation_predictions.to_parquet(validation_predictions_path, index=False)
     probability_reference_path.write_text(json.dumps(artifacts.probability_reference, indent=2), encoding="utf-8")
     metrics_payload = {
         "train": train_metrics,
@@ -423,6 +479,11 @@ def main() -> None:
         "feature_columns": artifacts.feature_columns,
         "raw_metadata_feature_count": sum(1 for column in artifacts.feature_columns if column in RAW_METADATA_FEATURE_COLUMNS),
         "data_availability": _build_data_availability_report(artifacts.feature_columns, derivatives_paths),
+        "second_level_availability": _build_second_level_availability_report(
+            artifacts.feature_columns,
+            settings,
+            args.second_level_feature_store or settings.second_level.feature_store_path,
+        ),
         **label_metadata,
         "label_metadata": label_metadata,
         "model_plugin": model_name,
@@ -485,6 +546,8 @@ def main() -> None:
         "probability_deciles_path": probability_deciles_path.name,
         "false_up_slices_path": false_up_slices_path.name,
         "false_down_slices_path": false_down_slices_path.name,
+        "train_predictions_path": train_predictions_path.name,
+        "validation_predictions_path": validation_predictions_path.name,
         "probability_summary": artifacts.probability_summary,
         "probability_reference_path": probability_reference_path.name,
         "train_metrics": train_metrics,
@@ -507,6 +570,9 @@ def main() -> None:
         "config_hash": manifest_payload["config_hash"],
         "feature_count": manifest_payload["feature_count"],
         "feature_columns": manifest_payload["feature_columns"],
+        "second_level_availability": manifest_payload["second_level_availability"],
+        "train_predictions_path": train_predictions_path.name,
+        "validation_predictions_path": validation_predictions_path.name,
     }
     report_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
     logging.info(
