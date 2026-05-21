@@ -378,6 +378,7 @@ def main() -> None:
     threshold_frontier_path = output_dir / "threshold_frontier.csv"
     boundary_slices_path = output_dir / "boundary_slices.csv"
     regime_slices_path = output_dir / "regime_slices.csv"
+    reversal_trend_slices_path = output_dir / "reversal_trend_slices.csv"
     feature_importance_path = output_dir / "feature_importance.csv"
     probability_deciles_path = output_dir / "probability_deciles.csv"
     false_up_slices_path = output_dir / "false_up_slices.csv"
@@ -389,6 +390,7 @@ def main() -> None:
     artifacts.threshold_frontier.to_csv(threshold_frontier_path, index=False)
     artifacts.boundary_slices.to_csv(boundary_slices_path, index=False)
     artifacts.regime_slices.to_csv(regime_slices_path, index=False)
+    artifacts.reversal_trend_slices.to_csv(reversal_trend_slices_path, index=False)
     artifacts.feature_importance.to_csv(feature_importance_path, index=False)
     artifacts.probability_deciles.to_csv(probability_deciles_path, index=False)
     artifacts.false_up_slices.to_csv(false_up_slices_path, index=False)
@@ -433,7 +435,7 @@ def main() -> None:
             "enabled": settings.second_level.enabled,
             "feature_store_path": args.second_level_feature_store or settings.second_level.feature_store_path,
             "feature_store_version": getattr(settings.second_level, "feature_store_version", None),
-            "feature_count": sum(1 for column in artifacts.feature_columns if column.startswith("sl_")),
+            "feature_count": sum(1 for column in artifacts.feature_columns if column.startswith(("sl_", "fm_"))),
         },
         "weighted": artifacts.weighted,
         "sample_weighting": settings.sample_weighting.__dict__,
@@ -478,6 +480,7 @@ def main() -> None:
         "threshold_frontier_path": threshold_frontier_path.name,
         "boundary_slices_path": boundary_slices_path.name,
         "regime_slices_path": regime_slices_path.name,
+        "reversal_trend_slices_path": reversal_trend_slices_path.name,
         "feature_importance_path": feature_importance_path.name,
         "probability_deciles_path": probability_deciles_path.name,
         "false_up_slices_path": false_up_slices_path.name,
@@ -498,6 +501,7 @@ def main() -> None:
         "threshold_search": artifacts.threshold_search,
         "thresholds": {"t_up": artifacts.t_up, "t_down": artifacts.t_down},
         "decision_alignment": manifest_payload["decision_alignment"],
+        "reversal_trend_slices_path": reversal_trend_slices_path.name,
         **label_metadata,
         "label_metadata": label_metadata,
         "config_hash": manifest_payload["config_hash"],

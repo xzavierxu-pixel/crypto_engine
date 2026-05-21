@@ -75,8 +75,10 @@ class PolymarketConfig:
 @dataclass(frozen=True)
 class OrderLegConfig:
     enabled: bool = True
+    price_mode: str = "reference_multiplier_offset_and_cap"
     price_cap: float = 0.75
     offset: float = 0.01
+    best_bid_offset: float | None = None
     size: float = 5.0
     reference_multiplier: float = 1.0
     round_decimals: int | None = None

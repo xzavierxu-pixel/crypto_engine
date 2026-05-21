@@ -5,6 +5,8 @@ import pandas as pd
 from src.data.dataset_builder import TrainingFrame
 from src.model.evaluation import (
     build_walk_forward_splits,
+    compute_reversal_trend_slice_metrics,
+    search_selective_binary_thresholds,
     compute_multiclass_classification_metrics,
     compute_stage1_coverage,
     compute_two_stage_end_to_end_metrics,
@@ -125,3 +127,45 @@ def test_purged_chronological_time_window_split_uses_tail_window() -> None:
 
 def test_summarize_walk_forward_marks_empty_results_as_disabled() -> None:
     assert summarize_walk_forward([]) == {"enabled": False, "fold_count": 0}
+
+
+def test_reversal_trend_slice_metrics_use_first_minute_side_diagnostics_only() -> None:
+    y_true = pd.Series([1, 0, 0, 1], dtype="int64")
+    probabilities = pd.Series([0.8, 0.2, 0.85, 0.15], dtype="float64")
+    first_minute_return = pd.Series([0.01, -0.01, 0.02, -0.02], dtype="float64")
+
+    metrics = compute_reversal_trend_slice_metrics(
+        y_true,
+        probabilities,
+        first_minute_return,
+        t_up=0.7,
+        t_down=0.3,
+    )
+
+    assert metrics["continuation_sample_count"] == 2.0
+    assert metrics["continuation_accepted_accuracy"] == 1.0
+    assert metrics["reversal_sample_count"] == 2.0
+    assert metrics["reversal_accepted_accuracy"] == 0.0
+    assert metrics["reversal_loss_contribution"] == 1.0
+
+
+def test_selection_threshold_search_can_use_coverage_only_hard_constraint() -> None:
+    y_true = pd.Series([1, 1, 0, 0], dtype="int64")
+    probabilities = pd.Series([0.51, 0.49, 0.52, 0.48], dtype="float64")
+
+    _, _, _, best = search_selective_binary_thresholds(
+        y_true,
+        probabilities,
+        t_up_min=0.5,
+        t_up_max=0.5,
+        t_down_min=0.5,
+        t_down_max=0.5,
+        step=0.01,
+        min_coverage=1.0,
+        tie_tolerance=0.0,
+        optimize_metric="selection_score",
+        hard_constraint="coverage_only",
+    )
+
+    assert best["constraint_satisfied"] is True
+    assert best["coverage"] == 1.0

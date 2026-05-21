@@ -69,6 +69,34 @@ def test_second_leg_can_be_enabled_explicitly() -> None:
     assert [order.metadata["leg"] for order in result.orders] == ["first", "second"]
 
 
+def test_first_leg_min_best_bid_offset_and_cap_price_mode() -> None:
+    config = OrdersConfig(
+        first=OrderLegConfig(
+            price_mode="min_best_bid_offset_and_cap",
+            best_bid_offset=-0.05,
+            price_cap=0.65,
+            size=5.0,
+        )
+    )
+
+    capped = build_two_limit_order_plan(_signal(), _decision(), _quote(), config)
+    assert capped.orders[0].price == 0.55
+
+    high_bid_quote = MarketQuote(
+        market_id="market",
+        yes_price=0.8,
+        metadata={
+            "yes_token_id": "yes-token",
+            "no_token_id": "no-token",
+            "best_bid": 0.8,
+            "best_ask": 0.82,
+            "tick_size": 0.01,
+        },
+    )
+    capped = build_two_limit_order_plan(_signal(), _decision(), high_bid_quote, config)
+    assert capped.orders[0].price == 0.65
+
+
 def test_active_artifact_selects_configured_artifact_dir(tmp_path: Path) -> None:
     config_path = tmp_path / "execution.yaml"
     config_path.write_text(

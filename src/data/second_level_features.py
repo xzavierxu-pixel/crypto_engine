@@ -1311,7 +1311,11 @@ def build_second_level_agg_feature_store(
 def sample_second_level_feature_store(decision_frame: pd.DataFrame, feature_store: pd.DataFrame) -> pd.DataFrame:
     if DEFAULT_TIMESTAMP_COLUMN not in feature_store.columns:
         raise ValueError("Second-level feature store requires a timestamp column.")
-    training_columns = [DEFAULT_TIMESTAMP_COLUMN, *[column for column in feature_store.columns if column.startswith("sl_")]]
+    feature_prefixes = ("sl_", "fm_")
+    training_columns = [
+        DEFAULT_TIMESTAMP_COLUMN,
+        *[column for column in feature_store.columns if column.startswith(feature_prefixes)],
+    ]
     store = feature_store[training_columns].copy()
     store[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(store[DEFAULT_TIMESTAMP_COLUMN], utc=True).astype("datetime64[ns, UTC]")
     decisions = decision_frame[[DEFAULT_TIMESTAMP_COLUMN]].assign(
@@ -1328,7 +1332,7 @@ def sample_second_level_feature_store(decision_frame: pd.DataFrame, feature_stor
         on=DEFAULT_TIMESTAMP_COLUMN,
         direction="backward",
     )
-    sl_columns = [column for column in sampled.columns if column.startswith("sl_")]
+    sl_columns = [column for column in sampled.columns if column.startswith(feature_prefixes)]
     if sl_columns:
         sampled[sl_columns] = sampled[sl_columns].replace([np.inf, -np.inf], np.nan).fillna(0.0)
     return sampled.set_index(decision_frame.index).reset_index(drop=True)
@@ -1356,7 +1360,7 @@ def load_sampled_second_level_features(decision_frame: pd.DataFrame, feature_sto
                 duplicate_columns = [column for column in combined.columns if column.endswith("_duplicate")]
                 if duplicate_columns:
                     combined = combined.drop(columns=duplicate_columns)
-            sl_columns = [column for column in combined.columns if column.startswith("sl_")]
+            sl_columns = [column for column in combined.columns if column.startswith(("sl_", "fm_"))]
             if sl_columns:
                 combined[sl_columns] = combined[sl_columns].replace([np.inf, -np.inf], np.nan).fillna(0.0)
             return combined.reset_index(drop=True)
@@ -1605,7 +1609,7 @@ def write_second_level_feature_store(
         "row_count": int(len(feature_store)),
         "start": str(feature_store[DEFAULT_TIMESTAMP_COLUMN].min()) if not feature_store.empty else None,
         "end": str(feature_store[DEFAULT_TIMESTAMP_COLUMN].max()) if not feature_store.empty else None,
-        "feature_count": int(sum(column.startswith("sl_") for column in feature_store.columns)),
+        "feature_count": int(sum(column.startswith(("sl_", "fm_")) for column in feature_store.columns)),
         "source_coverage_ratios": {
             column: float(feature_store[column].mean())
             for column in ("has_1s_kline", "has_agg_trade_enrichment", "has_book_ticker")
@@ -1655,7 +1659,7 @@ def _write_split_partition(
         "start": str(frame[DEFAULT_TIMESTAMP_COLUMN].min()),
         "end": str(frame[DEFAULT_TIMESTAMP_COLUMN].max()),
         "row_count": int(len(frame)),
-        "feature_count": int(sum(column.startswith("sl_") for column in frame.columns)),
+        "feature_count": int(sum(column.startswith(("sl_", "fm_")) for column in frame.columns)),
         "warmup_seconds": int(warmup_seconds),
         "store_name": store_name,
         "status": "built",
@@ -1688,7 +1692,7 @@ def _write_partitioned_manifest(
         "row_count": int(sum(item["row_count"] for item in partitions)),
         "start": partitions[0]["start"],
         "end": partitions[-1]["end"],
-        "feature_count": int(sum(column.startswith("sl_") for column in schema)),
+        "feature_count": int(sum(column.startswith(("sl_", "fm_")) for column in schema)),
         "schema": schema,
         "partitions": partitions,
     }
@@ -1753,7 +1757,7 @@ def write_partitioned_second_level_feature_store(
             if existing is not None:
                 total_rows += int(existing["row_count"])
                 schema = list(existing.pop("schema"))
-                feature_count = int(sum(column.startswith("sl_") for column in schema))
+                feature_count = int(sum(column.startswith(("sl_", "fm_")) for column in schema))
                 partitions.append(existing)
                 continue
         warm_start = chunk_start - pd.Timedelta(seconds=warmup_seconds)
@@ -1828,7 +1832,7 @@ def write_partitioned_second_level_feature_store(
         partition_dir.mkdir(parents=True, exist_ok=True)
         chunk_store.to_parquet(partition_path, index=False)
         total_rows += len(chunk_store)
-        feature_count = int(sum(column.startswith("sl_") for column in chunk_store.columns))
+        feature_count = int(sum(column.startswith(("sl_", "fm_")) for column in chunk_store.columns))
         schema = list(chunk_store.columns)
         partitions.append(
             {

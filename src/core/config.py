@@ -59,6 +59,7 @@ class ThresholdSearchConfig:
     min_up_signals: int = 50
     min_down_signals: int = 50
     min_total_signals: int = 150
+    hard_constraint: str = "coverage_and_positive_utility"
     stage1_coverage_min: float = 0.60
     stage1_coverage_max: float = 0.80
     min_active_samples: int = 25
@@ -243,6 +244,8 @@ class SecondLevelFeatureStoreConfig:
     exchange: str = "binance"
     large_trade_quantile: float = 0.95
     large_trade_window_seconds: int = 300
+    require_agg_trade_through_last_second: bool = True
+    max_agg_trade_lag_seconds: float = 2.0
     optimize_metric: str = "balanced_precision"
     profiles: dict[str, dict[str, Any]] = field(default_factory=dict)
 

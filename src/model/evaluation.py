@@ -275,6 +275,74 @@ def compute_selective_binary_metrics(
     return metrics
 
 
+def _empty_reversal_trend_metrics(prefix: str) -> dict[str, float]:
+    return {
+        f"{prefix}_sample_count": 0.0,
+        f"{prefix}_coverage": 0.0,
+        f"{prefix}_accepted_accuracy": 0.0,
+        f"{prefix}_accepted_count": 0.0,
+    }
+
+
+def compute_reversal_trend_slice_metrics(
+    y_true: pd.Series,
+    probabilities: pd.Series,
+    first_minute_return: pd.Series,
+    *,
+    t_up: float,
+    t_down: float,
+) -> dict[str, float]:
+    """Diagnostics for first-minute continuation vs post-first-minute reversal."""
+    if not (len(y_true) == len(probabilities) == len(first_minute_return)):
+        raise ValueError("y_true, probabilities, and first_minute_return must have the same length.")
+
+    y = y_true.astype(int)
+    p_up = probabilities.astype(float).clip(0.0, 1.0)
+    fm_ret = first_minute_return.astype(float)
+    known = fm_ret.notna()
+    if not bool(known.any()):
+        return {
+            **_empty_reversal_trend_metrics("continuation"),
+            **_empty_reversal_trend_metrics("reversal"),
+            "reversal_loss_contribution": 0.0,
+            "trend_following_loss_contribution": 0.0,
+        }
+
+    decisions = evaluate_selective_binary_decisions(p_up, t_up=t_up, t_down=t_down)
+    accepted = decisions != "ABSTAIN"
+    predicted_up = decisions == "UP"
+    accepted_correct = ((predicted_up == (y == 1)) & accepted)
+    first_minute_up = fm_ret >= 0.0
+    trend_following = known & (first_minute_up == (y == 1))
+    reversal = known & ~trend_following
+
+    def slice_payload(prefix: str, mask: pd.Series) -> dict[str, float]:
+        sample_count = int(mask.sum())
+        accepted_mask = mask & accepted
+        accepted_count = int(accepted_mask.sum())
+        return {
+            f"{prefix}_sample_count": float(sample_count),
+            f"{prefix}_coverage": float(accepted_count / sample_count) if sample_count else 0.0,
+            f"{prefix}_accepted_accuracy": (
+                float(accepted_correct.loc[accepted_mask].mean()) if accepted_count else 0.0
+            ),
+            f"{prefix}_accepted_count": float(accepted_count),
+        }
+
+    accepted_errors = accepted & ~accepted_correct
+    total_accepted_errors = int(accepted_errors.sum())
+    return {
+        **slice_payload("continuation", trend_following),
+        **slice_payload("reversal", reversal),
+        "reversal_loss_contribution": (
+            float((accepted_errors & reversal).sum() / total_accepted_errors) if total_accepted_errors else 0.0
+        ),
+        "trend_following_loss_contribution": (
+            float((accepted_errors & trend_following).sum() / total_accepted_errors) if total_accepted_errors else 0.0
+        ),
+    }
+
+
 def search_selective_binary_thresholds(
     y_true: pd.Series,
     probabilities: pd.Series,
@@ -292,6 +360,7 @@ def search_selective_binary_thresholds(
     min_up_signals: int = 0,
     min_down_signals: int = 0,
     min_total_signals: int = 0,
+    hard_constraint: str = "coverage_and_positive_utility",
 ) -> tuple[float, float, pd.DataFrame, dict[str, float | bool | str | None]]:
     if step <= 0:
         raise ValueError("threshold search step must be > 0.")
@@ -304,6 +373,8 @@ def search_selective_binary_thresholds(
     if metric_name not in {"balanced_precision", "selection_score"}:
         raise ValueError(f"Unsupported selective binary threshold objective '{optimize_metric}'.")
     uses_selection_score = metric_name == "selection_score"
+    if hard_constraint not in {"coverage_only", "coverage_and_positive_utility"}:
+        raise ValueError("hard_constraint must be coverage_only or coverage_and_positive_utility.")
     records: list[dict[str, float]] = []
     eligible: list[dict[str, float]] = []
     up_candidates = [round(float(value), 6) for value in np.arange(t_up_min, t_up_max + step / 2.0, step)]
@@ -334,6 +405,7 @@ def search_selective_binary_thresholds(
             )
             objective_quality_ok = (
                 not uses_selection_score
+                or hard_constraint == "coverage_only"
                 or (
                     record["accepted_sample_accuracy"] > 0.50
                     and record["utility"] > 0.0
@@ -389,6 +461,7 @@ def search_selective_binary_thresholds(
         "min_up_signals": float(min_up_signals),
         "min_down_signals": float(min_down_signals),
         "min_total_signals": float(min_total_signals),
+        "hard_constraint": hard_constraint,
     }
     return float(best["t_up"]), float(best["t_down"]), pd.DataFrame.from_records(records), best_summary
 

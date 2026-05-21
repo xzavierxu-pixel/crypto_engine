@@ -27,6 +27,7 @@ from src.model.evaluation import (
     WalkForwardFoldResult,
     compute_binary_classification_metrics,
     compute_ks_distance,
+    compute_reversal_trend_slice_metrics,
     compute_selective_binary_metrics,
     evaluate_selective_binary_decisions,
     compute_multiclass_classification_metrics,
@@ -80,6 +81,7 @@ class BinarySelectiveTrainingArtifacts:
     threshold_frontier: pd.DataFrame
     boundary_slices: pd.DataFrame
     regime_slices: pd.DataFrame
+    reversal_trend_slices: pd.DataFrame
     feature_importance: pd.DataFrame
     probability_deciles: pd.DataFrame
     false_up_slices: pd.DataFrame
@@ -457,6 +459,72 @@ def _build_regime_slices(
     return pd.DataFrame.from_records(records)
 
 
+def _first_minute_return(frame: pd.DataFrame) -> pd.Series:
+    for column in ("fm_ret", "ret_1", "prev_bar_return"):
+        if column in frame.columns:
+            return pd.to_numeric(frame[column], errors="coerce")
+    return pd.Series(np.nan, index=frame.index, dtype="float64")
+
+
+def _with_reversal_trend_metrics(
+    metrics: dict[str, Any],
+    frame: pd.DataFrame,
+    probabilities: pd.Series,
+    *,
+    t_up: float,
+    t_down: float,
+) -> dict[str, Any]:
+    enriched = dict(metrics)
+    enriched.update(
+        compute_reversal_trend_slice_metrics(
+            frame[DEFAULT_TARGET_COLUMN].astype(int),
+            probabilities.reindex(frame.index),
+            _first_minute_return(frame),
+            t_up=t_up,
+            t_down=t_down,
+        )
+    )
+    return enriched
+
+
+def _build_reversal_trend_slices(
+    frame: pd.DataFrame,
+    probabilities: pd.Series,
+    *,
+    t_up: float,
+    t_down: float,
+) -> pd.DataFrame:
+    if frame.empty:
+        return pd.DataFrame()
+    fm_ret = _first_minute_return(frame)
+    known = fm_ret.notna()
+    if not bool(known.any()):
+        return pd.DataFrame()
+    y = frame[DEFAULT_TARGET_COLUMN].astype(int)
+    first_minute_up = fm_ret >= 0.0
+    buckets = pd.Series("post_first_minute_reversal", index=frame.index, dtype="object")
+    buckets.loc[first_minute_up == (y == 1)] = "trend_following"
+    buckets.loc[~known] = "unknown"
+    records: list[dict[str, Any]] = []
+    for bucket_name in ["trend_following", "post_first_minute_reversal"]:
+        mask = buckets == bucket_name
+        if not bool(mask.any()):
+            continue
+        metrics = compute_selective_binary_metrics(
+            frame.loc[mask, DEFAULT_TARGET_COLUMN],
+            probabilities.loc[mask],
+            t_up=t_up,
+            t_down=t_down,
+        )
+        decisions = evaluate_selective_binary_decisions(probabilities.loc[mask], t_up=t_up, t_down=t_down)
+        false_positive_count = int(
+            (((decisions == "UP") & (frame.loc[mask, DEFAULT_TARGET_COLUMN].astype(int) == 0))
+            | ((decisions == "DOWN") & (frame.loc[mask, DEFAULT_TARGET_COLUMN].astype(int) == 1))).sum()
+        )
+        records.append({"slice": bucket_name, "false_positive_count": false_positive_count, **metrics})
+    return pd.DataFrame.from_records(records)
+
+
 def _build_feature_importance(model: ModelPlugin, feature_columns: list[str]) -> pd.DataFrame:
     wrapped_model = getattr(model, "model", None)
     booster = getattr(wrapped_model, "booster_", None)
@@ -601,6 +669,7 @@ def train_binary_selective_model_from_split(
         min_up_signals=search.min_up_signals,
         min_down_signals=search.min_down_signals,
         min_total_signals=search.min_total_signals,
+        hard_constraint=search.hard_constraint,
     )
     guarded_t_up, guarded_t_down, _, guarded_best = search_selective_binary_thresholds(
         valid_frame.y.astype(int),
@@ -618,9 +687,22 @@ def train_binary_selective_model_from_split(
         min_up_signals=search.min_up_signals,
         min_down_signals=search.min_down_signals,
         min_total_signals=search.min_total_signals,
+        hard_constraint=search.hard_constraint,
     )
-    train_metrics = compute_selective_binary_metrics(train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down)
-    validation_metrics = compute_selective_binary_metrics(valid_frame.y.astype(int), valid_proba, t_up=t_up, t_down=t_down)
+    train_metrics = _with_reversal_trend_metrics(
+        compute_selective_binary_metrics(train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down),
+        train_frame.frame,
+        train_proba,
+        t_up=t_up,
+        t_down=t_down,
+    )
+    validation_metrics = _with_reversal_trend_metrics(
+        compute_selective_binary_metrics(valid_frame.y.astype(int), valid_proba, t_up=t_up, t_down=t_down),
+        valid_frame.frame,
+        valid_proba,
+        t_up=t_up,
+        t_down=t_down,
+    )
     threshold_search = {
         "selection_data": "validation",
         "objective": settings.objective.optimize_metric,
@@ -638,6 +720,7 @@ def train_binary_selective_model_from_split(
         "min_up_signals": search.min_up_signals,
         "min_down_signals": search.min_down_signals,
         "min_total_signals": search.min_total_signals,
+        "hard_constraint": search.hard_constraint,
         "best": best,
         "side_guarded_best": {
             **guarded_best,
@@ -668,6 +751,7 @@ def train_binary_selective_model_from_split(
         threshold_frontier=frontier,
         boundary_slices=_build_boundary_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
         regime_slices=_build_regime_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
+        reversal_trend_slices=_build_reversal_trend_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
         feature_importance=_build_feature_importance(model, train_frame.feature_columns),
         probability_deciles=_build_probability_deciles(valid_frame.frame, valid_proba),
         false_up_slices=_build_false_side_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down, side="UP"),
@@ -694,7 +778,13 @@ def train_binary_selective_model_full_train(
     calibrator = create_calibration_plugin(settings, stage="binary")
     calibrator.fit(raw_train_proba, train_frame.y.astype(int))
     train_proba = calibrator.transform(raw_train_proba)
-    full_metrics = compute_selective_binary_metrics(train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down)
+    full_metrics = _with_reversal_trend_metrics(
+        compute_selective_binary_metrics(train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down),
+        train_frame.frame,
+        train_proba,
+        t_up=t_up,
+        t_down=t_down,
+    )
     threshold_search = {
         "selection_data": "offline_validation_artifact",
         "objective": settings.objective.optimize_metric,
@@ -764,6 +854,7 @@ def train_binary_selective_model_full_train(
         threshold_frontier=frontier,
         boundary_slices=_build_boundary_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
         regime_slices=_build_regime_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        reversal_trend_slices=_build_reversal_trend_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
         feature_importance=_build_feature_importance(model, train_frame.feature_columns),
         probability_deciles=_build_probability_deciles(train_frame.frame, train_proba),
         false_up_slices=_build_false_side_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down, side="UP"),

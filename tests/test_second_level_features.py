@@ -226,6 +226,40 @@ def test_second_level_feature_store_uses_kline_backbone_and_samples_backward() -
     assert sampled.loc[0, "timestamp"] == pd.Timestamp("2024-01-01T00:00:04.500Z")
 
 
+def test_first_minute_impulse_feature_pack_is_available_from_second_level_store() -> None:
+    rows = 90
+    kline = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T00:00:00Z", periods=rows, freq="1s"),
+            "open": [100.0 + index * 0.01 for index in range(rows)],
+            "high": [100.05 + index * 0.01 for index in range(rows)],
+            "low": [99.95 + index * 0.01 for index in range(rows)],
+            "close": [100.02 + index * 0.01 for index in range(rows)],
+            "volume": [10.0 + (index % 3) for index in range(rows)],
+            "quote_volume": [1000.0 + index for index in range(rows)],
+            "trade_count": [2 for _ in range(rows)],
+            "taker_buy_base_volume": [6.0 for _ in range(rows)],
+            "taker_buy_quote_volume": [600.0 for _ in range(rows)],
+        }
+    )
+    profile = SecondLevelFeatureProfile(
+        packs=[
+            "second_level_momentum",
+            "second_level_trade_microstructure",
+            "second_level_first_minute_impulse",
+        ]
+    )
+
+    store = build_second_level_feature_store(kline_frame=kline, feature_profile=profile)
+    decisions = pd.DataFrame({"timestamp": pd.to_datetime(["2024-01-01T00:01:00Z"], utc=True)})
+    sampled = sample_second_level_feature_store(decisions, store)
+
+    assert "fm_ret" in sampled.columns
+    assert "fm_taker_imbalance" in sampled.columns
+    assert "fm_continuation_pressure_score" in sampled.columns
+    assert sampled.loc[0, "fm_ret"] > 0.0
+
+
 def test_sample_second_level_feature_store_normalizes_timestamp_resolution() -> None:
     decisions = pd.DataFrame(
         {

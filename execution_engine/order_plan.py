@@ -57,7 +57,14 @@ def build_two_limit_order_plan(
         if best_bid is not None:
             quote_reference = float(best_bid)
             quote_source = "best_bid"
-            raw_price = min((quote_reference * leg.reference_multiplier) + leg.offset, leg.price_cap)
+            if leg.price_mode == "min_best_bid_offset_and_cap":
+                offset = leg.best_bid_offset if leg.best_bid_offset is not None else leg.offset
+                raw_price = min(quote_reference + float(offset), leg.price_cap)
+            elif leg.price_mode == "reference_multiplier_offset_and_cap":
+                raw_price = min((quote_reference * leg.reference_multiplier) + leg.offset, leg.price_cap)
+            else:
+                skipped.append({"leg": name, "reason": "unsupported_price_mode", "price_mode": leg.price_mode})
+                continue
         else:
             quote_reference = float(best_ask)
             quote_source = "best_ask"
