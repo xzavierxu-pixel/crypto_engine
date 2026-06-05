@@ -219,6 +219,8 @@ def build_audit(repo_root: Path, *, min_coverage: float = 0.90) -> dict[str, Any
     feature_validation = _metric_section_audit(feature_report, "validation_metrics", min_coverage)
     baseline_replay_0515 = _replay_audit(replay_0515, min_coverage)
     baseline_replay_0520 = _replay_audit(replay_0520, min_coverage)
+    feature_replay_0515_audit = _replay_audit(feature_replay_0515, min_coverage)
+    feature_replay_0520_audit = _replay_audit(feature_replay_0520, min_coverage)
     feature_config = _feature_config_audit(feature_config_path, min_coverage)
     execution_config = _execution_config_audit(repo_root / "execution_engine/config.yaml")
     normalized_range = _timestamp_range(normalized_1m)
@@ -237,8 +239,8 @@ def build_audit(repo_root: Path, *, min_coverage: float = 0.90) -> dict[str, Any
         "polymarket_training_frame_range": training_frame_range,
         "baseline_replay_20260515": baseline_replay_0515,
         "baseline_replay_20260520": baseline_replay_0520,
-        "new_feature_replay_20260515": _path_status(feature_replay_0515),
-        "new_feature_replay_20260520": _path_status(feature_replay_0520),
+        "new_feature_replay_20260515": feature_replay_0515_audit,
+        "new_feature_replay_20260520": feature_replay_0520_audit,
         "baseline_reversal_diagnostics": _path_status(diagnostics_path),
         "execution_config": execution_config,
     }
@@ -289,19 +291,28 @@ def build_audit(repo_root: Path, *, min_coverage: float = 0.90) -> dict[str, Any
         _prd_check(
             "mandatory_replay_windows_feature",
             "Report mandatory new feature replay windows for 2026-05-15/16 and 2026-05-20/21.",
-            "passed" if feature_replay_0515.exists() and feature_replay_0520.exists() else "missing",
-            {"20260515": _path_status(feature_replay_0515), "20260520": _path_status(feature_replay_0520)},
+            "passed" if feature_replay_0515_audit["exists"] and feature_replay_0520_audit["exists"] else "missing",
+            {"20260515": feature_replay_0515_audit, "20260520": feature_replay_0520_audit},
         ),
         _prd_check(
             "replay_coverage_gate",
-            "Replay reports should be evaluated against coverage >= 0.90 and include reversal/trend availability.",
+            "Baseline and new feature replay reports should be evaluated against coverage >= 0.90 and include reversal/trend availability.",
             "passed"
             if baseline_replay_0515.get("passed")
             and baseline_replay_0520.get("passed")
+            and feature_replay_0515_audit.get("passed")
+            and feature_replay_0520_audit.get("passed")
             and baseline_replay_0515.get("reversal_trend_metrics_available")
             and baseline_replay_0520.get("reversal_trend_metrics_available")
+            and feature_replay_0515_audit.get("reversal_trend_metrics_available")
+            and feature_replay_0520_audit.get("reversal_trend_metrics_available")
             else "incomplete",
-            {"20260515": baseline_replay_0515, "20260520": baseline_replay_0520},
+            {
+                "baseline_20260515": baseline_replay_0515,
+                "baseline_20260520": baseline_replay_0520,
+                "feature_20260515": feature_replay_0515_audit,
+                "feature_20260520": feature_replay_0520_audit,
+            },
         ),
         _prd_check(
             "local_data_replay_coverage",
@@ -325,6 +336,9 @@ def build_audit(repo_root: Path, *, min_coverage: float = 0.90) -> dict[str, Any
     if not checks["new_feature_replay_20260515"]["exists"] or not checks["new_feature_replay_20260520"]["exists"]:
         missing_or_blocked.append("new feature replay-window reports are missing")
     for name in ("baseline_replay_20260515", "baseline_replay_20260520"):
+        if checks[name].get("exists") and not checks[name].get("coverage_constraint_satisfied"):
+            missing_or_blocked.append(f"{name} coverage is below {min_coverage}")
+    for name in ("new_feature_replay_20260515", "new_feature_replay_20260520"):
         if checks[name].get("exists") and not checks[name].get("coverage_constraint_satisfied"):
             missing_or_blocked.append(f"{name} coverage is below {min_coverage}")
     if normalized_range.get("end") and normalized_range["end"] < "2026-05-21T00:23:40+00:00":

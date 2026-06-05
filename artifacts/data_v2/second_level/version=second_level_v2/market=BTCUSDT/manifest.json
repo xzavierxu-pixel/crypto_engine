@@ -1,0 +1,55 @@
+{
+  "created_at": "2026-05-21T07:46:14.379491+00:00",
+  "partition_frequency": "daily",
+  "row_count": 20046601,
+  "source_manifest": {
+    "data_root": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2",
+    "feature_packs": [
+      "second_level_momentum",
+      "second_level_volatility",
+      "second_level_volume",
+      "second_level_candle_structure",
+      "second_level_path_structure",
+      "second_level_trade_microstructure",
+      "second_level_book_microstructure",
+      "second_level_depth",
+      "second_level_cross_market",
+      "second_level_interaction_bank",
+      "second_level_first_minute_impulse",
+      "second_level_lagged"
+    ],
+    "feature_profile": "expanded_v2",
+    "source_paths": {
+      "agg_trades": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\normalized\\binance\\spot\\BTCUSDT\\aggTrades",
+      "book_ticker": null,
+      "depth": null,
+      "eth_kline_1s": null,
+      "kline_1s": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\normalized\\spot\\klines\\BTCUSDT-1s.parquet",
+      "perp_book_ticker": null,
+      "perp_kline_1s": null
+    },
+    "source_precedence": {
+      "canonical_price_volume_flow": "1s_klines",
+      "cross_market": "perp 1s klines",
+      "crypto_beta": "ETH 1s klines",
+      "depth_state": "depth snapshots",
+      "event_structure": "aggTrades",
+      "liquidity_state": "bookTicker"
+    }
+  },
+  "split_stores": {
+    "second_features_agg": {
+      "feature_count": 191,
+      "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\second_level\\version=second_level_v2\\market=BTCUSDT\\second_features_agg",
+      "row_count": 20046601
+    },
+    "second_features_kline": {
+      "feature_count": 598,
+      "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\second_level\\version=second_level_v2\\market=BTCUSDT\\second_features_kline",
+      "row_count": 20046601
+    }
+  },
+  "store_name": "second_features_split",
+  "version": "second_level_v2",
+  "warmup_seconds": 300
+}

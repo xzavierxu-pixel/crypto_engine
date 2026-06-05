@@ -1,0 +1,170 @@
+[
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\monthly\\2025-10\\BTCUSDT-aggTrades-2025-10.csv",
+    "returncode": 0,
+    "stdout_tail": "sion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\monthly\\\\2025-10\\\\BTCUSDT-aggTrades-2025-10.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 31,\n  \"row_count\": 40278525,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\monthly\\2025-11\\BTCUSDT-aggTrades-2025-11.csv",
+    "returncode": 0,
+    "stdout_tail": "sion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\monthly\\\\2025-11\\\\BTCUSDT-aggTrades-2025-11.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 30,\n  \"row_count\": 41439366,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\monthly\\2025-12\\BTCUSDT-aggTrades-2025-12.csv",
+    "returncode": 0,
+    "stdout_tail": "sion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\monthly\\\\2025-12\\\\BTCUSDT-aggTrades-2025-12.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 31,\n  \"row_count\": 33782084,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\monthly\\2026-01\\BTCUSDT-aggTrades-2026-01.csv",
+    "returncode": 0,
+    "stdout_tail": "sion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\monthly\\\\2026-01\\\\BTCUSDT-aggTrades-2026-01.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 31,\n  \"row_count\": 30712691,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\monthly\\2026-02\\BTCUSDT-aggTrades-2026-02.csv",
+    "returncode": 0,
+    "stdout_tail": "sion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\monthly\\\\2026-02\\\\BTCUSDT-aggTrades-2026-02.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 28,\n  \"row_count\": 52474665,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\monthly\\2026-03\\BTCUSDT-aggTrades-2026-03.csv",
+    "returncode": 0,
+    "stdout_tail": "sion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\monthly\\\\2026-03\\\\BTCUSDT-aggTrades-2026-03.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 31,\n  \"row_count\": 38348867,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\monthly\\2026-04\\BTCUSDT-aggTrades-2026-04.csv",
+    "returncode": 0,
+    "stdout_tail": "sion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\monthly\\\\2026-04\\\\BTCUSDT-aggTrades-2026-04.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 30,\n  \"row_count\": 26148925,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-01\\BTCUSDT-aggTrades-2026-05-01.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-01\\\\BTCUSDT-aggTrades-2026-05-01.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 729082,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-02\\BTCUSDT-aggTrades-2026-05-02.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-02\\\\BTCUSDT-aggTrades-2026-05-02.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 313266,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-03\\BTCUSDT-aggTrades-2026-05-03.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-03\\\\BTCUSDT-aggTrades-2026-05-03.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 399735,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-04\\BTCUSDT-aggTrades-2026-05-04.csv",
+    "returncode": 0,
+    "stdout_tail": "on1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-04\\\\BTCUSDT-aggTrades-2026-05-04.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 1109137,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-05\\BTCUSDT-aggTrades-2026-05-05.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-05\\\\BTCUSDT-aggTrades-2026-05-05.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 737165,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-06\\BTCUSDT-aggTrades-2026-05-06.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-06\\\\BTCUSDT-aggTrades-2026-05-06.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 838196,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-07\\BTCUSDT-aggTrades-2026-05-07.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-07\\\\BTCUSDT-aggTrades-2026-05-07.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 744335,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-08\\BTCUSDT-aggTrades-2026-05-08.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-08\\\\BTCUSDT-aggTrades-2026-05-08.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 668655,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-09\\BTCUSDT-aggTrades-2026-05-09.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-09\\\\BTCUSDT-aggTrades-2026-05-09.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 355941,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-10\\BTCUSDT-aggTrades-2026-05-10.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-10\\\\BTCUSDT-aggTrades-2026-05-10.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 556830,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-11\\BTCUSDT-aggTrades-2026-05-11.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-11\\\\BTCUSDT-aggTrades-2026-05-11.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 721950,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-12\\BTCUSDT-aggTrades-2026-05-12.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-12\\\\BTCUSDT-aggTrades-2026-05-12.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 672975,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-13\\BTCUSDT-aggTrades-2026-05-13.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-13\\\\BTCUSDT-aggTrades-2026-05-13.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 639482,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-14\\BTCUSDT-aggTrades-2026-05-14.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-14\\\\BTCUSDT-aggTrades-2026-05-14.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 797843,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-15\\BTCUSDT-aggTrades-2026-05-15.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-15\\\\BTCUSDT-aggTrades-2026-05-15.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 822404,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-16\\BTCUSDT-aggTrades-2026-05-16.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-16\\\\BTCUSDT-aggTrades-2026-05-16.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 491754,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-17\\BTCUSDT-aggTrades-2026-05-17.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-17\\\\BTCUSDT-aggTrades-2026-05-17.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 460584,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-18\\BTCUSDT-aggTrades-2026-05-18.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-18\\\\BTCUSDT-aggTrades-2026-05-18.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 925180,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-19\\BTCUSDT-aggTrades-2026-05-19.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-19\\\\BTCUSDT-aggTrades-2026-05-19.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 619526,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-20\\BTCUSDT-aggTrades-2026-05-20.csv",
+    "returncode": 0,
+    "stdout_tail": "ion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-20\\\\BTCUSDT-aggTrades-2026-05-20.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 673519,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  {
+    "path": "artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-21\\BTCUSDT-aggTrades-2026-05-21.csv",
+    "returncode": 0,
+    "stdout_tail": "sion1\\\\artifacts\\\\data_v2\\\\raw\\\\spot\\\\aggTrades\\\\BTCUSDT\\\\daily\\\\2026-05-21\\\\BTCUSDT-aggTrades-2026-05-21.csv\"\n  ],\n  \"output_dir\": \"C:\\\\Users\\\\ROG\\\\Desktop\\\\crypto_engine_version1\\\\artifacts\\\\data_v2\\\\normalized\\\\binance\\\\spot\\\\BTCUSDT\\\\aggTrades\",\n  \"partition_count\": 1,\n  \"row_count\": 13041,\n  \"start\": null,\n  \"end\": null,\n  \"schema\": [\n    \"timestamp\",\n    \"price\",\n    \"quantity\",\n    \"quote_quantity\",\n    \"is_buyer_maker\",\n    \"agg_trade_id\",\n    \"first_trade_id\",\n    \"last_trade_id\"\n  ]\n}\n",
+    "stderr_tail": ""
+  }
+]

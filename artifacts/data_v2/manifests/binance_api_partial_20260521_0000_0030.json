@@ -1,0 +1,22 @@
+{
+  "source": "binance_api_partial_tail",
+  "start_ms": 1779321600000,
+  "end_ms": 1779323400000,
+  "files": [
+    {
+      "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\raw\\spot\\klines\\BTCUSDT\\1m\\daily\\2026-05-21\\BTCUSDT-1m-2026-05-21.csv",
+      "rows": 31,
+      "kind": "klines_1m"
+    },
+    {
+      "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\raw\\spot\\klines\\BTCUSDT\\1s\\daily\\2026-05-21\\BTCUSDT-1s-2026-05-21.csv",
+      "rows": 1801,
+      "kind": "klines_1s"
+    },
+    {
+      "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\raw\\spot\\aggTrades\\BTCUSDT\\daily\\2026-05-21\\BTCUSDT-aggTrades-2026-05-21.csv",
+      "rows": 13041,
+      "kind": "aggTrades"
+    }
+  ]
+}

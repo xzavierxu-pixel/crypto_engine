@@ -80,54 +80,29 @@
     {
       "id": "second_level_store_materialized",
       "requirement": "Enable and validate existing second-level and aggTrade inputs with offline feature availability.",
-      "status": "blocked",
-      "passed": false,
+      "status": "passed",
+      "passed": true,
       "evidence": {
         "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\second_level\\version=second_level_v2\\market=BTCUSDT",
-        "exists": false
+        "exists": true
       }
     },
     {
       "id": "feature_artifact_report",
       "requirement": "Train and validate the new feature artifact with report.json and required slice metrics.",
-      "status": "missing",
-      "passed": false,
+      "status": "passed",
+      "passed": true,
       "evidence": {
         "report_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\experiments\\20260521_regime_reversal_second_agg_features\\report.json",
-        "exists": false,
-        "passed": false,
-        "missing": [
-          "sample_count",
-          "coverage",
-          "accepted_sample_accuracy",
-          "precision_up",
-          "precision_down",
-          "balanced_precision",
-          "all_sample_accuracy",
-          "selected_t_up",
-          "selected_t_down",
-          "accepted_count",
-          "up_prediction_count",
-          "down_prediction_count",
-          "share_up_predictions",
-          "share_down_predictions",
-          "roc_auc",
-          "brier_score",
-          "log_loss",
-          "utility",
-          "downside_risk",
-          "selection_score",
-          "continuation_sample_count",
-          "continuation_coverage",
-          "continuation_accepted_accuracy",
-          "continuation_accepted_count",
-          "reversal_sample_count",
-          "reversal_coverage",
-          "reversal_accepted_accuracy",
-          "reversal_accepted_count",
-          "reversal_loss_contribution",
-          "trend_following_loss_contribution"
-        ]
+        "exists": true,
+        "missing": [],
+        "coverage": 0.901981788966256,
+        "coverage_constraint_satisfied": true,
+        "selection_score": 0.540009340336212,
+        "utility": 0.29700053561863954,
+        "accepted_sample_accuracy": 0.6646377672209026,
+        "accepted_count": 6736.0,
+        "passed": true
       }
     },
     {
@@ -163,26 +138,40 @@
     {
       "id": "mandatory_replay_windows_feature",
       "requirement": "Report mandatory new feature replay windows for 2026-05-15/16 and 2026-05-20/21.",
-      "status": "missing",
-      "passed": false,
+      "status": "passed",
+      "passed": true,
       "evidence": {
         "20260515": {
-          "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\reports\\execution_engine\\replay_20260521_regime_reversal_second_agg_features_20260515_window.json",
-          "exists": false
+          "exists": true,
+          "window_start": "2026-05-15T15:00:00+00:00",
+          "window_end": "2026-05-16T01:00:00+00:00",
+          "coverage": 0.8921568627450981,
+          "accepted_sample_accuracy": 0.7582417582417582,
+          "selection_score": 0.9921707776637602,
+          "coverage_constraint_satisfied": false,
+          "reversal_trend_metrics_available": false,
+          "passed": false
         },
         "20260520": {
-          "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\reports\\execution_engine\\replay_20260521_regime_reversal_second_agg_features_20260520_window.json",
-          "exists": false
+          "exists": true,
+          "window_start": "2026-05-20T15:23:40+00:00",
+          "window_end": "2026-05-21T00:23:40+00:00",
+          "coverage": 0.897196261682243,
+          "accepted_sample_accuracy": 0.5625,
+          "selection_score": 0.17900481454840447,
+          "coverage_constraint_satisfied": false,
+          "reversal_trend_metrics_available": false,
+          "passed": false
         }
       }
     },
     {
       "id": "replay_coverage_gate",
-      "requirement": "Replay reports should be evaluated against coverage >= 0.90 and include reversal/trend availability.",
+      "requirement": "Baseline and new feature replay reports should be evaluated against coverage >= 0.90 and include reversal/trend availability.",
       "status": "incomplete",
       "passed": false,
       "evidence": {
-        "20260515": {
+        "baseline_20260515": {
           "exists": true,
           "window_start": "2026-05-15T15:00:00+00:00",
           "window_end": "2026-05-16T01:00:00+00:00",
@@ -193,7 +182,7 @@
           "reversal_trend_metrics_available": false,
           "passed": false
         },
-        "20260520": {
+        "baseline_20260520": {
           "exists": true,
           "window_start": "2026-05-20T15:23:40+00:00",
           "window_end": "2026-05-21T00:23:40+00:00",
@@ -203,20 +192,42 @@
           "coverage_constraint_satisfied": false,
           "reversal_trend_metrics_available": false,
           "passed": false
+        },
+        "feature_20260515": {
+          "exists": true,
+          "window_start": "2026-05-15T15:00:00+00:00",
+          "window_end": "2026-05-16T01:00:00+00:00",
+          "coverage": 0.8921568627450981,
+          "accepted_sample_accuracy": 0.7582417582417582,
+          "selection_score": 0.9921707776637602,
+          "coverage_constraint_satisfied": false,
+          "reversal_trend_metrics_available": false,
+          "passed": false
+        },
+        "feature_20260520": {
+          "exists": true,
+          "window_start": "2026-05-20T15:23:40+00:00",
+          "window_end": "2026-05-21T00:23:40+00:00",
+          "coverage": 0.897196261682243,
+          "accepted_sample_accuracy": 0.5625,
+          "selection_score": 0.17900481454840447,
+          "coverage_constraint_satisfied": false,
+          "reversal_trend_metrics_available": false,
+          "passed": false
         }
       }
     },
     {
       "id": "local_data_replay_coverage",
       "requirement": "Local normalized data must cover mandatory replay windows through 2026-05-21T00:23:40Z.",
-      "status": "blocked",
-      "passed": false,
+      "status": "passed",
+      "passed": true,
       "evidence": {
         "exists": true,
         "readable": true,
-        "row_count": 319676,
+        "row_count": 334111,
         "start": "2025-10-01T00:00:00+00:00",
-        "end": "2026-05-10T23:55:00+00:00"
+        "end": "2026-05-21T00:30:00+00:00"
       }
     },
     {
@@ -287,49 +298,24 @@
       "passed": true
     },
     "feature_report": {
-      "exists": false,
-      "passed": false,
-      "missing": [
-        "sample_count",
-        "coverage",
-        "accepted_sample_accuracy",
-        "precision_up",
-        "precision_down",
-        "balanced_precision",
-        "all_sample_accuracy",
-        "selected_t_up",
-        "selected_t_down",
-        "accepted_count",
-        "up_prediction_count",
-        "down_prediction_count",
-        "share_up_predictions",
-        "share_down_predictions",
-        "roc_auc",
-        "brier_score",
-        "log_loss",
-        "utility",
-        "downside_risk",
-        "selection_score",
-        "continuation_sample_count",
-        "continuation_coverage",
-        "continuation_accepted_accuracy",
-        "continuation_accepted_count",
-        "reversal_sample_count",
-        "reversal_coverage",
-        "reversal_accepted_accuracy",
-        "reversal_accepted_count",
-        "reversal_loss_contribution",
-        "trend_following_loss_contribution"
-      ]
+      "exists": true,
+      "missing": [],
+      "coverage": 0.901981788966256,
+      "coverage_constraint_satisfied": true,
+      "selection_score": 0.540009340336212,
+      "utility": 0.29700053561863954,
+      "accepted_sample_accuracy": 0.6646377672209026,
+      "accepted_count": 6736.0,
+      "passed": true
     },
-    "second_level_store_exists": false,
+    "second_level_store_exists": true,
     "second_level_store_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\second_level\\version=second_level_v2\\market=BTCUSDT",
     "normalized_1m_range": {
       "exists": true,
       "readable": true,
-      "row_count": 319676,
+      "row_count": 334111,
       "start": "2025-10-01T00:00:00+00:00",
-      "end": "2026-05-10T23:55:00+00:00"
+      "end": "2026-05-21T00:30:00+00:00"
     },
     "polymarket_training_frame_range": {
       "exists": true,
@@ -361,12 +347,26 @@
       "passed": false
     },
     "new_feature_replay_20260515": {
-      "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\reports\\execution_engine\\replay_20260521_regime_reversal_second_agg_features_20260515_window.json",
-      "exists": false
+      "exists": true,
+      "window_start": "2026-05-15T15:00:00+00:00",
+      "window_end": "2026-05-16T01:00:00+00:00",
+      "coverage": 0.8921568627450981,
+      "accepted_sample_accuracy": 0.7582417582417582,
+      "selection_score": 0.9921707776637602,
+      "coverage_constraint_satisfied": false,
+      "reversal_trend_metrics_available": false,
+      "passed": false
     },
     "new_feature_replay_20260520": {
-      "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\reports\\execution_engine\\replay_20260521_regime_reversal_second_agg_features_20260520_window.json",
-      "exists": false
+      "exists": true,
+      "window_start": "2026-05-20T15:23:40+00:00",
+      "window_end": "2026-05-21T00:23:40+00:00",
+      "coverage": 0.897196261682243,
+      "accepted_sample_accuracy": 0.5625,
+      "selection_score": 0.17900481454840447,
+      "coverage_constraint_satisfied": false,
+      "reversal_trend_metrics_available": false,
+      "passed": false
     },
     "baseline_reversal_diagnostics": {
       "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\reports\\reversal_diagnostics\\baseline_reversal_trend_slices_090.json",
@@ -392,10 +392,8 @@
   "missing_or_blocked": [
     "baseline_replay_20260515 coverage is below 0.9",
     "baseline_replay_20260520 coverage is below 0.9",
-    "local normalized BTCUSDT 1m data does not cover mandatory replay windows",
-    "materialized second-level feature store is missing",
-    "new feature experiment report is missing",
-    "new feature replay-window reports are missing"
+    "new_feature_replay_20260515 coverage is below 0.9",
+    "new_feature_replay_20260520 coverage is below 0.9"
   ],
   "complete": false
 }

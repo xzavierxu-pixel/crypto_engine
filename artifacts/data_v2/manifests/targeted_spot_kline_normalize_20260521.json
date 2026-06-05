@@ -1,0 +1,18 @@
+{
+  "1m": {
+    "output": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\normalized\\spot\\klines\\BTCUSDT-1m.parquet",
+    "rows": 334111,
+    "start": "2025-10-01T00:00:00+00:00",
+    "end": "2026-05-21T00:30:00+00:00",
+    "source_file_count": 28,
+    "audit_hardlink": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\normalized\\binance\\spot\\BTCUSDT\\klines\\BTCUSDT-1m.parquet"
+  },
+  "1s": {
+    "output": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\normalized\\spot\\klines\\BTCUSDT-1s.parquet",
+    "rows": 20046601,
+    "start": "2025-10-01T00:00:00+00:00",
+    "end": "2026-05-21T00:30:00+00:00",
+    "source_file_count": 28,
+    "audit_hardlink": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\normalized\\binance\\spot\\BTCUSDT\\klines\\BTCUSDT-1s.parquet"
+  }
+}
