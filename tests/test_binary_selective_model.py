@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pandas as pd
 
 from src.core.config import load_settings
-from src.data.dataset_builder import TrainingFrame, compute_sample_weight, infer_feature_columns
+from src.data.dataset_builder import TrainingFrame, compute_sample_weight, compute_training_sample_weight, infer_feature_columns
 from src.model.evaluation import compute_selective_binary_metrics, search_selective_binary_thresholds
 from src.model.train import split_recent_train_validation_frame
 
@@ -15,6 +17,30 @@ def test_linear_ramp_sample_weight_matches_prd_boundaries() -> None:
         settings=settings,
     )
     assert list(weights.round(2)) == [0.35, 0.57, 0.78, 1.00, 1.00]
+
+
+def test_reversal_boost_sample_weight_uses_first_minute_side() -> None:
+    base = load_settings()
+    settings = replace(
+        base,
+        sample_weighting=replace(
+            base.sample_weighting,
+            reversal_boost_enabled=True,
+            reversal_weight_multiplier=2.0,
+            continuation_weight_multiplier=1.0,
+        ),
+    )
+    frame = pd.DataFrame(
+        {
+            "abs_return": [0.001, 0.001, 0.001, 0.001],
+            "fm_ret": [0.01, -0.01, 0.01, -0.01],
+            "target": [1, 0, 0, 1],
+        }
+    )
+
+    weights = compute_training_sample_weight(frame, settings=settings)
+
+    assert weights.tolist() == [1.0, 1.0, 2.0, 2.0]
 
 
 def test_selective_binary_metrics_reports_prd_fields() -> None:

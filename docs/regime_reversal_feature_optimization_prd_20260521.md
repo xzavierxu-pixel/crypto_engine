@@ -225,6 +225,60 @@ validation improvement + replay coverage>=0.90 candidates: 104
 replay selection_score improvement candidates on both mandatory windows: 0
 ```
 
+Additional non-threshold experiments:
+
+```text
+20260605_regime_reversal_reversal_weight_boost
+  config: experiments/configs/20260605_regime_reversal_reversal_weight_boost.yaml
+  report: artifacts/data_v2/experiments/20260605_regime_reversal_reversal_weight_boost/report.json
+  change: reversal-aware sample weighting, reversal_weight_multiplier=2.0
+
+  validation:
+    selected_t_up:            0.510
+    selected_t_down:          0.435
+    coverage:                 0.9006427424
+    selection_score:          0.5357582406
+    utility:                  0.2948580611
+    accepted_sample_accuracy: 0.6636931311
+
+  replay 2026-05-15/16:
+    coverage:                 0.8431372549
+    selection_score:          1.0184571184
+    accepted_sample_accuracy: 0.7674418605
+    full gate passed:         no
+
+  replay 2026-05-20/21:
+    coverage:                 0.8691588785
+    selection_score:          0.3019679496
+    accepted_sample_accuracy: 0.6021505376
+    full gate passed:         no
+
+20260605_regime_reversal_catboost_regime_fm_reversal
+  config: experiments/configs/20260605_regime_reversal_catboost_regime_fm_reversal.yaml
+  report: artifacts/data_v2/experiments/20260605_regime_reversal_catboost_regime_fm_reversal/report.json
+  change: existing catboost_regime plugin with regime_feature=fm_reversal_pressure_score
+
+  validation:
+    selected_t_up:            0.485
+    selected_t_down:          0.410
+    coverage:                 0.9037225495
+    selection_score:          0.5310899220
+    utility:                  0.2933851098
+    accepted_sample_accuracy: 0.6623203438
+
+  replay 2026-05-15/16:
+    coverage:                 0.8431372549
+    selection_score:          0.9506987945
+    accepted_sample_accuracy: 0.7558139535
+    full gate passed:         no
+
+  replay 2026-05-20/21:
+    coverage:                 0.9158878505
+    selection_score:          0.2751380282
+    accepted_sample_accuracy: 0.5918367347
+    full gate passed:         no
+```
+
 Final gate conclusion:
 
 ```text
@@ -232,6 +286,7 @@ Do not claim full PRD acceptance.
 The validation artifact improves selection_score while satisfying coverage>=0.90.
 The mandatory new feature replay windows now satisfy coverage>=0.90 and include reversal/trend slice fields.
 The experiment is useful as an offline validation improvement, but it is not accepted for deployment because replay selection_score does not improve vs the coverage>=0.90 baseline on either mandatory replay window.
+Two additional non-threshold experiments were run and recorded; neither satisfies the full replay gate.
 ```
 
 ## 2. Primary Objective

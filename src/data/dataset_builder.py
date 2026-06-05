@@ -302,8 +302,8 @@ def build_training_frame(
             feature_columns=feature_columns,
             target_column=DEFAULT_TARGET_COLUMN,
         )
-    training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = compute_sample_weight(
-        training_frame[DEFAULT_ABS_RETURN_COLUMN],
+    training_frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = compute_training_sample_weight(
+        training_frame,
         settings=settings,
     )
 
@@ -332,3 +332,26 @@ def compute_sample_weight(abs_return: pd.Series, settings: Settings) -> pd.Serie
     weights = ramp.clip(lower=float(config.min_weight), upper=float(config.max_weight))
     weights = weights.mask(values < float(config.min_abs_return), float(config.min_weight))
     return weights.fillna(float(config.min_weight)).astype("float64")
+
+
+def compute_training_sample_weight(frame: pd.DataFrame, settings: Settings) -> pd.Series:
+    weights = compute_sample_weight(frame[DEFAULT_ABS_RETURN_COLUMN], settings=settings)
+    config = settings.sample_weighting
+    if not config.enabled or not config.reversal_boost_enabled:
+        return weights
+    if config.reversal_weight_multiplier <= 0 or config.continuation_weight_multiplier <= 0:
+        raise ValueError("sample_weighting reversal/continuation multipliers must be > 0.")
+    if "fm_ret" not in frame.columns or DEFAULT_TARGET_COLUMN not in frame.columns:
+        return weights
+
+    fm_ret = pd.to_numeric(frame["fm_ret"], errors="coerce")
+    target = pd.to_numeric(frame[DEFAULT_TARGET_COLUMN], errors="coerce")
+    known = fm_ret.notna() & target.isin([0, 1])
+    first_minute_up = fm_ret >= 0.0
+    trend_following = known & (first_minute_up == (target == 1))
+    reversal = known & ~trend_following
+
+    adjusted = weights.copy()
+    adjusted.loc[trend_following] *= float(config.continuation_weight_multiplier)
+    adjusted.loc[reversal] *= float(config.reversal_weight_multiplier)
+    return adjusted.clip(lower=float(config.min_weight)).astype("float64")

@@ -83,6 +83,9 @@ class SampleWeightingConfig:
     full_weight_abs_return: float = 0.0005
     min_weight: float = 0.20
     max_weight: float = 1.00
+    reversal_boost_enabled: bool = False
+    reversal_weight_multiplier: float = 1.0
+    continuation_weight_multiplier: float = 1.0
 
 
 @dataclass(frozen=True)
