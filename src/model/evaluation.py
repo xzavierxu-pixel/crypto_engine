@@ -419,15 +419,12 @@ def search_selective_binary_thresholds(
     pool = eligible if eligible else records
     best_metric = max(record[metric_name] for record in pool)
     if uses_selection_score:
-        tied = [record for record in pool if record[metric_name] >= best_metric - tie_tolerance]
+        tied = [record for record in pool if record[metric_name] == best_metric]
         best = max(
             tied,
             key=lambda record: (
-                record["utility"],
-                record["coverage"],
-                record["accepted_count"],
-                record["selection_score"],
                 record["accepted_sample_accuracy"],
+                record["utility"],
                 -abs(record["t_up"] - 0.5) - abs(record["t_down"] - 0.5),
             ),
         )
