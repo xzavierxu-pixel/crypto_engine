@@ -96,12 +96,12 @@
         "report_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\experiments\\20260521_regime_reversal_second_agg_features\\report.json",
         "exists": true,
         "missing": [],
-        "coverage": 0.901981788966256,
+        "coverage": 0.9209962506695233,
         "coverage_constraint_satisfied": true,
-        "selection_score": 0.540009340336212,
-        "utility": 0.29700053561863954,
-        "accepted_sample_accuracy": 0.6646377672209026,
-        "accepted_count": 6736.0,
+        "selection_score": 0.5382641920247137,
+        "utility": 0.29994643813604704,
+        "accepted_sample_accuracy": 0.6628380343123,
+        "accepted_count": 6878.0,
         "passed": true
       }
     },
@@ -119,7 +119,19 @@
           "accepted_sample_accuracy": 0.7752808988764045,
           "selection_score": 1.0848782347866168,
           "coverage_constraint_satisfied": false,
-          "reversal_trend_metrics_available": false,
+          "reversal_trend_metrics_available": true,
+          "reversal_trend_metrics": {
+            "continuation_sample_count": 77.0,
+            "continuation_coverage": 0.8831168831168831,
+            "continuation_accepted_accuracy": 1.0,
+            "continuation_accepted_count": 68.0,
+            "reversal_sample_count": 25.0,
+            "reversal_coverage": 0.84,
+            "reversal_accepted_accuracy": 0.047619047619047616,
+            "reversal_accepted_count": 21.0,
+            "reversal_loss_contribution": 1.0,
+            "trend_following_loss_contribution": 0.0
+          },
           "passed": false
         },
         "20260520": {
@@ -130,7 +142,19 @@
           "accepted_sample_accuracy": 0.59375,
           "selection_score": 0.2786431125724091,
           "coverage_constraint_satisfied": false,
-          "reversal_trend_metrics_available": false,
+          "reversal_trend_metrics_available": true,
+          "reversal_trend_metrics": {
+            "continuation_sample_count": 64.0,
+            "continuation_coverage": 0.90625,
+            "continuation_accepted_accuracy": 0.9827586206896551,
+            "continuation_accepted_count": 58.0,
+            "reversal_sample_count": 43.0,
+            "reversal_coverage": 0.8837209302325582,
+            "reversal_accepted_accuracy": 0.0,
+            "reversal_accepted_count": 38.0,
+            "reversal_loss_contribution": 0.9743589743589743,
+            "trend_following_loss_contribution": 0.02564102564102564
+          },
           "passed": false
         }
       }
@@ -145,31 +169,55 @@
           "exists": true,
           "window_start": "2026-05-15T15:00:00+00:00",
           "window_end": "2026-05-16T01:00:00+00:00",
-          "coverage": 0.8921568627450981,
-          "accepted_sample_accuracy": 0.7582417582417582,
-          "selection_score": 0.9921707776637602,
-          "coverage_constraint_satisfied": false,
-          "reversal_trend_metrics_available": false,
-          "passed": false
+          "coverage": 0.9215686274509803,
+          "accepted_sample_accuracy": 0.7553191489361702,
+          "selection_score": 0.991008166818401,
+          "coverage_constraint_satisfied": true,
+          "reversal_trend_metrics_available": true,
+          "reversal_trend_metrics": {
+            "continuation_sample_count": 77.0,
+            "continuation_coverage": 0.935064935064935,
+            "continuation_accepted_accuracy": 0.9722222222222222,
+            "continuation_accepted_count": 72.0,
+            "reversal_sample_count": 25.0,
+            "reversal_coverage": 0.88,
+            "reversal_accepted_accuracy": 0.045454545454545456,
+            "reversal_accepted_count": 22.0,
+            "reversal_loss_contribution": 0.9130434782608695,
+            "trend_following_loss_contribution": 0.08695652173913043
+          },
+          "passed": true
         },
         "20260520": {
           "exists": true,
           "window_start": "2026-05-20T15:23:40+00:00",
           "window_end": "2026-05-21T00:23:40+00:00",
-          "coverage": 0.897196261682243,
-          "accepted_sample_accuracy": 0.5625,
-          "selection_score": 0.17900481454840447,
-          "coverage_constraint_satisfied": false,
-          "reversal_trend_metrics_available": false,
-          "passed": false
+          "coverage": 0.9065420560747663,
+          "accepted_sample_accuracy": 0.5670103092783505,
+          "selection_score": 0.19392188242743813,
+          "coverage_constraint_satisfied": true,
+          "reversal_trend_metrics_available": true,
+          "reversal_trend_metrics": {
+            "continuation_sample_count": 64.0,
+            "continuation_coverage": 0.890625,
+            "continuation_accepted_accuracy": 0.9649122807017544,
+            "continuation_accepted_count": 57.0,
+            "reversal_sample_count": 43.0,
+            "reversal_coverage": 0.9302325581395349,
+            "reversal_accepted_accuracy": 0.0,
+            "reversal_accepted_count": 40.0,
+            "reversal_loss_contribution": 0.9523809523809523,
+            "trend_following_loss_contribution": 0.047619047619047616
+          },
+          "passed": true
         }
       }
     },
     {
       "id": "replay_coverage_gate",
-      "requirement": "Baseline and new feature replay reports should be evaluated against coverage >= 0.90 and include reversal/trend availability.",
-      "status": "incomplete",
-      "passed": false,
+      "requirement": "Baseline and new feature replay reports should be evaluated; new feature replay must satisfy coverage >= 0.90 and all replay summaries must include reversal/trend metrics.",
+      "status": "passed",
+      "passed": true,
       "evidence": {
         "baseline_20260515": {
           "exists": true,
@@ -179,7 +227,19 @@
           "accepted_sample_accuracy": 0.7752808988764045,
           "selection_score": 1.0848782347866168,
           "coverage_constraint_satisfied": false,
-          "reversal_trend_metrics_available": false,
+          "reversal_trend_metrics_available": true,
+          "reversal_trend_metrics": {
+            "continuation_sample_count": 77.0,
+            "continuation_coverage": 0.8831168831168831,
+            "continuation_accepted_accuracy": 1.0,
+            "continuation_accepted_count": 68.0,
+            "reversal_sample_count": 25.0,
+            "reversal_coverage": 0.84,
+            "reversal_accepted_accuracy": 0.047619047619047616,
+            "reversal_accepted_count": 21.0,
+            "reversal_loss_contribution": 1.0,
+            "trend_following_loss_contribution": 0.0
+          },
           "passed": false
         },
         "baseline_20260520": {
@@ -190,30 +250,95 @@
           "accepted_sample_accuracy": 0.59375,
           "selection_score": 0.2786431125724091,
           "coverage_constraint_satisfied": false,
-          "reversal_trend_metrics_available": false,
+          "reversal_trend_metrics_available": true,
+          "reversal_trend_metrics": {
+            "continuation_sample_count": 64.0,
+            "continuation_coverage": 0.90625,
+            "continuation_accepted_accuracy": 0.9827586206896551,
+            "continuation_accepted_count": 58.0,
+            "reversal_sample_count": 43.0,
+            "reversal_coverage": 0.8837209302325582,
+            "reversal_accepted_accuracy": 0.0,
+            "reversal_accepted_count": 38.0,
+            "reversal_loss_contribution": 0.9743589743589743,
+            "trend_following_loss_contribution": 0.02564102564102564
+          },
           "passed": false
         },
         "feature_20260515": {
           "exists": true,
           "window_start": "2026-05-15T15:00:00+00:00",
           "window_end": "2026-05-16T01:00:00+00:00",
-          "coverage": 0.8921568627450981,
-          "accepted_sample_accuracy": 0.7582417582417582,
-          "selection_score": 0.9921707776637602,
-          "coverage_constraint_satisfied": false,
-          "reversal_trend_metrics_available": false,
-          "passed": false
+          "coverage": 0.9215686274509803,
+          "accepted_sample_accuracy": 0.7553191489361702,
+          "selection_score": 0.991008166818401,
+          "coverage_constraint_satisfied": true,
+          "reversal_trend_metrics_available": true,
+          "reversal_trend_metrics": {
+            "continuation_sample_count": 77.0,
+            "continuation_coverage": 0.935064935064935,
+            "continuation_accepted_accuracy": 0.9722222222222222,
+            "continuation_accepted_count": 72.0,
+            "reversal_sample_count": 25.0,
+            "reversal_coverage": 0.88,
+            "reversal_accepted_accuracy": 0.045454545454545456,
+            "reversal_accepted_count": 22.0,
+            "reversal_loss_contribution": 0.9130434782608695,
+            "trend_following_loss_contribution": 0.08695652173913043
+          },
+          "passed": true
         },
         "feature_20260520": {
           "exists": true,
           "window_start": "2026-05-20T15:23:40+00:00",
           "window_end": "2026-05-21T00:23:40+00:00",
-          "coverage": 0.897196261682243,
-          "accepted_sample_accuracy": 0.5625,
-          "selection_score": 0.17900481454840447,
-          "coverage_constraint_satisfied": false,
-          "reversal_trend_metrics_available": false,
-          "passed": false
+          "coverage": 0.9065420560747663,
+          "accepted_sample_accuracy": 0.5670103092783505,
+          "selection_score": 0.19392188242743813,
+          "coverage_constraint_satisfied": true,
+          "reversal_trend_metrics_available": true,
+          "reversal_trend_metrics": {
+            "continuation_sample_count": 64.0,
+            "continuation_coverage": 0.890625,
+            "continuation_accepted_accuracy": 0.9649122807017544,
+            "continuation_accepted_count": 57.0,
+            "reversal_sample_count": 43.0,
+            "reversal_coverage": 0.9302325581395349,
+            "reversal_accepted_accuracy": 0.0,
+            "reversal_accepted_count": 40.0,
+            "reversal_loss_contribution": 0.9523809523809523,
+            "trend_following_loss_contribution": 0.047619047619047616
+          },
+          "passed": true
+        }
+      }
+    },
+    {
+      "id": "validation_selection_score_improvement",
+      "requirement": "New feature validation selection_score must improve vs the coverage>=0.90 baseline.",
+      "status": "passed",
+      "passed": true,
+      "evidence": {
+        "baseline_selection_score": 0.5144593007141511,
+        "feature_selection_score": 0.5382641920247137,
+        "improved": true
+      }
+    },
+    {
+      "id": "replay_selection_score_improvement",
+      "requirement": "New feature replay selection_score must improve vs the coverage>=0.90 baseline on both mandatory windows.",
+      "status": "incomplete",
+      "passed": false,
+      "evidence": {
+        "20260515": {
+          "baseline_selection_score": 1.0848782347866168,
+          "feature_selection_score": 0.991008166818401,
+          "improved": false
+        },
+        "20260520": {
+          "baseline_selection_score": 0.2786431125724091,
+          "feature_selection_score": 0.19392188242743813,
+          "improved": false
         }
       }
     },
@@ -300,12 +425,12 @@
     "feature_report": {
       "exists": true,
       "missing": [],
-      "coverage": 0.901981788966256,
+      "coverage": 0.9209962506695233,
       "coverage_constraint_satisfied": true,
-      "selection_score": 0.540009340336212,
-      "utility": 0.29700053561863954,
-      "accepted_sample_accuracy": 0.6646377672209026,
-      "accepted_count": 6736.0,
+      "selection_score": 0.5382641920247137,
+      "utility": 0.29994643813604704,
+      "accepted_sample_accuracy": 0.6628380343123,
+      "accepted_count": 6878.0,
       "passed": true
     },
     "second_level_store_exists": true,
@@ -332,7 +457,19 @@
       "accepted_sample_accuracy": 0.7752808988764045,
       "selection_score": 1.0848782347866168,
       "coverage_constraint_satisfied": false,
-      "reversal_trend_metrics_available": false,
+      "reversal_trend_metrics_available": true,
+      "reversal_trend_metrics": {
+        "continuation_sample_count": 77.0,
+        "continuation_coverage": 0.8831168831168831,
+        "continuation_accepted_accuracy": 1.0,
+        "continuation_accepted_count": 68.0,
+        "reversal_sample_count": 25.0,
+        "reversal_coverage": 0.84,
+        "reversal_accepted_accuracy": 0.047619047619047616,
+        "reversal_accepted_count": 21.0,
+        "reversal_loss_contribution": 1.0,
+        "trend_following_loss_contribution": 0.0
+      },
       "passed": false
     },
     "baseline_replay_20260520": {
@@ -343,30 +480,66 @@
       "accepted_sample_accuracy": 0.59375,
       "selection_score": 0.2786431125724091,
       "coverage_constraint_satisfied": false,
-      "reversal_trend_metrics_available": false,
+      "reversal_trend_metrics_available": true,
+      "reversal_trend_metrics": {
+        "continuation_sample_count": 64.0,
+        "continuation_coverage": 0.90625,
+        "continuation_accepted_accuracy": 0.9827586206896551,
+        "continuation_accepted_count": 58.0,
+        "reversal_sample_count": 43.0,
+        "reversal_coverage": 0.8837209302325582,
+        "reversal_accepted_accuracy": 0.0,
+        "reversal_accepted_count": 38.0,
+        "reversal_loss_contribution": 0.9743589743589743,
+        "trend_following_loss_contribution": 0.02564102564102564
+      },
       "passed": false
     },
     "new_feature_replay_20260515": {
       "exists": true,
       "window_start": "2026-05-15T15:00:00+00:00",
       "window_end": "2026-05-16T01:00:00+00:00",
-      "coverage": 0.8921568627450981,
-      "accepted_sample_accuracy": 0.7582417582417582,
-      "selection_score": 0.9921707776637602,
-      "coverage_constraint_satisfied": false,
-      "reversal_trend_metrics_available": false,
-      "passed": false
+      "coverage": 0.9215686274509803,
+      "accepted_sample_accuracy": 0.7553191489361702,
+      "selection_score": 0.991008166818401,
+      "coverage_constraint_satisfied": true,
+      "reversal_trend_metrics_available": true,
+      "reversal_trend_metrics": {
+        "continuation_sample_count": 77.0,
+        "continuation_coverage": 0.935064935064935,
+        "continuation_accepted_accuracy": 0.9722222222222222,
+        "continuation_accepted_count": 72.0,
+        "reversal_sample_count": 25.0,
+        "reversal_coverage": 0.88,
+        "reversal_accepted_accuracy": 0.045454545454545456,
+        "reversal_accepted_count": 22.0,
+        "reversal_loss_contribution": 0.9130434782608695,
+        "trend_following_loss_contribution": 0.08695652173913043
+      },
+      "passed": true
     },
     "new_feature_replay_20260520": {
       "exists": true,
       "window_start": "2026-05-20T15:23:40+00:00",
       "window_end": "2026-05-21T00:23:40+00:00",
-      "coverage": 0.897196261682243,
-      "accepted_sample_accuracy": 0.5625,
-      "selection_score": 0.17900481454840447,
-      "coverage_constraint_satisfied": false,
-      "reversal_trend_metrics_available": false,
-      "passed": false
+      "coverage": 0.9065420560747663,
+      "accepted_sample_accuracy": 0.5670103092783505,
+      "selection_score": 0.19392188242743813,
+      "coverage_constraint_satisfied": true,
+      "reversal_trend_metrics_available": true,
+      "reversal_trend_metrics": {
+        "continuation_sample_count": 64.0,
+        "continuation_coverage": 0.890625,
+        "continuation_accepted_accuracy": 0.9649122807017544,
+        "continuation_accepted_count": 57.0,
+        "reversal_sample_count": 43.0,
+        "reversal_coverage": 0.9302325581395349,
+        "reversal_accepted_accuracy": 0.0,
+        "reversal_accepted_count": 40.0,
+        "reversal_loss_contribution": 0.9523809523809523,
+        "trend_following_loss_contribution": 0.047619047619047616
+      },
+      "passed": true
     },
     "baseline_reversal_diagnostics": {
       "path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\reports\\reversal_diagnostics\\baseline_reversal_trend_slices_090.json",
@@ -387,13 +560,28 @@
         "second_disabled_satisfied": true
       },
       "passed": true
+    },
+    "validation_selection_score_improvement": {
+      "baseline_selection_score": 0.5144593007141511,
+      "feature_selection_score": 0.5382641920247137,
+      "improved": true
+    },
+    "replay_selection_score_improvement": {
+      "20260515": {
+        "baseline_selection_score": 1.0848782347866168,
+        "feature_selection_score": 0.991008166818401,
+        "improved": false
+      },
+      "20260520": {
+        "baseline_selection_score": 0.2786431125724091,
+        "feature_selection_score": 0.19392188242743813,
+        "improved": false
+      }
     }
   },
   "missing_or_blocked": [
-    "baseline_replay_20260515 coverage is below 0.9",
-    "baseline_replay_20260520 coverage is below 0.9",
-    "new_feature_replay_20260515 coverage is below 0.9",
-    "new_feature_replay_20260520 coverage is below 0.9"
+    "new feature replay selection_score does not improve vs coverage>=0.90 baseline on 20260515",
+    "new feature replay selection_score does not improve vs coverage>=0.90 baseline on 20260520"
   ],
   "complete": false
 }

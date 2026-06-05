@@ -1,5 +1,5 @@
 {
-  "run_id": "20260521_baseline_coverage_090",
+  "run_id": "20260521_baseline_coverage_090_20260515_window",
   "source_replay_window_start_utc": "2026-05-15T15:00:00+00:00",
   "source_replay_window_end_utc": "2026-05-16T01:00:00+00:00",
   "source_combo": "current_model_current_thresholds",
@@ -109,8 +109,20 @@
     "error_count": 0,
     "errors": {}
   },
-  "reversal_trend_metrics_available": false,
-  "reversal_trend_metrics_note": "Source replay rows do not contain first-minute return/side. Use validation report reversal_trend_slices for baseline reversal diagnostics.",
+  "reversal_trend_metrics_available": true,
+  "reversal_trend_metrics": {
+    "continuation_sample_count": 77.0,
+    "continuation_coverage": 0.8831168831168831,
+    "continuation_accepted_accuracy": 1.0,
+    "continuation_accepted_count": 68.0,
+    "reversal_sample_count": 25.0,
+    "reversal_coverage": 0.84,
+    "reversal_accepted_accuracy": 0.047619047619047616,
+    "reversal_accepted_count": 21.0,
+    "reversal_loss_contribution": 1.0,
+    "trend_following_loss_contribution": 0.0
+  },
+  "reversal_trend_metrics_note": null,
   "rows": [
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T151500Z0000.json",
@@ -127,9 +139,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5149654771292134,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": -8.026252407722367e-05,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T152000Z0000.json",
@@ -146,9 +162,13 @@
       "side": "YES",
       "correct": false,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.1929610941212413,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0006817044478186762,
+      "first_minute_side": "YES",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T152500Z0000.json",
@@ -165,9 +185,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.8722603692629267,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.001262583728024902,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T153000Z0000.json",
@@ -184,9 +208,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.3876598910113803,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0003534248919034866,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T153500Z0000.json",
@@ -203,9 +231,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5423142022170648,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00011698678428351261,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T154000Z0000.json",
@@ -222,9 +254,13 @@
       "side": "YES",
       "correct": false,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.3732225067817182,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00020978842458263536,
+      "first_minute_side": "YES",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T154500Z0000.json",
@@ -241,9 +277,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.42437921855469707,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -1.2643903424258696e-07,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T155000Z0000.json",
@@ -260,9 +300,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.2047419058828187,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0006904893932033751,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T155500Z0000.json",
@@ -279,9 +323,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5942309679631486,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -9.074249828366909e-05,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T160000Z0000.json",
@@ -298,9 +346,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.42825138255514217,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 5.003142124881954e-05,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T160500Z0000.json",
@@ -317,9 +369,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.2310216549920009,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00046566244523305045,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T161000Z0000.json",
@@ -336,9 +392,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.3495679754089983,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0002618748700251583,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T162000Z0000.json",
@@ -355,9 +415,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.14310566131032643,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0008066229210232922,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T162500Z0000.json",
@@ -374,9 +438,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6615292322709883,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0002624539507455337,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T165000Z0000.json",
@@ -393,9 +461,13 @@
       "side": "YES",
       "correct": false,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.3939070755444407,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0002118133569832814,
+      "first_minute_side": "YES",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T170000Z0000.json",
@@ -412,9 +484,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.7569191899635217,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00043899745139341917,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T170500Z0000.json",
@@ -431,9 +507,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4431622155859136,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 5.135296774749776e-05,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T171000Z0000.json",
@@ -450,9 +530,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6704131191108256,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00027315316742293483,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T171500Z0000.json",
@@ -469,9 +553,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.34506946105580494,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0002732778543119707,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T172000Z0000.json",
@@ -488,9 +576,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4130099341830169,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 6.963542323701333e-05,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T172500Z0000.json",
@@ -507,9 +599,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.27078044097907505,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00042345563498558114,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T173000Z0000.json",
@@ -526,9 +622,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5361356675609308,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -1.1212581473851735e-05,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T174000Z0000.json",
@@ -545,9 +645,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6447440843178094,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0002131462679145768,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T174500Z0000.json",
@@ -564,9 +668,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.41531309114020565,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00011523193670126552,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T175000Z0000.json",
@@ -583,9 +691,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.41275423062700733,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0001139612045837346,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T175500Z0000.json",
@@ -602,9 +714,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.30420340833392334,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00028553040672218977,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T180000Z0000.json",
@@ -621,9 +737,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.256968853411649,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00037754845205140164,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T180500Z0000.json",
@@ -640,9 +760,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.780265269892418,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0004715090944045208,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T181000Z0000.json",
@@ -659,9 +783,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.3904800469390881,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0001402069121756444,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T181500Z0000.json",
@@ -678,9 +806,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.8163743044448012,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.000692501258178102,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T182500Z0000.json",
@@ -697,9 +829,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.685837664810423,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0004072516250360758,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T183000Z0000.json",
@@ -716,9 +852,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5464148466310463,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -7.643554081127046e-05,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T183500Z0000.json",
@@ -735,9 +875,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4463189489264783,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 3.0292944130927424e-06,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T184000Z0000.json",
@@ -754,9 +898,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.2253548360191311,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00040976554043403723,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T184500Z0000.json",
@@ -773,9 +921,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.8006183131947046,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0007108328094997951,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T190000Z0000.json",
@@ -792,9 +944,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6322053407170596,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00015021944525750452,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T190500Z0000.json",
@@ -811,9 +967,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.20353155385118882,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00037681799513866743,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T191000Z0000.json",
@@ -830,9 +990,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6637082716268997,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0004314851722156954,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T191500Z0000.json",
@@ -849,9 +1013,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.3027924895045301,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00045434996783644266,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T193000Z0000.json",
@@ -868,9 +1036,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.1397485398793833,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0006235838554720097,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T193500Z0000.json",
@@ -887,9 +1059,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.7737249763640659,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00045959661869277024,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T194000Z0000.json",
@@ -906,9 +1082,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.8677436739786647,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0006796125210870585,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T194500Z0000.json",
@@ -925,9 +1105,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4512717224195151,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 5.548139780775507e-05,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T195000Z0000.json",
@@ -944,9 +1128,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5917806193059206,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00016494457874782764,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T195500Z0000.json",
@@ -963,9 +1151,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.3735412648498403,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00015163002274443116,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T200000Z0000.json",
@@ -982,9 +1174,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.12773898213170765,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0006758353180496002,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T200500Z0000.json",
@@ -1001,9 +1197,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.90-1.01",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.9067952111611667,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0010315090138329763,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T201000Z0000.json",
@@ -1020,9 +1220,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5832177139590208,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00018892452408414417,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T201500Z0000.json",
@@ -1039,9 +1243,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5684158769418304,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00010853210143291214,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T202000Z0000.json",
@@ -1058,9 +1266,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.8680647553374748,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0007741337719837649,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T203000Z0000.json",
@@ -1077,9 +1289,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6718228609519776,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0002013417138979623,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T204000Z0000.json",
@@ -1096,9 +1312,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.49598202772928046,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": -1.263543127905109e-07,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T204500Z0000.json",
@@ -1115,9 +1335,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6647714261602318,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0002608421116250259,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T205000Z0000.json",
@@ -1134,9 +1358,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5309231178206109,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": -3.706250902069108e-05,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T205500Z0000.json",
@@ -1153,9 +1381,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5376141423769794,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -3.880679839496359e-05,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T210000Z0000.json",
@@ -1172,9 +1404,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4655059259570554,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": 0.0,
+      "first_minute_side": "YES",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T210500Z0000.json",
@@ -1191,9 +1427,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.325334413459197,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 6.320872786114151e-05,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T211000Z0000.json",
@@ -1210,9 +1450,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5576415330698893,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -4.926737518196056e-05,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T211500Z0000.json",
@@ -1229,9 +1473,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.3797916807726841,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00011782980980523661,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T212000Z0000.json",
@@ -1248,9 +1496,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.8811637573548456,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0007347826191269613,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T212500Z0000.json",
@@ -1267,9 +1519,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5527250384915442,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -5.851647219745626e-05,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T213000Z0000.json",
@@ -1286,9 +1542,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.7250522986484765,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0002952032504708324,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T213500Z0000.json",
@@ -1305,9 +1565,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.743814476598964,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0003377428592907794,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T214000Z0000.json",
@@ -1324,9 +1588,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.38526965190779705,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0001164290195727613,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T214500Z0000.json",
@@ -1343,9 +1611,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6575028634914393,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00020104805301202067,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T215000Z0000.json",
@@ -1362,9 +1634,13 @@
       "side": "YES",
       "correct": false,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.22713984814235566,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00037712695300151644,
+      "first_minute_side": "YES",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T215500Z0000.json",
@@ -1381,9 +1657,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5105597704347873,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": -2.8342845689866003e-05,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T220000Z0000.json",
@@ -1400,9 +1680,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.27533754635042706,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00031175014403550527,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T220500Z0000.json",
@@ -1419,9 +1703,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.44277568942802437,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 2.795769658958669e-05,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T221000Z0000.json",
@@ -1438,9 +1726,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.20383355638813283,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0003230703063727969,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T221500Z0000.json",
@@ -1457,9 +1749,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6352350166687455,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00019311818845790807,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T222000Z0000.json",
@@ -1476,9 +1772,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.7398966722155798,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0003464787813054482,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T222500Z0000.json",
@@ -1495,9 +1795,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.7285723430256783,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0002420089932767544,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T223000Z0000.json",
@@ -1514,9 +1818,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.1708470709091301,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00048321214037305715,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T223500Z0000.json",
@@ -1533,9 +1841,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.7118653605147311,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00030379266750946154,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T224000Z0000.json",
@@ -1552,9 +1864,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4674956332268847,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": 2.540727482336358e-05,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T224500Z0000.json",
@@ -1571,9 +1887,13 @@
       "side": "YES",
       "correct": false,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.35398228978706536,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00012487027962237995,
+      "first_minute_side": "YES",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T225000Z0000.json",
@@ -1590,9 +1910,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5699140045572537,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00011250251866590233,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T225500Z0000.json",
@@ -1609,9 +1933,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.3455184553389272,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00014464797437208077,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T230000Z0000.json",
@@ -1628,9 +1956,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5570536288629728,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -6.168830265906866e-05,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T230500Z0000.json",
@@ -1647,9 +1979,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.584482086809489,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -3.211164536398581e-05,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T231000Z0000.json",
@@ -1666,9 +2002,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.28983011183401575,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00016045661222863217,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T231500Z0000.json",
@@ -1685,9 +2025,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6398011137584263,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00010568161290369638,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T232000Z0000.json",
@@ -1704,9 +2048,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5370557439487488,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -9.608698400664917e-05,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T232500Z0000.json",
@@ -1723,9 +2071,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.46848542237087387,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": 0.0,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T233000Z0000.json",
@@ -1742,9 +2094,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4641866732907427,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": 1.2639673130365736e-07,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T233500Z0000.json",
@@ -1761,9 +2117,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.8429412738177474,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0005334781893235885,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T234000Z0000.json",
@@ -1780,9 +2140,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.48215050101373325,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": 0.0,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T234500Z0000.json",
@@ -1799,9 +2163,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.7188453731710347,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0002167185127273097,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T235000Z0000.json",
@@ -1818,9 +2186,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4880014759215079,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": -1.2639348812015783e-07,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-15T235500Z0000.json",
@@ -1837,9 +2209,13 @@
       "side": "YES",
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4384797604698788,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 6.066671966586945e-05,
+      "first_minute_side": "YES",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T000000Z0000.json",
@@ -1856,9 +2232,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.8034182870979169,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.0002653160281721467,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T000500Z0000.json",
@@ -1875,9 +2255,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5284332680780944,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": 0.0,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T001000Z0000.json",
@@ -1894,9 +2278,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.60-0.70",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.6740275819090318,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00020460745680506154,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T001500Z0000.json",
@@ -1913,9 +2301,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4911103450966766,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": 5.6837651585261995e-06,
+      "first_minute_side": "YES",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T002000Z0000.json",
@@ -1932,9 +2324,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.70-0.80",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.25680387759686896,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.00017671950988451535,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T003000Z0000.json",
@@ -1951,9 +2347,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5449904825607292,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -3.1448010376688984e-05,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T003500Z0000.json",
@@ -1970,9 +2370,13 @@
       "side": "NO",
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5534634727319383,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -5.292460883155048e-05,
+      "first_minute_side": "NO",
+      "trend_following": false,
+      "post_first_minute_reversal": true
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T004500Z0000.json",
@@ -1989,9 +2393,13 @@
       "side": null,
       "correct": false,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.5330226784320105,
-      "accepted": false
+      "accepted": false,
+      "first_minute_return": -1.2631840085042256e-07,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T005000Z0000.json",
@@ -2008,9 +2416,13 @@
       "side": "NO",
       "correct": true,
       "confidence_bucket": "0.80-0.90",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.84409320828707,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": -0.00046742756294004817,
+      "first_minute_side": "NO",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T005500Z0000.json",
@@ -2027,9 +2439,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.42620607392985654,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 0.0,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     },
     {
       "summary_path": "artifacts/logs/execution_engine/summaries/2026-05-16T010000Z0000.json",
@@ -2046,9 +2462,13 @@
       "side": "YES",
       "correct": true,
       "confidence_bucket": "0.50-0.60",
-      "run_id": "20260521_baseline_coverage_090",
+      "run_id": "20260521_baseline_coverage_090_20260515_window",
       "p_down": 0.4090988014107724,
-      "accepted": true
+      "accepted": true,
+      "first_minute_return": 1.3525142608106222e-05,
+      "first_minute_side": "YES",
+      "trend_following": true,
+      "post_first_minute_reversal": false
     }
   ]
 }

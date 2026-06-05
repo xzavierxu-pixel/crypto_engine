@@ -68,54 +68,51 @@ Completed:
        accepted_count: 22050
 
 [DONE] Baseline replay reports exist for the mandatory 2026-05-15/16 and 2026-05-20/21 windows.
+       Baseline replay coverage is reported explicitly and remains below 0.90 on both windows.
 
 [DONE] Baseline reversal/trend diagnostic artifact exists:
        artifacts/data_v2/reports/reversal_diagnostics/baseline_reversal_trend_slices_090.json
+
+[DONE] Materialized second-level feature store exists:
+       artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT
+
+[DONE] New feature experiment report exists and satisfies validation coverage>=0.90:
+       artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/report.json
+       coverage: 0.9209962507
+       selection_score: 0.5382641920
+
+[DONE] New feature replay-window reports exist and satisfy coverage>=0.90:
+       artifacts/reports/execution_engine/replay_20260521_regime_reversal_second_agg_features_20260515_window.json
+       artifacts/reports/execution_engine/replay_20260521_regime_reversal_second_agg_features_20260520_window.json
+
+[DONE] Local normalized BTCUSDT 1m data covers the mandatory replay windows.
+       available start: 2025-10-01T00:00:00+00:00
+       available end:   2026-05-21T00:30:00+00:00
+
+[DONE] Replay summaries include reversal/trend metrics derived from local 1m kline first-minute side.
+
+[DONE] Feature availability, leakage, and offline-online consistency checks are recorded for the new feature artifact.
+
+[DONE] First-leg execution policy is configured as `min(best_bid - 0.05, 0.65)` and second leg is disabled.
 ```
 
 Incomplete or blocked:
 
 ```text
-[BLOCKED] Materialized second-level feature store is missing:
-          artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT
+[INCOMPLETE] New feature replay selection_score does not improve vs the coverage>=0.90 baseline on 2026-05-15/16.
 
-[TODO] New feature experiment report is missing:
-       artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/report.json
+[INCOMPLETE] New feature replay selection_score does not improve vs the coverage>=0.90 baseline on 2026-05-20/21.
 
-[TODO] New feature replay-window reports are missing:
-       artifacts/reports/execution_engine/replay_20260521_regime_reversal_second_agg_features_20260515_window.json
-       artifacts/reports/execution_engine/replay_20260521_regime_reversal_second_agg_features_20260520_window.json
-
-[INCOMPLETE] Baseline replay 2026-05-15/16 exists but does not satisfy coverage>=0.90.
-             coverage: 0.8725490196
-             accepted_sample_accuracy: 0.7752808989
-             selection_score: 1.0848782348
-             reversal/trend metrics available: false
-
-[INCOMPLETE] Baseline replay 2026-05-20/21 exists but does not satisfy coverage>=0.90.
-             coverage: 0.8971962617
-             accepted_sample_accuracy: 0.59375
-             selection_score: 0.2786431126
-             reversal/trend metrics available: false
-
-[BLOCKED] Local normalized BTCUSDT 1m data does not cover the mandatory replay windows.
-          available start: 2025-10-01T00:00:00+00:00
-          available end:   2026-05-10T23:55:00+00:00
-          required end:    2026-05-21T00:23:40+00:00
-
-[TODO] Feature availability, leakage, and offline-online consistency checks are not complete for the new feature artifact.
-
-[TODO] First-leg execution policy change has not been separately tested as an execution policy.
-
-[TODO] No completed experiment commit hash is recorded for the new feature experiment.
+[TODO] No final accepted experiment commit hash is recorded because the full replay-improvement gate is not passed.
 ```
 
 Current gating conclusion:
 
 ```text
-Do not claim regime/reversal feature improvement yet.
-The baseline coverage>=0.90 acceptance report is complete.
-The new feature artifact, feature replay reports, second-level feature store, and mandatory replay data coverage are not complete.
+Do not claim full PRD acceptance.
+The new feature artifact improves validation selection_score while satisfying coverage>=0.90.
+The mandatory new feature replay windows now satisfy coverage>=0.90 and include reversal/trend metrics.
+However, replay selection_score is lower than the coverage>=0.90 baseline on both mandatory windows.
 ```
 
 ## 1.2 Latest Implementation Result
@@ -169,17 +166,19 @@ Baseline coverage>=0.90 validation:
   accepted_count:           6742
 
 New feature validation:
-  coverage:                 0.9019817890
-  selection_score:          0.5400093403
-  utility:                  0.2970005356
-  accepted_sample_accuracy: 0.6646377672
-  accepted_count:           6736
+  selected_t_up:            0.515
+  selected_t_down:          0.450
+  coverage:                 0.9209962507
+  selection_score:          0.5382641920
+  utility:                  0.2999464381
+  accepted_sample_accuracy: 0.6628380343
+  accepted_count:           6878
 
 Validation comparison:
-  selection_score_delta:          +0.0255500396
-  utility_delta:                  +0.0112479914
-  accepted_sample_accuracy_delta: +0.0053761238
-  coverage_delta:                 -0.0008034280
+  selection_score_delta:          +0.0238048913
+  utility_delta:                  +0.0141938939
+  accepted_sample_accuracy_delta: +0.0045763909
+  coverage_delta:                 +0.0182110337
   coverage>=0.90:                 yes
 ```
 
@@ -193,10 +192,13 @@ Mandatory replay result:
   coverage>=0.90:           no
 
 2026-05-15/16 new feature replay:
-  coverage:                 0.8921568627
-  accepted_sample_accuracy: 0.7582417582
-  selection_score:          0.9921707777
-  coverage>=0.90:           no
+  selected_t_up:            0.515
+  selected_t_down:          0.450
+  coverage:                 0.9215686275
+  accepted_sample_accuracy: 0.7553191489
+  selection_score:          0.9910081668
+  coverage>=0.90:           yes
+  replay score improved:    no
 
 2026-05-20/21 baseline replay:
   coverage:                 0.8971962617
@@ -205,10 +207,22 @@ Mandatory replay result:
   coverage>=0.90:           no
 
 2026-05-20/21 new feature replay:
-  coverage:                 0.8971962617
-  accepted_sample_accuracy: 0.5625000000
-  selection_score:          0.1790048145
-  coverage>=0.90:           no
+  selected_t_up:            0.515
+  selected_t_down:          0.450
+  coverage:                 0.9065420561
+  accepted_sample_accuracy: 0.5670103093
+  selection_score:          0.1939218824
+  coverage>=0.90:           yes
+  replay score improved:    no
+```
+
+Threshold frontier replay-gate check:
+
+```text
+artifacts/data_v2/reports/regime_reversal_threshold_frontier_replay_gate_20260521.json
+
+validation improvement + replay coverage>=0.90 candidates: 104
+replay selection_score improvement candidates on both mandatory windows: 0
 ```
 
 Final gate conclusion:
@@ -216,8 +230,8 @@ Final gate conclusion:
 ```text
 Do not claim full PRD acceptance.
 The validation artifact improves selection_score while satisfying coverage>=0.90.
-The mandatory replay windows are reported, but replay coverage remains below 0.90 and replay rows do not include reversal/trend slice fields.
-The experiment is useful as an offline validation improvement, but it is not accepted for deployment under the full PRD replay gate.
+The mandatory new feature replay windows now satisfy coverage>=0.90 and include reversal/trend slice fields.
+The experiment is useful as an offline validation improvement, but it is not accepted for deployment because replay selection_score does not improve vs the coverage>=0.90 baseline on either mandatory replay window.
 ```
 
 ## 2. Primary Objective

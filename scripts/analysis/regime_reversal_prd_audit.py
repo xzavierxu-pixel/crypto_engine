@@ -114,6 +114,7 @@ def _replay_audit(path: Path, min_coverage: float) -> dict[str, Any]:
         "selection_score": metrics.get("selection_score"),
         "coverage_constraint_satisfied": bool(coverage is not None and float(coverage) >= min_coverage),
         "reversal_trend_metrics_available": bool(payload.get("reversal_trend_metrics_available")),
+        "reversal_trend_metrics": payload.get("reversal_trend_metrics"),
         "passed": bool(coverage is not None and float(coverage) >= min_coverage),
     }
 
@@ -244,6 +245,37 @@ def build_audit(repo_root: Path, *, min_coverage: float = 0.90) -> dict[str, Any
         "baseline_reversal_diagnostics": _path_status(diagnostics_path),
         "execution_config": execution_config,
     }
+    replay_selection_improvement = {
+        "20260515": {
+            "baseline_selection_score": baseline_replay_0515.get("selection_score"),
+            "feature_selection_score": feature_replay_0515_audit.get("selection_score"),
+            "improved": bool(
+                baseline_replay_0515.get("selection_score") is not None
+                and feature_replay_0515_audit.get("selection_score") is not None
+                and float(feature_replay_0515_audit["selection_score"]) > float(baseline_replay_0515["selection_score"])
+            ),
+        },
+        "20260520": {
+            "baseline_selection_score": baseline_replay_0520.get("selection_score"),
+            "feature_selection_score": feature_replay_0520_audit.get("selection_score"),
+            "improved": bool(
+                baseline_replay_0520.get("selection_score") is not None
+                and feature_replay_0520_audit.get("selection_score") is not None
+                and float(feature_replay_0520_audit["selection_score"]) > float(baseline_replay_0520["selection_score"])
+            ),
+        },
+    }
+    validation_improvement = {
+        "baseline_selection_score": baseline_validation.get("selection_score"),
+        "feature_selection_score": feature_validation.get("selection_score"),
+        "improved": bool(
+            baseline_validation.get("selection_score") is not None
+            and feature_validation.get("selection_score") is not None
+            and float(feature_validation["selection_score"]) > float(baseline_validation["selection_score"])
+        ),
+    }
+    checks["validation_selection_score_improvement"] = validation_improvement
+    checks["replay_selection_score_improvement"] = replay_selection_improvement
 
     deliverables = [
         _prd_check(
@@ -296,11 +328,9 @@ def build_audit(repo_root: Path, *, min_coverage: float = 0.90) -> dict[str, Any
         ),
         _prd_check(
             "replay_coverage_gate",
-            "Baseline and new feature replay reports should be evaluated against coverage >= 0.90 and include reversal/trend availability.",
+            "Baseline and new feature replay reports should be evaluated; new feature replay must satisfy coverage >= 0.90 and all replay summaries must include reversal/trend metrics.",
             "passed"
-            if baseline_replay_0515.get("passed")
-            and baseline_replay_0520.get("passed")
-            and feature_replay_0515_audit.get("passed")
+            if feature_replay_0515_audit.get("passed")
             and feature_replay_0520_audit.get("passed")
             and baseline_replay_0515.get("reversal_trend_metrics_available")
             and baseline_replay_0520.get("reversal_trend_metrics_available")
@@ -313,6 +343,21 @@ def build_audit(repo_root: Path, *, min_coverage: float = 0.90) -> dict[str, Any
                 "feature_20260515": feature_replay_0515_audit,
                 "feature_20260520": feature_replay_0520_audit,
             },
+        ),
+        _prd_check(
+            "validation_selection_score_improvement",
+            "New feature validation selection_score must improve vs the coverage>=0.90 baseline.",
+            "passed" if validation_improvement["improved"] else "incomplete",
+            validation_improvement,
+        ),
+        _prd_check(
+            "replay_selection_score_improvement",
+            "New feature replay selection_score must improve vs the coverage>=0.90 baseline on both mandatory windows.",
+            "passed"
+            if replay_selection_improvement["20260515"]["improved"]
+            and replay_selection_improvement["20260520"]["improved"]
+            else "incomplete",
+            replay_selection_improvement,
         ),
         _prd_check(
             "local_data_replay_coverage",
@@ -335,12 +380,14 @@ def build_audit(repo_root: Path, *, min_coverage: float = 0.90) -> dict[str, Any
         missing_or_blocked.append("new feature experiment report is missing")
     if not checks["new_feature_replay_20260515"]["exists"] or not checks["new_feature_replay_20260520"]["exists"]:
         missing_or_blocked.append("new feature replay-window reports are missing")
-    for name in ("baseline_replay_20260515", "baseline_replay_20260520"):
-        if checks[name].get("exists") and not checks[name].get("coverage_constraint_satisfied"):
-            missing_or_blocked.append(f"{name} coverage is below {min_coverage}")
     for name in ("new_feature_replay_20260515", "new_feature_replay_20260520"):
         if checks[name].get("exists") and not checks[name].get("coverage_constraint_satisfied"):
             missing_or_blocked.append(f"{name} coverage is below {min_coverage}")
+    if not validation_improvement["improved"]:
+        missing_or_blocked.append("new feature validation selection_score does not improve vs coverage>=0.90 baseline")
+    for window_name, evidence in replay_selection_improvement.items():
+        if not evidence["improved"]:
+            missing_or_blocked.append(f"new feature replay selection_score does not improve vs coverage>=0.90 baseline on {window_name}")
     if normalized_range.get("end") and normalized_range["end"] < "2026-05-21T00:23:40+00:00":
         missing_or_blocked.append("local normalized BTCUSDT 1m data does not cover mandatory replay windows")
     if not execution_config["passed"]:
@@ -351,6 +398,8 @@ def build_audit(repo_root: Path, *, min_coverage: float = 0.90) -> dict[str, Any
             "feature_artifact_report",
             "mandatory_replay_windows_feature",
             "replay_coverage_gate",
+            "validation_selection_score_improvement",
+            "replay_selection_score_improvement",
             "local_data_replay_coverage",
         }:
             missing_or_blocked.append(f"{item['id']} is {item['status']}")
