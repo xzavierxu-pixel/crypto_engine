@@ -277,6 +277,31 @@ Additional non-threshold experiments:
     selection_score:          0.2751380282
     accepted_sample_accuracy: 0.5918367347
     full gate passed:         no
+
+20260605_regime_reversal_rank_blend
+  config: experiments/configs/20260605_regime_reversal_rank_blend.yaml
+  report: artifacts/data_v2/experiments/20260605_regime_reversal_rank_blend/report.json
+  change: existing catboost_lgbm_rank_blend plugin, reusing the current logit-blend base model settings
+
+  validation:
+    selected_t_up:            0.525
+    selected_t_down:          0.460
+    coverage:                 0.9013122657
+    selection_score:          0.5381859656
+    utility:                  0.2960632030
+    accepted_sample_accuracy: 0.6642400832
+
+  replay 2026-05-15/16:
+    coverage:                 0.8921568627
+    selection_score:          1.0587327485
+    accepted_sample_accuracy: 0.7692307692
+    full gate passed:         no
+
+  replay 2026-05-20/21:
+    coverage:                 0.8971962617
+    selection_score:          0.2113704239
+    accepted_sample_accuracy: 0.5729166667
+    full gate passed:         no
 ```
 
 Final gate conclusion:
@@ -286,7 +311,7 @@ Do not claim full PRD acceptance.
 The validation artifact improves selection_score while satisfying coverage>=0.90.
 The mandatory new feature replay windows now satisfy coverage>=0.90 and include reversal/trend slice fields.
 The experiment is useful as an offline validation improvement, but it is not accepted for deployment because replay selection_score does not improve vs the coverage>=0.90 baseline on either mandatory replay window.
-Two additional non-threshold experiments were run and recorded; neither satisfies the full replay gate.
+Three additional non-threshold experiments were run and recorded; none satisfies the full replay gate.
 ```
 
 ## 2. Primary Objective
