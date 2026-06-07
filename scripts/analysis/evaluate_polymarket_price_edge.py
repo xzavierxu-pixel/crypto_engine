@@ -281,7 +281,7 @@ def main() -> None:
     )
     parser.add_argument("--artifact-dir", action="append", default=[])
     parser.add_argument("--replay-json", action="append", default=[])
-    parser.add_argument("--min-ev-threshold", type=float, default=0.05)
+    parser.add_argument("--min-ev-threshold", type=float, default=0.1)
     parser.add_argument(
         "--output",
         default="artifacts/data_v2/reports/price_edge/price_edge_evaluation.json",

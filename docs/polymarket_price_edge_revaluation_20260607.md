@@ -6,6 +6,13 @@ This report re-evaluates prior validation experiments and mandatory replay windo
 
 No model, label, feature, or execution semantics were changed. Polymarket prices are used only at evaluation time.
 
+Parameter note:
+
+```text
+This historical revaluation used min_ev_threshold = 0.05.
+The current default in scripts/analysis/evaluate_polymarket_price_edge.py is 0.10.
+```
+
 Artifacts:
 
 ```text
