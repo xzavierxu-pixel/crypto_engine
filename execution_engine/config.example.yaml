@@ -61,9 +61,9 @@ orders:
   first:
     enabled: true
     price_mode: min_best_bid_offset_and_cap
-    price_cap: 0.5
+    price_cap: 0.55
     offset: 0.01
-    best_bid_offset: -0.08
+    best_bid_offset: -0.8
     reference_multiplier: 1.0
     round_decimals: null
     size: 5.0

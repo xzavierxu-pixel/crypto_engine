@@ -100,9 +100,9 @@ orders:
   first:
     enabled: true
     price_mode: min_best_bid_offset_and_cap
-    price_cap: 0.50
+    price_cap: 0.55
     offset: 0.01
-    best_bid_offset: -0.08
+    best_bid_offset: -0.8
     reference_multiplier: 1.0
     round_decimals: null
     size: 5.0
@@ -126,14 +126,14 @@ execution_edge:
 Price formulas:
 
 ```text
-first_price  = max(min(best_bid - 0.08, 0.50), 0.10)
+first_price  = max(min(best_bid - 0.8, 0.55), 0.10)
 second_price = max(min(round(0.25 * best_bid, 2), 0.20), 0.10)
 ```
 
 If the selected token has no `best_bid` but has `best_ask`, the first leg falls back to:
 
 ```text
-first_price = max(min(best_ask - 0.01, 0.50), 0.10)
+first_price = max(min(best_ask - 0.01, 0.55), 0.10)
 ```
 
 The first leg is enabled by default. The second leg is disabled by default and must be explicitly enabled with `orders.second.enabled: true`. Both legs have `size = 5.0` when enabled. The lower price bound is `0.10` for both legs. Prices are floored to the configured tick size after formula evaluation and lower-bound clamping.
