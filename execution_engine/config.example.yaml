@@ -1,9 +1,9 @@
 baseline:
-  active_artifact: split_validation
+  active_artifact: full_train
   artifact_dir: execution_engine/deploy/baseline
   artifacts:
     split_validation:
-      artifact_dir: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline
+      artifact_dir: artifacts/data_v2/experiments/20260605_regime_reversal_rank_blend
     full_train:
       artifact_dir: execution_engine/deploy/baseline
   settings_path: config/settings.yaml
