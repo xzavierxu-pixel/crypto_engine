@@ -96,3 +96,5 @@ freqtrade.log
 .mypy_cache/
 .ruff_cache/
 __pypackages__/
+
+*.env

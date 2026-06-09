@@ -60,7 +60,7 @@ orders:
     best_bid_offset: 0.0
     reference_multiplier: 1.0
     round_decimals: null
-    size: 10.0
+    size: 5.0
   second:
     enabled: false
     price_cap: 0.2
@@ -74,10 +74,10 @@ orders:
   on_invalid_second_order: skip
 execution_edge:
   enabled: true
-  min_edge: 0.06
+  min_edge: 0.0
   max_buy_price: 0.8
   max_spread: 0.08
-  max_order_notional: 10.0
+  max_order_notional: 5.0
   size_to_max_notional: false
   apply_to_first_leg: true
   apply_to_second_leg: true
