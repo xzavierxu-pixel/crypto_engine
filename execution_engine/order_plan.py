@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+from decimal import Decimal, ROUND_CEILING
 from math import floor
 
 from execution_engine.config import ExecutionEdgeConfig, OrdersConfig
+from execution_engine.limit_configs import down_limit, up_limit
 from src.core.schemas import Decision, MarketQuote, OrderRequest, Signal
+
+LOGGER = logging.getLogger(__name__)
+LIMIT_CONFIG_BEST_ASK_OFFSET_MODE = "limit_config_best_ask_offset"
 
 
 @dataclass(frozen=True)
@@ -25,6 +31,18 @@ def floor_to_tick(price: float, tick_size: float) -> float:
     if tick_size <= 0:
         raise ValueError("tick_size must be positive.")
     return round(floor((price + 1e-12) / tick_size) * tick_size, 10)
+
+
+def ceil_to_two_decimals(price: float) -> float:
+    return float(Decimal(str(price)).quantize(Decimal("0.01"), rounding=ROUND_CEILING))
+
+
+def _limit_config_for_side(side: str) -> dict[float, float]:
+    if side == "YES":
+        return up_limit
+    if side == "NO":
+        return down_limit
+    raise ValueError(f"Unsupported decision side for limit config: {side!r}")
 
 
 def build_two_limit_order_plan(
@@ -54,7 +72,50 @@ def build_two_limit_order_plan(
         if leg.size <= 0:
             skipped.append({"leg": name, "reason": "disabled_leg", "size": float(leg.size)})
             continue
-        if best_bid is not None:
+
+        if leg.price_mode == LIMIT_CONFIG_BEST_ASK_OFFSET_MODE:
+            if best_ask is None:
+                skip = {"leg": name, "reason": "missing_best_ask", "price_mode": leg.price_mode}
+                LOGGER.warning("Skipping order leg because best ask is missing: %s", skip)
+                skipped.append(skip)
+                continue
+            quote_reference = float(best_ask)
+            quote_source = "best_ask"
+            lookup_price = ceil_to_two_decimals(quote_reference)
+            offset_lookup = _limit_config_for_side(str(decision.side))
+            offset = offset_lookup.get(lookup_price)
+            if offset is None:
+                skip = {
+                    "leg": name,
+                    "reason": "missing_limit_offset",
+                    "price_mode": leg.price_mode,
+                    "side": decision.side,
+                    "quote_source": quote_source,
+                    "best_ask": quote_reference,
+                    "lookup_price": lookup_price,
+                }
+                LOGGER.warning("Skipping order leg because no limit offset is configured: %s", skip)
+                skipped.append(skip)
+                continue
+            raw_price = lookup_price - float(offset)
+            if raw_price <= 0 or raw_price < config.min_price or raw_price > config.max_price:
+                skip = {
+                    "leg": name,
+                    "reason": "invalid_limit_config_price",
+                    "price_mode": leg.price_mode,
+                    "side": decision.side,
+                    "quote_source": quote_source,
+                    "best_ask": quote_reference,
+                    "lookup_price": lookup_price,
+                    "offset": float(offset),
+                    "raw_price": raw_price,
+                    "min_price": config.min_price,
+                    "max_price": config.max_price,
+                }
+                LOGGER.warning("Skipping order leg because limit-config price is invalid: %s", skip)
+                skipped.append(skip)
+                continue
+        elif best_bid is not None:
             quote_reference = float(best_bid)
             quote_source = "best_bid"
             if leg.price_mode == "min_best_bid_offset_and_cap":
@@ -127,6 +188,8 @@ def build_two_limit_order_plan(
                     "configured_size": float(leg.size),
                     "size_to_max_notional": edge_config.size_to_max_notional,
                     "max_order_notional": edge_config.max_order_notional,
+                    "limit_config_lookup_price": lookup_price if leg.price_mode == LIMIT_CONFIG_BEST_ASK_OFFSET_MODE else None,
+                    "limit_config_offset": float(offset) if leg.price_mode == LIMIT_CONFIG_BEST_ASK_OFFSET_MODE else None,
                 },
             )
         )

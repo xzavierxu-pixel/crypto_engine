@@ -31,6 +31,16 @@ def _decision() -> Decision:
     )
 
 
+def _down_decision() -> Decision:
+    return Decision(
+        should_trade=True,
+        side="NO",
+        edge=None,
+        reason="selective_binary_signal_passed",
+        target_size=5.0,
+    )
+
+
 def _quote() -> MarketQuote:
     return MarketQuote(
         market_id="market",
@@ -95,6 +105,116 @@ def test_first_leg_min_best_bid_offset_and_cap_price_mode() -> None:
     )
     capped = build_two_limit_order_plan(_signal(), _decision(), high_bid_quote, config)
     assert capped.orders[0].price == 0.65
+
+
+def test_limit_config_best_ask_offset_ceil_lookup_for_up_signal() -> None:
+    config = OrdersConfig(
+        first=OrderLegConfig(
+            price_mode="limit_config_best_ask_offset",
+            price_cap=0.99,
+            size=5.0,
+        )
+    )
+    quote = MarketQuote(
+        market_id="market",
+        yes_price=0.801,
+        metadata={
+            "yes_token_id": "yes-token",
+            "no_token_id": "no-token",
+            "best_bid": 0.78,
+            "best_ask": 0.801,
+            "tick_size": 0.01,
+        },
+    )
+
+    result = build_two_limit_order_plan(_signal(), _decision(), quote, config)
+
+    assert len(result.orders) == 1
+    assert result.orders[0].market_id == "yes-token"
+    assert result.orders[0].price == 0.8
+    assert result.orders[0].metadata["quote_source"] == "best_ask"
+    assert result.orders[0].metadata["limit_config_lookup_price"] == 0.81
+    assert result.orders[0].metadata["limit_config_offset"] == 0.01
+    assert result.skipped == [{"leg": "second", "reason": "disabled_leg", "enabled": False}]
+
+
+def test_limit_config_best_ask_offset_uses_down_limit_for_no_signal() -> None:
+    config = OrdersConfig(
+        first=OrderLegConfig(
+            price_mode="limit_config_best_ask_offset",
+            price_cap=0.99,
+            size=5.0,
+        )
+    )
+    quote = MarketQuote(
+        market_id="market",
+        yes_price=0.301,
+        metadata={
+            "yes_token_id": "yes-token",
+            "no_token_id": "no-token",
+            "best_bid": 0.27,
+            "best_ask": 0.301,
+            "tick_size": 0.01,
+        },
+    )
+
+    result = build_two_limit_order_plan(_signal(), _down_decision(), quote, config)
+
+    assert len(result.orders) == 1
+    assert result.orders[0].market_id == "no-token"
+    assert result.orders[0].price == 0.18
+    assert result.orders[0].metadata["limit_config_lookup_price"] == 0.31
+    assert result.orders[0].metadata["limit_config_offset"] == 0.13
+
+
+def test_limit_config_best_ask_offset_skips_missing_key_and_invalid_price(caplog) -> None:
+    missing_key_config = OrdersConfig(
+        first=OrderLegConfig(
+            price_mode="limit_config_best_ask_offset",
+            price_cap=0.99,
+            size=5.0,
+        )
+    )
+    missing_key_quote = MarketQuote(
+        market_id="market",
+        yes_price=0.961,
+        metadata={
+            "yes_token_id": "yes-token",
+            "best_ask": 0.961,
+            "tick_size": 0.01,
+        },
+    )
+
+    result = build_two_limit_order_plan(_signal(), _decision(), missing_key_quote, missing_key_config)
+
+    assert result.orders == []
+    assert result.skipped[0]["reason"] == "missing_limit_offset"
+    assert result.skipped[0]["lookup_price"] == 0.97
+    assert "no limit offset is configured" in caplog.text
+
+    invalid_price_config = OrdersConfig(
+        first=OrderLegConfig(
+            price_mode="limit_config_best_ask_offset",
+            price_cap=0.99,
+            size=5.0,
+        ),
+        min_price=0.25,
+    )
+    invalid_price_quote = MarketQuote(
+        market_id="market",
+        yes_price=0.221,
+        metadata={
+            "yes_token_id": "yes-token",
+            "best_ask": 0.221,
+            "tick_size": 0.01,
+        },
+    )
+
+    result = build_two_limit_order_plan(_signal(), _decision(), invalid_price_quote, invalid_price_config)
+
+    assert result.orders == []
+    assert result.skipped[0]["reason"] == "invalid_limit_config_price"
+    assert result.skipped[0]["raw_price"] == 0.1
 
 
 def test_active_artifact_selects_configured_artifact_dir(tmp_path: Path) -> None:
