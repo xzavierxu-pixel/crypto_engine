@@ -1,23 +1,21 @@
 baseline:
-  active_artifact: full_train
   artifact_dir: execution_engine/deploy/baseline
+  settings_path: config/settings.yaml
+  model_file: null
+  calibrator_file: null
+  manifest_file: artifact_manifest.json
+  active_artifact: full_train
   artifacts:
     split_validation:
       artifact_dir: artifacts/data_v2/experiments/20260605_regime_reversal_rank_blend
     full_train:
       artifact_dir: execution_engine/deploy/baseline
-  settings_path: config/settings.yaml
-  model_file: null
-  calibrator_file: null
-  manifest_file: artifact_manifest.json
-
 runtime:
-  mode: paper
+  mode: live
   timezone: UTC
   audit_log: artifacts/logs/execution_engine/live.jsonl
   summary_dir: artifacts/logs/execution_engine/summaries
   idempotency_store_path: artifacts/state/execution_engine/idempotency.json
-
 binance:
   base_url: https://api.binance.com
   symbol: BTCUSDT
@@ -31,17 +29,14 @@ binance:
   require_agg_trade_through_last_second: true
   max_agg_trade_lag_seconds: 2
   agg_trade_wait_seconds: 8
-
 schedule:
   interval_minutes: 5
   trigger_delay_seconds: 68
   max_data_wait_seconds: 20
   prewarm_seconds_before_trigger: 45
-
 thresholds:
   t_up: null
   t_down: null
-
 polymarket:
   host: https://clob.polymarket.com
   gamma_base_url: https://gamma-api.polymarket.com
@@ -54,47 +49,43 @@ polymarket:
   funder: null
   timeout_seconds: 5
   max_pages: 3
-
 orders:
-  enabled: false
-  mode: paper
+  enabled: true
+  mode: live
   first:
     enabled: true
     price_mode: min_best_bid_offset_and_cap
-    price_cap: 0.55
+    price_cap: 0.65
     offset: 0.01
-    best_bid_offset: -0.8
+    best_bid_offset: 0.0
     reference_multiplier: 1.0
     round_decimals: null
-    size: 5.0
+    size: 10.0
   second:
     enabled: false
-    price_cap: 0.20
+    price_cap: 0.2
     offset: 0.0
     reference_multiplier: 0.25
     round_decimals: 2
     size: 5.0
-  min_price: 0.10
+  min_price: 0.1
   max_price: 0.99
   tick_size_default: 0.01
   on_invalid_second_order: skip
-
 execution_edge:
-  enabled: false
-  min_edge: 0.04
+  enabled: true
+  min_edge: 0.06
   max_buy_price: 0.8
   max_spread: 0.08
-  max_order_notional: 4.0
+  max_order_notional: 10.0
   size_to_max_notional: false
   apply_to_first_leg: true
   apply_to_second_leg: true
-
 guards:
   require_market_accepting_orders: true
   require_best_bid: true
   max_orders_per_window: 2
   enforce_idempotency: true
-
 paper_test:
   max_duration_minutes: 60
   stop_when_pnl_gt: 25.0

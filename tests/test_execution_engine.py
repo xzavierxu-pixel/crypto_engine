@@ -76,10 +76,32 @@ def test_execution_config_example_loads() -> None:
     assert config.execution_edge.enabled is False
     assert config.execution_edge.min_edge == 0.04
     assert config.execution_edge.max_buy_price == 0.8
-    assert config.execution_edge.max_order_notional == 4.0
+    assert config.execution_edge.max_order_notional == 5.0
     assert config.execution_edge.size_to_max_notional is False
     assert config.paper_test.max_duration_minutes == 60
     assert config.paper_test.stop_when_pnl_gt == 25.0
+
+
+def test_execution_edge_max_order_notional_defaults_to_first_order_size(tmp_path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        """
+baseline:
+  artifact_dir: execution_engine/deploy/baseline
+orders:
+  first:
+    size: 12.5
+execution_edge:
+  enabled: true
+  min_edge: 0.06
+""".strip(),
+        encoding="utf-8",
+    )
+
+    config = load_execution_config(config_path)
+
+    assert config.orders.first.size == 12.5
+    assert config.execution_edge.max_order_notional == 12.5
 
 
 def test_run_once_configured_trigger_wait_seconds_aligns_after_full_window_data() -> None:
@@ -570,7 +592,7 @@ def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
     assert expensive_plan.skipped[0]["edge"] == -0.65
 
     high_price_orders = replace(config.orders, first=replace(config.orders.first, price_cap=0.9))
-    high_price_edge = replace(edge_config, max_buy_price=0.99, size_to_max_notional=False)
+    high_price_edge = replace(edge_config, max_buy_price=0.99, max_order_notional=4.0, size_to_max_notional=False)
     notional_plan = build_two_limit_order_plan(
         _signal(0.99),
         Decision(True, "YES", 0.45, "selective_binary_signal_passed", 5.0),

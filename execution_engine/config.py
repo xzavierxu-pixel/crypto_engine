@@ -111,7 +111,7 @@ class ExecutionEdgeConfig:
     min_edge: float = 0.04
     max_buy_price: float | None = 0.8
     max_spread: float | None = 0.08
-    max_order_notional: float | None = 4.0
+    max_order_notional: float | None = None
     size_to_max_notional: bool = False
     apply_to_first_leg: bool = True
     apply_to_second_leg: bool = True
@@ -196,6 +196,10 @@ def load_execution_config(path: str | Path) -> ExecutionEngineConfig:
         on_invalid_second_order=orders_payload.get("on_invalid_second_order", "skip"),
     )
 
+    execution_edge_payload = _payload_for(payload, "execution_edge")
+    if "max_order_notional" not in execution_edge_payload:
+        execution_edge_payload = {**execution_edge_payload, "max_order_notional": orders.first.size}
+
     return ExecutionEngineConfig(
         baseline=_baseline_config(payload["baseline"]),
         runtime=RuntimeConfig(**_payload_for(payload, "runtime")),
@@ -204,7 +208,7 @@ def load_execution_config(path: str | Path) -> ExecutionEngineConfig:
         thresholds=ThresholdConfig(**_payload_for(payload, "thresholds")),
         polymarket=PolymarketConfig(**_payload_for(payload, "polymarket")),
         orders=orders,
-        execution_edge=ExecutionEdgeConfig(**_payload_for(payload, "execution_edge")),
+        execution_edge=ExecutionEdgeConfig(**execution_edge_payload),
         guards=GuardsConfig(**_payload_for(payload, "guards")),
         paper_test=PaperTestConfig(**_payload_for(payload, "paper_test")),
     )

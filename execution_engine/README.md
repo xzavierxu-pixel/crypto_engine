@@ -161,6 +161,19 @@ execution_engine/
   scripts/               live smoke-test helpers
 ```
 
+`execution_engine/config.example.yaml` is the tracked source of truth for runtime configuration shape and current intended defaults. It must be updated in the same change whenever execution behavior, order policy, edge guards, runtime timing, artifact selection, or other config-driven behavior changes.
+
+Do not make ad hoc edits directly to the live server's `execution_engine/config.yaml` as the primary change. The required update flow is:
+
+1. Update local `execution_engine/config.example.yaml` first.
+2. Commit or otherwise preserve the local tracked change.
+3. On the server, back up the current live config before replacing it.
+4. Copy the local `config.example.yaml` content to the server's `execution_engine/config.yaml`.
+5. Apply only environment-specific secrets in `secrets.env`; do not put secrets in either config file.
+6. Verify that the loaded server config matches the intended local config before the next live run.
+
+This keeps local tracked config history, server runtime config, and deployment behavior aligned.
+
 ---
 
 ## Local Paper Smoke Test
@@ -240,12 +253,20 @@ bash execution_engine/scripts/install_linux.sh
 
 The installer installs `execution_engine/requirements.txt`, including the model runtime dependencies required by the current artifact. If dependency drift causes `InconsistentVersionWarning` for sklearn artifacts, use the version recorded for the artifact environment.
 
-Create runtime config:
+Create runtime config from the tracked template:
 
 ```bash
 cp execution_engine/config.example.yaml execution_engine/config.yaml
-vim execution_engine/config.yaml
 ```
+
+For production updates, do not directly edit the server copy as the source of truth. Back up the server file, then replace it from the local tracked template:
+
+```bash
+cp execution_engine/config.yaml execution_engine/config.yaml.before_$(date -u +%Y%m%dT%H%M%SZ)
+cp execution_engine/config.example.yaml execution_engine/config.yaml
+```
+
+Then verify the loaded values with `load_execution_config` before allowing the live timer to run.
 
 Verify deploy files:
 
