@@ -1,0 +1,3 @@
+variant,reversal_sample_weight,coverage,accepted_sample_accuracy,selection_score,utility,accepted_count,continuation_t_up,continuation_t_down,reversal_t_up,reversal_t_down,continuation_accepted_accuracy,reversal_accepted_accuracy,target_met
+two_head_reversal_weight_1.5,1.5,0.7036689876807712,0.6966698382492864,0.5990928872682951,0.2767809319764328,5255.0,0.575,0.425,0.625,0.425,0.9865310610225398,0.04452690166975881,False
+two_head_reversal_weight_2,2.0,0.7114354579539368,0.6947110860154339,0.5944740630827147,0.2770487412961971,5313.0,0.575,0.425,0.65,0.35,0.9789961811238407,0.061930783242258654,False

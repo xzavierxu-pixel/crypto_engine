@@ -1,0 +1,52 @@
+experiment_id: 20260611_catboost_two_head_side_policy_search
+mode: catboost_standard_continuation_weighted_reversal_side_policy_search
+baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
+output_dir: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_two_head_side_policy_search
+
+objective:
+  optimize_metric: accepted_sample_accuracy
+  min_coverage: 0.70
+  target_accepted_sample_accuracy: 0.75
+
+model:
+  iterations: 400
+  learning_rate: 0.025
+  depth: 5
+  l2_leaf_reg: 24.0
+  random_strength: 1.0
+  bootstrap_type: Bernoulli
+  subsample: 0.85
+  loss_function: Logloss
+  eval_metric: Logloss
+  allow_writing_files: false
+  verbose: false
+  random_seed: 20260611
+
+feature_set:
+  patterns:
+    - "fm_"
+    - "ret_1"
+    - "return_1s"
+    - "return_3s"
+    - "return_5s"
+    - "slope"
+    - "taker"
+    - "flow"
+    - "imbalance"
+    - "pressure"
+    - "divergence"
+    - "absorption"
+    - "exhaustion"
+    - "wick"
+    - "clv"
+    - "close_location"
+
+sample_weight:
+  reversal_weights: [1.5, 2.0]
+
+threshold_search:
+  hard_constraint: coverage_only
+  continuation_t_up_values: [0.48, 0.50, 0.525, 0.55, 0.575, 0.60]
+  continuation_t_down_values: [0.40, 0.425, 0.45, 0.475, 0.50, 0.52]
+  reversal_t_up_values: [0.50, 0.525, 0.55, 0.575, 0.60, 0.625, 0.65]
+  reversal_t_down_values: [0.35, 0.375, 0.40, 0.425, 0.45, 0.475, 0.50]
