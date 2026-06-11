@@ -1,0 +1,77 @@
+experiment_id: 20260611_catboost_blend_diagnostics
+mode: catboost_probability_blend_diagnostics
+baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
+output_dir: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_blend_diagnostics
+
+objective:
+  optimize_metric: accepted_sample_accuracy
+  min_coverage: 0.70
+  target_accepted_sample_accuracy: 0.75
+
+threshold_search:
+  hard_constraint: coverage_only
+  t_up_min: 0.50
+  t_up_max: 0.75
+  t_down_min: 0.25
+  t_down_max: 0.50
+  step: 0.005
+
+feature_set:
+  patterns:
+    - "fm_"
+    - "ret_1"
+    - "return_1s"
+    - "return_3s"
+    - "return_5s"
+    - "slope"
+    - "taker"
+    - "flow"
+    - "imbalance"
+    - "pressure"
+    - "divergence"
+    - "absorption"
+    - "exhaustion"
+    - "wick"
+    - "clv"
+    - "close_location"
+
+model_defaults:
+  bootstrap_type: Bernoulli
+  subsample: 0.85
+  loss_function: Logloss
+  eval_metric: Logloss
+  allow_writing_files: false
+  verbose: false
+  random_seed: 20260611
+
+base_models:
+  - name: d4_i350_l20_rs1
+    iterations: 350
+    learning_rate: 0.03
+    depth: 4
+    l2_leaf_reg: 20.0
+    random_strength: 1.0
+  - name: d4_i500_l24_rs1
+    iterations: 500
+    learning_rate: 0.025
+    depth: 4
+    l2_leaf_reg: 24.0
+    random_strength: 1.0
+  - name: d5_i400_l24_rs1
+    iterations: 400
+    learning_rate: 0.025
+    depth: 5
+    l2_leaf_reg: 24.0
+    random_strength: 1.0
+  - name: d4_i450_l16_rs05
+    iterations: 450
+    learning_rate: 0.025
+    depth: 4
+    l2_leaf_reg: 16.0
+    random_strength: 0.5
+
+blends:
+  - mean
+  - median
+  - best_plus_mean
+  - rank_mean
