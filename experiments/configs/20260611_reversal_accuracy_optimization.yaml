@@ -1,0 +1,124 @@
+experiment_id: 20260611_reversal_accuracy_optimization
+mode: five_direction_reversal_accuracy_optimization
+baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
+follow_experiment: artifacts/data_v2/experiments/20260611_first_minute_follow_reversal_weight_utility
+output_dir: artifacts/data_v2/reports/reversal_hybrid/20260611_reversal_accuracy_optimization
+
+objective:
+  optimize_metric: accepted_sample_accuracy
+  min_coverage: 0.70
+  target_accepted_sample_accuracy: 0.75
+
+threshold_search:
+  hard_constraint: coverage_only
+  t_up_min: 0.50
+  t_up_max: 0.80
+  t_down_min: 0.20
+  t_down_max: 0.50
+  step: 0.01
+
+model_defaults:
+  type: lightgbm_lgbmclassifier
+  n_estimators: 300
+  learning_rate: 0.035
+  num_leaves: 31
+  min_child_samples: 80
+  subsample: 0.85
+  colsample_bytree: 0.75
+  reg_alpha: 0.5
+  reg_lambda: 8.0
+  random_state: 20260611
+
+feature_sets:
+  impulse_flow_subset:
+    mode: keep_regex
+    patterns:
+      - "fm_"
+      - "ret_1"
+      - "return_1s"
+      - "return_3s"
+      - "return_5s"
+      - "slope"
+      - "taker"
+      - "flow"
+      - "imbalance"
+      - "pressure"
+      - "divergence"
+      - "absorption"
+      - "exhaustion"
+      - "wick"
+      - "clv"
+      - "close_location"
+  reversal_expanded:
+    mode: keep_regex
+    patterns:
+      - "reversal"
+      - "exhaust"
+      - "absorp"
+      - "wick"
+      - "clv"
+      - "close_location"
+      - "adverse"
+      - "favorable"
+      - "opposes"
+      - "stall"
+      - "divergence"
+  flow_imbalance_only:
+    mode: keep_regex
+    patterns:
+      - "taker"
+      - "flow"
+      - "imbalance"
+      - "pressure"
+      - "absorption"
+      - "divergence"
+  fm_micro_reversal:
+    mode: keep_regex
+    patterns:
+      - "fm_"
+      - "sl_.*(5s|10s|15s|30s)"
+      - "last_10s"
+      - "last_15s"
+      - "opposes"
+      - "stall"
+      - "adverse"
+      - "favorable"
+      - "exhaust"
+      - "absorp"
+
+variants:
+  - name: direct_impulse_flow_subset
+    direction: reversal_feature_refinement
+    model_target: final_direction
+    feature_set: impulse_flow_subset
+    add_meta_features: false
+    blend_weights: [1.0]
+  - name: direct_reversal_expanded
+    direction: reversal_feature_expansion
+    model_target: final_direction
+    feature_set: reversal_expanded
+    add_meta_features: false
+    blend_weights: [1.0]
+  - name: asymmetric_follow_relative_meta
+    direction: asymmetric_reversal_features
+    model_target: follow_relative
+    feature_set: impulse_flow_subset
+    add_meta_features: true
+    blend_weights: [1.0]
+  - name: flow_imbalance_ablation
+    direction: feature_ablation
+    model_target: final_direction
+    feature_set: flow_imbalance_only
+    add_meta_features: false
+    blend_weights: [1.0]
+  - name: impulse_meta_blend_regime_threshold
+    direction: regime_threshold_and_conservative_filter
+    model_target: final_direction
+    feature_set: fm_micro_reversal
+    add_meta_features: true
+    blend_weights: [0.25, 0.50, 0.75]
+
+acceptance:
+  require_coverage_gte_min: true
+  require_accepted_sample_accuracy_gte_target: true
+  require_positive_utility: true
