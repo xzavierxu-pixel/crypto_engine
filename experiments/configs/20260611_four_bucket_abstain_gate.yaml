@@ -1,0 +1,22 @@
+experiment_id: 20260611_four_bucket_abstain_gate
+mode: four_bucket_abstain_only
+baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
+follow_experiment: artifacts/data_v2/experiments/20260611_first_minute_follow_reversal_weight_utility
+output_dir: artifacts/data_v2/reports/reversal_hybrid/20260611_four_bucket_abstain_gate
+
+objective:
+  optimize_metric: selection_score
+  min_coverage: 0.70
+
+threshold_search:
+  hard_constraint: coverage_only
+
+gate:
+  p_follow_cutoffs: [0.35, 0.40, 0.45, 0.50]
+  base_bands: [0.03, 0.05, 0.07, 0.10]
+
+acceptance:
+  min_continuation_accepted_accuracy: 0.958
+  min_reversal_accepted_accuracy: 0.08
+  require_utility_gt_baseline: true
+  require_accepted_sample_accuracy_gt: 0.50
