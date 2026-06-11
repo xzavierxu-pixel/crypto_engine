@@ -1,0 +1,54 @@
+experiment_id: 20260611_catboost_calendar_threshold_search
+mode: catboost_calendar_greedy_threshold_search
+baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
+output_dir: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_calendar_threshold_search
+
+objective:
+  optimize_metric: accepted_sample_accuracy
+  min_coverage: 0.70
+  target_accepted_sample_accuracy: 0.75
+
+model:
+  iterations: 400
+  learning_rate: 0.025
+  depth: 5
+  l2_leaf_reg: 24.0
+  random_strength: 1.0
+  bootstrap_type: Bernoulli
+  subsample: 0.85
+  loss_function: Logloss
+  eval_metric: Logloss
+  allow_writing_files: false
+  verbose: false
+  random_seed: 20260611
+
+feature_set:
+  patterns:
+    - "fm_"
+    - "ret_1"
+    - "return_1s"
+    - "return_3s"
+    - "return_5s"
+    - "slope"
+    - "taker"
+    - "flow"
+    - "imbalance"
+    - "pressure"
+    - "divergence"
+    - "absorption"
+    - "exhaustion"
+    - "wick"
+    - "clv"
+    - "close_location"
+
+threshold_search:
+  hard_constraint: coverage_only
+  initial_t_up: 0.575
+  initial_t_down: 0.43
+  t_up_values: [0.55, 0.56, 0.57, 0.575, 0.58, 0.59, 0.60, 0.61, 0.62]
+  t_down_values: [0.40, 0.415, 0.425, 0.43, 0.435, 0.445, 0.455, 0.465]
+
+regimes:
+  - weekday
+  - weekend
+  - day_session
