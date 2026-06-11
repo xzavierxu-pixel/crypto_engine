@@ -1,0 +1,67 @@
+experiment_id: 20260611_reversal_classifier_bound_diagnostics
+mode: reversal_classifier_bound_and_override_search
+baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
+output_dir: artifacts/data_v2/reports/reversal_hybrid/20260611_reversal_classifier_bound_diagnostics
+
+objective:
+  optimize_metric: accepted_sample_accuracy
+  min_coverage: 0.70
+  target_accepted_sample_accuracy: 0.75
+
+current_best_gate:
+  reversal_risk_threshold: 0.55
+  base_band: 0.15
+
+model:
+  n_estimators: 600
+  learning_rate: 0.03
+  num_leaves: 15
+  min_child_samples: 150
+  subsample: 0.85
+  colsample_bytree: 0.75
+  reg_alpha: 2.0
+  reg_lambda: 20.0
+  random_state: 20260611
+
+feature_sets:
+  impulse:
+    patterns:
+      - "fm_"
+      - "ret_1"
+      - "return_1s"
+      - "return_3s"
+      - "return_5s"
+      - "slope"
+      - "taker"
+      - "flow"
+      - "imbalance"
+      - "pressure"
+      - "divergence"
+      - "absorption"
+      - "exhaustion"
+      - "wick"
+      - "clv"
+      - "close_location"
+  reversal_expanded:
+    patterns:
+      - "reversal"
+      - "exhaust"
+      - "absorp"
+      - "wick"
+      - "clv"
+      - "close_location"
+      - "adverse"
+      - "favorable"
+      - "opposes"
+      - "stall"
+      - "divergence"
+      - "ret_vol"
+      - "rv_"
+      - "relative_volume"
+  all_safe:
+    patterns:
+      - "."
+
+override_search:
+  risk_thresholds: [0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80]
+  include_abstains: [false, true]

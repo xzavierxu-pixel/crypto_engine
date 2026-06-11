@@ -1,0 +1,394 @@
+{
+  "best_variant": "impulse",
+  "config_path": "experiments\\configs\\20260611_reversal_classifier_bound_diagnostics.yaml",
+  "current_best_metrics": {
+    "accepted_count": 5263.0,
+    "accepted_sample_accuracy": 0.6942808284248527,
+    "all_sample_accuracy": 0.6491697911087306,
+    "balanced_precision": 0.6942990354902583,
+    "brier_score": 0.21882884066514852,
+    "continuation_accepted_accuracy": 0.9809760132340778,
+    "continuation_accepted_count": 3627.0,
+    "continuation_coverage": 0.7517098445595854,
+    "continuation_sample_count": 4825.0,
+    "coverage": 0.7047402249598286,
+    "down_prediction_count": 2327.0,
+    "down_signal_count": 2327.0,
+    "downside_risk": 0.46416871690194905,
+    "log_loss": 0.6269735220696954,
+    "overall_signal_accuracy": 0.6942808284248527,
+    "precision_down": 0.6944563816072196,
+    "precision_up": 0.694141689373297,
+    "reversal_accepted_accuracy": 0.05867970660146699,
+    "reversal_accepted_count": 1636.0,
+    "reversal_coverage": 0.6189935679152478,
+    "reversal_sample_count": 2643.0,
+    "roc_auc": 0.7063832148945653,
+    "sample_count": 7468.0,
+    "selected_t_down": 0.15,
+    "selected_t_up": 0.55,
+    "selection_score": 0.5899471883558022,
+    "share_down_predictions": 0.44214326429792894,
+    "share_up_predictions": 0.5578567357020711,
+    "signal_coverage": 0.7047402249598286,
+    "total_signal_count": 5263.0,
+    "up_prediction_count": 2936.0,
+    "up_signal_count": 2936.0,
+    "utility": 0.27383502945902516
+  },
+  "experiment_id": "20260611_reversal_classifier_bound_diagnostics",
+  "mode": "reversal_classifier_bound_and_override_search",
+  "objective": {
+    "min_coverage": 0.7,
+    "optimize_metric": "accepted_sample_accuracy",
+    "target_accepted_sample_accuracy": 0.75
+  },
+  "primary_metric": "validation accepted_sample_accuracy with coverage >= min_coverage",
+  "target_met": false,
+  "target_requirement": {
+    "additional_correct_needed_at_min_coverage": 267.0,
+    "correct_needed_at_min_coverage": 3921.0,
+    "current_accepted": 5263.0,
+    "current_correct_estimate": 3654.0,
+    "min_accepted_for_coverage": 5228.0,
+    "sample_count": 7468.0,
+    "target_accuracy": 0.75
+  },
+  "validation_metrics": {
+    "accepted_count": 5263.0,
+    "accepted_sample_accuracy": 0.6942808284248527,
+    "all_sample_accuracy": 0.6491697911087306,
+    "balanced_precision": 0.6942990354902583,
+    "brier_score": 0.21882884066514852,
+    "constraint_satisfied": true,
+    "continuation_accepted_accuracy": 0.9809760132340778,
+    "continuation_accepted_count": 3627.0,
+    "continuation_coverage": 0.7517098445595854,
+    "continuation_sample_count": 4825.0,
+    "coverage": 0.7047402249598286,
+    "down_prediction_count": 2327.0,
+    "down_signal_count": 2327.0,
+    "downside_risk": 0.46416871690194905,
+    "hard_constraint": "coverage_only",
+    "include_abstains": false,
+    "log_loss": 0.6269735220696954,
+    "objective": "accepted_sample_accuracy",
+    "overall_signal_accuracy": 0.6942808284248527,
+    "precision_down": 0.6944563816072196,
+    "precision_up": 0.694141689373297,
+    "reversal_accepted_accuracy": 0.05867970660146699,
+    "reversal_accepted_count": 1636.0,
+    "reversal_coverage": 0.6189935679152478,
+    "reversal_sample_count": 2643.0,
+    "risk_threshold": 0.7,
+    "roc_auc": 0.7063832148945653,
+    "sample_count": 7468.0,
+    "selected_t_down": 0.0,
+    "selected_t_up": 0.7,
+    "selection_score": 0.5899471883558022,
+    "share_down_predictions": 0.44214326429792894,
+    "share_up_predictions": 0.5578567357020711,
+    "signal_coverage": 0.7047402249598286,
+    "total_signal_count": 5263.0,
+    "up_prediction_count": 2936.0,
+    "up_signal_count": 2936.0,
+    "utility": 0.27383502945902516
+  },
+  "variant_results": [
+    {
+      "best_override_metrics": {
+        "accepted_count": 5263.0,
+        "accepted_sample_accuracy": 0.6942808284248527,
+        "all_sample_accuracy": 0.6491697911087306,
+        "balanced_precision": 0.6942990354902583,
+        "brier_score": 0.21882884066514852,
+        "constraint_satisfied": true,
+        "continuation_accepted_accuracy": 0.9809760132340778,
+        "continuation_accepted_count": 3627.0,
+        "continuation_coverage": 0.7517098445595854,
+        "continuation_sample_count": 4825.0,
+        "coverage": 0.7047402249598286,
+        "down_prediction_count": 2327.0,
+        "down_signal_count": 2327.0,
+        "downside_risk": 0.46416871690194905,
+        "hard_constraint": "coverage_only",
+        "include_abstains": false,
+        "log_loss": 0.6269735220696954,
+        "objective": "accepted_sample_accuracy",
+        "overall_signal_accuracy": 0.6942808284248527,
+        "precision_down": 0.6944563816072196,
+        "precision_up": 0.694141689373297,
+        "reversal_accepted_accuracy": 0.05867970660146699,
+        "reversal_accepted_count": 1636.0,
+        "reversal_coverage": 0.6189935679152478,
+        "reversal_sample_count": 2643.0,
+        "risk_threshold": 0.7,
+        "roc_auc": 0.7063832148945653,
+        "sample_count": 7468.0,
+        "selected_t_down": 0.0,
+        "selected_t_up": 0.7,
+        "selection_score": 0.5899471883558022,
+        "share_down_predictions": 0.44214326429792894,
+        "share_up_predictions": 0.5578567357020711,
+        "signal_coverage": 0.7047402249598286,
+        "total_signal_count": 5263.0,
+        "up_prediction_count": 2936.0,
+        "up_signal_count": 2936.0,
+        "utility": 0.27383502945902516
+      },
+      "classifier_metrics": {
+        "reversal_average_precision": 0.43337282755019274,
+        "reversal_roc_auc": 0.6153210259184982,
+        "top_precision": [
+          {
+            "count": 374.0,
+            "reversal_precision": 0.47593582887700536,
+            "threshold": 0.6514104308360676,
+            "top_share": 0.05
+          },
+          {
+            "count": 747.0,
+            "reversal_precision": 0.4538152610441767,
+            "threshold": 0.6301938066536911,
+            "top_share": 0.1
+          },
+          {
+            "count": 1121.0,
+            "reversal_precision": 0.4620874219446922,
+            "threshold": 0.6150658860737791,
+            "top_share": 0.15
+          },
+          {
+            "count": 1494.0,
+            "reversal_precision": 0.45582329317269077,
+            "threshold": 0.601277762260145,
+            "top_share": 0.2
+          },
+          {
+            "count": 1867.0,
+            "reversal_precision": 0.44777718264595606,
+            "threshold": 0.5871547098914873,
+            "top_share": 0.25
+          },
+          {
+            "count": 2241.0,
+            "reversal_precision": 0.44489067380633646,
+            "threshold": 0.5739294508408506,
+            "top_share": 0.3
+          },
+          {
+            "count": 2987.0,
+            "reversal_precision": 0.44291931704050885,
+            "threshold": 0.5437524979826384,
+            "top_share": 0.4
+          },
+          {
+            "count": 3734.0,
+            "reversal_precision": 0.4314408141403321,
+            "threshold": 0.5095518238799887,
+            "top_share": 0.5
+          }
+        ]
+      },
+      "feature_count": 569,
+      "variant": "impulse"
+    },
+    {
+      "best_override_metrics": {
+        "accepted_count": 5263.0,
+        "accepted_sample_accuracy": 0.6942808284248527,
+        "all_sample_accuracy": 0.6491697911087306,
+        "balanced_precision": 0.6942990354902583,
+        "brier_score": 0.21882884066514852,
+        "constraint_satisfied": true,
+        "continuation_accepted_accuracy": 0.9809760132340778,
+        "continuation_accepted_count": 3627.0,
+        "continuation_coverage": 0.7517098445595854,
+        "continuation_sample_count": 4825.0,
+        "coverage": 0.7047402249598286,
+        "down_prediction_count": 2327.0,
+        "down_signal_count": 2327.0,
+        "downside_risk": 0.46416871690194905,
+        "hard_constraint": "coverage_only",
+        "include_abstains": false,
+        "log_loss": 0.6269735220696954,
+        "objective": "accepted_sample_accuracy",
+        "overall_signal_accuracy": 0.6942808284248527,
+        "precision_down": 0.6944563816072196,
+        "precision_up": 0.694141689373297,
+        "reversal_accepted_accuracy": 0.05867970660146699,
+        "reversal_accepted_count": 1636.0,
+        "reversal_coverage": 0.6189935679152478,
+        "reversal_sample_count": 2643.0,
+        "risk_threshold": 0.7,
+        "roc_auc": 0.7063832148945653,
+        "sample_count": 7468.0,
+        "selected_t_down": 0.0,
+        "selected_t_up": 0.7,
+        "selection_score": 0.5899471883558022,
+        "share_down_predictions": 0.44214326429792894,
+        "share_up_predictions": 0.5578567357020711,
+        "signal_coverage": 0.7047402249598286,
+        "total_signal_count": 5263.0,
+        "up_prediction_count": 2936.0,
+        "up_signal_count": 2936.0,
+        "utility": 0.27383502945902516
+      },
+      "classifier_metrics": {
+        "reversal_average_precision": 0.4340293178337765,
+        "reversal_roc_auc": 0.6145354529218838,
+        "top_precision": [
+          {
+            "count": 374.0,
+            "reversal_precision": 0.4946524064171123,
+            "threshold": 0.6498774883105809,
+            "top_share": 0.05
+          },
+          {
+            "count": 747.0,
+            "reversal_precision": 0.45113788487282463,
+            "threshold": 0.6275399639522963,
+            "top_share": 0.1
+          },
+          {
+            "count": 1121.0,
+            "reversal_precision": 0.45227475468331846,
+            "threshold": 0.6117205961554245,
+            "top_share": 0.15
+          },
+          {
+            "count": 1494.0,
+            "reversal_precision": 0.45113788487282463,
+            "threshold": 0.5973150708476272,
+            "top_share": 0.2
+          },
+          {
+            "count": 1867.0,
+            "reversal_precision": 0.44724156400642745,
+            "threshold": 0.5852901411724112,
+            "top_share": 0.25
+          },
+          {
+            "count": 2241.0,
+            "reversal_precision": 0.44489067380633646,
+            "threshold": 0.571409527182986,
+            "top_share": 0.3
+          },
+          {
+            "count": 2987.0,
+            "reversal_precision": 0.4382323401406093,
+            "threshold": 0.5408728839582899,
+            "top_share": 0.4
+          },
+          {
+            "count": 3734.0,
+            "reversal_precision": 0.4276914836636315,
+            "threshold": 0.5057512050838877,
+            "top_share": 0.5
+          }
+        ]
+      },
+      "feature_count": 436,
+      "variant": "reversal_expanded"
+    },
+    {
+      "best_override_metrics": {
+        "accepted_count": 5263.0,
+        "accepted_sample_accuracy": 0.6942808284248527,
+        "all_sample_accuracy": 0.6491697911087306,
+        "balanced_precision": 0.6942990354902583,
+        "brier_score": 0.21882884066514852,
+        "constraint_satisfied": true,
+        "continuation_accepted_accuracy": 0.9809760132340778,
+        "continuation_accepted_count": 3627.0,
+        "continuation_coverage": 0.7517098445595854,
+        "continuation_sample_count": 4825.0,
+        "coverage": 0.7047402249598286,
+        "down_prediction_count": 2327.0,
+        "down_signal_count": 2327.0,
+        "downside_risk": 0.46416871690194905,
+        "hard_constraint": "coverage_only",
+        "include_abstains": false,
+        "log_loss": 0.6269735220696954,
+        "objective": "accepted_sample_accuracy",
+        "overall_signal_accuracy": 0.6942808284248527,
+        "precision_down": 0.6944563816072196,
+        "precision_up": 0.694141689373297,
+        "reversal_accepted_accuracy": 0.05867970660146699,
+        "reversal_accepted_count": 1636.0,
+        "reversal_coverage": 0.6189935679152478,
+        "reversal_sample_count": 2643.0,
+        "risk_threshold": 0.75,
+        "roc_auc": 0.7063832148945653,
+        "sample_count": 7468.0,
+        "selected_t_down": 0.0,
+        "selected_t_up": 0.75,
+        "selection_score": 0.5899471883558022,
+        "share_down_predictions": 0.44214326429792894,
+        "share_up_predictions": 0.5578567357020711,
+        "signal_coverage": 0.7047402249598286,
+        "total_signal_count": 5263.0,
+        "up_prediction_count": 2936.0,
+        "up_signal_count": 2936.0,
+        "utility": 0.27383502945902516
+      },
+      "classifier_metrics": {
+        "reversal_average_precision": 0.43224873535066616,
+        "reversal_roc_auc": 0.6150972262247132,
+        "top_precision": [
+          {
+            "count": 374.0,
+            "reversal_precision": 0.4572192513368984,
+            "threshold": 0.6520061801677287,
+            "top_share": 0.05
+          },
+          {
+            "count": 747.0,
+            "reversal_precision": 0.44712182061579653,
+            "threshold": 0.6303014407476135,
+            "top_share": 0.1
+          },
+          {
+            "count": 1121.0,
+            "reversal_precision": 0.4415700267618198,
+            "threshold": 0.6138238987273019,
+            "top_share": 0.15
+          },
+          {
+            "count": 1494.0,
+            "reversal_precision": 0.45314591700133866,
+            "threshold": 0.5993131580739998,
+            "top_share": 0.2
+          },
+          {
+            "count": 1867.0,
+            "reversal_precision": 0.44938403856454207,
+            "threshold": 0.5846679560047336,
+            "top_share": 0.25
+          },
+          {
+            "count": 2241.0,
+            "reversal_precision": 0.45113788487282463,
+            "threshold": 0.5708147238068346,
+            "top_share": 0.3
+          },
+          {
+            "count": 2987.0,
+            "reversal_precision": 0.44024104452628054,
+            "threshold": 0.5389925167467751,
+            "top_share": 0.4
+          },
+          {
+            "count": 3734.0,
+            "reversal_precision": 0.4314408141403321,
+            "threshold": 0.504472174882933,
+            "top_share": 0.5
+          }
+        ]
+      },
+      "feature_count": 1805,
+      "variant": "all_safe"
+    }
+  ],
+  "variant_summary_path": "artifacts\\data_v2\\reports\\reversal_hybrid\\20260611_reversal_classifier_bound_diagnostics\\variant_summary.csv"
+}
