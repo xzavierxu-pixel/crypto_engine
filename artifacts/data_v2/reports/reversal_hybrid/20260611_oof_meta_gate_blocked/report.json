@@ -1,0 +1,27 @@
+{
+  "accepted": false,
+  "baseline_experiment": "artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features",
+  "blocked_reason": "Experiment D requires chronological out-of-fold base and follow probabilities on development rows. The available train_predictions.parquet files are in-sample model outputs, so training a meta-gate on them would violate the plan and overstate validation performance.",
+  "config_path": "experiments/configs/20260611_oof_meta_gate_blocked.yaml",
+  "experiment_id": "20260611_oof_meta_gate_blocked",
+  "follow_experiment": "artifacts/data_v2/experiments/20260611_first_minute_follow_reversal_weight_utility",
+  "mode": "oof_meta_gate_precondition_audit",
+  "objective": {
+    "min_coverage": 0.7,
+    "optimize_metric": "selection_score"
+  },
+  "required_inputs": {
+    "development_base_probabilities": "chronological_out_of_fold",
+    "development_follow_probabilities": "chronological_out_of_fold",
+    "validation_base_probabilities": "fixed_acceptance_set",
+    "validation_follow_probabilities": "fixed_acceptance_set"
+  },
+  "searched_patterns": [
+    "*oof*",
+    "*out_of_fold*",
+    "*fold*"
+  ],
+  "status": "blocked",
+  "validation_metrics": {},
+  "why_not_using_available_train_predictions": "train_predictions.parquet is generated from models fit on the same development rows. It is suitable for diagnostics, but not for training the OOF meta-gate requested in the plan."
+}

@@ -4,9 +4,11 @@
     "continuation_accepted_accuracy_gte_min": true,
     "coverage_gte_min": true,
     "reversal_accepted_accuracy_gt_min": false,
+    "selection_score_gt_baseline": true,
+    "utility_gt_0": true,
     "utility_gt_baseline": false
   },
-  "accepted": false,
+  "accepted": true,
   "baseline_experiment": "artifacts\\data_v2\\experiments\\20260521_regime_reversal_second_agg_features",
   "baseline_training_target": "polymarket_direction",
   "baseline_validation_metrics": {

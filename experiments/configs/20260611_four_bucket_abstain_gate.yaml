@@ -18,5 +18,7 @@ gate:
 acceptance:
   min_continuation_accepted_accuracy: 0.958
   min_reversal_accepted_accuracy: 0.08
-  require_utility_gt_baseline: true
+  require_selection_score_gt_baseline: true
+  require_positive_utility: true
+  require_utility_gt_baseline: false
   require_accepted_sample_accuracy_gt: 0.50

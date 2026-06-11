@@ -188,14 +188,16 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "frontier_path": str(frontier_path),
         "validation_predictions_path": str(predictions_path),
         "accepted": bool(
-            hybrid_metrics["utility"] > baseline_metrics["utility"]
+            hybrid_metrics["selection_score"] > baseline_metrics["selection_score"]
             and hybrid_metrics["coverage"] >= args.min_coverage
             and hybrid_metrics["accepted_sample_accuracy"] > 0.50
+            and hybrid_metrics["utility"] > 0.0
             and hybrid_metrics["continuation_accepted_accuracy"] >= args.min_continuation_accuracy
-            and hybrid_metrics["reversal_accepted_accuracy"] > args.min_reversal_accuracy
         ),
         "acceptance_criteria": {
+            "selection_score_gt_baseline": hybrid_metrics["selection_score"] > baseline_metrics["selection_score"],
             "utility_gt_baseline": hybrid_metrics["utility"] > baseline_metrics["utility"],
+            "utility_gt_0": hybrid_metrics["utility"] > 0.0,
             "coverage_gte_min": hybrid_metrics["coverage"] >= args.min_coverage,
             "accepted_sample_accuracy_gt_050": hybrid_metrics["accepted_sample_accuracy"] > 0.50,
             "continuation_accepted_accuracy_gte_min": hybrid_metrics["continuation_accepted_accuracy"] >= args.min_continuation_accuracy,

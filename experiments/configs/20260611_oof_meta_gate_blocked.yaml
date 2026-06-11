@@ -1,0 +1,19 @@
+experiment_id: 20260611_oof_meta_gate_blocked
+mode: oof_meta_gate_precondition_audit
+baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
+follow_experiment: artifacts/data_v2/experiments/20260611_first_minute_follow_reversal_weight_utility
+output_dir: artifacts/data_v2/reports/reversal_hybrid/20260611_oof_meta_gate_blocked
+
+objective:
+  optimize_metric: selection_score
+  min_coverage: 0.70
+
+required_inputs:
+  development_base_probabilities: chronological_out_of_fold
+  development_follow_probabilities: chronological_out_of_fold
+  validation_base_probabilities: fixed_acceptance_set
+  validation_follow_probabilities: fixed_acceptance_set
+
+decision:
+  status: blocked
+  reason: no chronological out-of-fold base/follow probability files are present under artifacts/data_v2/experiments
