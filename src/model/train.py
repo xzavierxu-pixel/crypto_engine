@@ -92,6 +92,7 @@ class BinarySelectiveTrainingArtifacts:
     probability_reference: dict[str, Any]
     base_rate: float
     weighted: bool
+    target_semantics: dict[str, Any]
 
 
 def _slice_training_frame(training: TrainingFrame, frame_slice: slice) -> TrainingFrame:
@@ -489,6 +490,62 @@ def _with_reversal_trend_metrics(
     return enriched
 
 
+def _first_minute_return(frame: pd.DataFrame) -> pd.Series:
+    if "fm_ret" in frame.columns:
+        return pd.to_numeric(frame["fm_ret"], errors="coerce")
+    if "ret_1" in frame.columns:
+        return pd.to_numeric(frame["ret_1"], errors="coerce")
+    raise ValueError("first_minute_follow training target requires fm_ret or ret_1 in the training frame.")
+
+
+def _with_configured_training_target(training: TrainingFrame, settings: Settings) -> tuple[TrainingFrame, dict[str, Any]]:
+    target_mode = str(getattr(settings.objective, "training_target", "polymarket_direction"))
+    if target_mode in {"polymarket_direction", "final_direction", "final_is_up"}:
+        return training, {
+            "training_target": "polymarket_direction",
+            "model_probability": "p_up",
+            "evaluation_probability": "p_up",
+            "target_column": training.target_column,
+        }
+    if target_mode not in {"first_minute_follow", "follow_first_minute"}:
+        raise ValueError(f"Unsupported objective.training_target '{target_mode}'.")
+
+    frame = training.frame.copy()
+    final_is_up = frame[training.target_column].astype(int)
+    first_minute_up = _first_minute_return(frame) >= 0.0
+    frame[training.target_column] = (first_minute_up == (final_is_up == 1)).astype(int)
+    return (
+        TrainingFrame(
+            frame=frame,
+            feature_columns=training.feature_columns,
+            target_column=training.target_column,
+            sample_weight_column=training.sample_weight_column,
+        ),
+        {
+            "training_target": "first_minute_follow",
+            "model_probability": "p_follow",
+            "evaluation_probability": "p_up",
+            "target_column": training.target_column,
+            "source_label": "Polymarket resolved UP/DOWN",
+            "conversion": "p_up = p_follow if first_minute_return >= 0 else 1 - p_follow",
+        },
+    )
+
+
+def _model_probability_to_p_up(
+    probabilities: pd.Series,
+    evaluation_frame: pd.DataFrame,
+    target_semantics: dict[str, Any],
+) -> pd.Series:
+    proba = probabilities.astype("float64").clip(0.0, 1.0)
+    if target_semantics.get("training_target") != "first_minute_follow":
+        return proba
+    first_minute_up = _first_minute_return(evaluation_frame) >= 0.0
+    converted = proba.where(first_minute_up, 1.0 - proba)
+    return converted.astype("float64").clip(0.0, 1.0)
+    return enriched
+
+
 def _build_reversal_trend_slices(
     frame: pd.DataFrame,
     probabilities: pd.Series,
@@ -687,18 +744,22 @@ def train_binary_selective_model_from_split(
     settings: Settings,
     weighted: bool = True,
 ) -> BinarySelectiveTrainingArtifacts:
-    train_frame = _with_sample_weight(development, weighted=weighted)
-    valid_frame = _with_sample_weight(validation, weighted=weighted)
+    eval_train_frame = _with_sample_weight(development, weighted=weighted)
+    eval_valid_frame = _with_sample_weight(validation, weighted=weighted)
+    train_frame, target_semantics = _with_configured_training_target(eval_train_frame, settings)
+    valid_frame, _ = _with_configured_training_target(eval_valid_frame, settings)
     model = _fit_model(train_frame, settings, stage="binary", validation=valid_frame)
     raw_train_proba = model.predict_proba(train_frame.X)
     raw_valid_proba = model.predict_proba(valid_frame.X)
     calibrator = create_calibration_plugin(settings, stage="binary")
     calibrator.fit(raw_train_proba, train_frame.y.astype(int))
-    train_proba = calibrator.transform(raw_train_proba)
-    valid_proba = calibrator.transform(raw_valid_proba)
+    train_model_proba = calibrator.transform(raw_train_proba)
+    valid_model_proba = calibrator.transform(raw_valid_proba)
+    train_proba = _model_probability_to_p_up(train_model_proba, eval_train_frame.frame, target_semantics)
+    valid_proba = _model_probability_to_p_up(valid_model_proba, eval_valid_frame.frame, target_semantics)
     search = settings.threshold_search
     t_up, t_down, frontier, best = search_selective_binary_thresholds(
-        valid_frame.y.astype(int),
+        eval_valid_frame.y.astype(int),
         valid_proba,
         t_up_min=search.t_up_min,
         t_up_max=search.t_up_max,
@@ -716,7 +777,7 @@ def train_binary_selective_model_from_split(
         hard_constraint=search.hard_constraint,
     )
     guarded_t_up, guarded_t_down, _, guarded_best = search_selective_binary_thresholds(
-        valid_frame.y.astype(int),
+        eval_valid_frame.y.astype(int),
         valid_proba,
         t_up_min=search.t_up_min,
         t_up_max=search.t_up_max,
@@ -734,15 +795,15 @@ def train_binary_selective_model_from_split(
         hard_constraint=search.hard_constraint,
     )
     train_metrics = _with_reversal_trend_metrics(
-        compute_selective_binary_metrics(train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down),
-        train_frame.frame,
+        compute_selective_binary_metrics(eval_train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down),
+        eval_train_frame.frame,
         train_proba,
         t_up=t_up,
         t_down=t_down,
     )
     validation_metrics = _with_reversal_trend_metrics(
-        compute_selective_binary_metrics(valid_frame.y.astype(int), valid_proba, t_up=t_up, t_down=t_down),
-        valid_frame.frame,
+        compute_selective_binary_metrics(eval_valid_frame.y.astype(int), valid_proba, t_up=t_up, t_down=t_down),
+        eval_valid_frame.frame,
         valid_proba,
         t_up=t_up,
         t_down=t_down,
@@ -777,35 +838,51 @@ def train_binary_selective_model_from_split(
         "p_up_validation": _summarize_probability_series(valid_proba),
         "p_up_ks": {"train_vs_validation": float(compute_ks_distance(train_proba, valid_proba))},
     }
+    if target_semantics.get("training_target") == "first_minute_follow":
+        probability_summary.update(
+            {
+                "p_follow_train": _summarize_probability_series(train_model_proba),
+                "p_follow_validation": _summarize_probability_series(valid_model_proba),
+                "p_follow_ks": {"train_vs_validation": float(compute_ks_distance(train_model_proba, valid_model_proba))},
+            }
+        )
     probability_reference = {
         "p_up_train": _serialize_probability_reference(train_proba),
         "p_up_validation": _serialize_probability_reference(valid_proba),
     }
+    if target_semantics.get("training_target") == "first_minute_follow":
+        probability_reference.update(
+            {
+                "p_follow_train": _serialize_probability_reference(train_model_proba),
+                "p_follow_validation": _serialize_probability_reference(valid_model_proba),
+            }
+        )
     return BinarySelectiveTrainingArtifacts(
         model=model,
         calibrator=calibrator,
-        feature_columns=train_frame.feature_columns,
+        feature_columns=eval_train_frame.feature_columns,
         t_up=t_up,
         t_down=t_down,
         train_metrics=train_metrics,
         validation_metrics=validation_metrics,
-        train_window=_window_summary(train_frame.frame),
-        validation_window=_window_summary(valid_frame.frame),
+        train_window=_window_summary(eval_train_frame.frame),
+        validation_window=_window_summary(eval_valid_frame.frame),
         threshold_search=threshold_search,
         threshold_frontier=frontier,
-        boundary_slices=_build_boundary_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
-        regime_slices=_build_regime_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
-        reversal_trend_slices=_build_reversal_trend_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
-        feature_importance=_build_feature_importance(model, train_frame.feature_columns),
-        probability_deciles=_build_probability_deciles(valid_frame.frame, valid_proba),
-        false_up_slices=_build_false_side_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down, side="UP"),
-        false_down_slices=_build_false_side_slices(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down, side="DOWN"),
-        train_predictions=_build_selective_prediction_frame(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
-        validation_predictions=_build_selective_prediction_frame(valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
+        boundary_slices=_build_boundary_slices(eval_valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
+        regime_slices=_build_regime_slices(eval_valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
+        reversal_trend_slices=_build_reversal_trend_slices(eval_valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
+        feature_importance=_build_feature_importance(model, eval_train_frame.feature_columns),
+        probability_deciles=_build_probability_deciles(eval_valid_frame.frame, valid_proba),
+        false_up_slices=_build_false_side_slices(eval_valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down, side="UP"),
+        false_down_slices=_build_false_side_slices(eval_valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down, side="DOWN"),
+        train_predictions=_build_selective_prediction_frame(eval_train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        validation_predictions=_build_selective_prediction_frame(eval_valid_frame.frame, valid_proba, t_up=t_up, t_down=t_down),
         probability_summary=probability_summary,
         probability_reference=probability_reference,
         base_rate=float(train_frame.y.astype(int).mean()) if not train_frame.frame.empty else 0.0,
         weighted=weighted,
+        target_semantics=target_semantics,
     )
 
 
@@ -818,15 +895,17 @@ def train_binary_selective_model_full_train(
     weighted: bool = True,
 ) -> BinarySelectiveTrainingArtifacts:
     """Fit the deploy model on all accepted offline rows with fixed thresholds."""
-    train_frame = _with_sample_weight(training, weighted=weighted)
+    eval_train_frame = _with_sample_weight(training, weighted=weighted)
+    train_frame, target_semantics = _with_configured_training_target(eval_train_frame, settings)
     model = _fit_model(train_frame, settings, stage="binary", validation=None)
     raw_train_proba = model.predict_proba(train_frame.X)
     calibrator = create_calibration_plugin(settings, stage="binary")
     calibrator.fit(raw_train_proba, train_frame.y.astype(int))
-    train_proba = calibrator.transform(raw_train_proba)
+    train_model_proba = calibrator.transform(raw_train_proba)
+    train_proba = _model_probability_to_p_up(train_model_proba, eval_train_frame.frame, target_semantics)
     full_metrics = _with_reversal_trend_metrics(
-        compute_selective_binary_metrics(train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down),
-        train_frame.frame,
+        compute_selective_binary_metrics(eval_train_frame.y.astype(int), train_proba, t_up=t_up, t_down=t_down),
+        eval_train_frame.frame,
         train_proba,
         t_up=t_up,
         t_down=t_down,
@@ -881,15 +960,30 @@ def train_binary_selective_model_full_train(
         "p_up_full_train": _summarize_probability_series(train_proba),
         "p_up_ks": {"train_vs_validation": 0.0},
     }
+    if target_semantics.get("training_target") == "first_minute_follow":
+        probability_summary.update(
+            {
+                "p_follow_train": _summarize_probability_series(train_model_proba),
+                "p_follow_full_train": _summarize_probability_series(train_model_proba),
+                "p_follow_ks": {"train_vs_validation": 0.0},
+            }
+        )
     probability_reference = {
         "p_up_train": _serialize_probability_reference(train_proba),
         "p_up_full_train": _serialize_probability_reference(train_proba),
     }
-    window = _window_summary(train_frame.frame)
+    if target_semantics.get("training_target") == "first_minute_follow":
+        probability_reference.update(
+            {
+                "p_follow_train": _serialize_probability_reference(train_model_proba),
+                "p_follow_full_train": _serialize_probability_reference(train_model_proba),
+            }
+        )
+    window = _window_summary(eval_train_frame.frame)
     return BinarySelectiveTrainingArtifacts(
         model=model,
         calibrator=calibrator,
-        feature_columns=train_frame.feature_columns,
+        feature_columns=eval_train_frame.feature_columns,
         t_up=float(t_up),
         t_down=float(t_down),
         train_metrics=full_metrics,
@@ -898,19 +992,20 @@ def train_binary_selective_model_full_train(
         validation_window=window,
         threshold_search=threshold_search,
         threshold_frontier=frontier,
-        boundary_slices=_build_boundary_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
-        regime_slices=_build_regime_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
-        reversal_trend_slices=_build_reversal_trend_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
-        feature_importance=_build_feature_importance(model, train_frame.feature_columns),
-        probability_deciles=_build_probability_deciles(train_frame.frame, train_proba),
-        false_up_slices=_build_false_side_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down, side="UP"),
-        false_down_slices=_build_false_side_slices(train_frame.frame, train_proba, t_up=t_up, t_down=t_down, side="DOWN"),
-        train_predictions=_build_selective_prediction_frame(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
-        validation_predictions=_build_selective_prediction_frame(train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        boundary_slices=_build_boundary_slices(eval_train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        regime_slices=_build_regime_slices(eval_train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        reversal_trend_slices=_build_reversal_trend_slices(eval_train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        feature_importance=_build_feature_importance(model, eval_train_frame.feature_columns),
+        probability_deciles=_build_probability_deciles(eval_train_frame.frame, train_proba),
+        false_up_slices=_build_false_side_slices(eval_train_frame.frame, train_proba, t_up=t_up, t_down=t_down, side="UP"),
+        false_down_slices=_build_false_side_slices(eval_train_frame.frame, train_proba, t_up=t_up, t_down=t_down, side="DOWN"),
+        train_predictions=_build_selective_prediction_frame(eval_train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
+        validation_predictions=_build_selective_prediction_frame(eval_train_frame.frame, train_proba, t_up=t_up, t_down=t_down),
         probability_summary=probability_summary,
         probability_reference=probability_reference,
         base_rate=float(train_frame.y.astype(int).mean()) if not train_frame.frame.empty else 0.0,
         weighted=weighted,
+        target_semantics=target_semantics,
     )
 
 

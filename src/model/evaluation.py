@@ -370,11 +370,12 @@ def search_selective_binary_thresholds(
         "threshold_selection_score": "selection_score",
         "downside_adjusted_return": "selection_score",
     }.get(optimize_metric, optimize_metric)
-    if metric_name not in {"balanced_precision", "selection_score"}:
+    if metric_name not in {"balanced_precision", "selection_score", "utility"}:
         raise ValueError(f"Unsupported selective binary threshold objective '{optimize_metric}'.")
     uses_selection_score = metric_name == "selection_score"
-    if hard_constraint not in {"coverage_only", "coverage_and_positive_utility"}:
-        raise ValueError("hard_constraint must be coverage_only or coverage_and_positive_utility.")
+    uses_utility = metric_name == "utility"
+    if hard_constraint not in {"none", "coverage_only", "coverage_and_positive_utility"}:
+        raise ValueError("hard_constraint must be none, coverage_only, or coverage_and_positive_utility.")
     records: list[dict[str, float]] = []
     eligible: list[dict[str, float]] = []
     up_candidates = [round(float(value), 6) for value in np.arange(t_up_min, t_up_max + step / 2.0, step)]
@@ -391,40 +392,44 @@ def search_selective_binary_thresholds(
                 **metrics,
             }
             records.append(record)
-            side_share_ok = uses_selection_score or (
+            side_share_ok = uses_selection_score or uses_utility or (
                 not enforce_min_side_share
                 or (
                     record["share_up_predictions"] >= min_side_share
                     and record["share_down_predictions"] >= min_side_share
                 )
             )
-            signal_counts_ok = uses_selection_score or (
+            signal_counts_ok = uses_selection_score or uses_utility or (
                 record["up_prediction_count"] >= min_up_signals
                 and record["down_prediction_count"] >= min_down_signals
                 and record["accepted_count"] >= min_total_signals
             )
             objective_quality_ok = (
-                not uses_selection_score
+                hard_constraint == "none"
+                or not uses_selection_score
                 or hard_constraint == "coverage_only"
                 or (
                     record["accepted_sample_accuracy"] > 0.50
                     and record["utility"] > 0.0
                 )
             )
-            if record["coverage"] >= min_coverage and side_share_ok and signal_counts_ok and objective_quality_ok:
+            coverage_ok = hard_constraint == "none" or record["coverage"] >= min_coverage
+            if coverage_ok and side_share_ok and signal_counts_ok and objective_quality_ok:
                 eligible.append(record)
 
     if not records:
         raise ValueError("threshold search produced no candidates.")
     pool = eligible if eligible else records
     best_metric = max(record[metric_name] for record in pool)
-    if uses_selection_score:
+    if uses_selection_score or uses_utility:
         tied = [record for record in pool if record[metric_name] == best_metric]
         best = max(
             tied,
             key=lambda record: (
-                record["accepted_sample_accuracy"],
                 record["utility"],
+                record["accepted_sample_accuracy"],
+                record["selection_score"],
+                record["coverage"],
                 -abs(record["t_up"] - 0.5) - abs(record["t_down"] - 0.5),
             ),
         )
@@ -435,7 +440,7 @@ def search_selective_binary_thresholds(
     if not eligible:
         fallback_reason = (
             "no threshold set satisfied coverage/accuracy/utility constraints"
-            if uses_selection_score
+            if uses_selection_score or uses_utility
             else "no threshold set satisfied coverage/side-share/signal-count constraints"
         )
     best_summary: dict[str, float | bool | str | None] = {

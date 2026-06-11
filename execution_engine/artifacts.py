@@ -19,6 +19,7 @@ class BaselineArtifact:
     feature_columns: list[str]
     t_up: float
     t_down: float
+    target_semantics: dict[str, Any]
 
 
 def _first_existing(root: Path, candidates: list[str]) -> Path:
@@ -52,6 +53,10 @@ def load_baseline_artifact(config: BaselineConfig) -> BaselineArtifact:
     if t_up is None or t_down is None:
         raise ValueError("Baseline artifact does not define t_up and t_down thresholds.")
 
+    target_semantics = manifest.get("target_semantics") or manifest.get("model_target_semantics") or {}
+    if not isinstance(target_semantics, dict):
+        target_semantics = {}
+
     return BaselineArtifact(
         artifact_dir=artifact_dir,
         manifest=manifest,
@@ -62,5 +67,6 @@ def load_baseline_artifact(config: BaselineConfig) -> BaselineArtifact:
         feature_columns=feature_columns,
         t_up=float(t_up),
         t_down=float(t_down),
+        target_semantics=dict(target_semantics),
     )
 

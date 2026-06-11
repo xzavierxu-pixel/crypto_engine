@@ -17,6 +17,7 @@ from scripts.model.train_model import (
     _configured_label_store_path,
     _label_metadata_report,
     _load_cached_split,
+    _refresh_cached_sample_weight,
     _threshold_constraint_report,
     _with_signal_aliases,
 )
@@ -51,15 +52,16 @@ def _load_threshold_source(artifact_dir: Path) -> tuple[float, float, dict, dict
     return float(t_up), float(t_down), manifest, report
 
 
-def _load_full_training_from_split(split_dir: Path):
-    development, validation = _load_cached_split(split_dir)
+def _load_full_training_from_split(split_dir: Path, settings):
+    development, validation = _load_cached_split(split_dir, settings)
     full_frame = pd.concat([development.frame, validation.frame], ignore_index=True)
     return load_cached_training_split(development_frame=full_frame, validation_frame=full_frame)[0]
 
 
-def _load_full_training_from_frame(frame_path: Path):
+def _load_full_training_from_frame(frame_path: Path, settings):
     frame = pd.read_parquet(frame_path)
-    return load_cached_training_split(development_frame=frame, validation_frame=frame)[0]
+    training = load_cached_training_split(development_frame=frame, validation_frame=frame)[0]
+    return _refresh_cached_sample_weight(training, settings)
 
 
 def _write_artifacts(
@@ -158,6 +160,8 @@ def _write_artifacts(
         "raw_metadata_feature_count": sum(1 for column in artifacts.feature_columns if column in RAW_METADATA_FEATURE_COLUMNS),
         "data_availability": data_availability,
         **label_metadata,
+        "target_semantics": artifacts.target_semantics,
+        "model_target_semantics": artifacts.target_semantics,
         "label_metadata": label_metadata,
         "model_plugin": model_name,
         "calibration_plugin": artifacts.calibrator.name,
@@ -175,6 +179,7 @@ def _write_artifacts(
             "feature_count": sum(1 for column in artifacts.feature_columns if column.startswith(("sl_", "fm_"))),
         },
         "weighted": weighted,
+        "training_target": artifacts.target_semantics.get("training_target"),
         "sample_weighting": settings.sample_weighting.__dict__,
         "sample_quality_filter": settings.dataset.sample_quality_filter,
         "derivatives": {
@@ -231,6 +236,8 @@ def _write_artifacts(
         "thresholds": {"t_up": artifacts.t_up, "t_down": artifacts.t_down},
         "decision_alignment": decision_alignment,
         **label_metadata,
+        "target_semantics": artifacts.target_semantics,
+        "model_target_semantics": artifacts.target_semantics,
         "label_metadata": label_metadata,
         "config_hash": manifest_payload["config_hash"],
         "feature_count": manifest_payload["feature_count"],
@@ -245,6 +252,7 @@ def _write_artifacts(
         "threshold_source": threshold_source,
         "threshold_search": artifacts.threshold_search["best"],
         "label_metadata": label_metadata,
+        "model_target_semantics": artifacts.target_semantics,
     }
     manifest_path.write_text(json.dumps(manifest_payload, indent=2), encoding="utf-8")
     report_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
@@ -277,9 +285,9 @@ def main() -> None:
         )
 
     if args.cached_split_dir:
-        training = _load_full_training_from_split(Path(args.cached_split_dir))
+        training = _load_full_training_from_split(Path(args.cached_split_dir), settings)
     else:
-        training = _load_full_training_from_frame(Path(args.input_frame))
+        training = _load_full_training_from_frame(Path(args.input_frame), settings)
 
     logging.info(
         "Training online full artifact: rows=%s, t_up=%.4f, t_down=%.4f, output=%s",

@@ -14,9 +14,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.core.config import load_settings
+from src.core.constants import DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN
 from src.core.constants import DERIVATIVES_SCHEMA_VERSION
 from src.core.versioning import hash_config
 from src.data.dataset_builder import build_training_frame
+from src.data.dataset_builder import compute_training_sample_weight
 from src.data.dataset_builder import RAW_METADATA_FEATURE_COLUMNS
 from src.data.derivatives.feature_store import (
     load_derivatives_frame_from_settings,
@@ -57,7 +59,18 @@ def _configure_logging() -> None:
     )
 
 
-def _load_cached_split(cache_dir: Path):
+def _refresh_cached_sample_weight(training_frame, settings):
+    frame = training_frame.frame.copy()
+    frame[DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN] = compute_training_sample_weight(frame, settings=settings)
+    return type(training_frame)(
+        frame=frame,
+        feature_columns=training_frame.feature_columns,
+        target_column=training_frame.target_column,
+        sample_weight_column=DEFAULT_STAGE1_SAMPLE_WEIGHT_COLUMN if settings.sample_weighting.enabled else None,
+    )
+
+
+def _load_cached_split(cache_dir: Path, settings):
     development_path = cache_dir / "development_frame.parquet"
     validation_path = cache_dir / "validation_frame.parquet"
     if not development_path.exists():
@@ -65,9 +78,13 @@ def _load_cached_split(cache_dir: Path):
     if not validation_path.exists():
         raise FileNotFoundError(f"Cached validation split not found: {validation_path}")
     logging.info("Loading cached split data from %s", cache_dir)
-    return load_cached_training_split(
+    development, validation = load_cached_training_split(
         development_frame=pd.read_parquet(development_path),
         validation_frame=pd.read_parquet(validation_path),
+    )
+    return (
+        _refresh_cached_sample_weight(development, settings),
+        _refresh_cached_sample_weight(validation, settings),
     )
 
 
@@ -333,7 +350,7 @@ def main() -> None:
 
     if args.cached_split_dir:
         cached_split_dir = Path(args.cached_split_dir)
-        development, validation = _load_cached_split(cached_split_dir)
+        development, validation = _load_cached_split(cached_split_dir, settings)
         training_row_count = len(development.frame) + len(validation.frame)
         train_start = str(development.frame["timestamp"].min()) if not development.frame.empty else None
         train_end = str(validation.frame["timestamp"].max()) if not validation.frame.empty else None
@@ -467,6 +484,7 @@ def main() -> None:
         "thresholds": {"t_up": artifacts.t_up, "t_down": artifacts.t_down},
         "threshold_search": artifacts.threshold_search["best"],
         "label_metadata": label_metadata,
+        "model_target_semantics": artifacts.target_semantics,
     }
     metrics_path.write_text(json.dumps(metrics_payload, indent=2), encoding="utf-8")
     manifest_payload = {
@@ -485,6 +503,8 @@ def main() -> None:
             args.second_level_feature_store or settings.second_level.feature_store_path,
         ),
         **label_metadata,
+        "target_semantics": artifacts.target_semantics,
+        "model_target_semantics": artifacts.target_semantics,
         "label_metadata": label_metadata,
         "model_plugin": model_name,
         "calibration_plugin": artifacts.calibrator.name,
@@ -499,6 +519,7 @@ def main() -> None:
             "feature_count": sum(1 for column in artifacts.feature_columns if column.startswith(("sl_", "fm_"))),
         },
         "weighted": artifacts.weighted,
+        "training_target": artifacts.target_semantics.get("training_target"),
         "sample_weighting": settings.sample_weighting.__dict__,
         "sample_quality_filter": settings.dataset.sample_quality_filter,
         "derivatives": {
@@ -566,6 +587,8 @@ def main() -> None:
         "decision_alignment": manifest_payload["decision_alignment"],
         "reversal_trend_slices_path": reversal_trend_slices_path.name,
         **label_metadata,
+        "target_semantics": artifacts.target_semantics,
+        "model_target_semantics": artifacts.target_semantics,
         "label_metadata": label_metadata,
         "config_hash": manifest_payload["config_hash"],
         "feature_count": manifest_payload["feature_count"],

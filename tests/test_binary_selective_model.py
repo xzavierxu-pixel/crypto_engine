@@ -7,6 +7,7 @@ import pandas as pd
 from src.core.config import load_settings
 from src.data.dataset_builder import TrainingFrame, compute_sample_weight, compute_training_sample_weight, infer_feature_columns
 from src.model.evaluation import compute_selective_binary_metrics, search_selective_binary_thresholds
+from src.model.infer import predict_frame
 from src.model.train import split_recent_train_validation_frame
 
 
@@ -192,6 +193,58 @@ def test_threshold_search_requires_coverage_070_and_positive_utility() -> None:
     assert weak_accuracy_best["accepted_sample_accuracy"] <= 0.50
     assert weak_accuracy_best["utility"] <= 0.0
     assert weak_accuracy_best["constraint_satisfied"] is False
+
+
+def test_threshold_search_utility_can_run_without_coverage_constraint() -> None:
+    y_true = pd.Series([1, 1, 0, 0], dtype="int64")
+    probabilities = pd.Series([0.90, 0.20, 0.80, 0.70], dtype="float64")
+
+    t_up, t_down, _, best = search_selective_binary_thresholds(
+        y_true,
+        probabilities,
+        t_up_min=0.90,
+        t_up_max=0.90,
+        t_down_min=0.10,
+        t_down_max=0.10,
+        step=0.05,
+        min_coverage=0.70,
+        tie_tolerance=0.002,
+        optimize_metric="utility",
+        hard_constraint="none",
+    )
+
+    assert (t_up, t_down) == (0.90, 0.10)
+    assert best["objective"] == "utility"
+    assert best["coverage"] < 0.70
+    assert best["constraint_satisfied"] is True
+
+
+class _ConstantProbabilityModel:
+    def __init__(self, probabilities: pd.Series) -> None:
+        self._probabilities = probabilities
+
+    def predict_proba(self, X):  # noqa: ANN001
+        return self._probabilities.loc[X.index]
+
+
+def test_predict_frame_converts_first_minute_follow_probability_to_p_up() -> None:
+    frame = pd.DataFrame(
+        {
+            "fm_ret": [0.01, -0.02],
+            "feature": [1.0, 2.0],
+        },
+        index=[10, 11],
+    )
+    model = _ConstantProbabilityModel(pd.Series([0.80, 0.80], index=frame.index, dtype="float64"))
+
+    p_up = predict_frame(
+        frame,
+        model,
+        feature_columns=["feature"],
+        target_semantics={"training_target": "first_minute_follow"},
+    )
+
+    assert p_up.round(6).tolist() == [0.80, 0.20]
 
 
 def test_recent_split_uses_30_day_train_and_30_day_validation_windows() -> None:

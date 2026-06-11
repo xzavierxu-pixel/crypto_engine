@@ -91,6 +91,7 @@ class RuntimeInferenceEngine:
             self.model,
             calibrator=self.calibrator,
             feature_columns=self.baseline.feature_columns,
+            target_semantics=self.baseline.target_semantics,
         )
         if signal_t0 is None:
             row_index = feature_frame.index[-1]

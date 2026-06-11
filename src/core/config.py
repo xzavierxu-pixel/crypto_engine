@@ -73,6 +73,7 @@ class ObjectiveConfig:
     min_coverage: float = 0.40
     tie_breaker_metric: str = "coverage"
     balanced_precision_tie_tolerance: float = 0.002
+    training_target: str = "polymarket_direction"
 
 
 @dataclass(frozen=True)
