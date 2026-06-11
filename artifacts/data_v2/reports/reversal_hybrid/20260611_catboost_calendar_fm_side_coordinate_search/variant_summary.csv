@@ -1,0 +1,2 @@
+variant,coverage,accepted_sample_accuracy,selection_score,utility,accepted_count,target_met
+day_session_fm_side_coordinate,0.7000535618639528,0.7067712318286151,0.6389729268062054,0.2895018746652383,5228.0,False

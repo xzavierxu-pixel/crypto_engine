@@ -1,0 +1,170 @@
+{
+  "d0_asia_fm_no": {
+    "t_down": 0.4,
+    "t_up": 0.55
+  },
+  "d0_asia_fm_yes": {
+    "t_down": 0.4,
+    "t_up": 0.59
+  },
+  "d0_europe_fm_no": {
+    "t_down": 0.415,
+    "t_up": 0.55
+  },
+  "d0_europe_fm_yes": {
+    "t_down": 0.415,
+    "t_up": 0.575
+  },
+  "d0_us_fm_no": {
+    "t_down": 0.43,
+    "t_up": 0.55
+  },
+  "d0_us_fm_yes": {
+    "t_down": 0.415,
+    "t_up": 0.57
+  },
+  "d1_asia_fm_no": {
+    "t_down": 0.425,
+    "t_up": 0.575
+  },
+  "d1_asia_fm_yes": {
+    "t_down": 0.43,
+    "t_up": 0.57
+  },
+  "d1_europe_fm_no": {
+    "t_down": 0.425,
+    "t_up": 0.575
+  },
+  "d1_europe_fm_yes": {
+    "t_down": 0.43,
+    "t_up": 0.575
+  },
+  "d1_us_fm_no": {
+    "t_down": 0.43,
+    "t_up": 0.575
+  },
+  "d1_us_fm_yes": {
+    "t_down": 0.4,
+    "t_up": 0.59
+  },
+  "d2_asia_fm_no": {
+    "t_down": 0.435,
+    "t_up": 0.56
+  },
+  "d2_asia_fm_yes": {
+    "t_down": 0.435,
+    "t_up": 0.57
+  },
+  "d2_europe_fm_no": {
+    "t_down": 0.425,
+    "t_up": 0.62
+  },
+  "d2_europe_fm_yes": {
+    "t_down": 0.4,
+    "t_up": 0.57
+  },
+  "d2_us_fm_no": {
+    "t_down": 0.43,
+    "t_up": 0.575
+  },
+  "d2_us_fm_yes": {
+    "t_down": 0.415,
+    "t_up": 0.58
+  },
+  "d3_asia_fm_no": {
+    "t_down": 0.43,
+    "t_up": 0.59
+  },
+  "d3_asia_fm_yes": {
+    "t_down": 0.43,
+    "t_up": 0.575
+  },
+  "d3_europe_fm_no": {
+    "t_down": 0.435,
+    "t_up": 0.58
+  },
+  "d3_europe_fm_yes": {
+    "t_down": 0.43,
+    "t_up": 0.575
+  },
+  "d3_us_fm_no": {
+    "t_down": 0.425,
+    "t_up": 0.56
+  },
+  "d3_us_fm_yes": {
+    "t_down": 0.4,
+    "t_up": 0.57
+  },
+  "d4_asia_fm_no": {
+    "t_down": 0.455,
+    "t_up": 0.55
+  },
+  "d4_asia_fm_yes": {
+    "t_down": 0.415,
+    "t_up": 0.6
+  },
+  "d4_europe_fm_no": {
+    "t_down": 0.43,
+    "t_up": 0.575
+  },
+  "d4_europe_fm_yes": {
+    "t_down": 0.4,
+    "t_up": 0.57
+  },
+  "d4_us_fm_no": {
+    "t_down": 0.435,
+    "t_up": 0.59
+  },
+  "d4_us_fm_yes": {
+    "t_down": 0.445,
+    "t_up": 0.575
+  },
+  "d5_asia_fm_no": {
+    "t_down": 0.425,
+    "t_up": 0.58
+  },
+  "d5_asia_fm_yes": {
+    "t_down": 0.445,
+    "t_up": 0.58
+  },
+  "d5_europe_fm_no": {
+    "t_down": 0.43,
+    "t_up": 0.575
+  },
+  "d5_europe_fm_yes": {
+    "t_down": 0.4,
+    "t_up": 0.57
+  },
+  "d5_us_fm_no": {
+    "t_down": 0.43,
+    "t_up": 0.55
+  },
+  "d5_us_fm_yes": {
+    "t_down": 0.43,
+    "t_up": 0.575
+  },
+  "d6_asia_fm_no": {
+    "t_down": 0.425,
+    "t_up": 0.55
+  },
+  "d6_asia_fm_yes": {
+    "t_down": 0.465,
+    "t_up": 0.58
+  },
+  "d6_europe_fm_no": {
+    "t_down": 0.435,
+    "t_up": 0.575
+  },
+  "d6_europe_fm_yes": {
+    "t_down": 0.465,
+    "t_up": 0.575
+  },
+  "d6_us_fm_no": {
+    "t_down": 0.435,
+    "t_up": 0.56
+  },
+  "d6_us_fm_yes": {
+    "t_down": 0.415,
+    "t_up": 0.58
+  }
+}
