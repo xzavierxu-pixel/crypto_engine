@@ -10,6 +10,7 @@ from src.model.reversal_hybrid import (
     compute_decision_metrics,
     p_follow_from_direction_probability,
     route_conflict_margin_hybrid,
+    route_continuation_first_reversal_fallback,
     search_four_bucket_gate,
 )
 
@@ -116,3 +117,14 @@ def test_conflict_margin_router_abstains_when_confidence_gap_is_small() -> None:
         "conflict_rev_win",
         "conflict_abstain",
     ]
+
+
+def test_continuation_first_reversal_fallback_never_overrides_continuation_accepts() -> None:
+    routed = route_continuation_first_reversal_fallback(
+        pd.Series(["UP", "DOWN", "ABSTAIN", "ABSTAIN"]),
+        pd.Series(["DOWN", "UP", "UP", "ABSTAIN"]),
+    )
+
+    assert routed["final_decision"].tolist() == ["UP", "DOWN", "UP", "ABSTAIN"]
+    assert routed["final_source"].tolist() == ["continuation", "continuation", "reversal_fallback", "abstain"]
+    assert routed["reversal_fallback_accept"].tolist() == [False, False, True, False]

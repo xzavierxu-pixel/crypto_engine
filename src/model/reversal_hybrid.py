@@ -125,6 +125,38 @@ def route_conflict_margin_hybrid(
     )
 
 
+def route_continuation_first_reversal_fallback(
+    continuation_decision: pd.Series,
+    reversal_decision: pd.Series,
+) -> pd.DataFrame:
+    """Use reversal decisions only where the continuation expert abstains."""
+    cont_decision = continuation_decision.astype("object")
+    rev_decision = reversal_decision.astype("object")
+    if len(cont_decision) != len(rev_decision):
+        raise ValueError("continuation_decision and reversal_decision must have the same length.")
+
+    cont_accept = cont_decision != "ABSTAIN"
+    rev_accept = rev_decision != "ABSTAIN"
+    fallback_accept = ~cont_accept & rev_accept
+
+    final_decision = pd.Series("ABSTAIN", index=cont_decision.index, dtype="object")
+    final_source = pd.Series("abstain", index=cont_decision.index, dtype="object")
+    final_decision.loc[cont_accept] = cont_decision.loc[cont_accept]
+    final_source.loc[cont_accept] = "continuation"
+    final_decision.loc[fallback_accept] = rev_decision.loc[fallback_accept]
+    final_source.loc[fallback_accept] = "reversal_fallback"
+
+    return pd.DataFrame(
+        {
+            "final_decision": final_decision,
+            "final_source": final_source,
+            "continuation_accept": cont_accept,
+            "reversal_accept": rev_accept,
+            "reversal_fallback_accept": fallback_accept,
+        }
+    )
+
+
 def p_follow_from_direction_probability(predictions: pd.DataFrame) -> pd.Series:
     """Recover p_follow from the follow artifact's final-direction p_up output."""
     if "p_up" not in predictions.columns or "first_minute_side" not in predictions.columns:
