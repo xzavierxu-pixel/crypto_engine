@@ -1,0 +1,114 @@
+experiment_id: 20260612_catboost_continuation_reversal_stacked_meta_model
+mode: catboost_continuation_reversal_stacked_meta_model
+baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
+output_dir: artifacts/data_v2/reports/reversal_hybrid/20260612_catboost_continuation_reversal_stacked_meta_model
+
+objective:
+  optimize_metric: selection_score
+  min_coverage: 0.70
+  hard_constraint: coverage_only
+  validation_result_optimistic: true
+  baseline_selection_score: 0.5748509217
+  baseline_utility: 0.2674076058
+  baseline_accepted_sample_accuracy: 0.6909542934
+  baseline_accepted_count: 5229
+  baseline_coverage: 0.7001874665
+
+continuation_expert:
+  source: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_continuation_side_coordinate_search
+  thresholds_path: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_continuation_side_coordinate_search/thresholds.json
+  decision_constraint: same_side_first_minute_only
+
+reversal_expert:
+  source: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_reversal_sample_weight_search/reversal_weight_8
+  sample_weight: 8.0
+  t_up: 0.45
+  t_down: 0.30
+  decision_constraint: opposite_side_first_minute_only
+
+expert_model:
+  iterations: 400
+  learning_rate: 0.025
+  depth: 5
+  l2_leaf_reg: 24.0
+  random_strength: 1.0
+  bootstrap_type: Bernoulli
+  subsample: 0.85
+  loss_function: Logloss
+  eval_metric: Logloss
+  allow_writing_files: false
+  verbose: false
+  random_seed: 20260611
+
+stacker_model:
+  iterations: 300
+  learning_rate: 0.03
+  depth: 3
+  l2_leaf_reg: 10.0
+  loss_function: Logloss
+  eval_metric: Logloss
+  allow_writing_files: false
+  verbose: false
+  random_seed: 42
+
+regularization_grid:
+  depth_values: [2, 3, 4]
+  l2_leaf_reg_values: [5.0, 10.0, 20.0]
+
+expert_feature_set:
+  patterns:
+    - "fm_"
+    - "ret_1"
+    - "return_1s"
+    - "return_3s"
+    - "return_5s"
+    - "slope"
+    - "taker"
+    - "flow"
+    - "imbalance"
+    - "pressure"
+    - "divergence"
+    - "absorption"
+    - "exhaustion"
+    - "wick"
+    - "clv"
+    - "close_location"
+
+market_feature_set:
+  importance_path: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/feature_importance.csv
+  top_n: 50
+  allowlist_patterns:
+    - "fm_"
+    - "ret_1"
+    - "slope"
+    - "flow"
+    - "imbalance"
+    - "divergence"
+    - "wick"
+    - "momentum_acceleration"
+    - "second_level_first_minute_impulse"
+    - "second_level_microstructure"
+    - "range"
+    - "volume"
+    - "volatility"
+    - "liquidity"
+    - "rv_"
+    - "taker"
+    - "pressure"
+
+oof:
+  chronological_folds: 5
+  min_train_fraction_first_fold: 0.35
+
+threshold_search:
+  hard_constraint: coverage_only
+  t_up_min: 0.45
+  t_up_max: 0.70
+  t_down_min: 0.30
+  t_down_max: 0.55
+  step: 0.005
+
+experiments:
+  run_expert_only: true
+  run_expert_top_market: true
+  run_regularization_grid: true
