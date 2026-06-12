@@ -4,7 +4,7 @@ baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_seco
 output_dir: artifacts/data_v2/reports/reversal_hybrid/20260612_continuation_first_reversal_weight8_abstain_overlay
 
 objective:
-  optimize_metric: selection_score
+  optimize_metric: incremental_utility_from_reversal
   min_coverage: 0.70
   hard_constraint: coverage_only
   validation_result_optimistic: true
@@ -57,4 +57,9 @@ feature_set:
 threshold_search:
   hard_constraint: coverage_only
   residual_scope: continuation_accept_eq_0
-  tau_rev_grid: [0.55, 0.58, 0.60, 0.62, 0.65, 0.68, 0.70, 0.72, 0.75, 0.78, 0.80]
+  optimize_metric: incremental_utility_from_reversal
+  t_up_min: 0.00
+  t_up_max: 1.00
+  t_down_min: 0.00
+  t_down_max: 1.00
+  step: 0.01

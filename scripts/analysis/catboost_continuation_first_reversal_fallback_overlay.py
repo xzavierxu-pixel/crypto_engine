@@ -104,6 +104,18 @@ def _required_metrics(metrics: dict[str, Any]) -> dict[str, float]:
     return {field: float(metrics[field]) for field in OBJECTIVE_METRIC_FIELDS}
 
 
+def _float_grid(start: float, stop: float, step: float) -> list[float]:
+    if step <= 0.0:
+        raise ValueError("threshold grid step must be positive.")
+    values: list[float] = []
+    current = float(start)
+    epsilon = step / 10.0
+    while current <= float(stop) + epsilon:
+        values.append(round(current, 10))
+        current += step
+    return values
+
+
 def _train_experts(
     config: dict[str, Any],
     train_frame: pd.DataFrame,
@@ -135,7 +147,8 @@ def _expert_decisions(
     reversal_p_up: pd.Series,
     continuation_thresholds: dict[str, float],
     *,
-    tau_rev: float,
+    reversal_t_up: float,
+    reversal_t_down: float,
 ) -> tuple[pd.Series, pd.Series]:
     cont_decision = apply_continuation_expert_decision(
         continuation_p_up,
@@ -146,8 +159,8 @@ def _expert_decisions(
     rev_decision = apply_reversal_only_decision(
         reversal_p_up,
         predictions["first_minute_side"],
-        t_up=float(tau_rev),
-        t_down=float(1.0 - tau_rev),
+        t_up=float(reversal_t_up),
+        t_down=float(reversal_t_down),
     )
     return cont_decision, rev_decision
 
@@ -192,31 +205,41 @@ def _evaluate_overlay(
     reversal_p_up: pd.Series,
     continuation_thresholds: dict[str, float],
     *,
-    tau_rev: float,
+    reversal_t_up: float,
+    reversal_t_down: float,
+    continuation_decision: pd.Series | None = None,
+    continuation_only: dict[str, float] | None = None,
 ) -> dict[str, Any]:
-    cont_decision, rev_decision = _expert_decisions(
-        predictions,
-        continuation_p_up,
+    if continuation_decision is None:
+        continuation_decision = apply_continuation_expert_decision(
+            continuation_p_up,
+            predictions["first_minute_side"],
+            _regimes(predictions),
+            continuation_thresholds,
+        )
+    rev_decision = apply_reversal_only_decision(
         reversal_p_up,
-        continuation_thresholds,
-        tau_rev=tau_rev,
+        predictions["first_minute_side"],
+        t_up=float(reversal_t_up),
+        t_down=float(reversal_t_down),
     )
-    routed = route_continuation_first_reversal_fallback(cont_decision, rev_decision)
+    routed = route_continuation_first_reversal_fallback(continuation_decision, rev_decision)
     cont_t_up, cont_t_down = _selected_thresholds(continuation_thresholds)
-    continuation_only = compute_decision_metrics(
-        predictions["target"],
-        continuation_p_up,
-        cont_decision,
-        selected_t_up=cont_t_up,
-        selected_t_down=cont_t_down,
-    )
+    if continuation_only is None:
+        continuation_only = compute_decision_metrics(
+            predictions["target"],
+            continuation_p_up,
+            continuation_decision,
+            selected_t_up=cont_t_up,
+            selected_t_down=cont_t_down,
+        )
     combined_probability = _source_probability(continuation_p_up, reversal_p_up, routed["final_source"])
     combined = compute_decision_metrics(
         predictions["target"],
         combined_probability,
         routed["final_decision"],
-        selected_t_up=float(tau_rev),
-        selected_t_down=float(1.0 - tau_rev),
+        selected_t_up=float(reversal_t_up),
+        selected_t_down=float(reversal_t_down),
     )
     fallback = _fallback_only_metrics(
         predictions,
@@ -225,9 +248,8 @@ def _evaluate_overlay(
     )
     return {
         **combined,
-        "tau_rev": float(tau_rev),
-        "reversal_t_up": float(tau_rev),
-        "reversal_t_down": float(1.0 - tau_rev),
+        "reversal_t_up": float(reversal_t_up),
+        "reversal_t_down": float(reversal_t_down),
         "continuation_coverage": float(continuation_only["coverage"]),
         "continuation_accepted_accuracy": float(continuation_only["accepted_sample_accuracy"]),
         "continuation_only_utility": float(continuation_only["utility"]),
@@ -257,11 +279,13 @@ def _best(records: list[dict[str, Any]], config: dict[str, Any]) -> dict[str, An
         pool,
         key=lambda row: (
             row["success_criteria_satisfied"],
+            row["incremental_utility_from_reversal"],
+            row["reversal_fallback_utility"],
+            row["reversal_fallback_accepted_accuracy"],
             row["selection_score"],
-            row["utility"],
             row["coverage"],
             row["accepted_count"],
-            -abs(row["tau_rev"] - 0.65),
+            -abs(row["reversal_t_up"] - 0.5) - abs(row["reversal_t_down"] - 0.5),
         ),
     )
     best["fallback_reason"] = None if passing else "no candidate satisfied all fallback success criteria"
@@ -274,14 +298,23 @@ def _make_audit(
     reversal_p_up: pd.Series,
     continuation_thresholds: dict[str, float],
     *,
-    tau_rev: float,
+    reversal_t_up: float,
+    reversal_t_down: float,
+    continuation_decision: pd.Series | None = None,
 ) -> pd.DataFrame:
-    cont_decision, rev_decision = _expert_decisions(
-        predictions,
-        continuation_p_up,
+    if continuation_decision is None:
+        continuation_decision = apply_continuation_expert_decision(
+            continuation_p_up,
+            predictions["first_minute_side"],
+            _regimes(predictions),
+            continuation_thresholds,
+        )
+    cont_decision = continuation_decision
+    rev_decision = apply_reversal_only_decision(
         reversal_p_up,
-        continuation_thresholds,
-        tau_rev=tau_rev,
+        predictions["first_minute_side"],
+        t_up=float(reversal_t_up),
+        t_down=float(reversal_t_down),
     )
     routed = route_continuation_first_reversal_fallback(cont_decision, rev_decision)
     y = predictions["target"].astype(int)
@@ -326,21 +359,63 @@ def run(config_path: Path) -> dict[str, Any]:
         features,
     )
     continuation_thresholds = _read_json(Path(config["continuation_expert"]["thresholds_path"]))
-    tau_values = [float(value) for value in config["threshold_search"]["tau_rev_grid"]]
+    train_cont_decision = apply_continuation_expert_decision(
+        cont_train_p,
+        train_predictions["first_minute_side"],
+        _regimes(train_predictions),
+        continuation_thresholds,
+    )
+    val_cont_decision = apply_continuation_expert_decision(
+        cont_val_p,
+        validation_predictions["first_minute_side"],
+        _regimes(validation_predictions),
+        continuation_thresholds,
+    )
+    cont_t_up, cont_t_down = _selected_thresholds(continuation_thresholds)
+    train_continuation_only = compute_decision_metrics(
+        train_predictions["target"],
+        cont_train_p,
+        train_cont_decision,
+        selected_t_up=cont_t_up,
+        selected_t_down=cont_t_down,
+    )
+    val_continuation_only = compute_decision_metrics(
+        validation_predictions["target"],
+        cont_val_p,
+        val_cont_decision,
+        selected_t_up=cont_t_up,
+        selected_t_down=cont_t_down,
+    )
+    search = config["threshold_search"]
+    if "t_up_values" in search and "t_down_values" in search:
+        t_up_values = [float(value) for value in search["t_up_values"]]
+        t_down_values = [float(value) for value in search["t_down_values"]]
+    elif {"t_up_min", "t_up_max", "t_down_min", "t_down_max", "step"}.issubset(search):
+        step = float(search["step"])
+        t_up_values = _float_grid(float(search["t_up_min"]), float(search["t_up_max"]), step)
+        t_down_values = _float_grid(float(search["t_down_min"]), float(search["t_down_max"]), step)
+    else:
+        tau_values = [float(value) for value in search["tau_rev_grid"]]
+        t_up_values = tau_values
+        t_down_values = [float(1.0 - value) for value in tau_values]
 
     records: list[dict[str, Any]] = []
-    for tau_rev in tau_values:
-        row = _evaluate_overlay(
-            validation_predictions,
-            cont_val_p,
-            rev_val_p,
-            continuation_thresholds,
-            tau_rev=tau_rev,
-        )
-        row["success_criteria_satisfied"] = _success(row, config)
-        row["coverage_constraint_satisfied"] = bool(row["combined_coverage"] >= float(config["objective"]["min_coverage"]))
-        row["official_acceptance_metric"] = "validation_selection_score_with_coverage_ge_0.70"
-        records.append(row)
+    for reversal_t_up in t_up_values:
+        for reversal_t_down in t_down_values:
+            row = _evaluate_overlay(
+                validation_predictions,
+                cont_val_p,
+                rev_val_p,
+                continuation_thresholds,
+                reversal_t_up=reversal_t_up,
+                reversal_t_down=reversal_t_down,
+                continuation_decision=val_cont_decision,
+                continuation_only=val_continuation_only,
+            )
+            row["success_criteria_satisfied"] = _success(row, config)
+            row["coverage_constraint_satisfied"] = bool(row["combined_coverage"] >= float(config["objective"]["min_coverage"]))
+            row["official_acceptance_metric"] = "validation_incremental_utility_with_coverage_ge_0.70"
+            records.append(row)
 
     frontier = pd.DataFrame.from_records(records)
     frontier_path = output_dir / "fallback_threshold_frontier.csv"
@@ -352,7 +427,10 @@ def run(config_path: Path) -> dict[str, Any]:
         cont_train_p,
         rev_train_p,
         continuation_thresholds,
-        tau_rev=float(best["tau_rev"]),
+        reversal_t_up=float(best["reversal_t_up"]),
+        reversal_t_down=float(best["reversal_t_down"]),
+        continuation_decision=train_cont_decision,
+        continuation_only=train_continuation_only,
     )
     train_metrics["success_criteria_satisfied"] = _success(train_metrics, config)
     train_metrics["coverage_constraint_satisfied"] = bool(train_metrics["combined_coverage"] >= float(config["objective"]["min_coverage"]))
@@ -363,7 +441,9 @@ def run(config_path: Path) -> dict[str, Any]:
         cont_val_p,
         rev_val_p,
         continuation_thresholds,
-        tau_rev=float(best["tau_rev"]),
+        reversal_t_up=float(best["reversal_t_up"]),
+        reversal_t_down=float(best["reversal_t_down"]),
+        continuation_decision=val_cont_decision,
     ).to_csv(audit_path, index=False)
 
     improved_over_accepted_baseline = bool(
@@ -372,7 +452,7 @@ def run(config_path: Path) -> dict[str, Any]:
     report = {
         "experiment_id": config["experiment_id"],
         "config_path": str(config_path),
-        "primary_metric": "validation selection_score with coverage >= 0.70",
+        "primary_metric": "validation incremental_utility_from_reversal with coverage >= 0.70",
         "mode": config["mode"],
         "objective": config["objective"],
         "threshold_search": config["threshold_search"],
@@ -384,7 +464,8 @@ def run(config_path: Path) -> dict[str, Any]:
         "continuation_expert_reason": "highest continuation_accepted_accuracy among current experiments",
         "reversal_expert_source": config["reversal_expert"]["source"],
         "reversal_expert_reason": "reversal_weight_8 requested for highest reversal_accepted_accuracy",
-        "best_tau_rev": float(best["tau_rev"]),
+        "best_reversal_t_up": float(best["reversal_t_up"]),
+        "best_reversal_t_down": float(best["reversal_t_down"]),
         "train_metrics": {**_required_metrics(train_metrics), **{k: float(train_metrics[k]) for k in train_metrics if k not in OBJECTIVE_METRIC_FIELDS and isinstance(train_metrics[k], (int, float, bool))}},
         "validation_metrics": {**_required_metrics(best), **{k: float(best[k]) for k in best if k not in OBJECTIVE_METRIC_FIELDS and isinstance(best[k], (int, float, bool))}},
         "coverage_constraint_satisfied": bool(best["coverage_constraint_satisfied"]),
@@ -418,7 +499,8 @@ def main() -> None:
         json.dumps(
             {
                 "report_path": report["output_files"]["report"],
-                "best_tau_rev": report["best_tau_rev"],
+                "best_reversal_t_up": report["best_reversal_t_up"],
+                "best_reversal_t_down": report["best_reversal_t_down"],
                 "coverage_constraint_satisfied": report["coverage_constraint_satisfied"],
                 "success_criteria_satisfied": report["success_criteria_satisfied"],
                 "selection_score": metrics["selection_score"],
