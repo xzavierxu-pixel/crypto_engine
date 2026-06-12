@@ -1,0 +1,98 @@
+experiment_id: 20260612_catboost_continuation_reversal_hybrid_router
+mode: catboost_continuation_reversal_hybrid_router
+baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
+output_dir: artifacts/data_v2/reports/reversal_hybrid/20260612_catboost_continuation_reversal_hybrid_router
+
+objective:
+  optimize_metric: selection_score
+  min_coverage: 0.70
+  minimum_accepted_count: 4000
+  hard_constraint: coverage_only
+  validation_result_optimistic: true
+
+continuation_expert:
+  source: artifacts\data_v2\reports\reversal_hybrid\20260611_catboost_continuation_side_coordinate_search
+  thresholds_path: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_continuation_side_coordinate_search/thresholds.json
+  decision_constraint: same_side_first_minute_only
+
+reversal_expert:
+  source: artifacts\data_v2\reports\reversal_hybrid\20260611_catboost_reversal_sample_weight_search\reversal_weight_8
+  sample_weight: 8.0
+  t_up: 0.45
+  t_down: 0.30
+  decision_constraint: opposite_side_first_minute_only
+
+expert_model:
+  iterations: 400
+  learning_rate: 0.025
+  depth: 5
+  l2_leaf_reg: 24.0
+  random_strength: 1.0
+  bootstrap_type: Bernoulli
+  subsample: 0.85
+  loss_function: Logloss
+  eval_metric: Logloss
+  allow_writing_files: false
+  verbose: false
+  random_seed: 20260611
+
+gate_model:
+  iterations: 300
+  learning_rate: 0.025
+  depth: 4
+  l2_leaf_reg: 16.0
+  random_strength: 1.0
+  bootstrap_type: Bernoulli
+  subsample: 0.85
+  loss_function: Logloss
+  eval_metric: Logloss
+  allow_writing_files: false
+  verbose: false
+  random_seed: 20260612
+
+feature_set:
+  patterns:
+    - "fm_"
+    - "ret_1"
+    - "return_1s"
+    - "return_3s"
+    - "return_5s"
+    - "slope"
+    - "taker"
+    - "flow"
+    - "imbalance"
+    - "pressure"
+    - "divergence"
+    - "absorption"
+    - "exhaustion"
+    - "wick"
+    - "clv"
+    - "close_location"
+
+gate_feature_set:
+  patterns:
+    - "fm_"
+    - "ret_1"
+    - "return_1s"
+    - "return_3s"
+    - "return_5s"
+    - "slope"
+    - "flow"
+    - "imbalance"
+    - "divergence"
+    - "wick"
+    - "momentum"
+    - "acceleration"
+    - "micro"
+    - "range"
+    - "liquidity"
+    - "volume"
+    - "session"
+    - "hour"
+    - "weekday"
+
+conflict_margin_values: [0.03, 0.05, 0.07, 0.10, 0.12, 0.15]
+
+gate_search:
+  tau_cont_values: [0.60, 0.65, 0.70, 0.75]
+  tau_rev_values: [0.65, 0.70, 0.75, 0.80]

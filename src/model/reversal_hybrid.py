@@ -41,6 +41,90 @@ def _opposite_side(side: pd.Series) -> pd.Series:
     return side.map({"YES": "NO", "NO": "YES"})
 
 
+def apply_continuation_expert_decision(
+    p_up: pd.Series,
+    first_minute_side: pd.Series,
+    regimes: pd.Series,
+    thresholds: dict[str, float],
+) -> pd.Series:
+    """Apply same-side-only continuation thresholds by regime."""
+    probability = p_up.astype("float64").clip(0.0, 1.0)
+    fm_side = first_minute_side.astype("object")
+    decisions = pd.Series("ABSTAIN", index=probability.index, dtype="object")
+    for regime, threshold in thresholds.items():
+        mask = regimes == regime
+        decisions.loc[mask & (fm_side == "YES") & (probability >= float(threshold))] = "UP"
+        decisions.loc[mask & (fm_side == "NO") & (probability <= float(threshold))] = "DOWN"
+    return decisions
+
+
+def apply_reversal_only_decision(
+    p_up: pd.Series,
+    first_minute_side: pd.Series,
+    *,
+    t_up: float,
+    t_down: float,
+) -> pd.Series:
+    """Apply opposite-side-only reversal thresholds."""
+    probability = p_up.astype("float64").clip(0.0, 1.0)
+    fm_side = first_minute_side.astype("object")
+    decisions = pd.Series("ABSTAIN", index=probability.index, dtype="object")
+    decisions.loc[(fm_side == "YES") & (probability <= float(t_down))] = "DOWN"
+    decisions.loc[(fm_side == "NO") & (probability >= float(t_up))] = "UP"
+    return decisions
+
+
+def route_conflict_margin_hybrid(
+    continuation_p_up: pd.Series,
+    continuation_decision: pd.Series,
+    reversal_p_up: pd.Series,
+    reversal_decision: pd.Series,
+    *,
+    conflict_margin: float,
+) -> pd.DataFrame:
+    """Route between disagreeing continuation/reversal experts with a confidence margin."""
+    cont_decision = continuation_decision.astype("object")
+    rev_decision = reversal_decision.astype("object")
+    cont_accept = cont_decision != "ABSTAIN"
+    rev_accept = rev_decision != "ABSTAIN"
+    cont_conf = (continuation_p_up.astype("float64").clip(0.0, 1.0) - 0.5).abs()
+    rev_conf = (reversal_p_up.astype("float64").clip(0.0, 1.0) - 0.5).abs()
+
+    final_decision = pd.Series("ABSTAIN", index=cont_decision.index, dtype="object")
+    used_expert = pd.Series("abstain", index=cont_decision.index, dtype="object")
+    routing_reason = pd.Series("both_abstain", index=cont_decision.index, dtype="object")
+
+    cont_only = cont_accept & ~rev_accept
+    rev_only = rev_accept & ~cont_accept
+    both = cont_accept & rev_accept
+    cont_win = both & ((cont_conf - rev_conf) >= float(conflict_margin))
+    rev_win = both & ((rev_conf - cont_conf) >= float(conflict_margin))
+    conflict_abstain = both & ~(cont_win | rev_win)
+
+    final_decision.loc[cont_only | cont_win] = cont_decision.loc[cont_only | cont_win]
+    used_expert.loc[cont_only | cont_win] = "continuation"
+    routing_reason.loc[cont_only] = "cont_only"
+    routing_reason.loc[cont_win] = "conflict_cont_win"
+
+    final_decision.loc[rev_only | rev_win] = rev_decision.loc[rev_only | rev_win]
+    used_expert.loc[rev_only | rev_win] = "reversal"
+    routing_reason.loc[rev_only] = "rev_only"
+    routing_reason.loc[rev_win] = "conflict_rev_win"
+    routing_reason.loc[conflict_abstain] = "conflict_abstain"
+
+    return pd.DataFrame(
+        {
+            "final_decision": final_decision,
+            "used_expert": used_expert,
+            "routing_reason": routing_reason,
+            "continuation_accept": cont_accept,
+            "reversal_accept": rev_accept,
+            "continuation_confidence": cont_conf,
+            "reversal_confidence": rev_conf,
+        }
+    )
+
+
 def p_follow_from_direction_probability(predictions: pd.DataFrame) -> pd.Series:
     """Recover p_follow from the follow artifact's final-direction p_up output."""
     if "p_up" not in predictions.columns or "first_minute_side" not in predictions.columns:
