@@ -146,7 +146,7 @@
     "method": "chronological_oof_with_expanding_expert_training",
     "oof_train_rows": 15762
   },
-  "git_commit": "7c15268b65069f07ff0d316eeb827e49b685176e",
+  "git_commit": "f2d90b4cc8313e0677742df3856aed466d7b2c62",
   "improved_over_accepted_baseline": true,
   "label_source": "polymarket_resolved",
   "label_version": "polymarket_resolved_gamma_v1",
