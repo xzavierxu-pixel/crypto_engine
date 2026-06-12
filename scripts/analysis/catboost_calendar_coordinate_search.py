@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import pickle
 from pathlib import Path
 import re
 import sys
@@ -16,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.model.reversal_hybrid import OBJECTIVE_METRIC_FIELDS, compute_decision_metrics, compute_reversal_continuation_metrics  # noqa: E402
+from src.calibration.none import NoCalibration  # noqa: E402
 
 
 DEFAULT_CONFIG_PATH = Path("experiments/configs/20260611_catboost_calendar_coordinate_search.yaml")
@@ -101,6 +103,11 @@ def _evaluate(
     }
 
 
+def _thresholds_from_metrics(metrics: dict[str, Any]) -> dict[str, tuple[float, float]]:
+    payload = json.loads(str(metrics["thresholds"]))
+    return {key: (float(value["t_up"]), float(value["t_down"])) for key, value in payload.items()}
+
+
 def _better(candidate: dict[str, Any], incumbent: dict[str, Any], min_coverage: float) -> bool:
     if candidate["coverage"] < min_coverage or candidate["utility"] <= 0.0:
         return False
@@ -170,6 +177,87 @@ def _window_summary(frame: pd.DataFrame) -> dict[str, str | int]:
     return {"row_count": int(len(frame)), "start": str(timestamps.min()), "end": str(timestamps.max())}
 
 
+def _save_deploy_artifact(
+    *,
+    output_dir: Path,
+    model: CatBoostClassifier,
+    model_params: dict[str, Any],
+    feature_columns: list[str],
+    train_metrics: dict[str, Any],
+    validation_metrics: dict[str, Any],
+    train_window: dict[str, str | int],
+    validation_window: dict[str, str | int],
+    source_config_path: Path,
+    source_report_path: Path,
+) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    model_plugin = "catboost"
+    calibration_plugin = "none"
+    model_path = output_dir / f"{model_plugin}.binary.pkl"
+    calibrator_path = output_dir / f"{calibration_plugin}.binary.pkl"
+    with model_path.open("wb") as handle:
+        pickle.dump({"params": model_params, "model": model}, handle)
+    NoCalibration().save(calibrator_path)
+
+    coordinate_thresholds = {
+        key: {"t_up": float(value[0]), "t_down": float(value[1])}
+        for key, value in _thresholds_from_metrics(validation_metrics).items()
+    }
+    manifest = {
+        "artifact_type": "binary_selective",
+        "training_mode": "calendar_coordinate_offline_train",
+        "experiment_id": "20260611_catboost_calendar_coordinate_search",
+        "model_plugin": model_plugin,
+        "calibration_plugin": calibration_plugin,
+        "feature_columns": feature_columns,
+        "feature_count": len(feature_columns),
+        "t_up": float(validation_metrics["selected_t_up"]),
+        "t_down": float(validation_metrics["selected_t_down"]),
+        "threshold_source": "offline_validation_calendar_coordinate",
+        "threshold_policy": {
+            "type": "utc_day_session_coordinate",
+            "thresholds": coordinate_thresholds,
+            "fallback_t_up": float(validation_metrics["selected_t_up"]),
+            "fallback_t_down": float(validation_metrics["selected_t_down"]),
+        },
+        "offline_validation_metrics": _required_metrics(validation_metrics),
+        "train_metrics": _required_metrics(train_metrics),
+        "train_window": train_window,
+        "validation_window": validation_window,
+        "source_config_path": str(source_config_path),
+        "source_report_path": str(source_report_path),
+        "acceptance_baseline": {
+            "previous_experiment_id": "20260520_polymarket_resolved_extended_history_baseline",
+            "previous_selection_score": 0.5748509217,
+            "previous_utility": 0.2674076058,
+            "previous_accepted_sample_accuracy": 0.6909542934,
+            "previous_accepted_count": 5229.0,
+            "previous_coverage": 0.7001874665,
+        },
+    }
+    (output_dir / "artifact_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
+    (output_dir / "metrics.json").write_text(json.dumps(_required_metrics(validation_metrics), indent=2, sort_keys=True), encoding="utf-8")
+    (output_dir / "report.json").write_text(
+        json.dumps(
+            {
+                "experiment_id": manifest["experiment_id"],
+                "training_mode": manifest["training_mode"],
+                "config_path": str(source_config_path),
+                "report_path": str(source_report_path),
+                "train_metrics": _required_metrics(train_metrics),
+                "train_window": train_window,
+                "validation_metrics": _required_metrics(validation_metrics),
+                "validation_window": validation_window,
+                "coverage_constraint_satisfied": bool(validation_metrics["coverage"] >= 0.70),
+                "offline_validation_metric_source": str(source_report_path),
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+
 def run(config_path: Path) -> dict[str, Any]:
     config = _load_config(config_path)
     output_dir = Path(config["output_dir"])
@@ -185,6 +273,18 @@ def run(config_path: Path) -> dict[str, Any]:
         index=validation_frame.index,
     ).clip(0.0, 1.0)
     frontier, best = _coordinate_search(validation_predictions, validation_p_up, config)
+    best_thresholds = _thresholds_from_metrics(best)
+    train_p_up = pd.Series(
+        model.predict_proba(train_frame[features])[:, 1],
+        index=train_frame.index,
+    ).clip(0.0, 1.0)
+    train_metrics = _evaluate(
+        train_predictions,
+        train_p_up,
+        _day_session(train_predictions),
+        best_thresholds,
+        "train_with_validation_coordinate_thresholds",
+    )
     frontier_path = output_dir / "day_session_coordinate_frontier.csv"
     frontier.to_csv(frontier_path, index=False)
     summary_path = output_dir / "variant_summary.csv"
@@ -204,14 +304,17 @@ def run(config_path: Path) -> dict[str, Any]:
             }
         ]
     ).to_csv(summary_path, index=False)
+    train_window = _window_summary(train_frame)
+    validation_window = _window_summary(validation_frame)
     report = {
         "experiment_id": config["experiment_id"],
         "config_path": str(config_path),
         "primary_metric": "validation accepted_sample_accuracy with coverage >= min_coverage",
         "mode": config["mode"],
         "objective": config["objective"],
-        "train_window": _window_summary(train_frame),
-        "validation_window": _window_summary(validation_frame),
+        "train_metrics": _required_metrics(train_metrics),
+        "train_window": train_window,
+        "validation_window": validation_window,
         "best_variant": "day_session_coordinate",
         "validation_metrics": best,
         "required_validation_metrics": _required_metrics(best),
@@ -222,7 +325,21 @@ def run(config_path: Path) -> dict[str, Any]:
             and best["accepted_sample_accuracy"] >= float(config["objective"]["target_accepted_sample_accuracy"])
         ),
     }
-    (output_dir / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    report_path = output_dir / "report.json"
+    report_path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    deploy_output_dir = Path(config.get("deploy_output_dir", "execution_engine/deploy/baseline"))
+    _save_deploy_artifact(
+        output_dir=deploy_output_dir,
+        model=model,
+        model_params=dict(config["model"]),
+        feature_columns=features,
+        train_metrics=train_metrics,
+        validation_metrics=best,
+        train_window=train_window,
+        validation_window=validation_window,
+        source_config_path=config_path,
+        source_report_path=report_path,
+    )
     return report
 
 

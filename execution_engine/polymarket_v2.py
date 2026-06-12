@@ -233,6 +233,11 @@ class PolymarketV2Adapter:
             if hasattr(status, key)
         }
 
+    def cancel_order(self, order_id: str) -> dict[str, Any]:
+        self._ensure_authenticated()
+        response = self.client.cancel(order_id)
+        return response if isinstance(response, dict) else {"response": response}
+
     def _ensure_authenticated(self) -> None:
         if getattr(self.client, "creds", None) is not None:
             return

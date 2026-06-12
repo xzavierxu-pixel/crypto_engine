@@ -2,6 +2,7 @@ experiment_id: 20260611_catboost_calendar_coordinate_search
 mode: catboost_day_session_coordinate_threshold_search
 baseline_experiment: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
 output_dir: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_calendar_coordinate_search
+deploy_output_dir: execution_engine/deploy/baseline
 
 objective:
   optimize_metric: accepted_sample_accuracy

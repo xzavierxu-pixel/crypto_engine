@@ -21,6 +21,7 @@ from execution_engine.scripts.evaluate_paper_results import (
 from execution_engine.scripts.run_paper_experiment import next_trigger_time
 from execution_engine.scripts import run_paper_experiment as paper_experiment_module
 from execution_engine.config import BinanceConfig, load_execution_config
+from execution_engine.feature_runtime import RuntimeInferenceEngine
 from execution_engine.order_plan import build_two_limit_order_plan
 from execution_engine.polymarket_v2 import PolymarketV2Adapter, normalize_gamma_market
 from execution_engine.realtime_data import (
@@ -125,6 +126,30 @@ def test_systemd_examples_align_with_configured_execution_and_prewarm_delays() -
     assert "OnCalendar=*-*-* *:01/5:08" in execution_timer
     assert "OnCalendar=*-*-* *:00/5:23" in prewarm_timer
     assert "execution_engine/prewarm.py" in prewarm_service
+
+
+def test_runtime_inference_engine_selects_calendar_coordinate_thresholds() -> None:
+    engine = RuntimeInferenceEngine.__new__(RuntimeInferenceEngine)
+    engine.t_up = 0.58
+    engine.t_down = 0.43
+    engine.baseline = types.SimpleNamespace(
+        threshold_policy={
+            "type": "utc_day_session_coordinate",
+            "fallback_t_up": 0.58,
+            "fallback_t_down": 0.43,
+            "thresholds": {
+                "d0_europe": {"t_up": 0.575, "t_down": 0.415},
+                "d0_us": {"t_up": 0.54, "t_down": 0.385},
+            },
+        }
+    )
+
+    t_up, t_down, context = engine._thresholds_for_signal(pd.Timestamp("2026-06-08T12:35:00Z"))
+
+    assert t_up == 0.575
+    assert t_down == 0.415
+    assert context["threshold_policy"] == "utc_day_session_coordinate"
+    assert context["threshold_regime"] == "d0_europe"
 
 
 def test_normalize_binance_klines_outputs_shared_schema() -> None:
@@ -1028,12 +1053,14 @@ runtime:
 orders:
   enabled: true
   mode: live
+  cancel_unfilled_after_seconds: 0
   first:
     price_cap: 0.75
     offset: 0.01
     reference_multiplier: 1.0
     size: 5.0
   second:
+    enabled: true
     price_cap: 0.2
     offset: 0.0
     reference_multiplier: 0.25
@@ -1157,6 +1184,114 @@ orders:
         "2026-05-10T12:35:00+00:00:yes-token:YES:second:two_limit_plan",
     ]
     assert Path(summary["summary_path"]).exists()
+
+
+def test_run_once_cancels_unfilled_live_orders_after_timeout(monkeypatch, tmp_path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        f"""
+baseline:
+  artifact_dir: baseline-dir
+runtime:
+  mode: live
+  audit_log: {tmp_path.as_posix()}/audit.jsonl
+  summary_dir: {tmp_path.as_posix()}/summaries
+  idempotency_store_path: {tmp_path.as_posix()}/idempotency.json
+orders:
+  enabled: true
+  mode: live
+  cancel_unfilled_after_seconds: 60
+  first:
+    price_cap: 0.75
+    offset: 0.01
+    reference_multiplier: 1.0
+    size: 5.0
+  second:
+    enabled: false
+""",
+        encoding="utf-8",
+    )
+
+    class FakeBaseline:
+        artifact_dir = Path("baseline-dir")
+        model_plugin = "catboost"
+        calibration_plugin = "none"
+        feature_columns = ["f1"]
+        t_up = 0.585
+        t_down = 0.335
+
+    class FakeBinance:
+        def __init__(self, config):
+            self.config = config
+
+        def wait_for_signal_runtime_frames(self, signal_t0, max_wait_seconds, feature_offset_minutes=0):
+            frame = pd.DataFrame({"timestamp": [pd.Timestamp("2026-05-10T12:35:00Z")]})
+            return frame, frame, frame, {
+                "row_policy": "exact_signal_t0_with_synthetic_decision_row",
+                "feature_timestamp": "2026-05-10T12:35:00+00:00",
+            }
+
+    class FakeInference:
+        def __init__(self, settings, baseline, **kwargs):
+            self.settings = settings
+            self.baseline = baseline
+
+        def predict(self, *args, **kwargs):
+            return types.SimpleNamespace(
+                signal=_signal(0.60),
+                feature_frame=pd.DataFrame({"f1": [1.0]}),
+                second_level_frame=pd.DataFrame({"timestamp": [pd.Timestamp("2026-05-10T12:35:00Z")]}),
+            )
+
+    class FakePolymarket:
+        def __init__(self, config):
+            self.cancelled = []
+
+        def get_market_by_slug(self, slug):
+            return types.SimpleNamespace(
+                slug=slug,
+                market_id="market-1",
+                yes_token_id="yes-token",
+                no_token_id="no-token",
+                active=True,
+                closed=False,
+                accepting_orders=True,
+                metadata={},
+            )
+
+        def get_orderbook(self, token_id, metadata=None):
+            return MarketQuote(market_id=token_id, yes_price=0.51, metadata={**(metadata or {}), "best_bid": 0.57})
+
+        def place_limit_order(self, order):
+            return {"response": {"success": True, "orderID": "order-1", "status": "live"}}
+
+        def get_order_status(self, order_id):
+            return {"id": order_id, "status": "LIVE", "size_matched": "2", "original_size": "5"}
+
+        def cancel_order(self, order_id):
+            self.cancelled.append(order_id)
+            return {"canceled": order_id}
+
+    monkeypatch.setattr(run_once_module, "load_baseline_artifact", lambda config: FakeBaseline())
+    monkeypatch.setattr(run_once_module, "load_settings", lambda path: object())
+    monkeypatch.setattr(run_once_module, "BinanceRealtimeClient", FakeBinance)
+    monkeypatch.setattr(run_once_module, "RuntimeInferenceEngine", FakeInference)
+    monkeypatch.setattr(run_once_module, "PolymarketV2Adapter", FakePolymarket)
+    monkeypatch.setattr(run_once_module.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(
+        run_once_module,
+        "evaluate_selective_binary_signal",
+        lambda signal, settings: Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
+    )
+
+    summary = run_once_module.run_once(
+        str(config_path),
+        mode_override="live",
+        target_window_start=datetime(2026, 5, 10, 12, 35, tzinfo=UTC),
+    )
+
+    assert summary["order_cancellations"][0]["order_id"] == "order-1"
+    assert summary["order_cancellations"][0]["cancel_response"] == {"canceled": "order-1"}
 
 
 def test_evaluate_paper_results_summarizes_hourly_goal(tmp_path) -> None:

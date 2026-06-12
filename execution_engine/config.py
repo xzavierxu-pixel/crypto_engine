@@ -103,6 +103,7 @@ class OrdersConfig:
     max_price: float = 0.99
     tick_size_default: float = 0.01
     on_invalid_second_order: str = "skip"
+    cancel_unfilled_after_seconds: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -194,6 +195,7 @@ def load_execution_config(path: str | Path) -> ExecutionEngineConfig:
         max_price=orders_payload.get("max_price", 0.99),
         tick_size_default=orders_payload.get("tick_size_default", 0.01),
         on_invalid_second_order=orders_payload.get("on_invalid_second_order", "skip"),
+        cancel_unfilled_after_seconds=orders_payload.get("cancel_unfilled_after_seconds", 0.0),
     )
 
     execution_edge_payload = _payload_for(payload, "execution_edge")

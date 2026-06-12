@@ -262,6 +262,7 @@ def run_once(
     store = IdempotencyStore(config.runtime.idempotency_store_path)
     responses: list[dict[str, Any]] = []
     order_statuses: list[dict[str, Any]] = []
+    submitted_order_ids: list[dict[str, str]] = []
     for order in order_plan.orders[: config.guards.max_orders_per_window]:
         leg = str(order.metadata.get("leg", "order"))
         key = build_idempotency_key(window_start, order.market_id, order.side, leg)
@@ -288,15 +289,26 @@ def run_once(
         responses.append(response)
         if order_id and hasattr(polymarket, "get_order_status"):
             try:
-                order_statuses.append({"leg": leg, "order_id": order_id, **polymarket.get_order_status(order_id)})
+                status_payload = {"leg": leg, "order_id": order_id, **polymarket.get_order_status(order_id)}
+                order_statuses.append(status_payload)
             except Exception as exc:
                 order_statuses.append({"leg": leg, "order_id": order_id, "status_lookup_error": repr(exc)})
+        if order_id:
+            submitted_order_ids.append({"leg": leg, "order_id": str(order_id)})
         if config.guards.enforce_idempotency:
             store.record(key, {"market_id": order.market_id, "side": order.side, "price": order.price, "leg": leg})
         audit.append(audit_event("order_submitted", {"order": asdict(order), "response": response}))
 
     summary["submitted"] = any(_order_response_success(response) for response in responses)
     summary["responses"] = responses
+    cancellations = _cancel_unfilled_orders_after_delay(
+        polymarket=polymarket,
+        submitted_order_ids=submitted_order_ids,
+        delay_seconds=float(config.orders.cancel_unfilled_after_seconds),
+        audit=audit,
+    )
+    if cancellations:
+        summary["order_cancellations"] = cancellations
     if order_statuses:
         summary["order_statuses"] = order_statuses
     return write_summary(config.runtime.summary_dir, summary)
@@ -310,6 +322,79 @@ def _order_response_payload(response: dict[str, Any]) -> dict[str, Any]:
 def _order_response_success(response: dict[str, Any]) -> bool:
     payload = _order_response_payload(response)
     return bool(payload.get("success") is True and payload.get("orderID"))
+
+
+def _cancel_unfilled_orders_after_delay(
+    *,
+    polymarket: Any,
+    submitted_order_ids: list[dict[str, str]],
+    delay_seconds: float,
+    audit: AuditService,
+) -> list[dict[str, Any]]:
+    if delay_seconds <= 0.0 or not submitted_order_ids:
+        return []
+    if not hasattr(polymarket, "get_order_status") or not hasattr(polymarket, "cancel_order"):
+        return [
+            {
+                "leg": order["leg"],
+                "order_id": order["order_id"],
+                "cancel_skipped": True,
+                "reason": "adapter_missing_status_or_cancel",
+            }
+            for order in submitted_order_ids
+        ]
+    time.sleep(delay_seconds)
+    cancellations: list[dict[str, Any]] = []
+    for order in submitted_order_ids:
+        leg = order["leg"]
+        order_id = order["order_id"]
+        try:
+            status = polymarket.get_order_status(order_id)
+            if _order_status_has_unfilled_quantity(status):
+                cancel_response = polymarket.cancel_order(order_id)
+                payload = {
+                    "leg": leg,
+                    "order_id": order_id,
+                    "status_before_cancel": status,
+                    "cancel_response": cancel_response,
+                }
+                cancellations.append(payload)
+                audit.append(audit_event("order_cancelled_after_timeout", payload))
+            else:
+                payload = {
+                    "leg": leg,
+                    "order_id": order_id,
+                    "status_before_cancel": status,
+                    "cancel_skipped": True,
+                    "reason": "order_filled_or_not_open",
+                }
+                cancellations.append(payload)
+                audit.append(audit_event("order_cancel_skipped_after_timeout", payload))
+        except Exception as exc:
+            payload = {"leg": leg, "order_id": order_id, "cancel_error": repr(exc)}
+            cancellations.append(payload)
+            audit.append(audit_event("order_cancel_error_after_timeout", payload))
+    return cancellations
+
+
+def _order_status_has_unfilled_quantity(status: dict[str, Any]) -> bool:
+    status_text = str(status.get("status", "")).lower()
+    if status_text in {"filled", "matched", "cancelled", "canceled"}:
+        return False
+    size_matched = _optional_float(status.get("size_matched"))
+    original_size = _optional_float(status.get("original_size"))
+    if size_matched is not None and original_size is not None:
+        return size_matched < original_size
+    return status_text in {"", "live", "open", "active", "pending"}
+
+
+def _optional_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def write_summary(summary_dir: str, summary: dict[str, Any]) -> dict[str, Any]:

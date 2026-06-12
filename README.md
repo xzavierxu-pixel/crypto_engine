@@ -15,32 +15,42 @@ See also: [AGENTS.md](AGENTS.md), [DATA_PIPELINE.md](DATA_PIPELINE.md), [scripts
 Current accepted validation baseline:
 
 ```yaml
-experiment_id: 20260520_polymarket_resolved_extended_history_baseline
-config_path: experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml
-report_path: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/report.json
+experiment_id: 20260611_catboost_calendar_coordinate_search
+config_path: experiments/configs/20260611_catboost_calendar_coordinate_search.yaml
+report_path: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_calendar_coordinate_search/report.json
 label_source: polymarket_resolved
-model_plugin: catboost_lgbm_logit_blend
-calibration_plugin: platt_logit
-feature_count: 1016
-t_up: 0.62
-t_down: 0.415
-selection_score: 0.5748509217
-coverage: 0.7001874665
-accepted_sample_accuracy: 0.6909542934
-utility: 0.2674076058
+model_plugin: catboost
+calibration_plugin: none
+threshold_policy: utc_day_session_coordinate
+selection_score: 0.6413740846
+coverage: 0.7000535619
+accepted_sample_accuracy: 0.7073450650
+utility: 0.2903053026
+accepted_count: 5228
 ```
 
 Current deploy artifact:
 
 ```yaml
 artifact_dir: execution_engine/deploy/baseline
-training_mode: online_full_train
-threshold_source: offline_validation
-offline_validation_selection_score: 0.5748509217
-full_train_selection_score: 0.7523651248  # diagnostic only
+training_mode: calendar_coordinate_offline_train
+threshold_source: offline_validation_calendar_coordinate
+offline_validation_selection_score: 0.6413740846
+limit_config_source: execution_engine/limit_configs.py
 ```
 
-Do not compare `full_train_selection_score` against validation acceptance scores. Full-train metrics are in-sample diagnostics.
+Previous accepted validation baseline for comparison:
+
+```yaml
+experiment_id: 20260520_polymarket_resolved_extended_history_baseline
+selection_score: 0.5748509217
+coverage: 0.7001874665
+accepted_sample_accuracy: 0.6909542934
+utility: 0.2674076058
+accepted_count: 5229
+```
+
+Future experiments should use `20260611_catboost_calendar_coordinate_search` as the baseline unless explicitly stated otherwise.
 
 ---
 
@@ -169,22 +179,15 @@ rtk python scripts/data/step4_features/build_dataset.py `
 Run accepted split training:
 
 ```powershell
-rtk python scripts/model/train_model.py `
-  --cached-split-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline `
-  --output-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline `
-  --config experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml `
-  --horizon 5m
+rtk python scripts/analysis/catboost_calendar_coordinate_search.py `
+  --config experiments/configs/20260611_catboost_calendar_coordinate_search.yaml
 ```
 
 Regenerate the deploy artifact:
 
 ```powershell
-rtk python scripts/model/train_online_full_train.py `
-  --cached-split-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline `
-  --accepted-artifact-dir artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline `
-  --output-dir execution_engine/deploy/baseline `
-  --config experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml `
-  --horizon 5m
+rtk python scripts/analysis/catboost_calendar_coordinate_search.py `
+  --config experiments/configs/20260611_catboost_calendar_coordinate_search.yaml
 ```
 
 Run focused verification:

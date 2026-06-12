@@ -42,6 +42,32 @@ class RuntimeInferenceEngine:
         self.model = load_model_plugin(baseline.model_plugin, str(baseline.model_path))
         self.calibrator = load_calibration_plugin(baseline.calibration_plugin, str(baseline.calibrator_path))
 
+    def _thresholds_for_signal(self, signal_t0: pd.Timestamp | None) -> tuple[float, float, dict[str, str | None]]:
+        policy = self.baseline.threshold_policy or {}
+        if policy.get("type") != "utc_day_session_coordinate" or signal_t0 is None:
+            return self.t_up, self.t_down, {"threshold_policy": policy.get("type"), "threshold_regime": None}
+        timestamp = pd.Timestamp(signal_t0).tz_convert("UTC")
+        hour = int(timestamp.hour)
+        if hour <= 7:
+            session = "asia"
+        elif hour <= 15:
+            session = "europe"
+        else:
+            session = "us"
+        regime = f"d{int(timestamp.dayofweek)}_{session}"
+        payload = (policy.get("thresholds") or {}).get(regime)
+        if isinstance(payload, dict) and payload.get("t_up") is not None and payload.get("t_down") is not None:
+            return (
+                float(payload["t_up"]),
+                float(payload["t_down"]),
+                {"threshold_policy": str(policy.get("type")), "threshold_regime": regime},
+            )
+        return (
+            float(policy.get("fallback_t_up", self.t_up)),
+            float(policy.get("fallback_t_down", self.t_down)),
+            {"threshold_policy": str(policy.get("type")), "threshold_regime": regime},
+        )
+
     def build_feature_frame(
         self,
         minute_frame: pd.DataFrame,
@@ -126,6 +152,7 @@ class RuntimeInferenceEngine:
             if signal_t0 is not None
             else latest[DEFAULT_TIMESTAMP_COLUMN].to_pydatetime()
         )
+        resolved_t_up, resolved_t_down, threshold_context = self._thresholds_for_signal(pd.Timestamp(signal_timestamp))
         signal = Signal(
             asset=str(latest["asset"]),
             horizon=str(latest["horizon"]),
@@ -147,11 +174,12 @@ class RuntimeInferenceEngine:
                     if use_latest_available_before_signal
                     else runtime_context.get("row_policy", "exact_signal_t0")
                 ),
-                "t_up": self.t_up,
-                "t_down": self.t_down,
+                "t_up": resolved_t_up,
+                "t_down": resolved_t_down,
                 "artifact_t_up": self.baseline.t_up,
                 "artifact_t_down": self.baseline.t_down,
                 "baseline_artifact_dir": str(self.baseline.artifact_dir),
+                **threshold_context,
                 **runtime_context,
             },
         )

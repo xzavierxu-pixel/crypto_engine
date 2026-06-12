@@ -19,6 +19,7 @@ class BaselineArtifact:
     feature_columns: list[str]
     t_up: float
     t_down: float
+    threshold_policy: dict[str, Any]
     target_semantics: dict[str, Any]
 
 
@@ -56,6 +57,9 @@ def load_baseline_artifact(config: BaselineConfig) -> BaselineArtifact:
     target_semantics = manifest.get("target_semantics") or manifest.get("model_target_semantics") or {}
     if not isinstance(target_semantics, dict):
         target_semantics = {}
+    threshold_policy = manifest.get("threshold_policy") or {}
+    if not isinstance(threshold_policy, dict):
+        threshold_policy = {}
 
     return BaselineArtifact(
         artifact_dir=artifact_dir,
@@ -67,6 +71,7 @@ def load_baseline_artifact(config: BaselineConfig) -> BaselineArtifact:
         feature_columns=feature_columns,
         t_up=float(t_up),
         t_down=float(t_down),
+        threshold_policy=dict(threshold_policy),
         target_semantics=dict(target_semantics),
     )
 
