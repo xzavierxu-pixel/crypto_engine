@@ -24,6 +24,7 @@ ROOT = PRICE_ESTIMATOR_DIR.parent
 sys.path.insert(0, str(PRICE_ESTIMATOR_DIR / "scripts"))
 
 from price_estimator_common import (  # noqa: E402
+    apply_sample_filter,
     ensure_no_forbidden_features,
     load_config,
     load_deploy_manifest,
@@ -182,11 +183,13 @@ class IndexedTensorDataset(Dataset):
         self,
         x: np.ndarray,
         y: np.ndarray,
+        p_side: np.ndarray,
         constraint_weight: np.ndarray,
         tightness_weight: np.ndarray,
     ) -> None:
         self.x = torch.from_numpy(x)
         self.y = torch.from_numpy(y.astype(np.float32)).view(-1, 1)
+        self.p_side = torch.from_numpy(p_side.astype(np.float32)).view(-1, 1)
         self.constraint_weight = torch.from_numpy(constraint_weight.astype(np.float32)).view(-1, 1)
         self.tightness_weight = torch.from_numpy(tightness_weight.astype(np.float32)).view(-1, 1)
 
@@ -195,10 +198,11 @@ class IndexedTensorDataset(Dataset):
 
     def __getitem__(
         self, idx: int
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         return (
             self.x[idx],
             self.y[idx],
+            self.p_side[idx],
             self.constraint_weight[idx],
             self.tightness_weight[idx],
         )
@@ -225,15 +229,42 @@ class UpperBoundMLP(nn.Module):
         return self.net(x)
 
 
-def upper_bound_metrics(y: np.ndarray, z: np.ndarray, epsilon: float, tolerance: float) -> dict[str, float]:
+def predictions_from_logits(z: np.ndarray, df: pd.DataFrame | None, config: dict[str, Any]) -> np.ndarray:
     p = sigmoid_np(z)
+    output_config = config.get("prediction_output", {})
+    output_type = str(output_config.get("type", "sigmoid"))
+    if output_type == "sigmoid":
+        return p
+    if output_type == "p_side_sigmoid":
+        if df is None or "p_side" not in df.columns:
+            raise ValueError("prediction_output.type=p_side_sigmoid requires p_side column")
+        slack = float(output_config.get("cap_slack", 0.0))
+        cap = np.clip(pd.to_numeric(df["p_side"], errors="coerce").to_numpy(dtype=float) + slack, 0.0, 1.0)
+        return np.clip(cap * p, 0.0, 1.0)
+    raise ValueError(f"Unsupported prediction_output.type: {output_type}")
+
+
+def upper_bound_metrics(
+    y: np.ndarray,
+    z: np.ndarray,
+    epsilon: float,
+    tolerance: float,
+    config: dict[str, Any],
+    df: pd.DataFrame | None = None,
+) -> dict[str, float]:
+    p = predictions_from_logits(z, df, config)
     gap = p - y
     violation = np.maximum(y + epsilon - p, 0.0)
     violating = p + tolerance < y + epsilon
+    gap_p05 = float(np.quantile(gap, 0.05)) if len(y) else float("nan")
+    gap_p95 = float(np.quantile(gap, 0.95)) if len(y) else float("nan")
     return {
         "sample_count": float(len(y)),
         "mean_gap": float(np.mean(gap)) if len(y) else float("nan"),
         "median_gap": float(np.median(gap)) if len(y) else float("nan"),
+        "gap_p05": gap_p05,
+        "gap_p95": gap_p95,
+        "gap_p95_p05_range": gap_p95 - gap_p05 if len(y) else float("nan"),
         "min_gap": float(np.min(gap)) if len(y) else float("nan"),
         "violation_rate": float(np.mean(violating)) if len(y) else float("nan"),
         "max_violation": float(np.max(violation)) if len(y) else float("nan"),
@@ -250,14 +281,26 @@ def torch_log_cosh(x: torch.Tensor, scale: float) -> torch.Tensor:
     return scale * scale * (abs_scaled + torch.log1p(torch.exp(-2.0 * abs_scaled)) - math.log(2.0))
 
 
-def upper_bound_loss(z: torch.Tensor, y: torch.Tensor, config: dict[str, Any]) -> torch.Tensor:
+def batch_predictions_from_logits(z: torch.Tensor, p_side: torch.Tensor, config: dict[str, Any]) -> torch.Tensor:
+    p = torch.sigmoid(z)
+    output_config = config.get("prediction_output", {})
+    output_type = str(output_config.get("type", "sigmoid"))
+    if output_type == "sigmoid":
+        return p
+    if output_type == "p_side_sigmoid":
+        slack = float(output_config.get("cap_slack", 0.0))
+        return torch.clamp(p_side + slack, min=0.0, max=1.0) * p
+    raise ValueError(f"Unsupported prediction_output.type: {output_type}")
+
+
+def upper_bound_loss(z: torch.Tensor, y: torch.Tensor, p_side: torch.Tensor, config: dict[str, Any]) -> torch.Tensor:
     loss_config = config.get("loss", {})
     loss_type = str(loss_config.get("type", "mean_gap_soft_violation"))
     epsilon = float(config["target"]["epsilon"])
     clip_min = float(config["target"]["clip_min"])
     clip_max = float(config["target"]["clip_max"])
     scale = float(loss_config.get("scale", 0.05))
-    p = torch.sigmoid(z)
+    p = batch_predictions_from_logits(z, p_side, config)
     target = torch.clamp(y + epsilon, min=clip_min, max=clip_max)
 
     if loss_type == "asymmetric_logcosh":
@@ -319,12 +362,17 @@ def is_better(
     candidate_validation: dict[str, float],
     incumbent_validation: dict[str, float] | None,
     min_validation_coverage: float,
+    min_validation_mean_gap: float = float("-inf"),
     max_validation_violation: float | None = None,
 ) -> bool:
     if incumbent_validation is None:
         return True
     candidate_ok = candidate_validation["coverage"] >= min_validation_coverage
     incumbent_ok = incumbent_validation["coverage"] >= min_validation_coverage
+    candidate_gap_ok = candidate_validation["mean_gap"] >= min_validation_mean_gap
+    incumbent_gap_ok = incumbent_validation["mean_gap"] >= min_validation_mean_gap
+    if candidate_gap_ok != incumbent_gap_ok:
+        return candidate_gap_ok
     if candidate_ok != incumbent_ok:
         return candidate_ok
     if candidate_ok and incumbent_ok and max_validation_violation is not None:
@@ -335,6 +383,10 @@ def is_better(
     if candidate_ok and incumbent_ok:
         if candidate_validation["mean_gap"] != incumbent_validation["mean_gap"]:
             return candidate_validation["mean_gap"] < incumbent_validation["mean_gap"]
+        if candidate_validation.get("gap_p95_p05_range") != incumbent_validation.get("gap_p95_p05_range"):
+            return candidate_validation.get("gap_p95_p05_range", float("inf")) < incumbent_validation.get(
+                "gap_p95_p05_range", float("inf")
+            )
         if candidate_validation["p99_violation"] != incumbent_validation["p99_violation"]:
             return candidate_validation["p99_violation"] < incumbent_validation["p99_violation"]
         return candidate_validation["max_violation"] < incumbent_validation["max_violation"]
@@ -353,7 +405,7 @@ def grouped_diagnostics(
     tolerance: float,
     config: dict[str, Any],
 ) -> dict[str, list[dict[str, Any]]]:
-    p = sigmoid_np(z)
+    p = predictions_from_logits(z, df, config)
     p_side_bin_edges = [float(v) for v in config.get("diagnostics", {}).get("p_side_bin_edges", [])]
     p_side_bin: pd.Series | None = None
     if "p_side" in df.columns and len(p_side_bin_edges) >= 2:
@@ -425,6 +477,11 @@ def group_metrics_row(value: str, part: pd.DataFrame) -> dict[str, Any]:
         "violation_rate": float(part["violating"].mean()) if len(part) else float("nan"),
         "mean_gap": float(part["gap"].mean()) if len(part) else float("nan"),
         "median_gap": float(part["gap"].median()) if len(part) else float("nan"),
+        "gap_p05": float(part["gap"].quantile(0.05)) if len(part) else float("nan"),
+        "gap_p95": float(part["gap"].quantile(0.95)) if len(part) else float("nan"),
+        "gap_p95_p05_range": (
+            float(part["gap"].quantile(0.95) - part["gap"].quantile(0.05)) if len(part) else float("nan")
+        ),
         "min_gap": float(part["gap"].min()) if len(part) else float("nan"),
         "max_violation": float(part["violation"].max()) if len(part) else float("nan"),
         "p90_violation": float(part["violation"].quantile(0.90)) if len(part) else float("nan"),
@@ -440,10 +497,11 @@ def write_predictions(
     alpha: np.ndarray | None,
     path: Path,
     epsilon: float,
+    config: dict[str, Any],
 ) -> None:
     pred = df[[c for c in PRED_BASE_COLS if c in df.columns]].copy()
     pred.insert(0, "sample_id", np.arange(len(df), dtype=np.int64))
-    p = sigmoid_np(z)
+    p = predictions_from_logits(z, df, config)
     p_side_bin_edges = DEFAULT_P_SIDE_BIN_EDGES
     pred["y_raw"] = y
     pred["y"] = y
@@ -496,6 +554,9 @@ def main() -> None:
 
     train = pd.read_parquet(resolve_path(config["paths"]["train_dataset"]))
     valid = pd.read_parquet(resolve_path(config["paths"]["validation_dataset"]))
+    manifest = load_deploy_manifest(config)
+    train, train_filter = apply_sample_filter(train, config, manifest)
+    valid, validation_filter = apply_sample_filter(valid, config, manifest)
     columns, cat_cols = feature_set(config, train)
     preprocessor = Preprocessor.fit(train, columns, cat_cols)
     x_train = preprocessor.transform(train)
@@ -506,10 +567,11 @@ def main() -> None:
     tolerance = float(config["target"]["feasibility_tolerance"])
     y_train = train[target_col].to_numpy(dtype=np.float32)
     y_valid = valid[target_col].to_numpy(dtype=np.float32)
+    p_side_train = train["p_side"].to_numpy(dtype=np.float32)
     train_constraint_weight = constraint_weights_from_y(y_train, config)
     train_tightness_weight = tightness_weights_from_y(y_train, config)
 
-    dataset = IndexedTensorDataset(x_train, y_train, train_constraint_weight, train_tightness_weight)
+    dataset = IndexedTensorDataset(x_train, y_train, p_side_train, train_constraint_weight, train_tightness_weight)
     generator = torch.Generator().manual_seed(seed)
     loader = DataLoader(
         dataset,
@@ -542,19 +604,21 @@ def main() -> None:
     epoch_rows: list[dict[str, Any]] = []
     grad_clip = float(config["training"].get("gradient_clip_norm", 5.0))
     min_validation_coverage = float(config.get("objective", {}).get("min_validation_coverage", 0.90))
+    min_validation_mean_gap = float(config.get("objective", {}).get("min_validation_mean_gap", float("-inf")))
     max_validation_violation = config.get("objective", {}).get("max_validation_violation")
     max_validation_violation = float(max_validation_violation) if max_validation_violation is not None else None
 
     for epoch in range(1, int(config["training"]["epochs"]) + 1):
         model.train()
         batch_losses: list[float] = []
-        for xb, yb, constraint_weight_b, tightness_weight_b in loader:
+        for xb, yb, p_side_b, constraint_weight_b, tightness_weight_b in loader:
             xb = xb.to(device)
             yb = yb.to(device)
+            p_side_b = p_side_b.to(device)
 
             optimizer.zero_grad(set_to_none=True)
             z = model(xb)
-            loss = upper_bound_loss(z, yb, config)
+            loss = upper_bound_loss(z, yb, p_side_b, config)
             loss.backward()
             if grad_clip > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
@@ -563,8 +627,8 @@ def main() -> None:
 
         train_z = predict_logits(model, x_train, device, int(config["training"]["batch_size"]))
         valid_z = predict_logits(model, x_valid, device, int(config["training"]["batch_size"]))
-        train_metrics = upper_bound_metrics(y_train, train_z, epsilon, tolerance)
-        valid_metrics = upper_bound_metrics(y_valid, valid_z, epsilon, tolerance)
+        train_metrics = upper_bound_metrics(y_train, train_z, epsilon, tolerance, config, train)
+        valid_metrics = upper_bound_metrics(y_valid, valid_z, epsilon, tolerance, config, valid)
         row: dict[str, Any] = {
             "epoch": epoch,
             "loss": float(np.mean(batch_losses)) if batch_losses else float("nan"),
@@ -573,7 +637,13 @@ def main() -> None:
         row.update({f"validation_{k}": v for k, v in valid_metrics.items()})
         epoch_rows.append(row)
 
-        if is_better(valid_metrics, best_valid_metrics, min_validation_coverage, max_validation_violation):
+        if is_better(
+            valid_metrics,
+            best_valid_metrics,
+            min_validation_coverage,
+            min_validation_mean_gap,
+            max_validation_violation,
+        ):
             best_epoch = epoch
             best_train_metrics = train_metrics
             best_valid_metrics = valid_metrics
@@ -599,8 +669,8 @@ def main() -> None:
     model.load_state_dict(best_state)
     train_z = predict_logits(model, x_train, device, int(config["training"]["batch_size"]))
     valid_z = predict_logits(model, x_valid, device, int(config["training"]["batch_size"]))
-    best_train_metrics = upper_bound_metrics(y_train, train_z, epsilon, tolerance)
-    best_valid_metrics = upper_bound_metrics(y_valid, valid_z, epsilon, tolerance)
+    best_train_metrics = upper_bound_metrics(y_train, train_z, epsilon, tolerance, config, train)
+    best_valid_metrics = upper_bound_metrics(y_valid, valid_z, epsilon, tolerance, config, valid)
     train_alpha = None
 
     with metrics_path.open("w", newline="", encoding="utf-8") as f:
@@ -626,10 +696,9 @@ def main() -> None:
 
     train_pred_path = resolve_path(config["paths"]["predictions_train"])
     valid_pred_path = resolve_path(config["paths"]["predictions_validation"])
-    write_predictions(train, y_train, train_z, train_alpha, train_pred_path, epsilon)
-    write_predictions(valid, y_valid, valid_z, None, valid_pred_path, epsilon)
+    write_predictions(train, y_train, train_z, train_alpha, train_pred_path, epsilon, config)
+    write_predictions(valid, y_valid, valid_z, None, valid_pred_path, epsilon, config)
 
-    manifest = load_deploy_manifest(config)
     train_diagnostics = grouped_diagnostics(train, y_train, train_z, epsilon, tolerance, config)
     validation_diagnostics = grouped_diagnostics(valid, y_valid, valid_z, epsilon, tolerance, config)
     write_diagnostic_csvs(reports_dir, "train", train_diagnostics)
@@ -641,11 +710,17 @@ def main() -> None:
         "primary_metric": "validation mean_gap subject to validation coverage >= objective.min_validation_coverage",
         "objective": {
             "min_validation_coverage": min_validation_coverage,
+            "min_validation_mean_gap": min_validation_mean_gap,
             "max_validation_violation": max_validation_violation,
             "optimize_metric": config.get("objective", {}).get("optimize_metric", "mean_gap"),
             "tie_breaker_metric": config.get("objective", {}).get("tie_breaker_metric", "max_violation"),
         },
         "loss": config.get("loss", {}),
+        "prediction_output": config.get("prediction_output", {"type": "sigmoid"}),
+        "sample_filter": {
+            "train": train_filter,
+            "validation": validation_filter,
+        },
         "model_family": "upper_bound_mlp_asymmetric_logcosh",
         "replaces": "catboost_quantile_q70_q80_q90",
         "baseline_comparison": None,

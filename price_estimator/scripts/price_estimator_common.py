@@ -87,3 +87,42 @@ def ensure_no_forbidden_features(feature_columns: list[str], forbidden: list[str
     overlap = sorted(forbidden_set.intersection(feature_columns))
     if overlap:
         raise ValueError(f"Forbidden feature columns present: {overlap}")
+
+
+def signal_thresholds(config: dict[str, Any], manifest: dict[str, Any] | None = None) -> tuple[float, float]:
+    signal = config.get("sample_filter", {}).get("signal", {})
+    t_up = signal.get("t_up")
+    t_down = signal.get("t_down")
+    if t_up is not None and t_down is not None:
+        return float(t_up), float(t_down)
+    manifest = manifest if manifest is not None else load_deploy_manifest(config)
+    return float(manifest["t_up"]), float(manifest["t_down"])
+
+
+def apply_sample_filter(
+    df: pd.DataFrame,
+    config: dict[str, Any],
+    manifest: dict[str, Any] | None = None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    sample_filter = config.get("sample_filter", {})
+    if not bool(sample_filter.get("enabled", False)):
+        return df, {"enabled": False, "input_rows": int(len(df)), "output_rows": int(len(df))}
+
+    mode = str(sample_filter.get("mode", "accepted_signal"))
+    if mode != "accepted_signal":
+        raise ValueError(f"Unsupported sample_filter.mode: {mode}")
+    t_up, t_down = signal_thresholds(config, manifest)
+    p_up = pd.to_numeric(df["p_up"], errors="coerce")
+    mask = (p_up >= t_up) | (p_up <= t_down)
+    out = df.loc[mask].copy()
+    return out, {
+        "enabled": True,
+        "mode": mode,
+        "t_up": t_up,
+        "t_down": t_down,
+        "input_rows": int(len(df)),
+        "output_rows": int(len(out)),
+        "retention": float(len(out) / len(df)) if len(df) else float("nan"),
+        "up_signal_rows": int((p_up >= t_up).sum()),
+        "down_signal_rows": int((p_up <= t_down).sum()),
+    }

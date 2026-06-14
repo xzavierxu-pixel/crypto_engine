@@ -13,6 +13,7 @@ from catboost import CatBoostRegressor, Pool
 
 from evaluate_quantile_model import evaluate_predictions, write_markdown
 from price_estimator_common import (
+    apply_sample_filter,
     ensure_no_forbidden_features,
     load_config,
     load_deploy_manifest,
@@ -52,11 +53,13 @@ def prepare_pool(df: pd.DataFrame, columns: list[str], cat_cols: list[str]) -> P
 
 def train_one(alpha: float, config: dict, train_pool: Pool, valid_pool: Pool, models_dir: Path) -> CatBoostRegressor:
     params = dict(config["model"]["params"])
+    models_dir.mkdir(parents=True, exist_ok=True)
+    if "train_dir" in params:
+        resolve_path(params["train_dir"]).mkdir(parents=True, exist_ok=True)
     params["loss_function"] = f"Quantile:alpha={alpha}"
     params["eval_metric"] = f"Quantile:alpha={alpha}"
     model = CatBoostRegressor(**params)
     model.fit(train_pool, eval_set=valid_pool, use_best_model=True)
-    models_dir.mkdir(parents=True, exist_ok=True)
     model.save_model(models_dir / f"catboost_q{int(alpha * 100)}.cbm")
     return model
 
@@ -98,11 +101,14 @@ def make_predictions(df: pd.DataFrame, pool: Pool, models: dict[float, CatBoostR
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="price_estimator/configs/catboost_quantile_baseline.yaml")
+    parser.add_argument("--skip-train-if-models-exist", action="store_true")
     args = parser.parse_args()
     config = load_config(args.config)
     manifest = load_deploy_manifest(config)
     train = pd.read_parquet(resolve_path(config["paths"]["train_dataset"]))
     valid = pd.read_parquet(resolve_path(config["paths"]["validation_dataset"]))
+    train, train_filter = apply_sample_filter(train, config, manifest)
+    valid, validation_filter = apply_sample_filter(valid, config, manifest)
     columns, cat_cols = feature_set(config, train)
     train_pool = prepare_pool(train, columns, cat_cols)
     valid_pool = prepare_pool(valid, columns, cat_cols)
@@ -112,7 +118,12 @@ def main() -> None:
     importances = []
     for alpha in config["model"]["quantiles"]:
         alpha = float(alpha)
-        model = train_one(alpha, config, train_pool, valid_pool, models_dir)
+        model_path = models_dir / f"catboost_q{int(alpha * 100)}.cbm"
+        if args.skip_train_if_models_exist and model_path.exists():
+            model = CatBoostRegressor()
+            model.load_model(model_path)
+        else:
+            model = train_one(alpha, config, train_pool, valid_pool, models_dir)
         models[alpha] = model
         imp = pd.DataFrame({"feature": columns, f"importance_q{int(alpha * 100)}": model.get_feature_importance(train_pool)})
         importances.append(imp)
@@ -159,6 +170,10 @@ def main() -> None:
             "offline_validation_metric_source": manifest.get("source_report_path"),
             "train_rows": len(train),
             "validation_rows": len(valid),
+            "sample_filter": {
+                "train": train_filter,
+                "validation": validation_filter,
+            },
         }
     )
     write_json(reports_dir / "quantile_metrics.json", report)

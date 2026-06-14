@@ -1,0 +1,50 @@
+experiment_id: 20260614_capped_quantile_signal_filter
+
+paths:
+  deploy_artifact_dir: execution_engine/deploy/baseline
+  predictions_train: price_estimator/data/predictions_train.parquet
+  predictions_validation: price_estimator/data/predictions_validation.parquet
+  reports_dir: price_estimator/experiment/20260614_capped_quantile_signal_filter/reports
+
+target:
+  epsilon: 0.01
+
+objective:
+  optimize_metric: mean_gap
+  min_coverage: 0.0
+  min_mean_gap: 0.0
+
+sample_filter:
+  enabled: true
+  mode: accepted_signal
+  signal:
+    t_up: null
+    t_down: null
+
+calibration:
+  base_columns:
+    - pred_q70
+    - pred_q80
+    - pred_q90
+  margins:
+    - -0.08
+    - -0.06
+    - -0.04
+    - -0.02
+    - 0.0
+    - 0.01
+    - 0.02
+    - 0.03
+    - 0.04
+    - 0.05
+    - 0.06
+    - 0.08
+    - 0.10
+  cap_slacks:
+    - 0.0
+    - 0.01
+    - 0.02
+    - 0.03
+    - 0.05
+    - 0.08
+    - 0.10
