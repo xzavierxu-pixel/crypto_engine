@@ -17,6 +17,11 @@ target:
   clip_max: 0.999999
   feasibility_tolerance: 0.000001
 
+objective:
+  min_validation_coverage: 0.90
+  optimize_metric: mean_gap
+  tie_breaker_metric: max_violation
+
 features:
   source: split_artifact_feature_columns
   added_columns:
@@ -70,4 +75,20 @@ training:
   alpha_max: 1000.0
   gradient_clip_norm: 5.0
   save_top_alpha_count: 25
-  final_bias_feasibility_repair: true
+
+diagnostics:
+  group_columns:
+    - p_bin
+  price_bin_column: target_raw
+  price_bin_edges:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    - 0.7
+    - 0.8
+    - 0.9
+    - 1.0

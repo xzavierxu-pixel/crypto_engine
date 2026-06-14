@@ -11,10 +11,9 @@ Training optimizes a tight upper bound over `target_raw` with the constraint:
 p_upper_bound >= target_raw + epsilon
 ```
 
-The augmented Lagrangian constraint is applied in logit space. A final scalar
-bias repair can be enabled to shift the MLP's last-layer bias by the minimum
-amount needed to make the training set feasible. This remains a single MLP
-checkpoint and does not use per-bin correction or a calibration table.
+The augmented Lagrangian constraint is applied in logit space. Model selection
+uses validation coverage first, then validation mean gap, without final-bias
+repair or per-bin calibration.
 
 Run:
 
@@ -29,3 +28,7 @@ Primary outputs:
 - `price_estimator/upper_bound_mlp/reports/predictions_train.parquet`
 - `price_estimator/upper_bound_mlp/reports/predictions_validation.parquet`
 - `price_estimator/upper_bound_mlp/reports/upper_bound_mlp_metrics.json`
+
+The summary report includes `validation_diagnostics.by_p_bin` and
+`validation_diagnostics.by_price_bin` with sample count, coverage,
+violation rate, mean gap, and max violation.

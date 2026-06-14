@@ -210,23 +210,6 @@ def upper_bound_metrics(y: np.ndarray, z: np.ndarray, epsilon: float, tolerance:
     }
 
 
-def minimal_feasible_logit_shift(target_z: np.ndarray, z: np.ndarray, enabled: bool) -> float:
-    if not enabled or len(z) == 0:
-        return 0.0
-    shift = float(np.max(target_z - z))
-    return max(0.0, shift)
-
-
-def clone_state_with_final_bias_shift(model: UpperBoundMLP, shift: float) -> dict[str, torch.Tensor]:
-    state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-    final_bias_keys = [k for k in state if k.endswith(".bias")]
-    if not final_bias_keys:
-        raise KeyError("No bias parameter found for final feasibility repair")
-    final_bias_key = final_bias_keys[-1]
-    state[final_bias_key] = state[final_bias_key] + float(shift)
-    return state
-
-
 @torch.no_grad()
 def predict_logits(model: nn.Module, x: np.ndarray, device: torch.device, batch_size: int) -> np.ndarray:
     model.eval()
@@ -237,18 +220,86 @@ def predict_logits(model: nn.Module, x: np.ndarray, device: torch.device, batch_
     return np.concatenate(out) if out else np.array([], dtype=np.float32)
 
 
-def is_better(candidate: dict[str, float], incumbent: dict[str, float] | None, epsilon: float, tolerance: float) -> bool:
-    if incumbent is None:
+def is_better(
+    candidate_validation: dict[str, float],
+    incumbent_validation: dict[str, float] | None,
+    min_validation_coverage: float,
+) -> bool:
+    if incumbent_validation is None:
         return True
-    cand_feasible = candidate["violation_rate"] == 0.0 and candidate["min_gap"] + tolerance >= epsilon
-    inc_feasible = incumbent["violation_rate"] == 0.0 and incumbent["min_gap"] + tolerance >= epsilon
-    if cand_feasible != inc_feasible:
-        return cand_feasible
-    if cand_feasible and inc_feasible:
-        return candidate["mean_gap"] < incumbent["mean_gap"]
-    if candidate["violation_rate"] != incumbent["violation_rate"]:
-        return candidate["violation_rate"] < incumbent["violation_rate"]
-    return candidate["mean_gap"] < incumbent["mean_gap"]
+    candidate_ok = candidate_validation["coverage"] >= min_validation_coverage
+    incumbent_ok = incumbent_validation["coverage"] >= min_validation_coverage
+    if candidate_ok != incumbent_ok:
+        return candidate_ok
+    if candidate_ok and incumbent_ok:
+        if candidate_validation["mean_gap"] != incumbent_validation["mean_gap"]:
+            return candidate_validation["mean_gap"] < incumbent_validation["mean_gap"]
+        return candidate_validation["max_violation"] < incumbent_validation["max_violation"]
+    if candidate_validation["coverage"] != incumbent_validation["coverage"]:
+        return candidate_validation["coverage"] > incumbent_validation["coverage"]
+    if candidate_validation["mean_gap"] != incumbent_validation["mean_gap"]:
+        return candidate_validation["mean_gap"] < incumbent_validation["mean_gap"]
+    return candidate_validation["max_violation"] < incumbent_validation["max_violation"]
+
+
+def grouped_diagnostics(
+    df: pd.DataFrame,
+    y: np.ndarray,
+    z: np.ndarray,
+    epsilon: float,
+    tolerance: float,
+    config: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    p = sigmoid_np(z)
+    work = pd.DataFrame(
+        {
+            "y": y,
+            "z_raw": z,
+            "p_upper_bound": p,
+            "gap": p - y,
+            "violation": y + epsilon - p,
+            "violating": p + tolerance < y + epsilon,
+        }
+    )
+    for col in config.get("diagnostics", {}).get("group_columns", []):
+        if col in df.columns:
+            work[col] = df[col].astype("string").fillna("missing").astype(str).to_numpy()
+
+    diagnostics: dict[str, list[dict[str, Any]]] = {}
+    for col in config.get("diagnostics", {}).get("group_columns", []):
+        if col not in work.columns:
+            continue
+        rows: list[dict[str, Any]] = []
+        for value, part in work.groupby(col, dropna=False):
+            rows.append(group_metrics_row(str(value), part))
+        diagnostics[f"by_{col}"] = rows
+
+    price_col = config.get("diagnostics", {}).get("price_bin_column", "target_raw")
+    if price_col in df.columns:
+        edges = [float(v) for v in config.get("diagnostics", {}).get("price_bin_edges", [])]
+        if len(edges) >= 2:
+            labels = [f"{edges[i]:.2f}_{edges[i + 1]:.2f}" for i in range(len(edges) - 1)]
+            work["price_bin"] = pd.cut(
+                pd.to_numeric(df[price_col], errors="coerce"),
+                bins=edges,
+                labels=labels,
+                include_lowest=True,
+                right=False,
+            ).astype("string").fillna("missing")
+            diagnostics["by_price_bin"] = [group_metrics_row(str(value), part) for value, part in work.groupby("price_bin", dropna=False)]
+    return diagnostics
+
+
+def group_metrics_row(value: str, part: pd.DataFrame) -> dict[str, Any]:
+    return {
+        "value": value,
+        "sample_count": int(len(part)),
+        "coverage": float((~part["violating"]).mean()) if len(part) else float("nan"),
+        "violation_rate": float(part["violating"].mean()) if len(part) else float("nan"),
+        "mean_gap": float(part["gap"].mean()) if len(part) else float("nan"),
+        "min_gap": float(part["gap"].min()) if len(part) else float("nan"),
+        "max_violation": float(part["violation"].max()) if len(part) else float("nan"),
+    }
 
 
 def write_predictions(
@@ -342,8 +393,7 @@ def main() -> None:
     best_violation = float("inf")
     epoch_rows: list[dict[str, Any]] = []
     grad_clip = float(config["training"]["gradient_clip_norm"])
-    repair_enabled = bool(config["training"].get("final_bias_feasibility_repair", True))
-    best_bias_shift = 0.0
+    min_validation_coverage = float(config.get("objective", {}).get("min_validation_coverage", 0.90))
 
     for epoch in range(1, int(config["training"]["epochs"]) + 1):
         model.train()
@@ -377,19 +427,13 @@ def main() -> None:
         valid_z = predict_logits(model, x_valid, device, int(config["training"]["batch_size"]))
         train_metrics = upper_bound_metrics(y_train, train_z, epsilon, tolerance)
         valid_metrics = upper_bound_metrics(y_valid, valid_z, epsilon, tolerance)
-        bias_shift = minimal_feasible_logit_shift(target_z_train, train_z, repair_enabled)
-        repaired_train_metrics = upper_bound_metrics(y_train, train_z + bias_shift, epsilon, tolerance)
-        repaired_valid_metrics = upper_bound_metrics(y_valid, valid_z + bias_shift, epsilon, tolerance)
         row: dict[str, Any] = {
             "epoch": epoch,
             "rho": rho,
-            "final_bias_shift": bias_shift,
             "loss": float(np.mean(batch_losses)) if batch_losses else float("nan"),
         }
         row.update({f"train_{k}": v for k, v in train_metrics.items()})
         row.update({f"validation_{k}": v for k, v in valid_metrics.items()})
-        row.update({f"repaired_train_{k}": v for k, v in repaired_train_metrics.items()})
-        row.update({f"repaired_validation_{k}": v for k, v in repaired_valid_metrics.items()})
         epoch_rows.append(row)
 
         if train_metrics["violation_rate"] < best_violation:
@@ -402,12 +446,11 @@ def main() -> None:
             rho = rho_values[rho_index]
             epochs_since_violation_improved = 0
 
-        if is_better(repaired_train_metrics, best_train_metrics, epsilon, tolerance):
+        if is_better(valid_metrics, best_valid_metrics, min_validation_coverage):
             best_epoch = epoch
-            best_train_metrics = repaired_train_metrics
-            best_valid_metrics = repaired_valid_metrics
-            best_bias_shift = bias_shift
-            best_state = clone_state_with_final_bias_shift(model, bias_shift)
+            best_train_metrics = train_metrics
+            best_valid_metrics = valid_metrics
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
 
         if epoch == 1 or epoch % 10 == 0:
             print(
@@ -417,13 +460,9 @@ def main() -> None:
                         "rho": rho,
                         "train_mean_gap": train_metrics["mean_gap"],
                         "train_violation_rate": train_metrics["violation_rate"],
-                        "repaired_train_mean_gap": repaired_train_metrics["mean_gap"],
-                        "repaired_train_violation_rate": repaired_train_metrics["violation_rate"],
-                        "final_bias_shift": bias_shift,
                         "validation_mean_gap": valid_metrics["mean_gap"],
                         "validation_violation_rate": valid_metrics["violation_rate"],
-                        "repaired_validation_mean_gap": repaired_valid_metrics["mean_gap"],
-                        "repaired_validation_violation_rate": repaired_valid_metrics["violation_rate"],
+                        "validation_coverage": valid_metrics["coverage"],
                     },
                     sort_keys=True,
                 )
@@ -454,7 +493,6 @@ def main() -> None:
             "feature_columns": columns,
             "categorical_columns": cat_cols,
             "best_epoch": best_epoch,
-            "final_bias_shift": best_bias_shift,
         },
         checkpoint_path,
     )
@@ -479,19 +517,26 @@ def main() -> None:
     top_alpha.to_csv(top_alpha_path, index=False)
 
     manifest = load_deploy_manifest(config)
+    train_diagnostics = grouped_diagnostics(train, y_train, train_z, epsilon, tolerance, config)
+    validation_diagnostics = grouped_diagnostics(valid, y_valid, valid_z, epsilon, tolerance, config)
     report = {
         "experiment_id": config["experiment_id"],
         "git_commit_at_training": git_commit(),
         "config_path": args.config,
-        "primary_metric": "train mean_gap among feasible upper-bound checkpoints",
+        "primary_metric": "validation mean_gap subject to validation coverage >= objective.min_validation_coverage",
+        "objective": {
+            "min_validation_coverage": min_validation_coverage,
+            "optimize_metric": config.get("objective", {}).get("optimize_metric", "mean_gap"),
+            "tie_breaker_metric": config.get("objective", {}).get("tie_breaker_metric", "max_violation"),
+        },
         "model_family": "upper_bound_mlp_augmented_lagrangian",
         "replaces": "catboost_quantile_q70_q80_q90",
         "baseline_comparison": None,
         "best_epoch": best_epoch,
-        "final_bias_shift": best_bias_shift,
-        "final_bias_feasibility_repair": repair_enabled,
         "train_metrics": best_train_metrics,
         "validation_metrics": best_valid_metrics,
+        "train_diagnostics": train_diagnostics,
+        "validation_diagnostics": validation_diagnostics,
         "train_window": {
             "row_count": int(len(train)),
             "start": str(pd.to_datetime(train["timestamp"], utc=True).min()) if "timestamp" in train else None,
@@ -518,8 +563,9 @@ def main() -> None:
         "deploy_training_mode": manifest.get("training_mode"),
         "offline_validation_metric_source": manifest.get("source_report_path"),
         "success_criteria": {
-            "train_violation_rate_zero": best_train_metrics["violation_rate"] == 0.0,
-            "train_min_gap_at_least_epsilon": best_train_metrics["min_gap"] + tolerance >= epsilon,
+            "validation_coverage_at_least_target": best_valid_metrics["coverage"] >= min_validation_coverage,
+            "validation_mean_gap": best_valid_metrics["mean_gap"],
+            "validation_max_violation": best_valid_metrics["max_violation"],
         },
     }
     report_path = reports_dir / "upper_bound_mlp_metrics.json"
