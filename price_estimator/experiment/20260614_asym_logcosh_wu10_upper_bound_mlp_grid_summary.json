@@ -1,0 +1,118 @@
+[
+  {
+    "config_path": "price_estimator\\experiment\\20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p08\\config.yaml",
+    "experiment_id": "20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p08",
+    "loss": {
+      "scale": 0.08,
+      "type": "asymmetric_logcosh",
+      "w_over": 1.0,
+      "w_under": 10.0
+    },
+    "report_path": "price_estimator\\experiment\\20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p08\\reports\\summary_metrics.json",
+    "success_criteria": {
+      "validation_coverage_at_least_target": false,
+      "validation_max_violation": 0.3104477524757385,
+      "validation_max_violation_at_most_target": null,
+      "validation_mean_gap": 0.19638745486736298
+    },
+    "validation_metrics": {
+      "coverage": 0.7962863293864371,
+      "max_violation": 0.3104477524757385,
+      "mean_gap": 0.19638745486736298,
+      "median_gap": 0.16713882982730865,
+      "min_gap": -0.3004477620124817,
+      "p90_violation": 0.05074694752693176,
+      "p95_violation": 0.08156570792198181,
+      "p99_violation": 0.1494286060333252,
+      "sample_count": 7432.0,
+      "violation_rate": 0.20371367061356296
+    }
+  },
+  {
+    "config_path": "price_estimator\\experiment\\20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p05\\config.yaml",
+    "experiment_id": "20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p05",
+    "loss": {
+      "scale": 0.05,
+      "type": "asymmetric_logcosh",
+      "w_over": 1.0,
+      "w_under": 10.0
+    },
+    "report_path": "price_estimator\\experiment\\20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p05\\reports\\summary_metrics.json",
+    "success_criteria": {
+      "validation_coverage_at_least_target": false,
+      "validation_max_violation": 0.2955167889595032,
+      "validation_max_violation_at_most_target": null,
+      "validation_mean_gap": 0.2075127363204956
+    },
+    "validation_metrics": {
+      "coverage": 0.8205059203444564,
+      "max_violation": 0.2955167889595032,
+      "mean_gap": 0.2075127363204956,
+      "median_gap": 0.17803888022899628,
+      "min_gap": -0.28551679849624634,
+      "p90_violation": 0.03917853161692619,
+      "p95_violation": 0.07055378705263138,
+      "p99_violation": 0.13842341303825378,
+      "sample_count": 7432.0,
+      "violation_rate": 0.1794940796555436
+    }
+  },
+  {
+    "config_path": "price_estimator\\experiment\\20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p03\\config.yaml",
+    "experiment_id": "20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p03",
+    "loss": {
+      "scale": 0.03,
+      "type": "asymmetric_logcosh",
+      "w_over": 1.0,
+      "w_under": 10.0
+    },
+    "report_path": "price_estimator\\experiment\\20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p03\\reports\\summary_metrics.json",
+    "success_criteria": {
+      "validation_coverage_at_least_target": false,
+      "validation_max_violation": 0.28909963369369507,
+      "validation_max_violation_at_most_target": null,
+      "validation_mean_gap": 0.21620264649391174
+    },
+    "validation_metrics": {
+      "coverage": 0.83745963401507,
+      "max_violation": 0.28909963369369507,
+      "mean_gap": 0.21620264649391174,
+      "median_gap": 0.18751409649848938,
+      "min_gap": -0.27909964323043823,
+      "p90_violation": 0.03158504143357277,
+      "p95_violation": 0.06366165727376938,
+      "p99_violation": 0.13223890960216522,
+      "sample_count": 7432.0,
+      "violation_rate": 0.16254036598493002
+    }
+  },
+  {
+    "config_path": "price_estimator\\experiment\\20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p02\\config.yaml",
+    "experiment_id": "20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p02",
+    "loss": {
+      "scale": 0.02,
+      "type": "asymmetric_logcosh",
+      "w_over": 1.0,
+      "w_under": 10.0
+    },
+    "report_path": "price_estimator\\experiment\\20260614_asym_logcosh_wu10_upper_bound_mlp_asym_wu10p0_s0p02\\reports\\summary_metrics.json",
+    "success_criteria": {
+      "validation_coverage_at_least_target": false,
+      "validation_max_violation": 0.2855715751647949,
+      "validation_max_violation_at_most_target": null,
+      "validation_mean_gap": 0.22104768455028534
+    },
+    "validation_metrics": {
+      "coverage": 0.8474165769644779,
+      "max_violation": 0.2855715751647949,
+      "mean_gap": 0.22104768455028534,
+      "median_gap": 0.1918618530035019,
+      "min_gap": -0.2755715847015381,
+      "p90_violation": 0.026307493448257446,
+      "p95_violation": 0.05937721207737923,
+      "p99_violation": 0.12567101418972015,
+      "sample_count": 7432.0,
+      "violation_rate": 0.15258342303552205
+    }
+  }
+]

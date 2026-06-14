@@ -1,0 +1,86 @@
+[
+  {
+    "config_path": "price_estimator\\experiment\\20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p03\\config.yaml",
+    "experiment_id": "20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p03",
+    "loss": {
+      "scale": 0.03,
+      "type": "mean_gap_soft_violation",
+      "violation_penalty": 50.0
+    },
+    "report_path": "price_estimator\\experiment\\20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p03\\reports\\summary_metrics.json",
+    "success_criteria": {
+      "validation_coverage_at_least_target": false,
+      "validation_max_violation": 0.6991879940032959,
+      "validation_max_violation_at_most_target": null,
+      "validation_mean_gap": -0.01536464598029852
+    },
+    "validation_metrics": {
+      "coverage": 0.4082346609257266,
+      "max_violation": 0.6991879940032959,
+      "mean_gap": -0.01536464598029852,
+      "median_gap": -0.036320433020591736,
+      "min_gap": -0.6891880035400391,
+      "p90_violation": 0.25062066316604614,
+      "p95_violation": 0.3015359044075012,
+      "p99_violation": 0.42116379737854004,
+      "sample_count": 7432.0,
+      "violation_rate": 0.5917653390742734
+    }
+  },
+  {
+    "config_path": "price_estimator\\experiment\\20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p05\\config.yaml",
+    "experiment_id": "20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p05",
+    "loss": {
+      "scale": 0.05,
+      "type": "mean_gap_soft_violation",
+      "violation_penalty": 50.0
+    },
+    "report_path": "price_estimator\\experiment\\20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p05\\reports\\summary_metrics.json",
+    "success_criteria": {
+      "validation_coverage_at_least_target": false,
+      "validation_max_violation": 0.7547818422317505,
+      "validation_max_violation_at_most_target": null,
+      "validation_mean_gap": 0.03604331240057945
+    },
+    "validation_metrics": {
+      "coverage": 0.4966361679224973,
+      "max_violation": 0.7547818422317505,
+      "mean_gap": 0.03604331240057945,
+      "median_gap": 0.008527755737304688,
+      "min_gap": -0.7447818517684937,
+      "p90_violation": 0.17628684639930725,
+      "p95_violation": 0.21946284174919128,
+      "p99_violation": 0.3040561079978943,
+      "sample_count": 7432.0,
+      "violation_rate": 0.5033638320775027
+    }
+  },
+  {
+    "config_path": "price_estimator\\experiment\\20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p08\\config.yaml",
+    "experiment_id": "20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p08",
+    "loss": {
+      "scale": 0.08,
+      "type": "mean_gap_soft_violation",
+      "violation_penalty": 50.0
+    },
+    "report_path": "price_estimator\\experiment\\20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p08\\reports\\summary_metrics.json",
+    "success_criteria": {
+      "validation_coverage_at_least_target": false,
+      "validation_max_violation": 0.6848136782646179,
+      "validation_max_violation_at_most_target": null,
+      "validation_mean_gap": 0.07565479725599289
+    },
+    "validation_metrics": {
+      "coverage": 0.5819429494079655,
+      "max_violation": 0.6848136782646179,
+      "mean_gap": 0.07565479725599289,
+      "median_gap": 0.04715016484260559,
+      "min_gap": -0.6748136878013611,
+      "p90_violation": 0.12792526185512543,
+      "p95_violation": 0.1655002385377884,
+      "p99_violation": 0.24043689668178558,
+      "sample_count": 7432.0,
+      "violation_rate": 0.41805705059203446
+    }
+  }
+]

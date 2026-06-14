@@ -1,0 +1,102 @@
+experiment_id: 20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p05
+paths:
+  deploy_artifact_dir: execution_engine/deploy/baseline
+  feature_manifest: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/artifact_manifest.json
+  train_dataset: price_estimator/data/price_estimator_train.parquet
+  validation_dataset: price_estimator/data/price_estimator_valid.parquet
+  models_dir: price_estimator/experiment/20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p05/models
+  reports_dir: price_estimator/experiment/20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p05/reports
+  predictions_train: price_estimator/experiment/20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p05/reports/predictions_train.parquet
+  predictions_validation: price_estimator/experiment/20260614_soft_logcosh_c50_scales_upper_bound_mlp_mean_gap_C50p0_s0p05/reports/predictions_validation.parquet
+target:
+  column: target_raw
+  epsilon: 0.01
+  clip_min: 1.0e-06
+  clip_max: 0.999999
+  feasibility_tolerance: 1.0e-06
+objective:
+  min_validation_coverage: 0.9
+  max_validation_violation: null
+  optimize_metric: mean_gap
+  tie_breaker_metric: p99_violation
+loss:
+  type: mean_gap_soft_violation
+  violation_penalty: 50.0
+  scale: 0.05
+features:
+  source: split_artifact_feature_columns
+  added_columns:
+  - selected_side
+  - p_up
+  - p_side
+  - direction_confidence
+  - p_bin
+  categorical_columns:
+  - selected_side
+  - p_bin
+  forbidden_columns:
+  - target
+  - future_close
+  - abs_return
+  - signed_return
+  - stage1_target
+  - stage2_target
+  - lowest_trade_price_next4
+  - lowest_trade_time_next4
+  - time_to_lowest_trade_sec
+  - target_raw
+  - target_logit
+constraint_weighting:
+  enabled: false
+tightness_weighting:
+  enabled: false
+model:
+  hidden_dims:
+  - 256
+  - 128
+  - 64
+  dropout:
+  - 0.1
+  - 0.05
+  - 0.0
+  activation: silu
+training:
+  batch_size: 512
+  epochs: 250
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  random_seed: 42
+  num_workers: 0
+  device: auto
+  gradient_clip_norm: 5.0
+diagnostics:
+  group_columns:
+  - p_bin
+  - selected_side
+  p_side_bin_edges:
+  - 0.0
+  - 0.1
+  - 0.2
+  - 0.3
+  - 0.4
+  - 0.5
+  - 0.55
+  - 0.6
+  - 0.65
+  - 0.7
+  - 0.8
+  - 0.9
+  - 1.0
+  price_bin_column: target_raw
+  price_bin_edges:
+  - 0.0
+  - 0.1
+  - 0.2
+  - 0.3
+  - 0.4
+  - 0.5
+  - 0.6
+  - 0.7
+  - 0.8
+  - 0.9
+  - 1.0

@@ -51,6 +51,22 @@ PRED_BASE_COLS = [
     "time_to_lowest_trade_sec_bucket",
 ]
 
+DEFAULT_P_SIDE_BIN_EDGES = [
+    0.0,
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7,
+    0.8,
+    0.9,
+    1.0,
+]
+
 
 def git_commit() -> str | None:
     try:
@@ -166,13 +182,11 @@ class IndexedTensorDataset(Dataset):
         self,
         x: np.ndarray,
         y: np.ndarray,
-        target_z: np.ndarray,
         constraint_weight: np.ndarray,
         tightness_weight: np.ndarray,
     ) -> None:
         self.x = torch.from_numpy(x)
         self.y = torch.from_numpy(y.astype(np.float32)).view(-1, 1)
-        self.target_z = torch.from_numpy(target_z.astype(np.float32)).view(-1, 1)
         self.constraint_weight = torch.from_numpy(constraint_weight.astype(np.float32)).view(-1, 1)
         self.tightness_weight = torch.from_numpy(tightness_weight.astype(np.float32)).view(-1, 1)
 
@@ -181,14 +195,12 @@ class IndexedTensorDataset(Dataset):
 
     def __getitem__(
         self, idx: int
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         return (
             self.x[idx],
             self.y[idx],
-            self.target_z[idx],
             self.constraint_weight[idx],
             self.tightness_weight[idx],
-            torch.tensor(idx, dtype=torch.long),
         )
 
 
@@ -216,16 +228,52 @@ class UpperBoundMLP(nn.Module):
 def upper_bound_metrics(y: np.ndarray, z: np.ndarray, epsilon: float, tolerance: float) -> dict[str, float]:
     p = sigmoid_np(z)
     gap = p - y
-    violation = y + epsilon - p
+    violation = np.maximum(y + epsilon - p, 0.0)
     violating = p + tolerance < y + epsilon
     return {
         "sample_count": float(len(y)),
         "mean_gap": float(np.mean(gap)) if len(y) else float("nan"),
+        "median_gap": float(np.median(gap)) if len(y) else float("nan"),
         "min_gap": float(np.min(gap)) if len(y) else float("nan"),
         "violation_rate": float(np.mean(violating)) if len(y) else float("nan"),
         "max_violation": float(np.max(violation)) if len(y) else float("nan"),
+        "p90_violation": float(np.quantile(violation, 0.90)) if len(y) else float("nan"),
+        "p95_violation": float(np.quantile(violation, 0.95)) if len(y) else float("nan"),
+        "p99_violation": float(np.quantile(violation, 0.99)) if len(y) else float("nan"),
         "coverage": float(np.mean(~violating)) if len(y) else float("nan"),
     }
+
+
+def torch_log_cosh(x: torch.Tensor, scale: float) -> torch.Tensor:
+    scaled = x / scale
+    abs_scaled = torch.abs(scaled)
+    return scale * scale * (abs_scaled + torch.log1p(torch.exp(-2.0 * abs_scaled)) - math.log(2.0))
+
+
+def upper_bound_loss(z: torch.Tensor, y: torch.Tensor, config: dict[str, Any]) -> torch.Tensor:
+    loss_config = config.get("loss", {})
+    loss_type = str(loss_config.get("type", "mean_gap_soft_violation"))
+    epsilon = float(config["target"]["epsilon"])
+    clip_min = float(config["target"]["clip_min"])
+    clip_max = float(config["target"]["clip_max"])
+    scale = float(loss_config.get("scale", 0.05))
+    p = torch.sigmoid(z)
+    target = torch.clamp(y + epsilon, min=clip_min, max=clip_max)
+
+    if loss_type == "asymmetric_logcosh":
+        under = torch.relu(target - p)
+        over = torch.relu(p - target)
+        w_under = float(loss_config.get("w_under", 5.0))
+        w_over = float(loss_config.get("w_over", 1.0))
+        return (w_under * torch_log_cosh(under, scale) + w_over * torch_log_cosh(over, scale)).mean()
+
+    if loss_type == "mean_gap_soft_violation":
+        gap = p - y
+        violation = torch.relu(target - p)
+        penalty = float(loss_config.get("violation_penalty", loss_config.get("C", 10.0)))
+        return gap.mean() + penalty * torch_log_cosh(violation, scale).mean()
+
+    raise ValueError(f"Unsupported loss.type: {loss_type}")
 
 
 def binned_weights_from_y(y: np.ndarray, weighting: dict[str, Any]) -> np.ndarray:
@@ -287,6 +335,8 @@ def is_better(
     if candidate_ok and incumbent_ok:
         if candidate_validation["mean_gap"] != incumbent_validation["mean_gap"]:
             return candidate_validation["mean_gap"] < incumbent_validation["mean_gap"]
+        if candidate_validation["p99_violation"] != incumbent_validation["p99_violation"]:
+            return candidate_validation["p99_violation"] < incumbent_validation["p99_violation"]
         return candidate_validation["max_violation"] < incumbent_validation["max_violation"]
     if candidate_validation["coverage"] != incumbent_validation["coverage"]:
         return candidate_validation["coverage"] > incumbent_validation["coverage"]
@@ -314,15 +364,15 @@ def grouped_diagnostics(
             "z_raw": z,
             "p_upper_bound": p,
             "gap": p - y,
-            "violation": y + epsilon - p,
-            "violating": p + tolerance < y + epsilon,
+        "violation": np.maximum(y + epsilon - p, 0.0),
+        "violating": p + tolerance < y + epsilon,
         }
     )
     for col in config.get("diagnostics", {}).get("group_columns", []):
         if col in df.columns:
             values = df[col].astype("string")
-            if col == "p_bin" and p_side_bin is not None:
-                values = values.mask(values.isna() | (values == "missing"), p_side_bin)
+            if col == "p_bin" and p_side_bin is not None and "p_side" in df.columns:
+                values = p_side_bin.where(df["p_side"].notna(), "missing")
             work[col] = values.fillna("missing").astype(str).to_numpy()
     if p_side_bin is not None:
         work["p_side_bin"] = p_side_bin
@@ -374,8 +424,12 @@ def group_metrics_row(value: str, part: pd.DataFrame) -> dict[str, Any]:
         "coverage": float((~part["violating"]).mean()) if len(part) else float("nan"),
         "violation_rate": float(part["violating"].mean()) if len(part) else float("nan"),
         "mean_gap": float(part["gap"].mean()) if len(part) else float("nan"),
+        "median_gap": float(part["gap"].median()) if len(part) else float("nan"),
         "min_gap": float(part["gap"].min()) if len(part) else float("nan"),
         "max_violation": float(part["violation"].max()) if len(part) else float("nan"),
+        "p90_violation": float(part["violation"].quantile(0.90)) if len(part) else float("nan"),
+        "p95_violation": float(part["violation"].quantile(0.95)) if len(part) else float("nan"),
+        "p99_violation": float(part["violation"].quantile(0.99)) if len(part) else float("nan"),
     }
 
 
@@ -390,14 +444,41 @@ def write_predictions(
     pred = df[[c for c in PRED_BASE_COLS if c in df.columns]].copy()
     pred.insert(0, "sample_id", np.arange(len(df), dtype=np.int64))
     p = sigmoid_np(z)
+    p_side_bin_edges = DEFAULT_P_SIDE_BIN_EDGES
+    pred["y_raw"] = y
     pred["y"] = y
+    pred["target"] = np.clip(y + epsilon, 1e-6, 1.0 - 1e-6)
     pred["z_raw"] = z
+    pred["p_pred"] = p
     pred["p_upper_bound"] = p
     pred["gap"] = p - y
-    pred["violation"] = y + epsilon - p
+    pred["violation"] = np.maximum(y + epsilon - p, 0.0)
+    if "p_side" in pred.columns:
+        pred["p_bin"] = p_side_bins(pred["p_side"], p_side_bin_edges).where(pred["p_side"].notna(), "missing")
+    if "target_raw" in pred.columns:
+        price_edges = [i / 10 for i in range(11)]
+        pred["price_bin"] = pd.cut(
+            pd.to_numeric(pred["target_raw"], errors="coerce"),
+            bins=price_edges,
+            labels=[f"{price_edges[i]:.2f}_{price_edges[i + 1]:.2f}" for i in range(10)],
+            include_lowest=True,
+            right=False,
+        ).astype("string").fillna("missing")
     pred["alpha"] = alpha if alpha is not None else np.nan
     path.parent.mkdir(parents=True, exist_ok=True)
     pred.to_parquet(path, index=False)
+
+
+def write_diagnostic_csvs(report_dir: Path, split_name: str, diagnostics: dict[str, list[dict[str, Any]]]) -> None:
+    mapping = {
+        "by_price_bin": f"diagnostics_{split_name}_by_price_bin.csv",
+        "by_p_bin": f"diagnostics_{split_name}_by_p_bin.csv",
+        "by_selected_side": f"diagnostics_{split_name}_by_selected_side.csv",
+    }
+    for key, filename in mapping.items():
+        rows = diagnostics.get(key)
+        if rows is not None:
+            pd.DataFrame(rows).to_csv(report_dir / filename, index=False)
 
 
 def main() -> None:
@@ -422,16 +503,13 @@ def main() -> None:
 
     target_col = str(config["target"]["column"])
     epsilon = float(config["target"]["epsilon"])
-    clip_min = float(config["target"]["clip_min"])
-    clip_max = float(config["target"]["clip_max"])
     tolerance = float(config["target"]["feasibility_tolerance"])
     y_train = train[target_col].to_numpy(dtype=np.float32)
     y_valid = valid[target_col].to_numpy(dtype=np.float32)
-    target_z_train = logit_np(np.clip(y_train + epsilon, clip_min, clip_max)).astype(np.float32)
     train_constraint_weight = constraint_weights_from_y(y_train, config)
     train_tightness_weight = tightness_weights_from_y(y_train, config)
 
-    dataset = IndexedTensorDataset(x_train, y_train, target_z_train, train_constraint_weight, train_tightness_weight)
+    dataset = IndexedTensorDataset(x_train, y_train, train_constraint_weight, train_tightness_weight)
     generator = torch.Generator().manual_seed(seed)
     loader = DataLoader(
         dataset,
@@ -451,13 +529,6 @@ def main() -> None:
         lr=float(config["training"]["learning_rate"]),
         weight_decay=float(config["training"]["weight_decay"]),
     )
-    alpha = torch.zeros(len(train), dtype=torch.float32, device=device)
-    alpha_max = float(config["training"]["alpha_max"])
-    rho_values = [float(v) for v in config["training"]["rho_schedule"]]
-    rho_index = 0
-    rho = rho_values[rho_index] if rho_values else float(config["training"]["rho_initial"])
-    rho_patience = int(config["training"]["rho_patience_epochs"])
-
     reports_dir = resolve_path(config["paths"]["reports_dir"])
     models_dir = resolve_path(config["paths"]["models_dir"])
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -468,10 +539,8 @@ def main() -> None:
     best_train_metrics: dict[str, float] | None = None
     best_valid_metrics: dict[str, float] | None = None
     best_epoch = 0
-    epochs_since_violation_improved = 0
-    best_violation = float("inf")
     epoch_rows: list[dict[str, Any]] = []
-    grad_clip = float(config["training"]["gradient_clip_norm"])
+    grad_clip = float(config["training"].get("gradient_clip_norm", 5.0))
     min_validation_coverage = float(config.get("objective", {}).get("min_validation_coverage", 0.90))
     max_validation_violation = config.get("objective", {}).get("max_validation_violation")
     max_validation_violation = float(max_validation_violation) if max_validation_violation is not None else None
@@ -479,34 +548,17 @@ def main() -> None:
     for epoch in range(1, int(config["training"]["epochs"]) + 1):
         model.train()
         batch_losses: list[float] = []
-        for xb, yb, target_zb, constraint_weight_b, tightness_weight_b, idxb in loader:
+        for xb, yb, constraint_weight_b, tightness_weight_b in loader:
             xb = xb.to(device)
             yb = yb.to(device)
-            target_zb = target_zb.to(device)
-            constraint_weight_b = constraint_weight_b.to(device)
-            tightness_weight_b = tightness_weight_b.to(device)
-            idxb = idxb.to(device)
-            alpha_b = alpha[idxb].view(-1, 1)
 
             optimizer.zero_grad(set_to_none=True)
             z = model(xb)
-            p = torch.sigmoid(z)
-            g = target_zb - z
-            shifted = g + alpha_b / rho
-            aug_penalty = 0.5 * rho * (torch.relu(shifted).pow(2) - (alpha_b / rho).pow(2))
-            loss = (tightness_weight_b * (p - yb)).mean() + (constraint_weight_b * aug_penalty).mean()
+            loss = upper_bound_loss(z, yb, config)
             loss.backward()
             if grad_clip > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
             optimizer.step()
-
-            with torch.no_grad():
-                z_new = model(xb)
-                g_new = target_zb - z_new
-                alpha_step = rho * g_new.view(-1)
-                if bool(config.get("constraint_weighting", {}).get("weight_alpha_update", True)):
-                    alpha_step = alpha_step * constraint_weight_b.view(-1)
-                alpha[idxb] = torch.clamp(alpha[idxb] + alpha_step, min=0.0, max=alpha_max)
             batch_losses.append(float(loss.detach().cpu()))
 
         train_z = predict_logits(model, x_train, device, int(config["training"]["batch_size"]))
@@ -515,22 +567,11 @@ def main() -> None:
         valid_metrics = upper_bound_metrics(y_valid, valid_z, epsilon, tolerance)
         row: dict[str, Any] = {
             "epoch": epoch,
-            "rho": rho,
             "loss": float(np.mean(batch_losses)) if batch_losses else float("nan"),
         }
         row.update({f"train_{k}": v for k, v in train_metrics.items()})
         row.update({f"validation_{k}": v for k, v in valid_metrics.items()})
         epoch_rows.append(row)
-
-        if train_metrics["violation_rate"] < best_violation:
-            best_violation = train_metrics["violation_rate"]
-            epochs_since_violation_improved = 0
-        else:
-            epochs_since_violation_improved += 1
-        if epochs_since_violation_improved >= rho_patience and rho_index + 1 < len(rho_values):
-            rho_index += 1
-            rho = rho_values[rho_index]
-            epochs_since_violation_improved = 0
 
         if is_better(valid_metrics, best_valid_metrics, min_validation_coverage, max_validation_violation):
             best_epoch = epoch
@@ -543,7 +584,6 @@ def main() -> None:
                 json.dumps(
                     {
                         "epoch": epoch,
-                        "rho": rho,
                         "train_mean_gap": train_metrics["mean_gap"],
                         "train_violation_rate": train_metrics["violation_rate"],
                         "validation_mean_gap": valid_metrics["mean_gap"],
@@ -561,7 +601,7 @@ def main() -> None:
     valid_z = predict_logits(model, x_valid, device, int(config["training"]["batch_size"]))
     best_train_metrics = upper_bound_metrics(y_train, train_z, epsilon, tolerance)
     best_valid_metrics = upper_bound_metrics(y_valid, valid_z, epsilon, tolerance)
-    train_alpha = alpha.detach().cpu().numpy()
+    train_alpha = None
 
     with metrics_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(epoch_rows[0].keys()))
@@ -576,6 +616,7 @@ def main() -> None:
             "model": config["model"],
             "preprocessor": preprocessor.to_dict(),
             "target": config["target"],
+            "loss": config.get("loss", {}),
             "feature_columns": columns,
             "categorical_columns": cat_cols,
             "best_epoch": best_epoch,
@@ -588,23 +629,11 @@ def main() -> None:
     write_predictions(train, y_train, train_z, train_alpha, train_pred_path, epsilon)
     write_predictions(valid, y_valid, valid_z, None, valid_pred_path, epsilon)
 
-    top_alpha_count = int(config["training"]["save_top_alpha_count"])
-    top_idx = np.argsort(-train_alpha)[:top_alpha_count]
-    top_alpha = pd.DataFrame(
-        {
-            "sample_id": top_idx,
-            "alpha": train_alpha[top_idx],
-            "y": y_train[top_idx],
-            "p_upper_bound": sigmoid_np(train_z[top_idx]),
-            "gap": sigmoid_np(train_z[top_idx]) - y_train[top_idx],
-        }
-    )
-    top_alpha_path = reports_dir / "top_alpha_samples.csv"
-    top_alpha.to_csv(top_alpha_path, index=False)
-
     manifest = load_deploy_manifest(config)
     train_diagnostics = grouped_diagnostics(train, y_train, train_z, epsilon, tolerance, config)
     validation_diagnostics = grouped_diagnostics(valid, y_valid, valid_z, epsilon, tolerance, config)
+    write_diagnostic_csvs(reports_dir, "train", train_diagnostics)
+    write_diagnostic_csvs(reports_dir, "validation", validation_diagnostics)
     report = {
         "experiment_id": config["experiment_id"],
         "git_commit_at_training": git_commit(),
@@ -616,19 +645,8 @@ def main() -> None:
             "optimize_metric": config.get("objective", {}).get("optimize_metric", "mean_gap"),
             "tie_breaker_metric": config.get("objective", {}).get("tie_breaker_metric", "max_violation"),
         },
-        "constraint_weighting": {
-            **config.get("constraint_weighting", {}),
-            "train_weight_min": float(np.min(train_constraint_weight)) if len(train_constraint_weight) else None,
-            "train_weight_mean": float(np.mean(train_constraint_weight)) if len(train_constraint_weight) else None,
-            "train_weight_max": float(np.max(train_constraint_weight)) if len(train_constraint_weight) else None,
-        },
-        "tightness_weighting": {
-            **config.get("tightness_weighting", {}),
-            "train_weight_min": float(np.min(train_tightness_weight)) if len(train_tightness_weight) else None,
-            "train_weight_mean": float(np.mean(train_tightness_weight)) if len(train_tightness_weight) else None,
-            "train_weight_max": float(np.max(train_tightness_weight)) if len(train_tightness_weight) else None,
-        },
-        "model_family": "upper_bound_mlp_augmented_lagrangian",
+        "loss": config.get("loss", {}),
+        "model_family": "upper_bound_mlp_asymmetric_logcosh",
         "replaces": "catboost_quantile_q70_q80_q90",
         "baseline_comparison": None,
         "best_epoch": best_epoch,
@@ -651,7 +669,12 @@ def main() -> None:
             "epoch_metrics": str(metrics_path),
             "train_predictions": str(train_pred_path),
             "validation_predictions": str(valid_pred_path),
-            "top_alpha_samples": str(top_alpha_path),
+            "diagnostics_train_by_price_bin": str(reports_dir / "diagnostics_train_by_price_bin.csv"),
+            "diagnostics_train_by_p_bin": str(reports_dir / "diagnostics_train_by_p_bin.csv"),
+            "diagnostics_train_by_selected_side": str(reports_dir / "diagnostics_train_by_selected_side.csv"),
+            "diagnostics_validation_by_price_bin": str(reports_dir / "diagnostics_validation_by_price_bin.csv"),
+            "diagnostics_validation_by_p_bin": str(reports_dir / "diagnostics_validation_by_p_bin.csv"),
+            "diagnostics_validation_by_selected_side": str(reports_dir / "diagnostics_validation_by_selected_side.csv"),
         },
         "feature_count_raw": len(columns),
         "feature_count_encoded": int(x_train.shape[1]),
@@ -670,7 +693,7 @@ def main() -> None:
             "validation_max_violation": best_valid_metrics["max_violation"],
         },
     }
-    report_path = reports_dir / "upper_bound_mlp_metrics.json"
+    report_path = reports_dir / "summary_metrics.json"
     write_json(report_path, report)
     print(json.dumps({"train_metrics": best_train_metrics, "validation_metrics": best_valid_metrics}, indent=2, sort_keys=True))
 
