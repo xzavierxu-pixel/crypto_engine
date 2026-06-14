@@ -19,8 +19,66 @@ target:
 
 objective:
   min_validation_coverage: 0.90
+  max_validation_violation: 0.40
   optimize_metric: mean_gap
   tie_breaker_metric: max_violation
+
+constraint_weighting:
+  enabled: true
+  source: target_raw_price_bin
+  normalize_mean: true
+  weight_alpha_update: true
+  price_bin_edges:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    - 0.7
+    - 0.8
+    - 0.9
+    - 1.0
+  price_bin_weights:
+    - 0.35
+    - 0.45
+    - 0.60
+    - 0.80
+    - 1.00
+    - 1.25
+    - 1.60
+    - 2.20
+    - 3.00
+    - 4.50
+
+tightness_weighting:
+  enabled: false
+  source: target_raw_price_bin
+  normalize_mean: true
+  price_bin_edges:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    - 0.7
+    - 0.8
+    - 0.9
+    - 1.0
+  price_bin_weights:
+    - 3.00
+    - 2.40
+    - 1.90
+    - 1.45
+    - 1.10
+    - 0.90
+    - 0.70
+    - 0.55
+    - 0.45
+    - 0.35
 
 features:
   source: split_artifact_feature_columns
@@ -79,6 +137,16 @@ training:
 diagnostics:
   group_columns:
     - p_bin
+  p_side_bin_edges:
+    - 0.0
+    - 0.4
+    - 0.45
+    - 0.5
+    - 0.55
+    - 0.6
+    - 0.65
+    - 0.7
+    - 1.0
   price_bin_column: target_raw
   price_bin_edges:
     - 0.0

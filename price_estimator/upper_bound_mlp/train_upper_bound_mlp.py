@@ -162,16 +162,34 @@ class Preprocessor:
 
 
 class IndexedTensorDataset(Dataset):
-    def __init__(self, x: np.ndarray, y: np.ndarray, target_z: np.ndarray) -> None:
+    def __init__(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        target_z: np.ndarray,
+        constraint_weight: np.ndarray,
+        tightness_weight: np.ndarray,
+    ) -> None:
         self.x = torch.from_numpy(x)
         self.y = torch.from_numpy(y.astype(np.float32)).view(-1, 1)
         self.target_z = torch.from_numpy(target_z.astype(np.float32)).view(-1, 1)
+        self.constraint_weight = torch.from_numpy(constraint_weight.astype(np.float32)).view(-1, 1)
+        self.tightness_weight = torch.from_numpy(tightness_weight.astype(np.float32)).view(-1, 1)
 
     def __len__(self) -> int:
         return int(self.x.shape[0])
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        return self.x[idx], self.y[idx], self.target_z[idx], torch.tensor(idx, dtype=torch.long)
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        return (
+            self.x[idx],
+            self.y[idx],
+            self.target_z[idx],
+            self.constraint_weight[idx],
+            self.tightness_weight[idx],
+            torch.tensor(idx, dtype=torch.long),
+        )
 
 
 class UpperBoundMLP(nn.Module):
@@ -210,6 +228,35 @@ def upper_bound_metrics(y: np.ndarray, z: np.ndarray, epsilon: float, tolerance:
     }
 
 
+def binned_weights_from_y(y: np.ndarray, weighting: dict[str, Any]) -> np.ndarray:
+    if not weighting.get("enabled", False):
+        return np.ones(len(y), dtype=np.float32)
+
+    edges = np.asarray([float(v) for v in weighting["price_bin_edges"]], dtype=np.float32)
+    weights = np.asarray([float(v) for v in weighting["price_bin_weights"]], dtype=np.float32)
+    if len(edges) < 2:
+        raise ValueError("constraint_weighting.price_bin_edges must contain at least two values")
+    if len(weights) != len(edges) - 1:
+        raise ValueError("constraint_weighting.price_bin_weights must have len(price_bin_edges) - 1 values")
+
+    idx = np.searchsorted(edges, y, side="right") - 1
+    idx = np.clip(idx, 0, len(weights) - 1)
+    out = weights[idx].astype(np.float32)
+    if bool(weighting.get("normalize_mean", True)) and len(out):
+        mean = float(np.mean(out))
+        if math.isfinite(mean) and mean > 1e-12:
+            out = out / mean
+    return out.astype(np.float32)
+
+
+def constraint_weights_from_y(y: np.ndarray, config: dict[str, Any]) -> np.ndarray:
+    return binned_weights_from_y(y, config.get("constraint_weighting", {}))
+
+
+def tightness_weights_from_y(y: np.ndarray, config: dict[str, Any]) -> np.ndarray:
+    return binned_weights_from_y(y, config.get("tightness_weighting", {}))
+
+
 @torch.no_grad()
 def predict_logits(model: nn.Module, x: np.ndarray, device: torch.device, batch_size: int) -> np.ndarray:
     model.eval()
@@ -224,6 +271,7 @@ def is_better(
     candidate_validation: dict[str, float],
     incumbent_validation: dict[str, float] | None,
     min_validation_coverage: float,
+    max_validation_violation: float | None = None,
 ) -> bool:
     if incumbent_validation is None:
         return True
@@ -231,6 +279,11 @@ def is_better(
     incumbent_ok = incumbent_validation["coverage"] >= min_validation_coverage
     if candidate_ok != incumbent_ok:
         return candidate_ok
+    if candidate_ok and incumbent_ok and max_validation_violation is not None:
+        candidate_max_ok = candidate_validation["max_violation"] <= max_validation_violation
+        incumbent_max_ok = incumbent_validation["max_violation"] <= max_validation_violation
+        if candidate_max_ok != incumbent_max_ok:
+            return candidate_max_ok
     if candidate_ok and incumbent_ok:
         if candidate_validation["mean_gap"] != incumbent_validation["mean_gap"]:
             return candidate_validation["mean_gap"] < incumbent_validation["mean_gap"]
@@ -251,6 +304,10 @@ def grouped_diagnostics(
     config: dict[str, Any],
 ) -> dict[str, list[dict[str, Any]]]:
     p = sigmoid_np(z)
+    p_side_bin_edges = [float(v) for v in config.get("diagnostics", {}).get("p_side_bin_edges", [])]
+    p_side_bin: pd.Series | None = None
+    if "p_side" in df.columns and len(p_side_bin_edges) >= 2:
+        p_side_bin = p_side_bins(df["p_side"], p_side_bin_edges)
     work = pd.DataFrame(
         {
             "y": y,
@@ -263,7 +320,12 @@ def grouped_diagnostics(
     )
     for col in config.get("diagnostics", {}).get("group_columns", []):
         if col in df.columns:
-            work[col] = df[col].astype("string").fillna("missing").astype(str).to_numpy()
+            values = df[col].astype("string")
+            if col == "p_bin" and p_side_bin is not None:
+                values = values.mask(values.isna() | (values == "missing"), p_side_bin)
+            work[col] = values.fillna("missing").astype(str).to_numpy()
+    if p_side_bin is not None:
+        work["p_side_bin"] = p_side_bin
 
     diagnostics: dict[str, list[dict[str, Any]]] = {}
     for col in config.get("diagnostics", {}).get("group_columns", []):
@@ -273,6 +335,10 @@ def grouped_diagnostics(
         for value, part in work.groupby(col, dropna=False):
             rows.append(group_metrics_row(str(value), part))
         diagnostics[f"by_{col}"] = rows
+    if "p_side_bin" in work.columns:
+        diagnostics["by_p_side_bin"] = [
+            group_metrics_row(str(value), part) for value, part in work.groupby("p_side_bin", dropna=False)
+        ]
 
     price_col = config.get("diagnostics", {}).get("price_bin_column", "target_raw")
     if price_col in df.columns:
@@ -288,6 +354,17 @@ def grouped_diagnostics(
             ).astype("string").fillna("missing")
             diagnostics["by_price_bin"] = [group_metrics_row(str(value), part) for value, part in work.groupby("price_bin", dropna=False)]
     return diagnostics
+
+
+def p_side_bins(values: pd.Series, edges: list[float]) -> pd.Series:
+    labels = [f"{edges[i]:.2f}_{edges[i + 1]:.2f}" for i in range(len(edges) - 1)]
+    return pd.cut(
+        pd.to_numeric(values, errors="coerce"),
+        bins=edges,
+        labels=labels,
+        include_lowest=True,
+        right=False,
+    ).astype("string").fillna("missing")
 
 
 def group_metrics_row(value: str, part: pd.DataFrame) -> dict[str, Any]:
@@ -351,8 +428,10 @@ def main() -> None:
     y_train = train[target_col].to_numpy(dtype=np.float32)
     y_valid = valid[target_col].to_numpy(dtype=np.float32)
     target_z_train = logit_np(np.clip(y_train + epsilon, clip_min, clip_max)).astype(np.float32)
+    train_constraint_weight = constraint_weights_from_y(y_train, config)
+    train_tightness_weight = tightness_weights_from_y(y_train, config)
 
-    dataset = IndexedTensorDataset(x_train, y_train, target_z_train)
+    dataset = IndexedTensorDataset(x_train, y_train, target_z_train, train_constraint_weight, train_tightness_weight)
     generator = torch.Generator().manual_seed(seed)
     loader = DataLoader(
         dataset,
@@ -394,14 +473,18 @@ def main() -> None:
     epoch_rows: list[dict[str, Any]] = []
     grad_clip = float(config["training"]["gradient_clip_norm"])
     min_validation_coverage = float(config.get("objective", {}).get("min_validation_coverage", 0.90))
+    max_validation_violation = config.get("objective", {}).get("max_validation_violation")
+    max_validation_violation = float(max_validation_violation) if max_validation_violation is not None else None
 
     for epoch in range(1, int(config["training"]["epochs"]) + 1):
         model.train()
         batch_losses: list[float] = []
-        for xb, yb, target_zb, idxb in loader:
+        for xb, yb, target_zb, constraint_weight_b, tightness_weight_b, idxb in loader:
             xb = xb.to(device)
             yb = yb.to(device)
             target_zb = target_zb.to(device)
+            constraint_weight_b = constraint_weight_b.to(device)
+            tightness_weight_b = tightness_weight_b.to(device)
             idxb = idxb.to(device)
             alpha_b = alpha[idxb].view(-1, 1)
 
@@ -411,7 +494,7 @@ def main() -> None:
             g = target_zb - z
             shifted = g + alpha_b / rho
             aug_penalty = 0.5 * rho * (torch.relu(shifted).pow(2) - (alpha_b / rho).pow(2))
-            loss = (p - yb).mean() + aug_penalty.mean()
+            loss = (tightness_weight_b * (p - yb)).mean() + (constraint_weight_b * aug_penalty).mean()
             loss.backward()
             if grad_clip > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
@@ -420,7 +503,10 @@ def main() -> None:
             with torch.no_grad():
                 z_new = model(xb)
                 g_new = target_zb - z_new
-                alpha[idxb] = torch.clamp(alpha[idxb] + rho * g_new.view(-1), min=0.0, max=alpha_max)
+                alpha_step = rho * g_new.view(-1)
+                if bool(config.get("constraint_weighting", {}).get("weight_alpha_update", True)):
+                    alpha_step = alpha_step * constraint_weight_b.view(-1)
+                alpha[idxb] = torch.clamp(alpha[idxb] + alpha_step, min=0.0, max=alpha_max)
             batch_losses.append(float(loss.detach().cpu()))
 
         train_z = predict_logits(model, x_train, device, int(config["training"]["batch_size"]))
@@ -446,7 +532,7 @@ def main() -> None:
             rho = rho_values[rho_index]
             epochs_since_violation_improved = 0
 
-        if is_better(valid_metrics, best_valid_metrics, min_validation_coverage):
+        if is_better(valid_metrics, best_valid_metrics, min_validation_coverage, max_validation_violation):
             best_epoch = epoch
             best_train_metrics = train_metrics
             best_valid_metrics = valid_metrics
@@ -526,8 +612,21 @@ def main() -> None:
         "primary_metric": "validation mean_gap subject to validation coverage >= objective.min_validation_coverage",
         "objective": {
             "min_validation_coverage": min_validation_coverage,
+            "max_validation_violation": max_validation_violation,
             "optimize_metric": config.get("objective", {}).get("optimize_metric", "mean_gap"),
             "tie_breaker_metric": config.get("objective", {}).get("tie_breaker_metric", "max_violation"),
+        },
+        "constraint_weighting": {
+            **config.get("constraint_weighting", {}),
+            "train_weight_min": float(np.min(train_constraint_weight)) if len(train_constraint_weight) else None,
+            "train_weight_mean": float(np.mean(train_constraint_weight)) if len(train_constraint_weight) else None,
+            "train_weight_max": float(np.max(train_constraint_weight)) if len(train_constraint_weight) else None,
+        },
+        "tightness_weighting": {
+            **config.get("tightness_weighting", {}),
+            "train_weight_min": float(np.min(train_tightness_weight)) if len(train_tightness_weight) else None,
+            "train_weight_mean": float(np.mean(train_tightness_weight)) if len(train_tightness_weight) else None,
+            "train_weight_max": float(np.max(train_tightness_weight)) if len(train_tightness_weight) else None,
         },
         "model_family": "upper_bound_mlp_augmented_lagrangian",
         "replaces": "catboost_quantile_q70_q80_q90",
@@ -564,6 +663,9 @@ def main() -> None:
         "offline_validation_metric_source": manifest.get("source_report_path"),
         "success_criteria": {
             "validation_coverage_at_least_target": best_valid_metrics["coverage"] >= min_validation_coverage,
+            "validation_max_violation_at_most_target": (
+                best_valid_metrics["max_violation"] <= max_validation_violation if max_validation_violation is not None else None
+            ),
             "validation_mean_gap": best_valid_metrics["mean_gap"],
             "validation_max_violation": best_valid_metrics["max_violation"],
         },
