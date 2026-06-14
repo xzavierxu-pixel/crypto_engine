@@ -59,6 +59,7 @@ def build_feature_frame(
     select_grid_only: bool | None = None,
     derivatives_frame: pd.DataFrame | None = None,
     second_level_features_frame: pd.DataFrame | None = None,
+    polymarket_trade_features_frame: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     normalized = normalize_ohlcv_frame(df, timestamp_column=DEFAULT_TIMESTAMP_COLUMN, require_volume=False)
     horizon = get_horizon_spec(settings, horizon_name)
@@ -85,9 +86,29 @@ def build_feature_frame(
             validate="one_to_one",
         )
 
+    if polymarket_trade_features_frame is not None and not polymarket_trade_features_frame.empty:
+        trade_features = polymarket_trade_features_frame.copy()
+        trade_features[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(
+            trade_features[DEFAULT_TIMESTAMP_COLUMN],
+            utc=True,
+        )
+        if settings.decision_alignment.enabled:
+            trade_features[DEFAULT_TIMESTAMP_COLUMN] = trade_features[DEFAULT_TIMESTAMP_COLUMN] + pd.Timedelta(
+                minutes=int(settings.decision_alignment.feature_offset_minutes)
+            )
+        feature_frame = feature_frame.merge(
+            trade_features,
+            on=DEFAULT_TIMESTAMP_COLUMN,
+            how="left",
+            validate="one_to_one",
+        )
+
     for pack_name in profile.packs:
         pack = get_feature_pack(pack_name)
         feature_values = pack.transform(feature_frame, settings, profile)
+        overlapping_columns = [column for column in feature_values.columns if column in feature_frame.columns]
+        if overlapping_columns:
+            feature_frame = feature_frame.drop(columns=overlapping_columns)
         feature_frame = pd.concat([feature_frame, feature_values], axis=1)
 
     helper_columns = [column for column in feature_frame.columns if _is_derivatives_helper_column(column)]

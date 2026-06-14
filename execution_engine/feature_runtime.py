@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal, ROUND_HALF_UP
+from typing import Any
 
 import pandas as pd
+import numpy as np
 
-from execution_engine.artifacts import BaselineArtifact
+from execution_engine.artifacts import BaselineArtifact, PriceEstimatorArtifact
 from src.calibration.registry import load_calibration_plugin
 from src.core.config import Settings
 from src.core.constants import DEFAULT_TIMESTAMP_COLUMN
@@ -23,6 +26,7 @@ class FeatureBuildResult:
     feature_frame: pd.DataFrame
     second_level_frame: pd.DataFrame
     signal: Signal
+    row_index: Any | None = None
 
 
 class RuntimeInferenceEngine:
@@ -30,17 +34,67 @@ class RuntimeInferenceEngine:
         self,
         settings: Settings,
         baseline: BaselineArtifact,
+        price_estimator: PriceEstimatorArtifact | None = None,
         horizon_name: str = "5m",
         t_up: float | None = None,
         t_down: float | None = None,
     ) -> None:
         self.settings = settings
         self.baseline = baseline
+        self.price_estimator = price_estimator
         self.horizon_name = horizon_name
         self.t_up = baseline.t_up if t_up is None else float(t_up)
         self.t_down = baseline.t_down if t_down is None else float(t_down)
         self.model = load_model_plugin(baseline.model_plugin, str(baseline.model_path))
         self.calibrator = load_calibration_plugin(baseline.calibration_plugin, str(baseline.calibrator_path))
+
+    def predict_price_q80(
+        self,
+        feature_frame: pd.DataFrame,
+        *,
+        row_index: Any,
+        selected_side: str,
+        p_up: float | None = None,
+    ) -> dict[str, Any] | None:
+        if self.price_estimator is None:
+            return None
+        artifact = self.price_estimator
+        side_value = artifact.yes_value if selected_side == "YES" else artifact.no_value
+        frame = feature_frame.copy()
+        frame[artifact.selected_side_column] = side_value
+        if p_up is not None:
+            p_up_value = float(p_up)
+            p_side = p_up_value if selected_side == "YES" else 1.0 - p_up_value
+            frame["p_up"] = p_up_value
+            frame["p_side"] = p_side
+            frame["direction_confidence"] = abs(p_up_value - 0.5)
+            frame["p_bin"] = _p_side_bucket(p_side)
+        missing = [column for column in artifact.feature_columns if column not in frame.columns]
+        if missing:
+            preview = ", ".join(missing[:20])
+            raise ValueError(
+                f"Runtime feature frame is missing {len(missing)} price estimator features: {preview}"
+            )
+        row = frame.loc[[row_index], artifact.feature_columns]
+        raw_prediction = artifact.model.predict(row)
+        raw_price = _extract_single_prediction(raw_prediction, prediction_column=artifact.prediction_column)
+        if artifact.prediction_transform == "sigmoid":
+            raw_price = float(1.0 / (1.0 + np.exp(-raw_price)))
+        rounded_price = _round_price(raw_price, artifact.round_decimals)
+        return {
+            "price_estimator_enabled": True,
+            "price_estimator_artifact_dir": str(artifact.artifact_dir),
+            "price_estimator_model_path": str(artifact.model_path),
+            "price_estimator_prediction_column": artifact.prediction_column,
+            "price_estimator_selected_side_column": artifact.selected_side_column,
+            "price_estimator_selected_side": side_value,
+            "price_estimator_q80_raw": raw_price,
+            "price_estimator_q80_rounded": rounded_price,
+            "price_estimator_round_decimals": artifact.round_decimals,
+            "price_estimator_best_ask_offset": artifact.best_ask_offset,
+            "price_estimator_fallback_price_mode": artifact.fallback_price_mode,
+            "price_estimator_prediction_transform": artifact.prediction_transform,
+        }
 
     def _thresholds_for_signal(self, signal_t0: pd.Timestamp | None) -> tuple[float, float, dict[str, str | None]]:
         policy = self.baseline.threshold_policy or {}
@@ -183,7 +237,12 @@ class RuntimeInferenceEngine:
                 **runtime_context,
             },
         )
-        return FeatureBuildResult(feature_frame=feature_frame, second_level_frame=sampled_second, signal=signal)
+        return FeatureBuildResult(
+            feature_frame=feature_frame,
+            second_level_frame=sampled_second,
+            signal=signal,
+            row_index=row_index,
+        )
 
     def _validate_feature_columns(self, feature_frame: pd.DataFrame) -> None:
         missing = [column for column in self.baseline.feature_columns if column not in feature_frame.columns]
@@ -192,3 +251,39 @@ class RuntimeInferenceEngine:
             raise ValueError(
                 f"Runtime feature frame is missing {len(missing)} baseline features: {preview}"
             )
+
+
+def _extract_single_prediction(prediction: Any, *, prediction_column: str) -> float:
+    if isinstance(prediction, pd.DataFrame):
+        if prediction_column in prediction.columns:
+            return float(prediction[prediction_column].iloc[0])
+        if prediction.shape[1] == 1:
+            return float(prediction.iloc[0, 0])
+        raise ValueError(f"Price estimator prediction does not include column '{prediction_column}'.")
+    if isinstance(prediction, pd.Series):
+        return float(prediction.iloc[0])
+    try:
+        return float(prediction[0])
+    except (TypeError, KeyError, IndexError):
+        return float(prediction)
+
+
+def _round_price(price: float, decimals: int) -> float:
+    quantizer = Decimal("1").scaleb(-int(decimals))
+    return float(Decimal(str(price)).quantize(quantizer, rounding=ROUND_HALF_UP))
+
+
+def _p_side_bucket(p_side: float) -> str:
+    if p_side < 0.5:
+        return "missing"
+    if p_side < 0.55:
+        return "0.50_0.55"
+    if p_side < 0.60:
+        return "0.55_0.60"
+    if p_side < 0.65:
+        return "0.60_0.65"
+    if p_side < 0.70:
+        return "0.65_0.70"
+    if p_side <= 1.0:
+        return "0.70_1.00"
+    return "missing"

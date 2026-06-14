@@ -51,6 +51,7 @@ cover/
 
 # Project specific: large artifacts, models, and datasets
 artifacts/
+price_estimator/data/
 *.parquet
 *.pkl
 *.zip

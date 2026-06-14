@@ -5,6 +5,7 @@ import math
 import pandas as pd
 
 from src.core.config import load_settings
+from src.data.polymarket_trades import build_preopen_trade_feature_frame
 from src.features.builder import build_feature_frame
 
 
@@ -59,3 +60,51 @@ def test_feature_builder_uses_only_information_before_t0() -> None:
     assert "last_1m_up" in feature_frame.columns
     assert "up_ratio_5" in feature_frame.columns
     assert feature_frame["feature_version"].eq("v8").all()
+
+
+def test_feature_builder_attaches_polymarket_preopen_trade_pack() -> None:
+    settings = load_settings()
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01T12:00:00Z", periods=20, freq="1min"),
+            "open": [100 + index for index in range(20)],
+            "high": [101 + index for index in range(20)],
+            "low": [99 + index for index in range(20)],
+            "close": [100 + index for index in range(20)],
+            "volume": [10 + index for index in range(20)],
+        }
+    )
+    trades = pd.DataFrame(
+        {
+            "price": [0.51, 0.49],
+            "timestamp": [pd.Timestamp("2024-01-01T12:04:30Z"), pd.Timestamp("2024-01-01T12:04:40Z")],
+            "market_start_ts": [int(pd.Timestamp("2024-01-01T12:05:00Z").timestamp())] * 2,
+            "outcome": ["up", "down"],
+        }
+    )
+    trade_features = build_preopen_trade_feature_frame(trades)
+    profile = settings.features.profiles["core_5m"]
+    patched_settings = settings.__class__(
+        **{
+            **settings.__dict__,
+            "features": settings.features.__class__(
+                profiles={
+                    **settings.features.profiles,
+                    "core_5m": profile.__class__(**{**profile.__dict__, "packs": ["polymarket_preopen_trades"]}),
+                }
+            ),
+        }
+    )
+
+    feature_frame = build_feature_frame(
+        frame,
+        patched_settings,
+        horizon_name="5m",
+        select_grid_only=False,
+        polymarket_trade_features_frame=trade_features,
+    )
+    row = feature_frame.loc[feature_frame["timestamp"] == pd.Timestamp("2024-01-01T12:06:00Z")].iloc[0]
+
+    assert row["pm_preopen_has_trade"] == 1.0
+    assert row["pm_preopen_trade_count"] == 2.0
+    assert row["pm_preopen_last_price_sum_minus_one"] == 0.0

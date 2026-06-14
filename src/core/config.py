@@ -263,6 +263,13 @@ class SecondLevelFeatureStoreConfig:
 
 
 @dataclass(frozen=True)
+class PolymarketTradesConfig:
+    enabled: bool = False
+    path: str | None = None
+    preopen_window_seconds: int = 60
+
+
+@dataclass(frozen=True)
 class DataBackfillMarketConfig:
     enabled: bool = False
     symbols: list[str] = field(default_factory=list)
@@ -380,6 +387,7 @@ class Settings:
     labels: LabelsConfig
     derivatives: DerivativesConfig
     second_level: SecondLevelFeatureStoreConfig
+    polymarket_trades: PolymarketTradesConfig
     data_backfill: DataBackfillConfig
     model: PluginGroupConfig
     calibration: PluginGroupConfig
@@ -406,6 +414,7 @@ class Settings:
         )
         derivatives_payload = payload.get("derivatives", {})
         second_level_payload = payload.get("second_level", {})
+        polymarket_trades_payload = payload.get("polymarket_trades", {})
         data_backfill_payload = payload.get("data_backfill", {})
         return cls(
             project=ProjectConfig(**payload["project"]),
@@ -444,6 +453,7 @@ class Settings:
                 book_ticker=DerivativesBookTickerConfig(**derivatives_payload.get("book_ticker", {})),
             ),
             second_level=SecondLevelFeatureStoreConfig(**second_level_payload),
+            polymarket_trades=PolymarketTradesConfig(**polymarket_trades_payload),
             data_backfill=DataBackfillConfig(
                 provider=data_backfill_payload.get("provider", ""),
                 start_date=data_backfill_payload.get("start_date", ""),

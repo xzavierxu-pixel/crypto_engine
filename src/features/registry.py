@@ -18,6 +18,7 @@ from src.features.momentum import MomentumFeaturePack
 from src.features.momentum_acceleration import MomentumAccelerationFeaturePack
 from src.features.multi_scale_rolling import MultiScaleRollingFeaturePack
 from src.features.path_structure import PathStructureFeaturePack
+from src.features.polymarket_preopen_trades import PolymarketPreopenTradesFeaturePack
 from src.features.prd_microstructure import (
     BookPressureFeaturePack,
     CompletedBarMicrostructureFeaturePack,
@@ -63,6 +64,7 @@ FEATURE_PACKS: dict[str, FeaturePack] = {
     "regime_interactions": InteractionBankFeaturePack(),
     "event_window_burst": EventWindowBurstFeaturePack(),
     "side_specific_transforms": SideSpecificTransformsFeaturePack(),
+    "polymarket_preopen_trades": PolymarketPreopenTradesFeaturePack(),
 }
 
 

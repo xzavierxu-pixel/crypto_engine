@@ -211,6 +211,7 @@ def build_training_frame(
     horizon_name: str | None = None,
     derivatives_frame: pd.DataFrame | None = None,
     second_level_features_frame: pd.DataFrame | None = None,
+    polymarket_trade_features_frame: pd.DataFrame | None = None,
 ) -> TrainingFrame:
     horizon = get_horizon_spec(settings, horizon_name)
     normalized = normalize_ohlcv_frame(raw_df, timestamp_column=DEFAULT_TIMESTAMP_COLUMN, require_volume=False)
@@ -223,6 +224,7 @@ def build_training_frame(
         select_grid_only=False if feature_offset else True,
         derivatives_frame=derivatives_frame,
         second_level_features_frame=second_level_features_frame,
+        polymarket_trade_features_frame=polymarket_trade_features_frame,
     )
     label_builder = get_label_builder(horizon.label_builder)
     label_frame = label_builder.build(normalized, settings, horizon, select_grid_only=True)

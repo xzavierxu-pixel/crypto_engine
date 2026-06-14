@@ -1,0 +1,94 @@
+experiment_id: 20260612_catboost_quantile_winner_price_baseline
+
+paths:
+  deploy_artifact_dir: execution_engine/deploy/baseline
+  feature_manifest: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/artifact_manifest.json
+  train_frame: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/development_frame.parquet
+  validation_frame: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/validation_frame.parquet
+  market_refs: price_estimator/data/market_refs.parquet
+  trades_dir: price_estimator/data/sell_taker_trades_daily
+  train_dataset: price_estimator/data/price_estimator_train.parquet
+  validation_dataset: price_estimator/data/price_estimator_valid.parquet
+  predictions_validation: price_estimator/data/predictions_validation.parquet
+  predictions_train: price_estimator/data/predictions_train.parquet
+  models_dir: price_estimator/models
+  reports_dir: price_estimator/reports
+
+api:
+  enrich_market_refs: false
+  gamma_market_slug_url: https://gamma-api.polymarket.com/markets/slug/{slug}
+  data_trades_url: https://data-api.polymarket.com/trades
+  workers: 5
+  limit: 10000
+  sleep_seconds: 0.0
+  request_timeout_seconds: 30
+  max_retries: 4
+
+target:
+  selected_side_source: resolved_outcome
+  window_minutes: 4
+  include_start: false
+  include_end: true
+  market_close_cap: true
+  eps: 0.01
+  drop_missing_target: true
+
+features:
+  source: split_artifact_feature_columns
+  added_columns:
+    - selected_side
+    - p_up
+    - p_side
+    - direction_confidence
+    - p_bin
+  categorical_columns:
+    - selected_side
+    - p_bin
+  forbidden_columns:
+    - target
+    - future_close
+    - abs_return
+    - signed_return
+    - stage1_target
+    - stage2_target
+    - lowest_trade_price_next4
+    - lowest_trade_time_next4
+    - time_to_lowest_trade_sec
+
+direction_model:
+  p_up_source: deploy_predictions
+  join_keys:
+    - timestamp
+    - decision_time
+  p_bin_edges:
+    - 0.5
+    - 0.55
+    - 0.6
+    - 0.65
+    - 0.7
+    - 1.0
+
+model:
+  quantiles:
+    - 0.70
+    - 0.80
+    - 0.90
+  params:
+    iterations: 3000
+    learning_rate: 0.03
+    depth: 6
+    l2_leaf_reg: 10
+    random_seed: 42
+    od_type: Iter
+    od_wait: 100
+    verbose: 100
+    train_dir: price_estimator/models/catboost_info
+
+evaluation:
+  crossing_postprocess: row_sort
+  strata:
+    - selected_side
+    - p_bin
+    - p_side_bucket
+    - time_to_lowest_trade_sec_bucket
+    - market_time_bucket

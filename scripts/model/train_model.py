@@ -25,6 +25,7 @@ from src.data.derivatives.feature_store import (
     resolve_derivatives_paths,
 )
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
+from src.data.polymarket_trades import build_preopen_trade_feature_frame, load_polymarket_trade_frame
 from src.data.second_level_features import load_sampled_second_level_features
 from src.model.train import (
     load_cached_training_split,
@@ -301,6 +302,10 @@ def main() -> None:
         help="Materialized second-level feature store parquet. Defaults to settings.second_level.feature_store_path.",
     )
     parser.add_argument(
+        "--polymarket-trades-input",
+        help="Optional Polymarket trade input override. Defaults to settings.polymarket_trades.path.",
+    )
+    parser.add_argument(
         "--derivatives-path-mode",
         choices=["latest", "archive"],
         default=None,
@@ -391,6 +396,16 @@ def main() -> None:
                 raise FileNotFoundError(f"Second-level feature store does not exist: {second_level_store_path}")
             else:
                 logging.warning("Skipping second-level features because the default store does not exist: %s", second_level_store_path)
+        polymarket_trade_features_frame = None
+        polymarket_trades_path = args.polymarket_trades_input or settings.polymarket_trades.path
+        if settings.polymarket_trades.enabled:
+            if polymarket_trades_path is None:
+                raise ValueError("settings.polymarket_trades.enabled requires polymarket_trades.path or --polymarket-trades-input.")
+            logging.info("Loading Polymarket pre-open trade features from %s", polymarket_trades_path)
+            polymarket_trade_features_frame = build_preopen_trade_feature_frame(
+                load_polymarket_trade_frame(polymarket_trades_path),
+                preopen_window_seconds=settings.polymarket_trades.preopen_window_seconds,
+            )
         logging.info("Building training frame for horizon=%s", args.horizon)
         training = build_training_frame(
             source,
@@ -398,6 +413,7 @@ def main() -> None:
             horizon_name=args.horizon,
             derivatives_frame=derivatives_frame,
             second_level_features_frame=second_level_features_frame,
+            polymarket_trade_features_frame=polymarket_trade_features_frame,
         )
         development, validation = split_recent_train_validation_frame(
             training,
@@ -502,6 +518,12 @@ def main() -> None:
             settings,
             args.second_level_feature_store or settings.second_level.feature_store_path,
         ),
+        "polymarket_trades": {
+            "enabled": bool(settings.polymarket_trades.enabled),
+            "path": args.polymarket_trades_input or settings.polymarket_trades.path,
+            "preopen_window_seconds": int(settings.polymarket_trades.preopen_window_seconds),
+            "feature_count": sum(1 for column in artifacts.feature_columns if column.startswith("pm_preopen_")),
+        },
         **label_metadata,
         "target_semantics": artifacts.target_semantics,
         "model_target_semantics": artifacts.target_semantics,

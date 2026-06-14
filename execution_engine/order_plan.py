@@ -11,6 +11,7 @@ from src.core.schemas import Decision, MarketQuote, OrderRequest, Signal
 
 LOGGER = logging.getLogger(__name__)
 LIMIT_CONFIG_BEST_ASK_OFFSET_MODE = "limit_config_best_ask_offset"
+Q80_BEST_ASK_OFFSET_MODE = "min_q80_final_price_and_best_ask_offset"
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,57 @@ def _limit_config_for_side(side: str) -> dict[float, float]:
     raise ValueError(f"Unsupported decision side for limit config: {side!r}")
 
 
+def _limit_config_best_ask_offset_price(
+    *,
+    decision: Decision,
+    best_ask: float | None,
+    leg_name: str,
+    price_mode: str,
+    config: OrdersConfig,
+) -> tuple[float | None, float | None, float | None, dict | None]:
+    if best_ask is None:
+        return None, None, None, {"leg": leg_name, "reason": "missing_best_ask", "price_mode": price_mode}
+    lookup_price = ceil_to_two_decimals(float(best_ask))
+    offset_lookup = _limit_config_for_side(str(decision.side))
+    offset = offset_lookup.get(lookup_price)
+    if offset is None:
+        return (
+            None,
+            lookup_price,
+            None,
+            {
+                "leg": leg_name,
+                "reason": "missing_limit_offset",
+                "price_mode": price_mode,
+                "side": decision.side,
+                "quote_source": "best_ask",
+                "best_ask": float(best_ask),
+                "lookup_price": lookup_price,
+            },
+        )
+    raw_price = lookup_price - float(offset)
+    if raw_price <= 0 or raw_price < config.min_price or raw_price > config.max_price:
+        return (
+            None,
+            lookup_price,
+            float(offset),
+            {
+                "leg": leg_name,
+                "reason": "invalid_limit_config_price",
+                "price_mode": price_mode,
+                "side": decision.side,
+                "quote_source": "best_ask",
+                "best_ask": float(best_ask),
+                "lookup_price": lookup_price,
+                "offset": float(offset),
+                "raw_price": raw_price,
+                "min_price": config.min_price,
+                "max_price": config.max_price,
+            },
+        )
+    return raw_price, lookup_price, float(offset), None
+
+
 def build_two_limit_order_plan(
     signal: Signal,
     decision: Decision,
@@ -73,46 +125,61 @@ def build_two_limit_order_plan(
             skipped.append({"leg": name, "reason": "disabled_leg", "size": float(leg.size)})
             continue
 
-        if leg.price_mode == LIMIT_CONFIG_BEST_ASK_OFFSET_MODE:
-            if best_ask is None:
-                skip = {"leg": name, "reason": "missing_best_ask", "price_mode": leg.price_mode}
-                LOGGER.warning("Skipping order leg because best ask is missing: %s", skip)
-                skipped.append(skip)
-                continue
-            quote_reference = float(best_ask)
+        lookup_price = None
+        offset = None
+        q80_price = None
+        best_ask_offset_price = None
+        price_estimator_fallback = None
+        if leg.price_mode == Q80_BEST_ASK_OFFSET_MODE:
+            quote_reference = None if best_ask is None else float(best_ask)
+            quote_source = "price_estimator_q80_best_ask"
+            q80_context = signal.decision_context.get("price_estimator_q80_rounded")
+            best_ask_offset = float(signal.decision_context.get("price_estimator_best_ask_offset", 0.01))
+            if q80_context is not None and best_ask is not None:
+                q80_price = float(q80_context)
+                best_ask_offset_price = float(best_ask) - best_ask_offset
+                raw_price = min(q80_price, best_ask_offset_price)
+            else:
+                price_estimator_fallback = signal.decision_context.get(
+                    "price_estimator_fallback_price_mode",
+                    LIMIT_CONFIG_BEST_ASK_OFFSET_MODE,
+                )
+                if price_estimator_fallback != LIMIT_CONFIG_BEST_ASK_OFFSET_MODE:
+                    skipped.append(
+                        {
+                            "leg": name,
+                            "reason": "missing_price_estimator_q80",
+                            "price_mode": leg.price_mode,
+                            "fallback_price_mode": price_estimator_fallback,
+                            "has_best_ask": best_ask is not None,
+                        }
+                    )
+                    continue
+                raw_price, lookup_price, offset, skip = _limit_config_best_ask_offset_price(
+                    decision=decision,
+                    best_ask=None if best_ask is None else float(best_ask),
+                    leg_name=name,
+                    price_mode=price_estimator_fallback,
+                    config=config,
+                )
+                if skip is not None:
+                    LOGGER.warning("Skipping order leg because q80 fallback price is unavailable: %s", skip)
+                    skipped.append(skip)
+                    continue
+                quote_reference = float(best_ask)
+                quote_source = "best_ask"
+        elif leg.price_mode == LIMIT_CONFIG_BEST_ASK_OFFSET_MODE:
+            quote_reference = None if best_ask is None else float(best_ask)
             quote_source = "best_ask"
-            lookup_price = ceil_to_two_decimals(quote_reference)
-            offset_lookup = _limit_config_for_side(str(decision.side))
-            offset = offset_lookup.get(lookup_price)
-            if offset is None:
-                skip = {
-                    "leg": name,
-                    "reason": "missing_limit_offset",
-                    "price_mode": leg.price_mode,
-                    "side": decision.side,
-                    "quote_source": quote_source,
-                    "best_ask": quote_reference,
-                    "lookup_price": lookup_price,
-                }
+            raw_price, lookup_price, offset, skip = _limit_config_best_ask_offset_price(
+                decision=decision,
+                best_ask=None if best_ask is None else float(best_ask),
+                leg_name=name,
+                price_mode=leg.price_mode,
+                config=config,
+            )
+            if skip is not None:
                 LOGGER.warning("Skipping order leg because no limit offset is configured: %s", skip)
-                skipped.append(skip)
-                continue
-            raw_price = lookup_price - float(offset)
-            if raw_price <= 0 or raw_price < config.min_price or raw_price > config.max_price:
-                skip = {
-                    "leg": name,
-                    "reason": "invalid_limit_config_price",
-                    "price_mode": leg.price_mode,
-                    "side": decision.side,
-                    "quote_source": quote_source,
-                    "best_ask": quote_reference,
-                    "lookup_price": lookup_price,
-                    "offset": float(offset),
-                    "raw_price": raw_price,
-                    "min_price": config.min_price,
-                    "max_price": config.max_price,
-                }
-                LOGGER.warning("Skipping order leg because limit-config price is invalid: %s", skip)
                 skipped.append(skip)
                 continue
         elif best_bid is not None:
@@ -188,8 +255,11 @@ def build_two_limit_order_plan(
                     "configured_size": float(leg.size),
                     "size_to_max_notional": edge_config.size_to_max_notional,
                     "max_order_notional": edge_config.max_order_notional,
-                    "limit_config_lookup_price": lookup_price if leg.price_mode == LIMIT_CONFIG_BEST_ASK_OFFSET_MODE else None,
-                    "limit_config_offset": float(offset) if leg.price_mode == LIMIT_CONFIG_BEST_ASK_OFFSET_MODE else None,
+                    "limit_config_lookup_price": lookup_price,
+                    "limit_config_offset": float(offset) if offset is not None else None,
+                    "price_estimator_q80_rounded": q80_price,
+                    "price_estimator_best_ask_offset_price": best_ask_offset_price,
+                    "price_estimator_fallback_price_mode": price_estimator_fallback,
                 },
             )
         )

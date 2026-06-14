@@ -1,0 +1,32 @@
+{
+  "deploy_experiment_id": "20260611_catboost_calendar_coordinate_search",
+  "experiment_id": "20260612_catboost_quantile_winner_price_baseline",
+  "outputs": {
+    "train": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\data\\price_estimator_train.parquet",
+    "validation": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\data\\price_estimator_valid.parquet"
+  },
+  "selected_side_source": "resolved_outcome",
+  "target_window_minutes": 4,
+  "train_summary": {
+    "end": "2026-04-10 23:40:00+00:00",
+    "input_rows": 24249,
+    "missing_p_up_rows": 0,
+    "missing_target_rows": 8592,
+    "output_rows": 15657,
+    "selected_down_rows": 7633,
+    "selected_up_rows": 8024,
+    "split": "train",
+    "start": "2026-02-12 01:10:00+00:00"
+  },
+  "validation_summary": {
+    "end": "2026-05-10 23:50:00+00:00",
+    "input_rows": 7468,
+    "missing_p_up_rows": 0,
+    "missing_target_rows": 36,
+    "output_rows": 7432,
+    "selected_down_rows": 3597,
+    "selected_up_rows": 3835,
+    "split": "validation",
+    "start": "2026-04-11 00:15:00+00:00"
+  }
+}

@@ -20,6 +20,7 @@ from execution_engine.scripts.evaluate_paper_results import (
 )
 from execution_engine.scripts.run_paper_experiment import next_trigger_time
 from execution_engine.scripts import run_paper_experiment as paper_experiment_module
+from execution_engine.artifacts import PriceEstimatorArtifact
 from execution_engine.config import BinanceConfig, load_execution_config
 from execution_engine.feature_runtime import RuntimeInferenceEngine
 from execution_engine.order_plan import build_two_limit_order_plan
@@ -67,6 +68,9 @@ def test_execution_config_example_loads() -> None:
     assert config.orders.second.size == 5.0
     assert config.orders.min_price == 0.10
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
+    assert config.price_estimator.enabled is False
+    assert config.price_estimator.best_ask_offset == 0.01
+    assert config.price_estimator.fallback_price_mode == "limit_config_best_ask_offset"
     assert config.thresholds.t_up is None
     assert config.thresholds.t_down is None
     assert config.binance.require_agg_trade_through_last_second is True
@@ -150,6 +154,42 @@ def test_runtime_inference_engine_selects_calendar_coordinate_thresholds() -> No
     assert t_down == 0.415
     assert context["threshold_policy"] == "utc_day_session_coordinate"
     assert context["threshold_regime"] == "d0_europe"
+
+
+def test_runtime_inference_engine_predicts_q80_with_selected_side_feature(tmp_path) -> None:
+    class FakePriceModel:
+        def __init__(self) -> None:
+            self.seen = None
+
+        def predict(self, frame):
+            self.seen = frame.copy()
+            return pd.DataFrame({"pred_q80": [0.536]})
+
+    model = FakePriceModel()
+    artifact = PriceEstimatorArtifact(
+        artifact_dir=tmp_path,
+        manifest={},
+        model_path=tmp_path / "q80.binary.pkl",
+        model=model,
+        feature_columns=["f1", "selected_side"],
+        prediction_column="pred_q80",
+        selected_side_column="selected_side",
+        yes_value="YES",
+        no_value="NO",
+        round_decimals=2,
+        best_ask_offset=0.01,
+        fallback_price_mode="limit_config_best_ask_offset",
+    )
+    engine = RuntimeInferenceEngine.__new__(RuntimeInferenceEngine)
+    engine.price_estimator = artifact
+    feature_frame = pd.DataFrame({"f1": [1.5]}, index=[7])
+
+    context = engine.predict_price_q80(feature_frame, row_index=7, selected_side="NO")
+
+    assert context["price_estimator_q80_raw"] == 0.536
+    assert context["price_estimator_q80_rounded"] == 0.54
+    assert context["price_estimator_selected_side"] == "NO"
+    assert model.seen["selected_side"].iloc[0] == "NO"
 
 
 def test_normalize_binance_klines_outputs_shared_schema() -> None:

@@ -19,6 +19,21 @@ class BaselineConfig:
 
 
 @dataclass(frozen=True)
+class PriceEstimatorConfig:
+    enabled: bool = False
+    artifact_dir: str | None = None
+    manifest_file: str = "artifact_manifest.json"
+    model_file: str | None = None
+    prediction_column: str = "pred_q80"
+    selected_side_column: str = "selected_side"
+    yes_value: str = "YES"
+    no_value: str = "NO"
+    round_decimals: int = 2
+    best_ask_offset: float = 0.01
+    fallback_price_mode: str = "limit_config_best_ask_offset"
+
+
+@dataclass(frozen=True)
 class RuntimeConfig:
     mode: str = "paper"
     timezone: str = "UTC"
@@ -136,6 +151,7 @@ class PaperTestConfig:
 @dataclass(frozen=True)
 class ExecutionEngineConfig:
     baseline: BaselineConfig
+    price_estimator: PriceEstimatorConfig = field(default_factory=PriceEstimatorConfig)
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
     binance: BinanceConfig = field(default_factory=BinanceConfig)
     schedule: ScheduleConfig = field(default_factory=ScheduleConfig)
@@ -204,6 +220,7 @@ def load_execution_config(path: str | Path) -> ExecutionEngineConfig:
 
     return ExecutionEngineConfig(
         baseline=_baseline_config(payload["baseline"]),
+        price_estimator=PriceEstimatorConfig(**_payload_for(payload, "price_estimator")),
         runtime=RuntimeConfig(**_payload_for(payload, "runtime")),
         binance=BinanceConfig(**_payload_for(payload, "binance")),
         schedule=ScheduleConfig(**_payload_for(payload, "schedule")),

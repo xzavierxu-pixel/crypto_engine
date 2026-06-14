@@ -21,6 +21,25 @@ def _signal() -> Signal:
     )
 
 
+def _signal_with_q80(price: float, *, offset: float = 0.01) -> Signal:
+    signal = _signal()
+    return Signal(
+        asset=signal.asset,
+        horizon=signal.horizon,
+        t0=signal.t0,
+        p_up=signal.p_up,
+        p_down=signal.p_down,
+        model_version=signal.model_version,
+        feature_version=signal.feature_version,
+        decision_context={
+            **signal.decision_context,
+            "price_estimator_q80_rounded": price,
+            "price_estimator_best_ask_offset": offset,
+            "price_estimator_fallback_price_mode": "limit_config_best_ask_offset",
+        },
+    )
+
+
 def _decision() -> Decision:
     return Decision(
         should_trade=True,
@@ -215,6 +234,69 @@ def test_limit_config_best_ask_offset_skips_missing_key_and_invalid_price(caplog
     assert result.orders == []
     assert result.skipped[0]["reason"] == "invalid_limit_config_price"
     assert result.skipped[0]["raw_price"] == 0.1
+
+
+def test_q80_best_ask_offset_mode_uses_lower_q80_price_without_price_cap() -> None:
+    config = OrdersConfig(
+        first=OrderLegConfig(
+            price_mode="min_q80_final_price_and_best_ask_offset",
+            price_cap=0.40,
+            size=5.0,
+        )
+    )
+
+    result = build_two_limit_order_plan(_signal_with_q80(0.54), _decision(), _quote(), config)
+
+    assert len(result.orders) == 1
+    assert result.orders[0].price == 0.54
+    assert result.orders[0].metadata["quote_source"] == "price_estimator_q80_best_ask"
+    assert result.orders[0].metadata["price_estimator_q80_rounded"] == 0.54
+    assert result.orders[0].metadata["price_estimator_best_ask_offset_price"] == 0.61
+
+
+def test_q80_best_ask_offset_mode_uses_best_ask_offset_when_lower() -> None:
+    config = OrdersConfig(
+        first=OrderLegConfig(
+            price_mode="min_q80_final_price_and_best_ask_offset",
+            price_cap=0.40,
+            size=5.0,
+        )
+    )
+
+    result = build_two_limit_order_plan(_signal_with_q80(0.90), _decision(), _quote(), config)
+
+    assert len(result.orders) == 1
+    assert result.orders[0].price == 0.61
+    assert result.orders[0].price > config.first.price_cap
+
+
+def test_q80_best_ask_offset_mode_falls_back_to_limit_config() -> None:
+    config = OrdersConfig(
+        first=OrderLegConfig(
+            price_mode="min_q80_final_price_and_best_ask_offset",
+            price_cap=0.40,
+            size=5.0,
+        )
+    )
+    quote = MarketQuote(
+        market_id="market",
+        yes_price=0.801,
+        metadata={
+            "yes_token_id": "yes-token",
+            "no_token_id": "no-token",
+            "best_bid": 0.78,
+            "best_ask": 0.801,
+            "tick_size": 0.01,
+        },
+    )
+
+    result = build_two_limit_order_plan(_signal(), _decision(), quote, config)
+
+    assert len(result.orders) == 1
+    assert result.orders[0].price == 0.8
+    assert result.orders[0].metadata["quote_source"] == "best_ask"
+    assert result.orders[0].metadata["price_estimator_fallback_price_mode"] == "limit_config_best_ask_offset"
+    assert result.orders[0].metadata["limit_config_lookup_price"] == 0.81
 
 
 def test_active_artifact_selects_configured_artifact_dir(tmp_path: Path) -> None:

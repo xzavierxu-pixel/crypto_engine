@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -15,7 +15,7 @@ REPO_ROOT = next(parent for parent in Path(__file__).resolve().parents if (paren
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from execution_engine.artifacts import load_baseline_artifact
+from execution_engine.artifacts import load_baseline_artifact, load_price_estimator_artifact
 from execution_engine.config import load_execution_config
 from execution_engine.feature_runtime import RuntimeInferenceEngine
 from execution_engine.order_plan import build_two_limit_order_plan
@@ -72,6 +72,7 @@ def run_once(
             time.sleep(wait_seconds)
         target_window_start = current_5m_window_start()
     baseline = load_baseline_artifact(config.baseline)
+    price_estimator = load_price_estimator_artifact(config.price_estimator)
     settings = load_settings(config.baseline.settings_path)
     alignment = getattr(settings, "decision_alignment", None)
     feature_offset_minutes = (
@@ -105,6 +106,7 @@ def run_once(
     inference = RuntimeInferenceEngine(
         settings,
         baseline,
+        price_estimator=price_estimator,
         t_up=config.thresholds.t_up,
         t_down=config.thresholds.t_down,
     )
@@ -147,6 +149,22 @@ def run_once(
     )
 
     decision = evaluate_selective_binary_signal(signal, settings=settings)
+    if decision.should_trade and decision.side is not None:
+        try:
+            price_context = inference.predict_price_q80(
+                result.feature_frame,
+                row_index=result.row_index if result.row_index is not None else result.feature_frame.index[-1],
+                selected_side=str(decision.side),
+                p_up=signal.p_up,
+            )
+        except Exception as exc:
+            price_context = {
+                "price_estimator_enabled": price_estimator is not None,
+                "price_estimator_error": repr(exc),
+                "price_estimator_fallback_price_mode": config.price_estimator.fallback_price_mode,
+            }
+        if price_context:
+            signal = replace(signal, decision_context={**signal.decision_context, **price_context})
     audit.append(audit_event("decision_evaluated", asdict(decision)))
 
     summary: dict[str, Any] = {
@@ -177,6 +195,14 @@ def run_once(
             "agg_trade_lag_seconds": signal.decision_context.get("agg_trade_lag_seconds"),
             "max_agg_trade_lag_seconds": signal.decision_context.get("max_agg_trade_lag_seconds"),
             "prewarm_base_until": signal.decision_context.get("prewarm_base_until"),
+            "price_estimator_enabled": signal.decision_context.get("price_estimator_enabled"),
+            "price_estimator_q80_raw": signal.decision_context.get("price_estimator_q80_raw"),
+            "price_estimator_q80_rounded": signal.decision_context.get("price_estimator_q80_rounded"),
+            "price_estimator_best_ask_offset": signal.decision_context.get("price_estimator_best_ask_offset"),
+            "price_estimator_selected_side": signal.decision_context.get("price_estimator_selected_side"),
+            "price_estimator_artifact_dir": signal.decision_context.get("price_estimator_artifact_dir"),
+            "price_estimator_error": signal.decision_context.get("price_estimator_error"),
+            "price_estimator_fallback_price_mode": signal.decision_context.get("price_estimator_fallback_price_mode"),
         },
         "decision": asdict(decision),
         "market": None,
