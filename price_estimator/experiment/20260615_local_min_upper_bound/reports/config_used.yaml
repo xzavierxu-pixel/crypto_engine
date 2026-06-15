@@ -23,11 +23,6 @@ objective:
   tie_breaker_metric: covered_q90_gap
   min_accepted_rate: null
   primary_method: non_normalized_local_conformal
-  primary_variant: best_valid
-
-acceptance_filter:
-  enabled: true
-  max_p_side: 0.80
 
 calibration:
   source: train_tail
@@ -99,18 +94,6 @@ model:
     - 0.10
     - 0.05
     - 0.00
-
-base_model:
-  type: catboost_logcosh
-  catboost_logcosh:
-    loss_function: LogCosh
-    iterations: 2000
-    learning_rate: 0.03
-    depth: 6
-    l2_leaf_reg: 10
-    random_seed: 42
-    early_stopping_rounds: 100
-    eval_metric: MAE
 
 training:
   batch_size: 512

@@ -1,14 +1,14 @@
-experiment_id: 20260615_local_min_upper_bound
+experiment_id: 20260615_local_min_upper_bound_catboost_filter
 
 paths:
   deploy_artifact_dir: execution_engine/deploy/baseline
   feature_manifest: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/artifact_manifest.json
   train_dataset: price_estimator/data/price_estimator_train.parquet
   validation_dataset: price_estimator/data/price_estimator_valid.parquet
-  models_dir: price_estimator/experiment/20260615_local_min_upper_bound/models
-  reports_dir: price_estimator/experiment/20260615_local_min_upper_bound/reports
-  predictions_train: price_estimator/experiment/20260615_local_min_upper_bound/reports/predictions_train.parquet
-  predictions_validation: price_estimator/experiment/20260615_local_min_upper_bound/reports/predictions_validation.parquet
+  models_dir: price_estimator/experiment/20260615_local_min_upper_bound_catboost_filter/models
+  reports_dir: price_estimator/experiment/20260615_local_min_upper_bound_catboost_filter/reports
+  predictions_train: price_estimator/experiment/20260615_local_min_upper_bound_catboost_filter/reports/predictions_train.parquet
+  predictions_validation: price_estimator/experiment/20260615_local_min_upper_bound_catboost_filter/reports/predictions_validation.parquet
 
 target:
   column: target_raw
@@ -23,6 +23,14 @@ objective:
   tie_breaker_metric: covered_q90_gap
   min_accepted_rate: null
   primary_method: non_normalized_local_conformal
+  primary_variant: best_valid
+
+acceptance_filter:
+  enabled: true
+  max_p_side: 0.80
+
+variant_comparison:
+  enabled: true
 
 calibration:
   source: train_tail
@@ -94,6 +102,18 @@ model:
     - 0.10
     - 0.05
     - 0.00
+
+base_model:
+  type: catboost_logcosh
+  catboost_logcosh:
+    loss_function: LogCosh
+    iterations: 2000
+    learning_rate: 0.03
+    depth: 6
+    l2_leaf_reg: 10
+    random_seed: 42
+    early_stopping_rounds: 100
+    eval_metric: MAE
 
 training:
   batch_size: 512

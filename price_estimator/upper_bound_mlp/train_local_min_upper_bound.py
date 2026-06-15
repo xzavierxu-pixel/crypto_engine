@@ -993,27 +993,39 @@ def main() -> None:
         "hidden_dims": [int(v) for v in config["model"]["hidden_dims"]],
         "dropout": [float(v) for v in config["model"]["dropout"]],
     }
-    mlp_base = train_mlp_base_predictions(
-        x_fit,
-        y_fit,
-        x_cal,
-        x_train_all,
-        x_valid,
-        model_kwargs,
-        config,
-        device,
-    )
-    catboost_base = train_catboost_base_predictions(
-        x_fit,
-        y_fit,
-        x_cal,
-        y_cal,
-        x_train_all,
-        x_valid,
-        config,
-    )
     configured_base_type = str(config.get("base_model", {}).get("type", "mlp_logcosh"))
-    configured_base = catboost_base if configured_base_type == "catboost_logcosh" else mlp_base
+    variant_compare_enabled = bool(config.get("variant_comparison", {}).get("enabled", False))
+    mlp_base: BasePredictions | None = None
+    catboost_base: BasePredictions | None = None
+    if configured_base_type == "mlp_logcosh" or variant_compare_enabled:
+        mlp_base = train_mlp_base_predictions(
+            x_fit,
+            y_fit,
+            x_cal,
+            x_train_all,
+            x_valid,
+            model_kwargs,
+            config,
+            device,
+        )
+    if configured_base_type == "catboost_logcosh" or variant_compare_enabled:
+        catboost_base = train_catboost_base_predictions(
+            x_fit,
+            y_fit,
+            x_cal,
+            y_cal,
+            x_train_all,
+            x_valid,
+            config,
+        )
+    if configured_base_type == "catboost_logcosh":
+        if catboost_base is None:
+            raise RuntimeError("CatBoost base model was not trained")
+        configured_base = catboost_base
+    else:
+        if mlp_base is None:
+            raise RuntimeError("MLP base model was not trained")
+        configured_base = mlp_base
     base_rows = configured_base.epoch_rows
     mu_fit = configured_base.mu_fit
     abs_residual_fit = np.abs(y_fit - mu_fit).astype(np.float32)
@@ -1041,59 +1053,63 @@ def main() -> None:
     mu_valid = configured_base.mu_valid
     sigma_valid = positive_scale_from_logits(predict_model(scale_model, x_valid, device, batch_size), sigma_floor)
 
-    variant_results = [
-        evaluate_non_normalized_variant(
-            "mlp_logcosh_non_normalized",
-            mlp_base,
-            train_all,
-            calibration,
-            valid,
-            y_cal,
-            y_train_all,
-            y_valid,
-            p_side_train_all,
-            p_side_valid,
-            config,
-            epsilon,
-            tolerance,
-            min_accepted_coverage,
-            False,
-        ),
-        evaluate_non_normalized_variant(
-            "catboost_logcosh_non_normalized",
-            catboost_base,
-            train_all,
-            calibration,
-            valid,
-            y_cal,
-            y_train_all,
-            y_valid,
-            p_side_train_all,
-            p_side_valid,
-            config,
-            epsilon,
-            tolerance,
-            min_accepted_coverage,
-            False,
-        ),
-        evaluate_non_normalized_variant(
-            "catboost_logcosh_p_side_lt_0_80",
-            catboost_base,
-            train_all,
-            calibration,
-            valid,
-            y_cal,
-            y_train_all,
-            y_valid,
-            p_side_train_all,
-            p_side_valid,
-            config,
-            epsilon,
-            tolerance,
-            min_accepted_coverage,
-            True,
-        ),
-    ]
+    variant_results: list[dict[str, Any]] = []
+    if variant_compare_enabled:
+        if mlp_base is None or catboost_base is None:
+            raise RuntimeError("variant_comparison.enabled requires both MLP and CatBoost base predictions")
+        variant_results = [
+            evaluate_non_normalized_variant(
+                "mlp_logcosh_non_normalized",
+                mlp_base,
+                train_all,
+                calibration,
+                valid,
+                y_cal,
+                y_train_all,
+                y_valid,
+                p_side_train_all,
+                p_side_valid,
+                config,
+                epsilon,
+                tolerance,
+                min_accepted_coverage,
+                False,
+            ),
+            evaluate_non_normalized_variant(
+                "catboost_logcosh_non_normalized",
+                catboost_base,
+                train_all,
+                calibration,
+                valid,
+                y_cal,
+                y_train_all,
+                y_valid,
+                p_side_train_all,
+                p_side_valid,
+                config,
+                epsilon,
+                tolerance,
+                min_accepted_coverage,
+                False,
+            ),
+            evaluate_non_normalized_variant(
+                "catboost_logcosh_p_side_lt_0_80",
+                catboost_base,
+                train_all,
+                calibration,
+                valid,
+                y_cal,
+                y_train_all,
+                y_valid,
+                p_side_train_all,
+                p_side_valid,
+                config,
+                epsilon,
+                tolerance,
+                min_accepted_coverage,
+                True,
+            ),
+        ]
 
     non_normalized_margin_model = fit_local_non_normalized_margins(calibration, y_cal, mu_cal, config)
     non_norm_train_margins, non_norm_train_fallback = apply_local_non_normalized_margins(
@@ -1159,35 +1175,44 @@ def main() -> None:
 
     primary_method = str(config.get("objective", {}).get("primary_method", "normalized_conformal"))
     primary_variant_name = str(config.get("objective", {}).get("primary_variant", "best_valid"))
-    valid_variants = [
-        v
-        for v in variant_results
-        if v["validation_metrics"]["accepted_count"] > 0
-        and v["validation_metrics"]["accepted_coverage"] >= min_accepted_coverage
-        and v["validation_metrics"]["side_violation_rate"] == 0.0
-        and math.isfinite(v["validation_metrics"]["covered_mean_gap"])
-    ]
-    if primary_variant_name == "best_valid":
-        selected_variant = min(
-            valid_variants,
-            key=lambda v: (
-                v["validation_metrics"]["covered_mean_gap"],
-                v["validation_metrics"]["covered_q90_gap"],
-                -v["validation_metrics"]["accepted_rate"],
-            ),
-        )
-    else:
-        matches = [v for v in variant_results if v["name"] == primary_variant_name]
-        if not matches:
-            raise ValueError(f"Unknown objective.primary_variant: {primary_variant_name}")
-        selected_variant = matches[0]
+    selected_variant: dict[str, Any] | None = None
+    if variant_compare_enabled:
+        valid_variants = [
+            v
+            for v in variant_results
+            if v["validation_metrics"]["accepted_count"] > 0
+            and v["validation_metrics"]["accepted_coverage"] >= min_accepted_coverage
+            and v["validation_metrics"]["side_violation_rate"] == 0.0
+            and math.isfinite(v["validation_metrics"]["covered_mean_gap"])
+        ]
+        if primary_variant_name == "best_valid":
+            selected_variant = min(
+                valid_variants,
+                key=lambda v: (
+                    v["validation_metrics"]["covered_mean_gap"],
+                    v["validation_metrics"]["covered_q90_gap"],
+                    -v["validation_metrics"]["accepted_rate"],
+                ),
+            )
+        else:
+            matches = [v for v in variant_results if v["name"] == primary_variant_name]
+            if not matches:
+                raise ValueError(f"Unknown objective.primary_variant: {primary_variant_name}")
+            selected_variant = matches[0]
 
     if primary_method == "non_normalized_local_conformal":
-        final_train_prediction = selected_variant["train_prediction"]
-        final_validation_prediction = selected_variant["validation_prediction"]
-        final_train_metrics = selected_variant["train_metrics"]
-        final_validation_metrics = selected_variant["validation_metrics"]
-        final_selected_threshold = float(selected_variant["margin_model"]["selected_margin_threshold"])
+        if selected_variant is not None:
+            final_train_prediction = selected_variant["train_prediction"]
+            final_validation_prediction = selected_variant["validation_prediction"]
+            final_train_metrics = selected_variant["train_metrics"]
+            final_validation_metrics = selected_variant["validation_metrics"]
+            final_selected_threshold = float(selected_variant["margin_model"]["selected_margin_threshold"])
+        else:
+            final_train_prediction = non_norm_train_prediction
+            final_validation_prediction = non_norm_validation_prediction
+            final_train_metrics = non_norm_train_metrics
+            final_validation_metrics = non_norm_validation_metrics
+            final_selected_threshold = non_norm_selected_threshold
     elif primary_method == "normalized_conformal":
         final_train_prediction = train_prediction
         final_validation_prediction = validation_prediction
@@ -1205,13 +1230,12 @@ def main() -> None:
     shutil.copy2(resolve_path(args.config), config_snapshot_path)
 
     with (reports_dir / "epoch_metrics.csv").open("w", newline="", encoding="utf-8") as f:
-        rows = [{f"base_{configured_base.model_type}_{k}": v for k, v in row.items()} for row in base_rows] + [
-            {f"variant_mlp_{k}": v for k, v in row.items()} for row in mlp_base.epoch_rows
-        ] + [
-            {f"variant_catboost_{k}": v for k, v in row.items()} for row in catboost_base.epoch_rows
-        ] + [
-            {f"scale_{k}": v for k, v in row.items()} for row in scale_rows
-        ]
+        rows = [{f"base_{configured_base.model_type}_{k}": v for k, v in row.items()} for row in base_rows]
+        if mlp_base is not None:
+            rows.extend({f"variant_mlp_{k}": v for k, v in row.items()} for row in mlp_base.epoch_rows)
+        if catboost_base is not None:
+            rows.extend({f"variant_catboost_{k}": v for k, v in row.items()} for row in catboost_base.epoch_rows)
+        rows.extend({f"scale_{k}": v for k, v in row.items()} for row in scale_rows)
         fieldnames = sorted({k for row in rows for k in row})
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -1219,7 +1243,11 @@ def main() -> None:
 
     checkpoint_path = models_dir / "local_min_upper_bound.pt"
     catboost_model_path = models_dir / "catboost_logcosh_base.cbm"
-    catboost_base.model.save_model(str(catboost_model_path))
+    if catboost_base is not None:
+        catboost_base.model.save_model(str(catboost_model_path))
+        catboost_model_artifact = str(catboost_model_path)
+    else:
+        catboost_model_artifact = None
     configured_base_state = configured_base.model.state_dict() if isinstance(configured_base.model, nn.Module) else None
     torch.save(
         {
@@ -1229,7 +1257,7 @@ def main() -> None:
             "model": config["model"],
             "base_model": config.get("base_model", {}),
             "configured_base_model_type": configured_base.model_type,
-            "catboost_model_path": str(catboost_model_path),
+            "catboost_model_path": catboost_model_artifact,
             "preprocessor": preprocessor.to_dict(),
             "feature_columns": columns,
             "categorical_columns": cat_cols,
@@ -1242,10 +1270,10 @@ def main() -> None:
                 "coverage_quantile": float(config["calibration"]["coverage_quantile"]),
             },
             "non_normalized_conformal": {
-                "margin_model": selected_variant["margin_model"],
+                "margin_model": selected_variant["margin_model"] if selected_variant is not None else non_normalized_margin_model,
                 "margin_threshold": final_selected_threshold,
             },
-            "selected_variant": selected_variant["name"],
+            "selected_variant": selected_variant["name"] if selected_variant is not None else None,
         },
         checkpoint_path,
     )
@@ -1281,12 +1309,18 @@ def main() -> None:
         "model_family": f"local_min_upper_bound_two_stage_mlp_{primary_method}",
         "objective": config["objective"],
         "primary_method": primary_method,
-        "selected_variant": selected_variant["name"],
+        "selected_variant": selected_variant["name"] if selected_variant is not None else None,
         "base_model": config.get("base_model", {}),
         "acceptance_filter": {
             **config.get("acceptance_filter", {}),
-            "selected_variant_validation": selected_variant["acceptance_filter"]["validation"],
-            "selected_variant_max_accepted_p_side": selected_variant["acceptance_filter"]["max_accepted_p_side"],
+            "selected_variant_validation": (
+                selected_variant["acceptance_filter"]["validation"]
+                if selected_variant is not None
+                else acceptance_filter_metrics(p_side_valid, valid_eligible_config)
+            ),
+            "selected_variant_max_accepted_p_side": (
+                selected_variant["acceptance_filter"]["max_accepted_p_side"] if selected_variant is not None else None
+            ),
         },
         "variant_comparison": [variant_report_row(v) for v in variant_results],
         "calibration": {
@@ -1321,17 +1355,35 @@ def main() -> None:
         },
         "non_normalized_local_conformal_baseline": {
             "description": "margin = quantile(max(y_raw - base_pred_raw, 0) | local group) with p_side/global fallback",
-            "selected_variant": selected_variant["name"],
-            "coverage_quantile": selected_variant["margin_model"]["coverage_quantile"],
-            "min_group_count": selected_variant["margin_model"]["min_group_count"],
-            "global_margin": selected_variant["margin_model"]["global_margin"],
+            "selected_variant": selected_variant["name"] if selected_variant is not None else None,
+            "coverage_quantile": (
+                selected_variant["margin_model"]["coverage_quantile"]
+                if selected_variant is not None
+                else non_normalized_margin_model["coverage_quantile"]
+            ),
+            "min_group_count": (
+                selected_variant["margin_model"]["min_group_count"]
+                if selected_variant is not None
+                else non_normalized_margin_model["min_group_count"]
+            ),
+            "global_margin": (
+                selected_variant["margin_model"]["global_margin"]
+                if selected_variant is not None
+                else non_normalized_margin_model["global_margin"]
+            ),
             "selected_margin_threshold": final_selected_threshold,
-            "train_metrics": selected_variant["train_metrics"],
-            "validation_metrics": selected_variant["validation_metrics"],
+            "train_metrics": selected_variant["train_metrics"] if selected_variant is not None else non_norm_train_metrics,
+            "validation_metrics": (
+                selected_variant["validation_metrics"] if selected_variant is not None else non_norm_validation_metrics
+            ),
             "train_diagnostics": train_diagnostics,
             "validation_diagnostics": validation_diagnostics,
-            "train_fallback_counts": selected_variant["train_fallback_counts"],
-            "validation_fallback_counts": selected_variant["validation_fallback_counts"],
+            "train_fallback_counts": (
+                selected_variant["train_fallback_counts"] if selected_variant is not None else non_norm_train_fallback
+            ),
+            "validation_fallback_counts": (
+                selected_variant["validation_fallback_counts"] if selected_variant is not None else non_norm_valid_fallback
+            ),
         },
         "sample_filter": {
             "train": train_filter,
@@ -1358,7 +1410,7 @@ def main() -> None:
         },
         "artifacts": {
             "checkpoint": str(checkpoint_path),
-            "catboost_model": str(catboost_model_path),
+            "catboost_model": catboost_model_artifact,
             "epoch_metrics": str(reports_dir / "epoch_metrics.csv"),
             "config_snapshot": str(config_snapshot_path),
             "train_predictions": str(train_pred_path),
@@ -1390,7 +1442,7 @@ def main() -> None:
         json.dumps(
             {
                 "primary_method": primary_method,
-                "selected_variant": selected_variant["name"],
+                "selected_variant": selected_variant["name"] if selected_variant is not None else None,
                 "train_metrics": final_train_metrics,
                 "validation_metrics": final_validation_metrics,
             },
