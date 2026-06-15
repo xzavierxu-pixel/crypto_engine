@@ -19,6 +19,11 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
+try:
+    from catboost import CatBoostRegressor
+except Exception:  # pragma: no cover - only exercised when optional dependency is absent.
+    CatBoostRegressor = None
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 PRICE_ESTIMATOR_DIR = SCRIPT_DIR.parent
 ROOT = PRICE_ESTIMATOR_DIR.parent
@@ -77,6 +82,39 @@ class ConformalPrediction:
     p_raw: np.ndarray
     p_pred: np.ndarray
     accepted: np.ndarray
+    eligible: np.ndarray
+
+
+@dataclass(frozen=True)
+class BasePredictions:
+    model_type: str
+    model: Any
+    epoch_rows: list[dict[str, float]]
+    mu_fit: np.ndarray
+    mu_cal: np.ndarray
+    mu_train_all: np.ndarray
+    mu_valid: np.ndarray
+
+
+def eligibility_from_config(p_side: np.ndarray, config: dict[str, Any]) -> np.ndarray:
+    filt = config.get("acceptance_filter", {})
+    if not bool(filt.get("enabled", False)):
+        return np.ones(len(p_side), dtype=bool)
+    return np.asarray(p_side, dtype=float) < float(filt["max_p_side"])
+
+
+def acceptance_filter_metrics(p_side: np.ndarray, eligible: np.ndarray) -> dict[str, float]:
+    eligible = np.asarray(eligible, dtype=bool)
+    removed = ~eligible
+    return {
+        "enabled": float(np.any(removed)),
+        "sample_count": float(len(eligible)),
+        "removed_sample_count": float(removed.sum()),
+        "removed_sample_rate": float(removed.mean()) if len(removed) else float("nan"),
+        "eligible_sample_count": float(eligible.sum()),
+        "eligible_sample_rate": float(eligible.mean()) if len(eligible) else float("nan"),
+        "max_removed_p_side": float(np.max(np.asarray(p_side, dtype=float)[removed])) if removed.any() else float("nan"),
+    }
 
 
 def prediction_from_margin(
@@ -84,12 +122,14 @@ def prediction_from_margin(
     margin: np.ndarray,
     p_side: np.ndarray,
     margin_threshold: float,
+    eligible: np.ndarray | None = None,
 ) -> ConformalPrediction:
     required_margin = np.asarray(margin, dtype=float)
     p_raw = np.asarray(mu, dtype=float) + required_margin
     lower_bound = np.asarray(p_side, dtype=float) - 0.5
     p_pred = np.maximum(p_raw, lower_bound)
-    accepted = (p_raw <= np.asarray(p_side, dtype=float)) & (required_margin <= float(margin_threshold))
+    eligible_mask = np.ones(len(p_raw), dtype=bool) if eligible is None else np.asarray(eligible, dtype=bool)
+    accepted = eligible_mask & (p_raw <= np.asarray(p_side, dtype=float)) & (required_margin <= float(margin_threshold))
     p_pred = np.where(accepted, p_pred, np.nan)
     return ConformalPrediction(
         mu=np.asarray(mu),
@@ -98,6 +138,7 @@ def prediction_from_margin(
         p_raw=p_raw,
         p_pred=p_pred,
         accepted=accepted,
+        eligible=eligible_mask,
     )
 
 
@@ -183,15 +224,25 @@ def local_min_upper_bound_predict(
     q: float,
     sigma_floor: float,
     margin_threshold: float,
+    eligible: np.ndarray | None = None,
 ) -> ConformalPrediction:
     sigma_used = np.maximum(np.asarray(sigma, dtype=float), sigma_floor)
     required_margin = float(q) * sigma_used
     p_raw = np.asarray(mu, dtype=float) + required_margin
     lower_bound = np.asarray(p_side, dtype=float) - 0.5
     p_pred = np.maximum(p_raw, lower_bound)
-    accepted = (p_raw <= np.asarray(p_side, dtype=float)) & (required_margin <= float(margin_threshold))
+    eligible_mask = np.ones(len(p_raw), dtype=bool) if eligible is None else np.asarray(eligible, dtype=bool)
+    accepted = eligible_mask & (p_raw <= np.asarray(p_side, dtype=float)) & (required_margin <= float(margin_threshold))
     p_pred = np.where(accepted, p_pred, np.nan)
-    return ConformalPrediction(mu=np.asarray(mu), sigma=sigma_used, required_margin=required_margin, p_raw=p_raw, p_pred=p_pred, accepted=accepted)
+    return ConformalPrediction(
+        mu=np.asarray(mu),
+        sigma=sigma_used,
+        required_margin=required_margin,
+        p_raw=p_raw,
+        p_pred=p_pred,
+        accepted=accepted,
+        eligible=eligible_mask,
+    )
 
 
 def local_min_upper_bound_metrics(
@@ -204,10 +255,16 @@ def local_min_upper_bound_metrics(
     y = np.asarray(y, dtype=float)
     p_side = np.asarray(p_side, dtype=float)
     accepted = prediction.accepted
+    eligible = prediction.eligible
     accepted_count = int(accepted.sum())
+    removed_count = int((~eligible).sum())
     if accepted_count == 0:
         return {
             "sample_count": float(len(y)),
+            "removed_sample_count": float(removed_count),
+            "removed_sample_rate": float(removed_count / len(y)) if len(y) else float("nan"),
+            "eligible_sample_count": float(eligible.sum()),
+            "eligible_sample_rate": float(eligible.mean()) if len(eligible) else float("nan"),
             "accepted_count": 0.0,
             "accepted_rate": 0.0,
             "accepted_coverage": float("nan"),
@@ -236,6 +293,10 @@ def local_min_upper_bound_metrics(
     score = covered_mean_gap + 0.5 * q90 + 2.0 * max(0.0, 0.70 - accepted_coverage) + min_accepted_rate_penalty
     return {
         "sample_count": float(len(y)),
+        "removed_sample_count": float(removed_count),
+        "removed_sample_rate": float(removed_count / len(y)) if len(y) else float("nan"),
+        "eligible_sample_count": float(eligible.sum()),
+        "eligible_sample_rate": float(eligible.mean()) if len(eligible) else float("nan"),
         "accepted_count": float(accepted_count),
         "accepted_rate": accepted_rate,
         "accepted_coverage": accepted_coverage,
@@ -402,10 +463,11 @@ def select_margin_array_threshold(
     tolerance: float,
     thresholds: list[float],
     min_accepted_coverage: float,
+    eligible: np.ndarray | None = None,
 ) -> tuple[float, dict[str, float], ConformalPrediction]:
     best: tuple[float, dict[str, float], ConformalPrediction] | None = None
     for threshold in sorted(set(float(v) for v in thresholds)):
-        pred = prediction_from_margin(mu, margins, p_side, threshold)
+        pred = prediction_from_margin(mu, margins, p_side, threshold, eligible)
         metrics = local_min_upper_bound_metrics(y, p_side, pred, epsilon, tolerance)
         valid = (
             metrics["accepted_count"] > 0
@@ -433,7 +495,7 @@ def select_margin_array_threshold(
             best = (threshold, metrics, pred)
     if best is None:
         fallback = float(max(thresholds)) if thresholds else float("inf")
-        pred = prediction_from_margin(mu, margins, p_side, fallback)
+        pred = prediction_from_margin(mu, margins, p_side, fallback, eligible)
         return fallback, local_min_upper_bound_metrics(y, p_side, pred, epsilon, tolerance), pred
     return best
 
@@ -449,10 +511,11 @@ def select_margin_threshold(
     tolerance: float,
     thresholds: list[float],
     min_accepted_coverage: float,
+    eligible: np.ndarray | None = None,
 ) -> tuple[float, dict[str, float], ConformalPrediction]:
     best: tuple[float, dict[str, float], ConformalPrediction] | None = None
     for threshold in sorted(set(float(v) for v in thresholds)):
-        pred = local_min_upper_bound_predict(mu, sigma, p_side, q, sigma_floor, threshold)
+        pred = local_min_upper_bound_predict(mu, sigma, p_side, q, sigma_floor, threshold, eligible)
         metrics = local_min_upper_bound_metrics(y, p_side, pred, epsilon, tolerance)
         valid = (
             metrics["accepted_count"] > 0
@@ -484,7 +547,7 @@ def select_margin_threshold(
             best = (threshold, metrics, pred)
     if best is None:
         fallback = float(max(thresholds)) if thresholds else float("inf")
-        pred = local_min_upper_bound_predict(mu, sigma, p_side, q, sigma_floor, fallback)
+        pred = local_min_upper_bound_predict(mu, sigma, p_side, q, sigma_floor, fallback, eligible)
         return fallback, local_min_upper_bound_metrics(y, p_side, pred, epsilon, tolerance), pred
     return best
 
@@ -547,6 +610,86 @@ def train_probability_model(
             losses.append(float(loss.detach().cpu()))
         rows.append({"epoch": float(epoch), "loss": float(np.mean(losses)) if losses else float("nan")})
     return rows
+
+
+def sigmoid_np(z: np.ndarray) -> np.ndarray:
+    return 1.0 / (1.0 + np.exp(-np.asarray(z, dtype=float)))
+
+
+def train_mlp_base_predictions(
+    x_fit: np.ndarray,
+    y_fit: np.ndarray,
+    x_cal: np.ndarray,
+    x_train_all: np.ndarray,
+    x_valid: np.ndarray,
+    model_kwargs: dict[str, Any],
+    config: dict[str, Any],
+    device: torch.device,
+) -> BasePredictions:
+    base_model = UpperBoundMLP(**model_kwargs).to(device)
+    rows = train_probability_model(
+        base_model,
+        x_fit,
+        y_fit,
+        config,
+        device,
+        int(config["training"]["base_epochs"]),
+        "sigmoid",
+    )
+    batch_size = int(config["training"]["batch_size"])
+    return BasePredictions(
+        model_type="mlp_logcosh",
+        model=base_model,
+        epoch_rows=rows,
+        mu_fit=sigmoid_np(predict_model(base_model, x_fit, device, batch_size)),
+        mu_cal=sigmoid_np(predict_model(base_model, x_cal, device, batch_size)),
+        mu_train_all=sigmoid_np(predict_model(base_model, x_train_all, device, batch_size)),
+        mu_valid=sigmoid_np(predict_model(base_model, x_valid, device, batch_size)),
+    )
+
+
+def train_catboost_base_predictions(
+    x_fit: np.ndarray,
+    y_fit: np.ndarray,
+    x_cal: np.ndarray,
+    y_cal: np.ndarray,
+    x_train_all: np.ndarray,
+    x_valid: np.ndarray,
+    config: dict[str, Any],
+) -> BasePredictions:
+    if CatBoostRegressor is None:
+        raise RuntimeError("catboost is required for base_model.type=catboost_logcosh")
+    params = dict(config.get("base_model", {}).get("catboost_logcosh", {}))
+    if not params:
+        params = dict(config.get("base_model", {}))
+        params.pop("type", None)
+    params.setdefault("loss_function", "LogCosh")
+    params.setdefault("eval_metric", "MAE")
+    params.setdefault("random_seed", int(config["training"]["random_seed"]))
+    params.setdefault("verbose", False)
+    params.setdefault("allow_writing_files", False)
+    model = CatBoostRegressor(**params)
+    model.fit(x_fit, y_fit, eval_set=(x_cal, y_cal), use_best_model=True, verbose=False)
+
+    def pred(x: np.ndarray) -> np.ndarray:
+        return np.clip(np.asarray(model.predict(x), dtype=float), 0.001, 0.999)
+
+    best_iteration = model.get_best_iteration()
+    rows = [
+        {
+            "epoch": float(best_iteration if best_iteration is not None else params.get("iterations", 0)),
+            "loss": float("nan"),
+        }
+    ]
+    return BasePredictions(
+        model_type="catboost_logcosh",
+        model=model,
+        epoch_rows=rows,
+        mu_fit=pred(x_fit),
+        mu_cal=pred(x_cal),
+        mu_train_all=pred(x_train_all),
+        mu_valid=pred(x_valid),
+    )
 
 
 def base_fit_metrics(y: np.ndarray, mu: np.ndarray) -> dict[str, float]:
@@ -686,6 +829,122 @@ def write_predictions(
     pred.to_parquet(path, index=False)
 
 
+def assert_accepted_p_side_below(
+    df: pd.DataFrame,
+    prediction: ConformalPrediction,
+    max_p_side: float | None,
+) -> float | None:
+    if max_p_side is None:
+        return None
+    accepted_df = df.loc[prediction.accepted]
+    if accepted_df.empty:
+        return None
+    max_accepted = float(pd.to_numeric(accepted_df["p_side"], errors="coerce").max())
+    assert max_accepted < float(max_p_side), f"accepted p_side max {max_accepted} is not < {max_p_side}"
+    return max_accepted
+
+
+def evaluate_non_normalized_variant(
+    name: str,
+    base: BasePredictions,
+    train_all: pd.DataFrame,
+    calibration: pd.DataFrame,
+    valid: pd.DataFrame,
+    y_cal: np.ndarray,
+    y_train_all: np.ndarray,
+    y_valid: np.ndarray,
+    p_side_train_all: np.ndarray,
+    p_side_valid: np.ndarray,
+    config: dict[str, Any],
+    epsilon: float,
+    tolerance: float,
+    min_accepted_coverage: float,
+    acceptance_filter_enabled: bool,
+) -> dict[str, Any]:
+    variant_config = dict(config)
+    variant_config["acceptance_filter"] = dict(config.get("acceptance_filter", {}))
+    variant_config["acceptance_filter"]["enabled"] = acceptance_filter_enabled
+    train_eligible = eligibility_from_config(p_side_train_all, variant_config)
+    valid_eligible = eligibility_from_config(p_side_valid, variant_config)
+    margin_model = fit_local_non_normalized_margins(calibration, y_cal, base.mu_cal, variant_config)
+    train_margins, train_fallback = apply_local_non_normalized_margins(train_all, margin_model, variant_config)
+    valid_margins, valid_fallback = apply_local_non_normalized_margins(valid, margin_model, variant_config)
+    thresholds = threshold_candidates(
+        valid_margins,
+        [float(v) for v in variant_config["threshold_search"]["margin_quantiles"]],
+    )
+    threshold, validation_metrics, validation_prediction = select_margin_array_threshold(
+        y_valid,
+        p_side_valid,
+        base.mu_valid,
+        valid_margins,
+        epsilon,
+        tolerance,
+        thresholds,
+        min_accepted_coverage,
+        valid_eligible,
+    )
+    train_prediction = prediction_from_margin(
+        base.mu_train_all,
+        train_margins,
+        p_side_train_all,
+        threshold,
+        train_eligible,
+    )
+    train_metrics = local_min_upper_bound_metrics(y_train_all, p_side_train_all, train_prediction, epsilon, tolerance)
+    max_p_side = (
+        float(variant_config["acceptance_filter"]["max_p_side"])
+        if bool(variant_config.get("acceptance_filter", {}).get("enabled", False))
+        else None
+    )
+    max_accepted_p_side = assert_accepted_p_side_below(valid, validation_prediction, max_p_side)
+    validation_base = base_fit_metrics(y_valid, base.mu_valid)
+    train_base = base_fit_metrics(y_train_all, base.mu_train_all)
+    return {
+        "name": name,
+        "base_model_type": base.model_type,
+        "acceptance_filter": {
+            **variant_config.get("acceptance_filter", {}),
+            "train": acceptance_filter_metrics(p_side_train_all, train_eligible),
+            "validation": acceptance_filter_metrics(p_side_valid, valid_eligible),
+            "max_accepted_p_side": max_accepted_p_side,
+        },
+        "margin_model": {
+            "coverage_quantile": margin_model["coverage_quantile"],
+            "min_group_count": margin_model["min_group_count"],
+            "global_margin": margin_model["global_margin"],
+            "selected_margin_threshold": threshold,
+        },
+        "train_metrics": train_metrics,
+        "validation_metrics": validation_metrics,
+        "base_fit_metrics": {
+            "train": train_base,
+            "calibration": base_fit_metrics(y_cal, base.mu_cal),
+            "validation": validation_base,
+            "train_validation_mae_gap": float(validation_base["mae"] - train_base["mae"]),
+            "train_validation_residual_q70_gap": float(validation_base["residual_q70"] - train_base["residual_q70"]),
+        },
+        "train_prediction": train_prediction,
+        "validation_prediction": validation_prediction,
+        "train_fallback_counts": train_fallback,
+        "validation_fallback_counts": valid_fallback,
+    }
+
+
+def variant_report_row(variant: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "name": variant["name"],
+        "base_model_type": variant["base_model_type"],
+        "acceptance_filter": variant["acceptance_filter"],
+        "margin_model": variant["margin_model"],
+        "train_metrics": variant["train_metrics"],
+        "validation_metrics": variant["validation_metrics"],
+        "base_fit_metrics": variant["base_fit_metrics"],
+        "train_fallback_counts": variant["train_fallback_counts"],
+        "validation_fallback_counts": variant["validation_fallback_counts"],
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="price_estimator/upper_bound_mlp/configs/local_min_upper_bound.yaml")
@@ -726,23 +985,37 @@ def main() -> None:
     y_valid = valid[target_col].to_numpy(dtype=np.float32)
     p_side_train_all = train_all["p_side"].to_numpy(dtype=np.float32)
     p_side_valid = valid["p_side"].to_numpy(dtype=np.float32)
+    train_eligible_config = eligibility_from_config(p_side_train_all, config)
+    valid_eligible_config = eligibility_from_config(p_side_valid, config)
 
     model_kwargs = {
         "input_dim": x_fit.shape[1],
         "hidden_dims": [int(v) for v in config["model"]["hidden_dims"]],
         "dropout": [float(v) for v in config["model"]["dropout"]],
     }
-    base_model = UpperBoundMLP(**model_kwargs).to(device)
-    base_rows = train_probability_model(
-        base_model,
+    mlp_base = train_mlp_base_predictions(
         x_fit,
         y_fit,
+        x_cal,
+        x_train_all,
+        x_valid,
+        model_kwargs,
         config,
         device,
-        int(config["training"]["base_epochs"]),
-        "sigmoid",
     )
-    mu_fit = 1.0 / (1.0 + np.exp(-predict_model(base_model, x_fit, device, int(config["training"]["batch_size"]))))
+    catboost_base = train_catboost_base_predictions(
+        x_fit,
+        y_fit,
+        x_cal,
+        y_cal,
+        x_train_all,
+        x_valid,
+        config,
+    )
+    configured_base_type = str(config.get("base_model", {}).get("type", "mlp_logcosh"))
+    configured_base = catboost_base if configured_base_type == "catboost_logcosh" else mlp_base
+    base_rows = configured_base.epoch_rows
+    mu_fit = configured_base.mu_fit
     abs_residual_fit = np.abs(y_fit - mu_fit).astype(np.float32)
 
     scale_model = UpperBoundMLP(**model_kwargs).to(device)
@@ -757,16 +1030,70 @@ def main() -> None:
     )
 
     batch_size = int(config["training"]["batch_size"])
-    mu_cal = 1.0 / (1.0 + np.exp(-predict_model(base_model, x_cal, device, batch_size)))
+    mu_cal = configured_base.mu_cal
     sigma_cal = positive_scale_from_logits(predict_model(scale_model, x_cal, device, batch_size), sigma_floor)
     scores = (y_cal - mu_cal) / sigma_cal
     q = float(np.quantile(scores, float(config["calibration"]["coverage_quantile"])))
     q = max(q, float(config["calibration"].get("q_min", 0.0)))
 
-    mu_train_all = 1.0 / (1.0 + np.exp(-predict_model(base_model, x_train_all, device, batch_size)))
+    mu_train_all = configured_base.mu_train_all
     sigma_train_all = positive_scale_from_logits(predict_model(scale_model, x_train_all, device, batch_size), sigma_floor)
-    mu_valid = 1.0 / (1.0 + np.exp(-predict_model(base_model, x_valid, device, batch_size)))
+    mu_valid = configured_base.mu_valid
     sigma_valid = positive_scale_from_logits(predict_model(scale_model, x_valid, device, batch_size), sigma_floor)
+
+    variant_results = [
+        evaluate_non_normalized_variant(
+            "mlp_logcosh_non_normalized",
+            mlp_base,
+            train_all,
+            calibration,
+            valid,
+            y_cal,
+            y_train_all,
+            y_valid,
+            p_side_train_all,
+            p_side_valid,
+            config,
+            epsilon,
+            tolerance,
+            min_accepted_coverage,
+            False,
+        ),
+        evaluate_non_normalized_variant(
+            "catboost_logcosh_non_normalized",
+            catboost_base,
+            train_all,
+            calibration,
+            valid,
+            y_cal,
+            y_train_all,
+            y_valid,
+            p_side_train_all,
+            p_side_valid,
+            config,
+            epsilon,
+            tolerance,
+            min_accepted_coverage,
+            False,
+        ),
+        evaluate_non_normalized_variant(
+            "catboost_logcosh_p_side_lt_0_80",
+            catboost_base,
+            train_all,
+            calibration,
+            valid,
+            y_cal,
+            y_train_all,
+            y_valid,
+            p_side_train_all,
+            p_side_valid,
+            config,
+            epsilon,
+            tolerance,
+            min_accepted_coverage,
+            True,
+        ),
+    ]
 
     non_normalized_margin_model = fit_local_non_normalized_margins(calibration, y_cal, mu_cal, config)
     non_norm_train_margins, non_norm_train_fallback = apply_local_non_normalized_margins(
@@ -788,12 +1115,14 @@ def main() -> None:
         tolerance,
         non_norm_candidate_thresholds,
         min_accepted_coverage,
+        valid_eligible_config,
     )
     non_norm_train_prediction = prediction_from_margin(
         mu_train_all,
         non_norm_train_margins,
         p_side_train_all,
         non_norm_selected_threshold,
+        train_eligible_config,
     )
     non_norm_train_metrics = local_min_upper_bound_metrics(
         y_train_all, p_side_train_all, non_norm_train_prediction, epsilon, tolerance
@@ -815,6 +1144,7 @@ def main() -> None:
         tolerance,
         candidate_thresholds,
         min_accepted_coverage,
+        valid_eligible_config,
     )
     train_prediction = local_min_upper_bound_predict(
         mu_train_all,
@@ -823,16 +1153,41 @@ def main() -> None:
         q,
         sigma_floor,
         selected_threshold,
+        train_eligible_config,
     )
     train_metrics = local_min_upper_bound_metrics(y_train_all, p_side_train_all, train_prediction, epsilon, tolerance)
 
     primary_method = str(config.get("objective", {}).get("primary_method", "normalized_conformal"))
+    primary_variant_name = str(config.get("objective", {}).get("primary_variant", "best_valid"))
+    valid_variants = [
+        v
+        for v in variant_results
+        if v["validation_metrics"]["accepted_count"] > 0
+        and v["validation_metrics"]["accepted_coverage"] >= min_accepted_coverage
+        and v["validation_metrics"]["side_violation_rate"] == 0.0
+        and math.isfinite(v["validation_metrics"]["covered_mean_gap"])
+    ]
+    if primary_variant_name == "best_valid":
+        selected_variant = min(
+            valid_variants,
+            key=lambda v: (
+                v["validation_metrics"]["covered_mean_gap"],
+                v["validation_metrics"]["covered_q90_gap"],
+                -v["validation_metrics"]["accepted_rate"],
+            ),
+        )
+    else:
+        matches = [v for v in variant_results if v["name"] == primary_variant_name]
+        if not matches:
+            raise ValueError(f"Unknown objective.primary_variant: {primary_variant_name}")
+        selected_variant = matches[0]
+
     if primary_method == "non_normalized_local_conformal":
-        final_train_prediction = non_norm_train_prediction
-        final_validation_prediction = non_norm_validation_prediction
-        final_train_metrics = non_norm_train_metrics
-        final_validation_metrics = non_norm_validation_metrics
-        final_selected_threshold = non_norm_selected_threshold
+        final_train_prediction = selected_variant["train_prediction"]
+        final_validation_prediction = selected_variant["validation_prediction"]
+        final_train_metrics = selected_variant["train_metrics"]
+        final_validation_metrics = selected_variant["validation_metrics"]
+        final_selected_threshold = float(selected_variant["margin_model"]["selected_margin_threshold"])
     elif primary_method == "normalized_conformal":
         final_train_prediction = train_prediction
         final_validation_prediction = validation_prediction
@@ -850,7 +1205,11 @@ def main() -> None:
     shutil.copy2(resolve_path(args.config), config_snapshot_path)
 
     with (reports_dir / "epoch_metrics.csv").open("w", newline="", encoding="utf-8") as f:
-        rows = [{f"base_{k}": v for k, v in row.items()} for row in base_rows] + [
+        rows = [{f"base_{configured_base.model_type}_{k}": v for k, v in row.items()} for row in base_rows] + [
+            {f"variant_mlp_{k}": v for k, v in row.items()} for row in mlp_base.epoch_rows
+        ] + [
+            {f"variant_catboost_{k}": v for k, v in row.items()} for row in catboost_base.epoch_rows
+        ] + [
             {f"scale_{k}": v for k, v in row.items()} for row in scale_rows
         ]
         fieldnames = sorted({k for row in rows for k in row})
@@ -859,12 +1218,18 @@ def main() -> None:
         writer.writerows(rows)
 
     checkpoint_path = models_dir / "local_min_upper_bound.pt"
+    catboost_model_path = models_dir / "catboost_logcosh_base.cbm"
+    catboost_base.model.save_model(str(catboost_model_path))
+    configured_base_state = configured_base.model.state_dict() if isinstance(configured_base.model, nn.Module) else None
     torch.save(
         {
-            "base_state_dict": base_model.state_dict(),
+            "base_state_dict": configured_base_state,
             "scale_state_dict": scale_model.state_dict(),
             "input_dim": x_fit.shape[1],
             "model": config["model"],
+            "base_model": config.get("base_model", {}),
+            "configured_base_model_type": configured_base.model_type,
+            "catboost_model_path": str(catboost_model_path),
             "preprocessor": preprocessor.to_dict(),
             "feature_columns": columns,
             "categorical_columns": cat_cols,
@@ -877,9 +1242,10 @@ def main() -> None:
                 "coverage_quantile": float(config["calibration"]["coverage_quantile"]),
             },
             "non_normalized_conformal": {
-                "margin_model": non_normalized_margin_model,
-                "margin_threshold": non_norm_selected_threshold,
+                "margin_model": selected_variant["margin_model"],
+                "margin_threshold": final_selected_threshold,
             },
+            "selected_variant": selected_variant["name"],
         },
         checkpoint_path,
     )
@@ -915,6 +1281,14 @@ def main() -> None:
         "model_family": f"local_min_upper_bound_two_stage_mlp_{primary_method}",
         "objective": config["objective"],
         "primary_method": primary_method,
+        "selected_variant": selected_variant["name"],
+        "base_model": config.get("base_model", {}),
+        "acceptance_filter": {
+            **config.get("acceptance_filter", {}),
+            "selected_variant_validation": selected_variant["acceptance_filter"]["validation"],
+            "selected_variant_max_accepted_p_side": selected_variant["acceptance_filter"]["max_accepted_p_side"],
+        },
+        "variant_comparison": [variant_report_row(v) for v in variant_results],
         "calibration": {
             "source": config["calibration"]["source"],
             "fraction": float(config["calibration"]["fraction"]),
@@ -933,6 +1307,7 @@ def main() -> None:
             "fit": base_fit_metrics(y_fit, mu_fit),
             "calibration": base_fit_metrics(y_cal, mu_cal),
             "validation": base_fit_metrics(y_valid, mu_valid),
+            "train_validation_mae_gap": float(base_fit_metrics(y_valid, mu_valid)["mae"] - base_fit_metrics(y_train_all, mu_train_all)["mae"]),
         },
         "probability_space_checks": {
             "target_column": target_col,
@@ -946,16 +1321,17 @@ def main() -> None:
         },
         "non_normalized_local_conformal_baseline": {
             "description": "margin = quantile(max(y_raw - base_pred_raw, 0) | local group) with p_side/global fallback",
-            "coverage_quantile": non_normalized_margin_model["coverage_quantile"],
-            "min_group_count": non_normalized_margin_model["min_group_count"],
-            "global_margin": non_normalized_margin_model["global_margin"],
-            "selected_margin_threshold": non_norm_selected_threshold,
-            "train_metrics": non_norm_train_metrics,
-            "validation_metrics": non_norm_validation_metrics,
-            "train_diagnostics": non_norm_train_diagnostics,
-            "validation_diagnostics": non_norm_validation_diagnostics,
-            "train_fallback_counts": non_norm_train_fallback,
-            "validation_fallback_counts": non_norm_valid_fallback,
+            "selected_variant": selected_variant["name"],
+            "coverage_quantile": selected_variant["margin_model"]["coverage_quantile"],
+            "min_group_count": selected_variant["margin_model"]["min_group_count"],
+            "global_margin": selected_variant["margin_model"]["global_margin"],
+            "selected_margin_threshold": final_selected_threshold,
+            "train_metrics": selected_variant["train_metrics"],
+            "validation_metrics": selected_variant["validation_metrics"],
+            "train_diagnostics": train_diagnostics,
+            "validation_diagnostics": validation_diagnostics,
+            "train_fallback_counts": selected_variant["train_fallback_counts"],
+            "validation_fallback_counts": selected_variant["validation_fallback_counts"],
         },
         "sample_filter": {
             "train": train_filter,
@@ -982,6 +1358,7 @@ def main() -> None:
         },
         "artifacts": {
             "checkpoint": str(checkpoint_path),
+            "catboost_model": str(catboost_model_path),
             "epoch_metrics": str(reports_dir / "epoch_metrics.csv"),
             "config_snapshot": str(config_snapshot_path),
             "train_predictions": str(train_pred_path),
@@ -1004,6 +1381,7 @@ def main() -> None:
             "covered_q90_gap": final_validation_metrics["covered_q90_gap"],
             "accepted_rate": final_validation_metrics["accepted_rate"],
             "selected_margin_threshold": final_selected_threshold,
+            "covered_mean_gap_below_current_0_144": final_validation_metrics["covered_mean_gap"] < 0.14422429533552106,
         },
     }
     report_path = reports_dir / "summary_metrics.json"
@@ -1012,6 +1390,7 @@ def main() -> None:
         json.dumps(
             {
                 "primary_method": primary_method,
+                "selected_variant": selected_variant["name"],
                 "train_metrics": final_train_metrics,
                 "validation_metrics": final_validation_metrics,
             },

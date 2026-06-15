@@ -40,6 +40,21 @@ def test_local_min_upper_bound_metrics_only_evaluates_accepted_samples() -> None
     assert metrics["covered_mean_gap"] > 0.0
 
 
+def test_acceptance_filter_rejects_high_p_side_before_ranking() -> None:
+    y = np.array([0.20, 0.20, 0.20], dtype=np.float32)
+    mu = np.array([0.20, 0.20, 0.20], dtype=np.float32)
+    margin = np.array([0.02, 0.02, 0.02], dtype=np.float32)
+    p_side = np.array([0.70, 0.80, 0.90], dtype=np.float32)
+    eligible = p_side < 0.80
+
+    pred = local_min_upper_bound_predict(mu, margin, p_side, q=1.0, sigma_floor=0.01, margin_threshold=0.03, eligible=eligible)
+    metrics = local_min_upper_bound_metrics(y, p_side, pred, epsilon=0.01, tolerance=1e-6)
+
+    assert pred.accepted.tolist() == [True, False, False]
+    assert metrics["removed_sample_count"] == 2.0
+    assert metrics["eligible_sample_count"] == 1.0
+
+
 def test_select_margin_threshold_enforces_coverage_constraint() -> None:
     y = np.array([0.22, 0.30, 0.40, 0.50], dtype=np.float32)
     mu = np.array([0.21, 0.31, 0.36, 0.46], dtype=np.float32)
