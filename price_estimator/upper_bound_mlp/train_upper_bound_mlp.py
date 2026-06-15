@@ -249,9 +249,10 @@ def upper_bound_metrics(
     z: np.ndarray,
     epsilon: float,
     tolerance: float,
-    config: dict[str, Any],
+    config: dict[str, Any] | None = None,
     df: pd.DataFrame | None = None,
 ) -> dict[str, float]:
+    config = config or {}
     p = predictions_from_logits(z, df, config)
     gap = p - y
     violation = np.maximum(y + epsilon - p, 0.0)
@@ -424,7 +425,7 @@ def grouped_diagnostics(
         if col in df.columns:
             values = df[col].astype("string")
             if col == "p_bin" and p_side_bin is not None and "p_side" in df.columns:
-                values = p_side_bin.where(df["p_side"].notna(), "missing")
+                values = values.where(values.notna(), p_side_bin.where(df["p_side"].notna(), "missing"))
             work[col] = values.fillna("missing").astype(str).to_numpy()
     if p_side_bin is not None:
         work["p_side_bin"] = p_side_bin

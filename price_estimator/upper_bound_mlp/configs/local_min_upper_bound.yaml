@@ -1,0 +1,134 @@
+experiment_id: 20260615_local_min_upper_bound
+
+paths:
+  deploy_artifact_dir: execution_engine/deploy/baseline
+  feature_manifest: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/artifact_manifest.json
+  train_dataset: price_estimator/data/price_estimator_train.parquet
+  validation_dataset: price_estimator/data/price_estimator_valid.parquet
+  models_dir: price_estimator/experiment/20260615_local_min_upper_bound/models
+  reports_dir: price_estimator/experiment/20260615_local_min_upper_bound/reports
+  predictions_train: price_estimator/experiment/20260615_local_min_upper_bound/reports/predictions_train.parquet
+  predictions_validation: price_estimator/experiment/20260615_local_min_upper_bound/reports/predictions_validation.parquet
+
+target:
+  column: target_raw
+  epsilon: 0.01
+  clip_min: 0.000001
+  clip_max: 0.999999
+  feasibility_tolerance: 0.000001
+
+objective:
+  min_accepted_coverage: 0.70
+  optimize_metric: covered_mean_gap
+  tie_breaker_metric: covered_q90_gap
+  min_accepted_rate: null
+
+calibration:
+  source: train_tail
+  fraction: 0.20
+  coverage_quantile: 0.90
+  sigma_floor: 0.01
+  q_min: 0.0
+
+threshold_search:
+  margin_quantiles:
+    - 0.05
+    - 0.10
+    - 0.15
+    - 0.20
+    - 0.25
+    - 0.30
+    - 0.35
+    - 0.40
+    - 0.45
+    - 0.50
+    - 0.55
+    - 0.60
+    - 0.65
+    - 0.70
+    - 0.75
+    - 0.80
+    - 0.85
+    - 0.90
+    - 0.95
+    - 0.975
+    - 0.99
+    - 1.0
+
+features:
+  source: split_artifact_feature_columns
+  added_columns:
+    - selected_side
+    - p_up
+    - p_side
+    - direction_confidence
+    - p_bin
+  categorical_columns:
+    - selected_side
+    - p_bin
+  forbidden_columns:
+    - target
+    - future_close
+    - abs_return
+    - signed_return
+    - stage1_target
+    - stage2_target
+    - lowest_trade_price_next4
+    - lowest_trade_time_next4
+    - time_to_lowest_trade_sec
+    - target_raw
+    - target_logit
+
+model:
+  hidden_dims:
+    - 256
+    - 128
+    - 64
+  dropout:
+    - 0.10
+    - 0.05
+    - 0.00
+
+training:
+  batch_size: 512
+  base_epochs: 120
+  scale_epochs: 80
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  random_seed: 42
+  num_workers: 0
+  device: auto
+  gradient_clip_norm: 5.0
+  log_cosh_scale: 0.05
+
+diagnostics:
+  group_columns:
+    - p_bin
+    - selected_side
+  p_side_bin_edges:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.55
+    - 0.6
+    - 0.65
+    - 0.7
+    - 0.8
+    - 0.9
+    - 1.0
+  price_bin_column: target_raw
+  price_bin_edges:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    - 0.7
+    - 0.8
+    - 0.9
+    - 1.0
