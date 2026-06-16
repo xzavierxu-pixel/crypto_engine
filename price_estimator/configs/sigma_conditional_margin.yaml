@@ -1,0 +1,150 @@
+experiment_id: 20260616_sigma_conditional_margin
+
+paths:
+  deploy_artifact_dir: execution_engine/deploy/baseline
+  feature_manifest: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/artifact_manifest.json
+  train_dataset: price_estimator/data/price_estimator_train.parquet
+  validation_dataset: price_estimator/data/price_estimator_valid.parquet
+  predictions_train: price_estimator/data/predictions_train.parquet
+  predictions_validation: price_estimator/data/predictions_validation.parquet
+  reports_dir: price_estimator/experiment/20260616_sigma_conditional_margin/reports
+  models_dir: price_estimator/experiment/20260616_sigma_conditional_margin/models
+  baseline_summary: price_estimator/experiment/20260614_capped_quantile_signal_filter/reports/summary_metrics.json
+  baseline_predictions_validation: price_estimator/experiment/20260614_capped_quantile_signal_filter/reports/predictions_validation.parquet
+
+second_level:
+  enabled: true
+  feature_store_path: artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT
+  required_features:
+    - sl_rv_30s
+    - sl_mirror_rv_10s
+    - sl_mirror_rv_30s
+    - sl_mirror_rv_60s
+    - sl_taker_imbalance_30s
+    - sl_ofi_30s
+    - sl_spread_bps
+    - sl_bid_ask_qty_imbalance
+    - sl_microprice_premium
+    - sl_depth_imbalance_5
+    - sl_weighted_depth_imbalance_5
+
+target:
+  epsilon: 0.01
+
+objective:
+  optimize_metric: covered_normalized_lowest_safe_gap_mean
+  min_coverage: 0.70
+
+sample_filter:
+  enabled: true
+  mode: accepted_signal
+  signal:
+    t_up: null
+    t_down: null
+
+features:
+  source: split_artifact_feature_columns
+  added_columns:
+    - selected_side
+    - p_up
+    - p_side
+    - direction_confidence
+    - p_bin
+  categorical_columns:
+    - selected_side
+    - p_bin
+    - p_side_bucket
+    - time_to_lowest_trade_sec_bucket
+    - market_time_bucket
+  forbidden_columns:
+    - target
+    - future_close
+    - abs_return
+    - signed_return
+    - stage1_target
+    - stage2_target
+    - lowest_trade_price_next4
+    - lowest_trade_time_next4
+    - time_to_lowest_trade_sec
+    - target_raw
+    - target_logit
+
+center:
+  quantile: 0.50
+  fallback_prediction_columns:
+    - pred_q50
+    - pred_q70
+  oof:
+    enabled: true
+    n_splits: 3
+    min_train_fraction: 0.45
+  params:
+    iterations: 500
+    learning_rate: 0.05
+    depth: 5
+    l2_leaf_reg: 10
+    random_seed: 42
+    od_type: Iter
+    od_wait: 60
+    verbose: 100
+
+sigma:
+  sigma_floor: 0.01
+  loss_function: Huber:delta=0.05
+  variants:
+    - name: sigma_v0
+      include_deploy_features: true
+      include_sigma_feature_set: false
+    - name: sigma_v1
+      include_deploy_features: true
+      include_sigma_feature_set: true
+  sigma_feature_set:
+    - sl_rv_30s
+    - sl_mirror_rv_10s
+    - sl_mirror_rv_30s
+    - sl_mirror_rv_60s
+    - sl_taker_imbalance_30s
+    - sl_ofi_30s
+    - sl_spread_bps
+    - sl_bid_ask_qty_imbalance
+    - sl_microprice_premium
+    - sl_depth_imbalance_5
+    - sl_weighted_depth_imbalance_5
+    - p_side
+    - direction_confidence
+    - time_to_lowest_trade_sec_bucket
+  params:
+    iterations: 700
+    learning_rate: 0.05
+    depth: 5
+    l2_leaf_reg: 12
+    random_seed: 43
+    od_type: Iter
+    od_wait: 60
+    verbose: 100
+
+calibration:
+  q_quantiles:
+    - 0.70
+    - 0.75
+    - 0.80
+    - 0.85
+    - 0.90
+    - 0.95
+  sigma_high_quantiles:
+    - 0.00
+    - 0.10
+    - 0.20
+    - 0.30
+    - 0.40
+    - 0.50
+    - 0.60
+    - 0.70
+    - 0.80
+    - 0.85
+    - 0.90
+    - 0.95
+    - 0.98
+    - 1.00
+  p_side_cap_mode: exact_p_side
+  tick_size: 0.01

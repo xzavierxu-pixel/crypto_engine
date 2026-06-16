@@ -1,0 +1,370 @@
+{
+  "baseline": {
+    "metrics": {
+      "coverage": 0.3142361111111111,
+      "coverage_feasible": 0.41492613346917984,
+      "covered_count": 1629,
+      "covered_normalized_lowest_safe_gap_mean": 0.37738649872149077,
+      "covered_normalized_lowest_safe_gap_median": 0.35366987408384903,
+      "feasible_count": 3926,
+      "legal_rate": 0.765625,
+      "max_possible_coverage": 0.7573302469135802,
+      "mean_lowest_safe": 0.42818383347951317,
+      "mean_pred": 0.4196942829192321,
+      "normalized_lowest_safe_gap": {
+        "mean": 0.37738649872149077,
+        "median": 0.35366987408384903,
+        "q25": 0.203131117132717,
+        "q75": 0.5275301837047591
+      },
+      "pred_to_lowest_safe_distance": {
+        "mean": 0.1556966476389677,
+        "median": 0.12515816235695768,
+        "q25": 0.05733123116399799,
+        "q75": 0.22600333445975346
+      },
+      "pred_to_p_side_distance": {
+        "mean": 0.229108093658974,
+        "median": 0.18401248870862386,
+        "q25": 0.14790359955306887,
+        "q75": 0.3390695538681465
+      },
+      "sample_count": 5184.0
+    },
+    "prediction_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\experiment\\20260614_capped_quantile_signal_filter\\reports\\predictions_validation.parquet",
+    "summary_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\experiment\\20260614_capped_quantile_signal_filter\\reports\\summary_metrics.json",
+    "summary_selected": {
+      "base_col": "pred_q70",
+      "cap_slack": 0.01,
+      "coverage": 0.40760030864197533,
+      "gap_p05": -0.21453983837288165,
+      "gap_p95": 0.3018556727912425,
+      "gap_p95_p05_range": 0.5163955111641241,
+      "margin": -0.08,
+      "max_violation": 0.4459929247049223,
+      "mean_gap": 0.0015104494397189664,
+      "median_gap": -0.030826652877309207,
+      "p95_violation": 0.22453983837288163,
+      "p99_violation": 0.2983462737456577,
+      "sample_count": 5184.0
+    }
+  },
+  "center": {
+    "center_quantile": 0.5,
+    "fallback_prediction_column": "pred_q70",
+    "feature_info": {
+      "categorical_columns": [
+        "selected_side",
+        "p_bin"
+      ],
+      "feature_count": 1021,
+      "missing_deploy_feature_count": 0,
+      "missing_deploy_features_sample": [],
+      "missing_sigma_features": [],
+      "requested_sigma_features": [],
+      "used_sigma_features": []
+    },
+    "model_target": "target_logit",
+    "oof_enabled": true,
+    "oof_missing_before_fallback": 4982,
+    "prediction_transform": "sigmoid",
+    "train_mu_non_null": 11073,
+    "validation_mu_non_null": 5184
+  },
+  "comparison": {
+    "after_coverage": 0.7000385802469136,
+    "after_covered_normalized_lowest_safe_gap_mean": 0.7528510515461688,
+    "baseline_coverage": 0.3142361111111111,
+    "baseline_covered_normalized_lowest_safe_gap_mean": 0.37738649872149077,
+    "improved_under_coverage_constraint": false
+  },
+  "config_path": "price_estimator\\configs\\sigma_conditional_margin.yaml",
+  "deploy_artifact_dir": "execution_engine/deploy/baseline",
+  "deploy_experiment_id": "20260611_catboost_calendar_coordinate_search",
+  "deploy_training_mode": "calendar_coordinate_offline_train",
+  "experiment_id": "20260616_sigma_conditional_margin",
+  "git_commit_at_training": "cc8cef42b4b6fd6239d5ea0fa09b161b9cbaf05e",
+  "objective": {
+    "min_coverage": 0.7,
+    "optimize_metric": "covered_normalized_lowest_safe_gap_mean"
+  },
+  "offline_validation_metric_source": "artifacts\\data_v2\\reports\\reversal_hybrid\\20260611_catboost_calendar_coordinate_search\\report.json",
+  "p_side_cap_mode": "exact_p_side",
+  "primary_metric": "covered_normalized_lowest_safe_gap_mean",
+  "sample_filter": {
+    "train": {
+      "down_signal_rows": 5089,
+      "enabled": true,
+      "input_rows": 15657,
+      "mode": "accepted_signal",
+      "output_rows": 11073,
+      "retention": 0.7072236060547997,
+      "t_down": 0.43142857142857144,
+      "t_up": 0.5792857142857143,
+      "up_signal_rows": 5984
+    },
+    "validation": {
+      "down_signal_rows": 2497,
+      "enabled": true,
+      "input_rows": 7432,
+      "mode": "accepted_signal",
+      "output_rows": 5184,
+      "retention": 0.697524219590958,
+      "t_down": 0.43142857142857144,
+      "t_up": 0.5792857142857143,
+      "up_signal_rows": 2687
+    }
+  },
+  "selected_variant": "sigma_v0",
+  "target": {
+    "epsilon": 0.01
+  },
+  "train_rows_for_sigma": 11073,
+  "validation_rows": 5184,
+  "variants": {
+    "sigma_v0": {
+      "candidate_metrics_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\experiment\\20260616_sigma_conditional_margin\\reports\\sigma_v0_candidate_metrics.csv",
+      "feature_info": {
+        "categorical_columns": [
+          "selected_side",
+          "p_bin"
+        ],
+        "feature_count": 1021,
+        "missing_deploy_feature_count": 0,
+        "missing_deploy_features_sample": [],
+        "missing_sigma_features": [],
+        "requested_sigma_features": [],
+        "used_sigma_features": []
+      },
+      "predictions_validation_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\experiment\\20260616_sigma_conditional_margin\\reports\\sigma_v0_predictions_validation.parquet",
+      "selected": {
+        "coverage": 0.7000385802469136,
+        "coverage_constraint_satisfied": true,
+        "coverage_feasible": 0.9243504839531329,
+        "covered_count": 3629.0,
+        "covered_normalized_lowest_safe_gap_mean": 0.7528510515461688,
+        "covered_normalized_lowest_safe_gap_median": 0.9045891309553709,
+        "fallback_coverage": 0.6753782668500687,
+        "fallback_rate": 0.1402391975308642,
+        "feasible_count": 3926.0,
+        "legal_rate": 1.0,
+        "max_possible_coverage": 0.7573302469135802,
+        "mean_lowest_safe": 0.42818383347951317,
+        "mean_pred": 0.530772941577626,
+        "non_fallback_coverage": 0.7040610275970384,
+        "non_fallback_norm_gap_mean": 0.7141798808352601,
+        "non_fallback_norm_gap_median": 0.7949524511550365,
+        "non_fallback_norm_gap_q25": 0.49547511219289725,
+        "non_fallback_norm_gap_q75": 1.0,
+        "normalized_lowest_safe_gap_mean": 0.7528510515461688,
+        "normalized_lowest_safe_gap_median": 0.9045891309553709,
+        "normalized_lowest_safe_gap_q25": 0.5463745738225381,
+        "normalized_lowest_safe_gap_q75": 1.0,
+        "pred_to_lowest_safe_distance_mean": 0.19032446125183686,
+        "pred_to_lowest_safe_distance_median": 0.15999999999999992,
+        "pred_to_lowest_safe_distance_q25": 0.07,
+        "pred_to_lowest_safe_distance_q75": 0.28,
+        "pred_to_p_side_distance_mean": 0.06204914902648967,
+        "pred_to_p_side_distance_median": 0.0,
+        "pred_to_p_side_distance_q25": 0.0,
+        "pred_to_p_side_distance_q75": 0.11297529676654884,
+        "q_quantile": 0.9,
+        "q_value": 1.2703857753846892,
+        "sample_count": 5184.0,
+        "selection_metric": 0.7528510515461688,
+        "sigma_high": 0.12363076837083073,
+        "sigma_high_quantile": 0.85
+      },
+      "selected_metrics": {
+        "coverage": 0.7000385802469136,
+        "coverage_feasible": 0.9243504839531329,
+        "covered_count": 3629,
+        "covered_normalized_lowest_safe_gap_mean": 0.7528510515461688,
+        "covered_normalized_lowest_safe_gap_median": 0.9045891309553709,
+        "fallback_coverage": 0.6753782668500687,
+        "fallback_rate": 0.1402391975308642,
+        "feasible_count": 3926,
+        "legal_rate": 1.0,
+        "max_possible_coverage": 0.7573302469135802,
+        "mean_lowest_safe": 0.42818383347951317,
+        "mean_pred": 0.530772941577626,
+        "non_fallback_coverage": 0.7040610275970384,
+        "non_fallback_norm_gap": {
+          "mean": 0.7141798808352601,
+          "median": 0.7949524511550365,
+          "q25": 0.49547511219289725,
+          "q75": 1.0
+        },
+        "normalized_lowest_safe_gap": {
+          "mean": 0.7528510515461688,
+          "median": 0.9045891309553709,
+          "q25": 0.5463745738225381,
+          "q75": 1.0
+        },
+        "pred_to_lowest_safe_distance": {
+          "mean": 0.19032446125183686,
+          "median": 0.15999999999999992,
+          "q25": 0.07,
+          "q75": 0.28
+        },
+        "pred_to_p_side_distance": {
+          "mean": 0.06204914902648967,
+          "median": 0.0,
+          "q25": 0.0,
+          "q75": 0.11297529676654884
+        },
+        "sample_count": 5184.0
+      },
+      "sigma_info": {
+        "loss_function": "Huber:delta=0.05",
+        "sigma_floor": 0.01,
+        "train_sigma_hat_mean": 0.10073728802919314,
+        "train_sigma_target_mean": 0.12728471349836332,
+        "validation_sigma_hat_mean": 0.10636542106124003
+      },
+      "variant": {
+        "include_deploy_features": true,
+        "include_sigma_feature_set": false,
+        "name": "sigma_v0"
+      }
+    },
+    "sigma_v1": {
+      "candidate_metrics_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\experiment\\20260616_sigma_conditional_margin\\reports\\sigma_v1_candidate_metrics.csv",
+      "feature_info": {
+        "categorical_columns": [
+          "selected_side",
+          "p_bin",
+          "time_to_lowest_trade_sec_bucket"
+        ],
+        "feature_count": 1027,
+        "missing_deploy_feature_count": 0,
+        "missing_deploy_features_sample": [],
+        "missing_sigma_features": [
+          "sl_bid_ask_qty_imbalance",
+          "sl_depth_imbalance_5",
+          "sl_microprice_premium",
+          "sl_ofi_30s",
+          "sl_spread_bps",
+          "sl_weighted_depth_imbalance_5"
+        ],
+        "requested_sigma_features": [
+          "sl_rv_30s",
+          "sl_mirror_rv_10s",
+          "sl_mirror_rv_30s",
+          "sl_mirror_rv_60s",
+          "sl_taker_imbalance_30s",
+          "sl_ofi_30s",
+          "sl_spread_bps",
+          "sl_bid_ask_qty_imbalance",
+          "sl_microprice_premium",
+          "sl_depth_imbalance_5",
+          "sl_weighted_depth_imbalance_5",
+          "p_side",
+          "direction_confidence",
+          "time_to_lowest_trade_sec_bucket"
+        ],
+        "used_sigma_features": [
+          "sl_rv_30s",
+          "sl_mirror_rv_10s",
+          "sl_mirror_rv_30s",
+          "sl_mirror_rv_60s",
+          "sl_taker_imbalance_30s",
+          "p_side",
+          "direction_confidence",
+          "time_to_lowest_trade_sec_bucket"
+        ]
+      },
+      "predictions_validation_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\experiment\\20260616_sigma_conditional_margin\\reports\\sigma_v1_predictions_validation.parquet",
+      "selected": {
+        "coverage": 0.7229938271604939,
+        "coverage_constraint_satisfied": true,
+        "coverage_feasible": 0.9546612328069282,
+        "covered_count": 3748.0,
+        "covered_normalized_lowest_safe_gap_mean": 0.8281069331265213,
+        "covered_normalized_lowest_safe_gap_median": 1.0,
+        "fallback_coverage": NaN,
+        "fallback_rate": 0.0,
+        "feasible_count": 3926.0,
+        "legal_rate": 1.0,
+        "max_possible_coverage": 0.7573302469135802,
+        "mean_lowest_safe": 0.42818383347951317,
+        "mean_pred": 0.551329783257454,
+        "non_fallback_coverage": 0.7229938271604939,
+        "non_fallback_norm_gap_mean": 0.8281069331265213,
+        "non_fallback_norm_gap_median": 1.0,
+        "non_fallback_norm_gap_q25": 0.7014359902240375,
+        "non_fallback_norm_gap_q75": 1.0,
+        "normalized_lowest_safe_gap_mean": 0.8281069331265213,
+        "normalized_lowest_safe_gap_median": 1.0,
+        "normalized_lowest_safe_gap_q25": 0.7014359902240375,
+        "normalized_lowest_safe_gap_q75": 1.0,
+        "pred_to_lowest_safe_distance_mean": 0.21037539697804103,
+        "pred_to_lowest_safe_distance_median": 0.16628732939510332,
+        "pred_to_lowest_safe_distance_q25": 0.07195583919341003,
+        "pred_to_lowest_safe_distance_q75": 0.3046701166305475,
+        "pred_to_p_side_distance_mean": 0.041492307346661816,
+        "pred_to_p_side_distance_median": 0.0,
+        "pred_to_p_side_distance_q25": 0.0,
+        "pred_to_p_side_distance_q75": 0.04740904194895845,
+        "q_quantile": 0.95,
+        "q_value": 1.848118781746441,
+        "sample_count": 5184.0,
+        "selection_metric": 0.8281069331265213,
+        "sigma_high": 0.3039484749725993,
+        "sigma_high_quantile": 1.0
+      },
+      "selected_metrics": {
+        "coverage": 0.7229938271604939,
+        "coverage_feasible": 0.9546612328069282,
+        "covered_count": 3748,
+        "covered_normalized_lowest_safe_gap_mean": 0.8281069331265213,
+        "covered_normalized_lowest_safe_gap_median": 1.0,
+        "fallback_coverage": NaN,
+        "fallback_rate": 0.0,
+        "feasible_count": 3926,
+        "legal_rate": 1.0,
+        "max_possible_coverage": 0.7573302469135802,
+        "mean_lowest_safe": 0.42818383347951317,
+        "mean_pred": 0.551329783257454,
+        "non_fallback_coverage": 0.7229938271604939,
+        "non_fallback_norm_gap": {
+          "mean": 0.8281069331265213,
+          "median": 1.0,
+          "q25": 0.7014359902240375,
+          "q75": 1.0
+        },
+        "normalized_lowest_safe_gap": {
+          "mean": 0.8281069331265213,
+          "median": 1.0,
+          "q25": 0.7014359902240375,
+          "q75": 1.0
+        },
+        "pred_to_lowest_safe_distance": {
+          "mean": 0.21037539697804103,
+          "median": 0.16628732939510332,
+          "q25": 0.07195583919341003,
+          "q75": 0.3046701166305475
+        },
+        "pred_to_p_side_distance": {
+          "mean": 0.041492307346661816,
+          "median": 0.0,
+          "q25": 0.0,
+          "q75": 0.04740904194895845
+        },
+        "sample_count": 5184.0
+      },
+      "sigma_info": {
+        "loss_function": "Huber:delta=0.05",
+        "sigma_floor": 0.01,
+        "train_sigma_hat_mean": 0.11454307151460974,
+        "train_sigma_target_mean": 0.12728471349836332,
+        "validation_sigma_hat_mean": 0.11620933685990147
+      },
+      "variant": {
+        "include_deploy_features": true,
+        "include_sigma_feature_set": true,
+        "name": "sigma_v1"
+      }
+    }
+  }
+}

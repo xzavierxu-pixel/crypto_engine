@@ -55,6 +55,22 @@ features:
     - lowest_trade_time_next4
     - time_to_lowest_trade_sec
 
+second_level:
+  enabled: true
+  feature_store_path: artifacts/data_v2/second_level/version=second_level_v2/market=BTCUSDT
+  required_features:
+    - sl_rv_30s
+    - sl_mirror_rv_10s
+    - sl_mirror_rv_30s
+    - sl_mirror_rv_60s
+    - sl_taker_imbalance_30s
+    - sl_ofi_30s
+    - sl_spread_bps
+    - sl_bid_ask_qty_imbalance
+    - sl_microprice_premium
+    - sl_depth_imbalance_5
+    - sl_weighted_depth_imbalance_5
+
 direction_model:
   p_up_source: deploy_predictions
   join_keys:

@@ -13,6 +13,48 @@
     "missing_p_up_rows": 0,
     "missing_target_rows": 8592,
     "output_rows": 15657,
+    "second_level": {
+      "duplicate_columns_dropped": [],
+      "enabled": true,
+      "feature_count": 789,
+      "feature_store_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\second_level\\version=second_level_v2\\market=BTCUSDT",
+      "pre_filter_feature_count": 789,
+      "requested_features": [
+        "sl_rv_30s",
+        "sl_mirror_rv_10s",
+        "sl_mirror_rv_30s",
+        "sl_mirror_rv_60s",
+        "sl_taker_imbalance_30s",
+        "sl_ofi_30s",
+        "sl_spread_bps",
+        "sl_bid_ask_qty_imbalance",
+        "sl_microprice_premium",
+        "sl_depth_imbalance_5",
+        "sl_weighted_depth_imbalance_5"
+      ],
+      "requested_missing": [
+        "sl_bid_ask_qty_imbalance",
+        "sl_depth_imbalance_5",
+        "sl_microprice_premium",
+        "sl_ofi_30s",
+        "sl_spread_bps",
+        "sl_weighted_depth_imbalance_5"
+      ],
+      "requested_missing_ratio": {
+        "sl_mirror_rv_10s": 0.0,
+        "sl_mirror_rv_30s": 0.0,
+        "sl_mirror_rv_60s": 0.0,
+        "sl_rv_30s": 0.0,
+        "sl_taker_imbalance_30s": 0.0
+      },
+      "requested_present": [
+        "sl_rv_30s",
+        "sl_mirror_rv_10s",
+        "sl_mirror_rv_30s",
+        "sl_mirror_rv_60s",
+        "sl_taker_imbalance_30s"
+      ]
+    },
     "selected_down_rows": 7633,
     "selected_up_rows": 8024,
     "split": "train",
@@ -24,6 +66,48 @@
     "missing_p_up_rows": 0,
     "missing_target_rows": 36,
     "output_rows": 7432,
+    "second_level": {
+      "duplicate_columns_dropped": [],
+      "enabled": true,
+      "feature_count": 789,
+      "feature_store_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\artifacts\\data_v2\\second_level\\version=second_level_v2\\market=BTCUSDT",
+      "pre_filter_feature_count": 789,
+      "requested_features": [
+        "sl_rv_30s",
+        "sl_mirror_rv_10s",
+        "sl_mirror_rv_30s",
+        "sl_mirror_rv_60s",
+        "sl_taker_imbalance_30s",
+        "sl_ofi_30s",
+        "sl_spread_bps",
+        "sl_bid_ask_qty_imbalance",
+        "sl_microprice_premium",
+        "sl_depth_imbalance_5",
+        "sl_weighted_depth_imbalance_5"
+      ],
+      "requested_missing": [
+        "sl_bid_ask_qty_imbalance",
+        "sl_depth_imbalance_5",
+        "sl_microprice_premium",
+        "sl_ofi_30s",
+        "sl_spread_bps",
+        "sl_weighted_depth_imbalance_5"
+      ],
+      "requested_missing_ratio": {
+        "sl_mirror_rv_10s": 0.0,
+        "sl_mirror_rv_30s": 0.0,
+        "sl_mirror_rv_60s": 0.0,
+        "sl_rv_30s": 0.0,
+        "sl_taker_imbalance_30s": 0.0
+      },
+      "requested_present": [
+        "sl_rv_30s",
+        "sl_mirror_rv_10s",
+        "sl_mirror_rv_30s",
+        "sl_mirror_rv_60s",
+        "sl_taker_imbalance_30s"
+      ]
+    },
     "selected_down_rows": 3597,
     "selected_up_rows": 3835,
     "split": "validation",
