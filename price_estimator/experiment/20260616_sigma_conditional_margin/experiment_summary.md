@@ -1,6 +1,6 @@
 # 20260616 Sigma Conditional Margin
 
-git_commit: d9259f780fde40b2b424fa7ed276f48cd2d8c2a4
+git_commit: 9023ee2d0956d3bf7eaa87930aeac892d0c7982d
 config_path: price_estimator/configs/sigma_conditional_margin.yaml
 report_path: price_estimator/experiment/20260616_sigma_conditional_margin/reports/summary_metrics.json
 primary_metric: covered_normalized_lowest_safe_gap.mean
