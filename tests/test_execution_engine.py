@@ -21,7 +21,7 @@ from execution_engine.scripts.evaluate_paper_results import (
 from execution_engine.scripts.run_paper_experiment import next_trigger_time
 from execution_engine.scripts import run_paper_experiment as paper_experiment_module
 from execution_engine.artifacts import PriceEstimatorArtifact
-from execution_engine.config import BinanceConfig, load_execution_config
+from execution_engine.config import BinanceConfig, OrderLegConfig, OrdersConfig, load_execution_config
 from execution_engine.feature_runtime import RuntimeInferenceEngine
 from execution_engine.order_plan import build_two_limit_order_plan
 from execution_engine.polymarket_v2 import PolymarketV2Adapter, normalize_gamma_market
@@ -53,11 +53,12 @@ def _signal(p_up: float = 0.60) -> Signal:
 def test_execution_config_example_loads() -> None:
     config = load_execution_config("execution_engine/config.example.yaml")
 
-    assert config.runtime.mode == "paper"
-    assert config.orders.enabled is False
+    assert config.runtime.mode == "live"
+    assert config.orders.enabled is True
     assert config.baseline.model_file is None
     assert config.baseline.calibrator_file is None
-    assert config.orders.first.price_cap == 0.75
+    assert config.orders.first.price_mode == "min_safe_gap_price_and_best_ask_offset"
+    assert config.orders.first.price_cap == 0.65
     assert config.orders.first.offset == 0.01
     assert config.orders.first.reference_multiplier == 1.0
     assert config.orders.first.size == 5.0
@@ -68,7 +69,13 @@ def test_execution_config_example_loads() -> None:
     assert config.orders.second.size == 5.0
     assert config.orders.min_price == 0.10
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
-    assert config.price_estimator.enabled is False
+    assert config.price_estimator.enabled is True
+    assert config.price_estimator.active_artifact == "safe_lowest_price_gap"
+    assert config.price_estimator.artifact_dir == "execution_engine/deploy/price_estimator_safe_lowest_price_gap"
+    assert config.price_estimator.model_file == "safe_lowest_price_gap.pt"
+    assert config.price_estimator.prediction_column == "p_pred"
+    assert config.price_estimator.yes_value == "UP"
+    assert config.price_estimator.no_value == "DOWN"
     assert config.price_estimator.best_ask_offset == 0.01
     assert config.price_estimator.fallback_price_mode == "limit_config_best_ask_offset"
     assert config.thresholds.t_up is None
@@ -79,7 +86,7 @@ def test_execution_config_example_loads() -> None:
     assert config.schedule.trigger_delay_seconds == 68
     assert config.schedule.prewarm_seconds_before_trigger == 45
     assert config.execution_edge.enabled is False
-    assert config.execution_edge.min_edge == 0.04
+    assert config.execution_edge.min_edge == 0.0
     assert config.execution_edge.max_buy_price == 0.8
     assert config.execution_edge.max_order_notional == 5.0
     assert config.execution_edge.size_to_max_notional is False
@@ -103,10 +110,66 @@ execution_edge:
         encoding="utf-8",
     )
 
+
+def _legacy_two_leg_orders_config() -> OrdersConfig:
+    return OrdersConfig(
+        enabled=True,
+        first=OrderLegConfig(
+            enabled=True,
+            price_mode="reference_multiplier_offset_and_cap",
+            price_cap=0.75,
+            offset=0.01,
+            reference_multiplier=1.0,
+            size=5.0,
+        ),
+        second=OrderLegConfig(
+            enabled=True,
+            price_cap=0.20,
+            offset=0.0,
+            reference_multiplier=0.25,
+            round_decimals=2,
+            size=5.0,
+        ),
+        min_price=0.10,
+        max_price=0.99,
+        tick_size_default=0.01,
+    )
+
     config = load_execution_config(config_path)
 
     assert config.orders.first.size == 12.5
     assert config.execution_edge.max_order_notional == 12.5
+
+
+def test_price_estimator_active_artifact_selects_safe_gap_artifact(tmp_path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        """
+baseline:
+  artifact_dir: execution_engine/deploy/baseline
+price_estimator:
+  enabled: true
+  active_artifact: safe_lowest_price_gap
+  artifact_dir: execution_engine/deploy/price_estimator_q80
+  artifacts:
+    q80:
+      artifact_dir: execution_engine/deploy/price_estimator_q80
+      model_file: catboost_q80.cbm
+      prediction_column: pred_q80
+    safe_lowest_price_gap:
+      artifact_dir: execution_engine/deploy/price_estimator_safe_lowest_price_gap
+      model_file: safe_lowest_price_gap.pt
+      prediction_column: p_pred
+""".strip(),
+        encoding="utf-8",
+    )
+
+    config = load_execution_config(config_path)
+
+    assert config.price_estimator.active_artifact == "safe_lowest_price_gap"
+    assert config.price_estimator.artifact_dir == "execution_engine/deploy/price_estimator_safe_lowest_price_gap"
+    assert config.price_estimator.model_file == "safe_lowest_price_gap.pt"
+    assert config.price_estimator.prediction_column == "p_pred"
 
 
 def test_run_once_configured_trigger_wait_seconds_aligns_after_full_window_data() -> None:
@@ -609,8 +672,8 @@ def test_finalized_signal_row_keeps_offline_momentum_window_semantics() -> None:
     assert features["ret_3"].iloc[-1] == expected
 
 
-def test_two_limit_order_plan_uses_target_token_best_bid_cap_and_offset() -> None:
-    config = load_execution_config("execution_engine/config.example.yaml")
+def test_two_limit_order_plan_uses_target_token_best_bid_cap_and_offset() -> None: 
+    orders_config = _legacy_two_leg_orders_config() 
     plan = build_two_limit_order_plan(
         _signal(),
         Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
@@ -620,7 +683,7 @@ def test_two_limit_order_plan_uses_target_token_best_bid_cap_and_offset() -> Non
             no_price=0.49,
             metadata={"yes_token_id": "yes-token", "no_token_id": "no-token", "best_bid": 0.57, "tick_size": "0.01"},
         ),
-        config.orders,
+        orders_config, 
     )
 
     assert [order.market_id for order in plan.orders] == ["yes-token", "yes-token"]
@@ -630,9 +693,10 @@ def test_two_limit_order_plan_uses_target_token_best_bid_cap_and_offset() -> Non
     assert plan.skipped == []
 
 
-def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
-    config = load_execution_config("execution_engine/config.example.yaml")
-    edge_config = replace(config.execution_edge, enabled=True)
+def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None: 
+    config = load_execution_config("execution_engine/config.example.yaml") 
+    orders_config = _legacy_two_leg_orders_config() 
+    edge_config = replace(config.execution_edge, enabled=True) 
     expensive_plan = build_two_limit_order_plan(
         _signal(0.10),
         Decision(True, "YES", 0.06, "selective_binary_signal_passed", 5.0),
@@ -648,7 +712,7 @@ def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
                 "tick_size": "0.01",
             },
         ),
-        config.orders,
+        orders_config, 
         edge_config,
     )
 
@@ -656,7 +720,7 @@ def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
     assert expensive_plan.skipped[0]["reason"] == "edge_below_minimum"
     assert expensive_plan.skipped[0]["edge"] == -0.65
 
-    high_price_orders = replace(config.orders, first=replace(config.orders.first, price_cap=0.9))
+    high_price_orders = replace(orders_config, first=replace(orders_config.first, price_cap=0.9)) 
     high_price_edge = replace(edge_config, max_buy_price=0.99, max_order_notional=4.0, size_to_max_notional=False)
     notional_plan = build_two_limit_order_plan(
         _signal(0.99),
@@ -683,9 +747,10 @@ def test_two_limit_order_plan_applies_ev_and_notional_guards() -> None:
     assert notional_plan.skipped[0]["notional"] == 4.5
 
 
-def test_two_limit_order_plan_can_size_to_notional_cap() -> None:
-    config = load_execution_config("execution_engine/config.example.yaml")
-    edge_config = replace(config.execution_edge, enabled=True, size_to_max_notional=True)
+def test_two_limit_order_plan_can_size_to_notional_cap() -> None: 
+    config = load_execution_config("execution_engine/config.example.yaml") 
+    orders_config = _legacy_two_leg_orders_config() 
+    edge_config = replace(config.execution_edge, enabled=True, max_order_notional=4.0, size_to_max_notional=True) 
     plan = build_two_limit_order_plan(
         _signal(0.80),
         Decision(True, "YES", 0.30, "selective_binary_signal_passed", 5.0),
@@ -701,7 +766,7 @@ def test_two_limit_order_plan_can_size_to_notional_cap() -> None:
                 "tick_size": "0.01",
             },
         ),
-        config.orders,
+        orders_config, 
         edge_config,
     )
 
@@ -712,21 +777,21 @@ def test_two_limit_order_plan_can_size_to_notional_cap() -> None:
     assert plan.orders[0].metadata["size_to_max_notional"] is True
 
 
-def test_two_limit_order_plan_skips_without_best_bid() -> None:
-    config = load_execution_config("execution_engine/config.example.yaml")
+def test_two_limit_order_plan_skips_without_best_bid() -> None: 
+    orders_config = _legacy_two_leg_orders_config() 
     plan = build_two_limit_order_plan(
         _signal(),
         Decision(True, "NO", 0.1, "selective_binary_signal_passed", 5.0),
         MarketQuote(market_id="no-token", yes_price=0.51, metadata={"no_token_id": "no-token"}),
-        config.orders,
+        orders_config, 
     )
 
     assert plan.orders == []
     assert plan.skipped == [{"reason": "missing_quote"}]
 
 
-def test_two_limit_order_plan_uses_best_ask_fallback_without_best_bid() -> None:
-    config = load_execution_config("execution_engine/config.example.yaml")
+def test_two_limit_order_plan_uses_best_ask_fallback_without_best_bid() -> None: 
+    orders_config = _legacy_two_leg_orders_config() 
     plan = build_two_limit_order_plan(
         _signal(),
         Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
@@ -736,7 +801,7 @@ def test_two_limit_order_plan_uses_best_ask_fallback_without_best_bid() -> None:
             no_price=0.49,
             metadata={"yes_token_id": "yes-token", "best_ask": 0.48, "tick_size": "0.01"},
         ),
-        config.orders,
+        orders_config, 
     )
 
     assert [order.price for order in plan.orders] == [0.47, 0.11]
@@ -744,8 +809,8 @@ def test_two_limit_order_plan_uses_best_ask_fallback_without_best_bid() -> None:
     assert plan.skipped == []
 
 
-def test_two_limit_order_plan_clamps_both_legs_to_min_price() -> None:
-    config = load_execution_config("execution_engine/config.example.yaml")
+def test_two_limit_order_plan_clamps_both_legs_to_min_price() -> None: 
+    orders_config = _legacy_two_leg_orders_config() 
     plan = build_two_limit_order_plan(
         _signal(),
         Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
@@ -755,7 +820,7 @@ def test_two_limit_order_plan_clamps_both_legs_to_min_price() -> None:
             no_price=0.49,
             metadata={"yes_token_id": "yes-token", "best_bid": 0.02, "tick_size": "0.01"},
         ),
-        config.orders,
+        orders_config, 
     )
 
     assert [order.price for order in plan.orders] == [0.10, 0.10]
@@ -843,15 +908,16 @@ def test_polymarket_v2_adapter_places_gtc_buy(monkeypatch) -> None:
             self.last_type = order_type
             return {"success": True, "orderID": "1"}
 
-    config = load_execution_config("execution_engine/config.example.yaml")
-    client = FakeClient()
+    config = load_execution_config("execution_engine/config.example.yaml") 
+    orders_config = _legacy_two_leg_orders_config() 
+    client = FakeClient() 
     adapter = PolymarketV2Adapter(config.polymarket, client=client)
     response = adapter.place_limit_order(
         build_two_limit_order_plan(
             _signal(),
             Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
             MarketQuote("yes-token", 0.51, metadata={"best_bid": 0.50}),
-            config.orders,
+            orders_config, 
         ).orders[0]
     )
 

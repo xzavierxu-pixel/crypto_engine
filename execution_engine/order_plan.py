@@ -12,6 +12,7 @@ from src.core.schemas import Decision, MarketQuote, OrderRequest, Signal
 LOGGER = logging.getLogger(__name__)
 LIMIT_CONFIG_BEST_ASK_OFFSET_MODE = "limit_config_best_ask_offset"
 Q80_BEST_ASK_OFFSET_MODE = "min_q80_final_price_and_best_ask_offset"
+SAFE_GAP_BEST_ASK_OFFSET_MODE = "min_safe_gap_price_and_best_ask_offset"
 
 
 @dataclass(frozen=True)
@@ -97,6 +98,77 @@ def _limit_config_best_ask_offset_price(
     return raw_price, lookup_price, float(offset), None
 
 
+def _price_estimator_min_best_ask_offset_price(
+    *,
+    signal: Signal,
+    decision: Decision,
+    best_ask: float | None,
+    leg_name: str,
+    price_mode: str,
+    context_key: str,
+    context_label: str,
+    fallback_reason: str,
+    config: OrdersConfig,
+) -> tuple[
+    float | None,
+    float | None,
+    float | None,
+    float | None,
+    str | None,
+    str,
+    float | None,
+    float | None,
+    dict | None,
+]:
+    quote_reference = None if best_ask is None else float(best_ask)
+    quote_source = f"price_estimator_{context_label}_best_ask"
+    estimator_context = signal.decision_context.get(context_key)
+    best_ask_offset = float(signal.decision_context.get("price_estimator_best_ask_offset", 0.01))
+    if estimator_context is not None and best_ask is not None:
+        estimator_price = float(estimator_context)
+        best_ask_offset_price = float(best_ask) - best_ask_offset
+        return (
+            min(estimator_price, best_ask_offset_price),
+            estimator_price,
+            best_ask_offset_price,
+            quote_reference,
+            None,
+            quote_source,
+            None,
+            None,
+            None,
+        )
+    fallback = signal.decision_context.get("price_estimator_fallback_price_mode", LIMIT_CONFIG_BEST_ASK_OFFSET_MODE)
+    if fallback != LIMIT_CONFIG_BEST_ASK_OFFSET_MODE:
+        return (
+            None,
+            None,
+            None,
+            quote_reference,
+            str(fallback),
+            quote_source,
+            None,
+            None,
+            {
+                "leg": leg_name,
+                "reason": fallback_reason,
+                "price_mode": price_mode,
+                "fallback_price_mode": fallback,
+                "has_best_ask": best_ask is not None,
+            },
+        )
+    raw_price, lookup_price, offset, skip = _limit_config_best_ask_offset_price(
+        decision=decision,
+        best_ask=None if best_ask is None else float(best_ask),
+        leg_name=leg_name,
+        price_mode=str(fallback),
+        config=config,
+    )
+    if skip is not None:
+        return None, None, None, quote_reference, str(fallback), "best_ask", lookup_price, offset, skip
+    return raw_price, None, None, quote_reference, str(fallback), "best_ask", lookup_price, offset, None
+
+
 def build_two_limit_order_plan(
     signal: Signal,
     decision: Decision,
@@ -128,46 +200,52 @@ def build_two_limit_order_plan(
         lookup_price = None
         offset = None
         q80_price = None
+        safe_gap_price = None
         best_ask_offset_price = None
         price_estimator_fallback = None
-        if leg.price_mode == Q80_BEST_ASK_OFFSET_MODE:
-            quote_reference = None if best_ask is None else float(best_ask)
-            quote_source = "price_estimator_q80_best_ask"
-            q80_context = signal.decision_context.get("price_estimator_q80_rounded")
-            best_ask_offset = float(signal.decision_context.get("price_estimator_best_ask_offset", 0.01))
-            if q80_context is not None and best_ask is not None:
-                q80_price = float(q80_context)
-                best_ask_offset_price = float(best_ask) - best_ask_offset
-                raw_price = min(q80_price, best_ask_offset_price)
+        if leg.price_mode in {Q80_BEST_ASK_OFFSET_MODE, SAFE_GAP_BEST_ASK_OFFSET_MODE}:
+            if leg.price_mode == Q80_BEST_ASK_OFFSET_MODE:
+                context_key = "price_estimator_q80_rounded"
+                context_label = "q80"
+                fallback_reason = "missing_price_estimator_q80"
+                warning_label = "q80"
             else:
-                price_estimator_fallback = signal.decision_context.get(
-                    "price_estimator_fallback_price_mode",
-                    LIMIT_CONFIG_BEST_ASK_OFFSET_MODE,
-                )
-                if price_estimator_fallback != LIMIT_CONFIG_BEST_ASK_OFFSET_MODE:
-                    skipped.append(
-                        {
-                            "leg": name,
-                            "reason": "missing_price_estimator_q80",
-                            "price_mode": leg.price_mode,
-                            "fallback_price_mode": price_estimator_fallback,
-                            "has_best_ask": best_ask is not None,
-                        }
-                    )
-                    continue
-                raw_price, lookup_price, offset, skip = _limit_config_best_ask_offset_price(
-                    decision=decision,
-                    best_ask=None if best_ask is None else float(best_ask),
-                    leg_name=name,
-                    price_mode=price_estimator_fallback,
-                    config=config,
-                )
-                if skip is not None:
-                    LOGGER.warning("Skipping order leg because q80 fallback price is unavailable: %s", skip)
+                context_key = "price_estimator_safe_gap_rounded"
+                context_label = "safe_gap"
+                fallback_reason = "missing_price_estimator_safe_gap"
+                warning_label = "safe-gap"
+            (
+                raw_price,
+                estimator_price,
+                best_ask_offset_price,
+                quote_reference,
+                price_estimator_fallback,
+                quote_source,
+                lookup_price,
+                offset,
+                skip,
+            ) = _price_estimator_min_best_ask_offset_price(
+                signal=signal,
+                decision=decision,
+                best_ask=None if best_ask is None else float(best_ask),
+                leg_name=name,
+                price_mode=leg.price_mode,
+                context_key=context_key,
+                context_label=context_label,
+                fallback_reason=fallback_reason,
+                config=config,
+            )
+            if skip is not None:
+                if skip.get("reason") == fallback_reason:
                     skipped.append(skip)
-                    continue
-                quote_reference = float(best_ask)
-                quote_source = "best_ask"
+                else:
+                    LOGGER.warning("Skipping order leg because %s fallback price is unavailable: %s", warning_label, skip)
+                    skipped.append(skip)
+                continue
+            if leg.price_mode == Q80_BEST_ASK_OFFSET_MODE:
+                q80_price = estimator_price
+            else:
+                safe_gap_price = estimator_price
         elif leg.price_mode == LIMIT_CONFIG_BEST_ASK_OFFSET_MODE:
             quote_reference = None if best_ask is None else float(best_ask)
             quote_source = "best_ask"
@@ -258,6 +336,10 @@ def build_two_limit_order_plan(
                     "limit_config_lookup_price": lookup_price,
                     "limit_config_offset": float(offset) if offset is not None else None,
                     "price_estimator_q80_rounded": q80_price,
+                    "price_estimator_safe_gap_rounded": safe_gap_price,
+                    "price_estimator_safe_gap_action": signal.decision_context.get("price_estimator_safe_gap_action"),
+                    "price_estimator_safe_gap_conf_ok": signal.decision_context.get("price_estimator_safe_gap_conf_ok"),
+                    "price_estimator_safe_gap_f_model": signal.decision_context.get("price_estimator_safe_gap_f_model"),
                     "price_estimator_best_ask_offset_price": best_ask_offset_price,
                     "price_estimator_fallback_price_mode": price_estimator_fallback,
                 },

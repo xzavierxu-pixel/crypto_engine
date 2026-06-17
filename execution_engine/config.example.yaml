@@ -11,14 +11,26 @@ baseline:
     full_train:
       artifact_dir: execution_engine/deploy/baseline
 price_estimator:
-  enabled: false
-  artifact_dir: execution_engine/deploy/price_estimator_q80
+  enabled: true
+  active_artifact: safe_lowest_price_gap
+  artifact_dir: execution_engine/deploy/price_estimator_safe_lowest_price_gap
+  artifacts:
+    q80:
+      artifact_dir: execution_engine/deploy/price_estimator_q80
+      manifest_file: artifact_manifest.json
+      model_file: catboost_q80.cbm
+      prediction_column: pred_q80
+    safe_lowest_price_gap:
+      artifact_dir: execution_engine/deploy/price_estimator_safe_lowest_price_gap
+      manifest_file: artifact_manifest.json
+      model_file: safe_lowest_price_gap.pt
+      prediction_column: p_pred
   manifest_file: artifact_manifest.json
-  model_file: q80.binary.pkl
-  prediction_column: pred_q80
+  model_file: safe_lowest_price_gap.pt
+  prediction_column: p_pred
   selected_side_column: selected_side
-  yes_value: YES
-  no_value: NO
+  yes_value: UP
+  no_value: DOWN
   round_decimals: 2
   best_ask_offset: 0.01
   fallback_price_mode: limit_config_best_ask_offset
@@ -66,7 +78,7 @@ orders:
   mode: live
   first:
     enabled: true
-    price_mode: min_best_bid_offset_and_cap
+    price_mode: min_safe_gap_price_and_best_ask_offset
     price_cap: 0.65
     offset: 0.01
     best_bid_offset: 0.0

@@ -81,7 +81,7 @@ class RuntimeInferenceEngine:
         if artifact.prediction_transform == "sigmoid":
             raw_price = float(1.0 / (1.0 + np.exp(-raw_price)))
         rounded_price = _round_price(raw_price, artifact.round_decimals)
-        return {
+        context = {
             "price_estimator_enabled": True,
             "price_estimator_artifact_dir": str(artifact.artifact_dir),
             "price_estimator_model_path": str(artifact.model_path),
@@ -95,6 +95,18 @@ class RuntimeInferenceEngine:
             "price_estimator_fallback_price_mode": artifact.fallback_price_mode,
             "price_estimator_prediction_transform": artifact.prediction_transform,
         }
+        if artifact.prediction_column == "p_pred":
+            context.update(
+                {
+                    "price_estimator_safe_gap_raw": raw_price,
+                    "price_estimator_safe_gap_rounded": rounded_price,
+                }
+            )
+            if isinstance(raw_prediction, pd.DataFrame):
+                for column in ("safe_gap_action", "safe_gap_conf_ok", "safe_gap_f_model"):
+                    if column in raw_prediction.columns:
+                        context[f"price_estimator_{column}"] = raw_prediction[column].iloc[0]
+        return context
 
     def _thresholds_for_signal(self, signal_t0: pd.Timestamp | None) -> tuple[float, float, dict[str, str | None]]:
         policy = self.baseline.threshold_policy or {}

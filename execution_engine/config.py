@@ -21,6 +21,8 @@ class BaselineConfig:
 @dataclass(frozen=True)
 class PriceEstimatorConfig:
     enabled: bool = False
+    active_artifact: str | None = None
+    artifacts: dict[str, dict[str, Any]] = field(default_factory=dict)
     artifact_dir: str | None = None
     manifest_file: str = "artifact_manifest.json"
     model_file: str | None = None
@@ -194,6 +196,38 @@ def _baseline_config(payload: dict[str, Any]) -> BaselineConfig:
     return BaselineConfig(**baseline_payload)
 
 
+def _price_estimator_config(payload: dict[str, Any]) -> PriceEstimatorConfig:
+    estimator_payload = dict(payload)
+    active_artifact = estimator_payload.get("active_artifact")
+    artifacts = estimator_payload.get("artifacts") or {}
+    if active_artifact is not None:
+        if not isinstance(artifacts, dict) or active_artifact not in artifacts:
+            raise ValueError(
+                f"price_estimator.active_artifact '{active_artifact}' is not defined in price_estimator.artifacts."
+            )
+        selected = artifacts[active_artifact]
+        if not isinstance(selected, dict):
+            raise ValueError(f"price_estimator.artifacts.{active_artifact} must be a mapping.")
+        selected_dir = selected.get("artifact_dir")
+        if not selected_dir:
+            raise ValueError(f"price_estimator.artifacts.{active_artifact}.artifact_dir is required.")
+        estimator_payload["artifact_dir"] = selected_dir
+        for key in (
+            "manifest_file",
+            "model_file",
+            "prediction_column",
+            "selected_side_column",
+            "yes_value",
+            "no_value",
+            "round_decimals",
+            "best_ask_offset",
+            "fallback_price_mode",
+        ):
+            if selected.get(key) is not None:
+                estimator_payload[key] = selected[key]
+    return PriceEstimatorConfig(**estimator_payload)
+
+
 def load_execution_config(path: str | Path) -> ExecutionEngineConfig:
     resolved = Path(path)
     with resolved.open("r", encoding="utf-8") as handle:
@@ -220,7 +254,7 @@ def load_execution_config(path: str | Path) -> ExecutionEngineConfig:
 
     return ExecutionEngineConfig(
         baseline=_baseline_config(payload["baseline"]),
-        price_estimator=PriceEstimatorConfig(**_payload_for(payload, "price_estimator")),
+        price_estimator=_price_estimator_config(_payload_for(payload, "price_estimator")),
         runtime=RuntimeConfig(**_payload_for(payload, "runtime")),
         binance=BinanceConfig(**_payload_for(payload, "binance")),
         schedule=ScheduleConfig(**_payload_for(payload, "schedule")),

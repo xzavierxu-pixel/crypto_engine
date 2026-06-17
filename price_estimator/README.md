@@ -5,6 +5,10 @@ Independent Polymarket BTC 5m winner-token price estimator.
 The active baseline is now `safe_lowest_price_gap`: one low-latency model
 predicts a raw safe-price location `f(X)` in probability space, then a calibrated
 global margin plus bucket abstain policy turns it into `p_pred <= p_side`.
+For execution deployment, use the deploy-feature experiment
+`price_estimator/safe_lowest_price_gap/experiments/20260617_deploy_baseline_features/config.yaml`
+and the tracked artifact in
+`execution_engine/deploy/price_estimator_safe_lowest_price_gap`.
 
 Primary objective:
 
