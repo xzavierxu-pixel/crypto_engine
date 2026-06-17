@@ -522,16 +522,17 @@ Tests should cover:
 
 ## Shell tooling
 
-Prefer `rtk` for verbose shell commands.
+Prefer `rtk` for verbose shell commands to optimize context usage.
 
 Before declaring it unavailable, verify:
 
 ```powershell
-where.exe rtk
-rtk --version
+rtk --version       # Expected >= 0.42.3
+rtk gain            # Check savings
+where.exe rtk       # Locate binary
 ```
 
-Only fall back to raw PowerShell after both checks fail.
+Only fall back to raw PowerShell after `rtk --version` fails.
 
 See `@RTK.md`.
 

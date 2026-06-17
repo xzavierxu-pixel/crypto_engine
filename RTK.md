@@ -1,43 +1,53 @@
 # RTK - Rust Token Killer (Codex CLI)
 
-**Usage**: Token-optimized CLI proxy for shell commands.
+**Usage**: High-performance token-optimized CLI proxy for shell commands.
 
 ## Rule
 
-Always prefix shell commands with `rtk`.
+Always prefix shell commands with `rtk` to reduce token consumption by 60-90%.
 
-On Windows and in Codex sessions, do not assume `rtk` is unavailable based on a single failed call.
-Before falling back to raw commands, verify the current shell with:
+## Common Commands
 
 ```powershell
-where.exe rtk
-rtk --version
-```
-
-If either check succeeds, keep using `rtk` in that session.
-Only downgrade to raw commands when both checks fail in the current shell.
-
-Examples:
-
-```bash
-rtk git status
-rtk cargo test
-rtk npm run build
-rtk pytest -q
+rtk git status       # Compact git status
+rtk pytest -q        # Shows only failed tests
+rtk python <args>    # Compact python output
+rtk pip install      # Compact package installation
+rtk tree             # Token-optimized directory tree
 ```
 
 ## Meta Commands
 
-```bash
-rtk gain            # Token savings analytics
-rtk gain --history  # Recent command savings history
-rtk proxy <cmd>     # Run raw command without filtering
+```powershell
+rtk gain            # Show current session token savings
+rtk gain --history  # Show historical savings across sessions
+rtk session         # Summary of RTK adoption and effectiveness
+rtk discover        # Find missed savings in recent history
+rtk proxy <cmd>     # Run command without filtering (usage still tracked)
+```
+
+## Project Settings
+
+RTK uses `.codex/config.toml` for project-specific filters.
+Trust local filters with:
+```powershell
+rtk trust
 ```
 
 ## Verification
 
-```bash
-rtk --version
-rtk gain
-where.exe rtk
+On Windows, use `where.exe` to locate the binary:
+
+```powershell
+rtk --version       # Should be >= 0.42.3
+rtk gain            # Verify analytics are working
+where.exe rtk       # Locate the binary
 ```
+
+## Automatic Hooks
+
+To automate RTK for Gemini CLI (auto-prefixing), run:
+```powershell
+rtk init -g --gemini --auto-patch
+```
+*Note: Manual prefixing is still recommended in `AGENTS.md` to ensure consistent behavior.*
