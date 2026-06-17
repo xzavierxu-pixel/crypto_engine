@@ -1,0 +1,143 @@
+experiment_id: 20260617_safe_lowest_price_gap_deploy_baseline_features
+
+paths:
+  deploy_artifact_dir: execution_engine/deploy/baseline
+  feature_manifest: execution_engine/deploy/baseline/artifact_manifest.json
+  train_dataset: price_estimator/data/price_estimator_train.parquet
+  validation_dataset: price_estimator/data/price_estimator_valid.parquet
+  models_dir: price_estimator/safe_lowest_price_gap/experiments/20260617_deploy_baseline_features/models
+  reports_dir: price_estimator/safe_lowest_price_gap/experiments/20260617_deploy_baseline_features/reports
+  predictions_train: price_estimator/safe_lowest_price_gap/experiments/20260617_deploy_baseline_features/reports/predictions_train.parquet
+  predictions_calibration: price_estimator/safe_lowest_price_gap/experiments/20260617_deploy_baseline_features/reports/predictions_calibration.parquet
+  predictions_validation: price_estimator/safe_lowest_price_gap/experiments/20260617_deploy_baseline_features/reports/predictions_validation.parquet
+
+target:
+  raw_column: target_raw
+  buffer: 0.01
+  feasibility_tolerance: 0.000001
+  tick_size: 0.01
+  tick_rounding_tolerance: 0.000000001
+
+objective:
+  optimize_metric: covered_gap_norm_mean
+  hard_constraint: coverage_feasible
+  min_feasible_coverage: 0.90
+  min_calibration_feasible_coverage: 0.93
+  tie_breaker_metric: covered_gap_norm_median
+
+split:
+  calibration_tail_days: 31
+  timestamp_column: timestamp
+
+loss:
+  type: normalized_asymmetric_huber
+  s_floor: 0.02
+  c: 0.01
+  kappa: 1.0
+  alpha_grid:
+    - 2.0
+    - 4.0
+    - 8.0
+
+calibration:
+  delta_quantiles:
+    - 0.50
+    - 0.60
+    - 0.70
+    - 0.80
+    - 0.85
+    - 0.90
+    - 0.92
+    - 0.95
+    - 0.975
+  bucket_miss_rate_thresholds:
+    - 0.00
+    - 0.025
+    - 0.05
+    - 0.075
+    - 0.10
+    - 0.15
+    - 0.20
+    - 0.30
+    - 0.50
+    - 1.00
+
+bucket_abstain:
+  enabled: true
+  min_bucket_count: 30
+  keys:
+    - p_side_bucket
+    - market_time_bucket
+    - selected_side
+
+features:
+  source: execution_deploy_baseline_artifact_feature_columns
+  added_columns:
+    - selected_side
+    - p_up
+    - p_side
+    - direction_confidence
+    - p_bin
+  categorical_columns:
+    - selected_side
+    - p_bin
+  forbidden_columns:
+    - target
+    - future_close
+    - abs_return
+    - signed_return
+    - stage1_target
+    - stage2_target
+    - lowest_trade_price_next4
+    - lowest_trade_time_next4
+    - time_to_lowest_trade_sec
+    - target_raw
+    - target_safe
+    - safe_gap_room
+    - safe_gap_s_eff
+
+model:
+  hidden_dims:
+    - 256
+    - 128
+    - 64
+  dropout:
+    - 0.10
+    - 0.05
+    - 0.00
+
+training:
+  batch_size: 512
+  epochs: 90
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  random_seed: 42
+  num_workers: 0
+  device: auto
+  gradient_clip_norm: 5.0
+  early_stop_patience: 20
+
+diagnostics:
+  p_side_bin_edges:
+    - 0.0
+    - 0.4
+    - 0.45
+    - 0.5
+    - 0.55
+    - 0.6
+    - 0.65
+    - 0.7
+    - 1.0
+  price_bin_column: target_raw
+  price_bin_edges:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    - 0.7
+    - 0.8
+    - 0.9
+    - 1.0
