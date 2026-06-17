@@ -72,7 +72,7 @@ def test_execution_config_example_loads() -> None:
     assert config.price_estimator.enabled is True
     assert config.price_estimator.active_artifact == "safe_lowest_price_gap"
     assert config.price_estimator.artifact_dir == "execution_engine/deploy/price_estimator_safe_lowest_price_gap"
-    assert config.price_estimator.model_file == "safe_lowest_price_gap.pt"
+    assert config.price_estimator.model_file == "safe_lowest_price_gap.npz"
     assert config.price_estimator.prediction_column == "p_pred"
     assert config.price_estimator.yes_value == "UP"
     assert config.price_estimator.no_value == "DOWN"
@@ -158,7 +158,7 @@ price_estimator:
       prediction_column: pred_q80
     safe_lowest_price_gap:
       artifact_dir: execution_engine/deploy/price_estimator_safe_lowest_price_gap
-      model_file: safe_lowest_price_gap.pt
+      model_file: safe_lowest_price_gap.npz
       prediction_column: p_pred
 """.strip(),
         encoding="utf-8",
@@ -168,7 +168,7 @@ price_estimator:
 
     assert config.price_estimator.active_artifact == "safe_lowest_price_gap"
     assert config.price_estimator.artifact_dir == "execution_engine/deploy/price_estimator_safe_lowest_price_gap"
-    assert config.price_estimator.model_file == "safe_lowest_price_gap.pt"
+    assert config.price_estimator.model_file == "safe_lowest_price_gap.npz"
     assert config.price_estimator.prediction_column == "p_pred"
 
 

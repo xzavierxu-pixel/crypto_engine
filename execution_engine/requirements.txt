@@ -6,4 +6,3 @@ scikit-learn==1.7.2
 catboost
 lightgbm
 xgboost
-torch

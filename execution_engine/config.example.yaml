@@ -23,10 +23,10 @@ price_estimator:
     safe_lowest_price_gap:
       artifact_dir: execution_engine/deploy/price_estimator_safe_lowest_price_gap
       manifest_file: artifact_manifest.json
-      model_file: safe_lowest_price_gap.pt
+      model_file: safe_lowest_price_gap.npz
       prediction_column: p_pred
   manifest_file: artifact_manifest.json
-  model_file: safe_lowest_price_gap.pt
+  model_file: safe_lowest_price_gap.npz
   prediction_column: p_pred
   selected_side_column: selected_side
   yes_value: UP
