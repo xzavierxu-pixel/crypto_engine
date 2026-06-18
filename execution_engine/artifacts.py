@@ -150,6 +150,11 @@ class SafeLowestPriceGapNumpyModel:
         self.preprocessor = SafeGapPreprocessor(dict(payload["preprocessor"]))
         calibration = payload["calibration"]
         self.delta_norm = float(calibration["delta_norm"])
+        self.delta_model = calibration.get("delta_model", {
+            "mode": "global",
+            "fallback_delta_norm": self.delta_norm,
+            "table": [],
+        })
         self.bucket_miss_threshold = float(calibration["bucket_miss_threshold"])
         self.bucket_model = calibration["bucket_model"]
         target = payload["target"]
@@ -241,7 +246,7 @@ class SafeLowestPriceGapNumpyModel:
         import numpy as np
 
         s_proxy = np.clip(p_side - f_model, self.s_floor, None)
-        raw = f_model + self.delta_norm * s_proxy
+        raw = f_model + self._delta_values(p_side) * s_proxy
         ticked = np.ceil(raw / self.tick_size - self.tick_rounding_tolerance) * self.tick_size
         ticked = np.maximum(ticked, 0.0)
         p_pred = np.minimum(ticked, p_side)
@@ -252,6 +257,26 @@ class SafeLowestPriceGapNumpyModel:
         p_pred[~conf_ok] = p_side[~conf_ok]
         p_pred[clamp] = p_side[clamp]
         return p_pred, action.astype(str)
+
+    def _delta_values(self, p_side: Any) -> Any:
+        import numpy as np
+
+        mode = str(self.delta_model.get("mode", "global"))
+        if mode == "global":
+            return np.full(len(p_side), float(self.delta_model.get("fallback_delta_norm", self.delta_norm)), dtype=float)
+        if mode != "pside_bin":
+            raise ValueError(f"Unsupported safe gap delta_model mode: {mode}")
+        edges = [float(v) for v in self.delta_model.get("edges", [])]
+        if len(edges) < 2:
+            return np.full(len(p_side), float(self.delta_model.get("fallback_delta_norm", self.delta_norm)), dtype=float)
+        fallback = float(self.delta_model.get("fallback_delta_norm", self.delta_norm))
+        by_index = {
+            int(row["bucket_index"]): float(row.get("delta_norm", fallback))
+            for row in self.delta_model.get("table", [])
+        }
+        idx = np.digitize(np.asarray(p_side, dtype=float), edges, right=False)
+        idx = np.clip(idx, 1, max(1, len(edges) - 1))
+        return np.asarray([by_index.get(int(i), fallback) for i in idx], dtype=float)
 
 
 def _load_safe_gap_numpy_model(path: Path) -> SafeLowestPriceGapNumpyModel:

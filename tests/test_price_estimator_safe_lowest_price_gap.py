@@ -10,6 +10,7 @@ from price_estimator.safe_lowest_price_gap.train_safe_lowest_price_gap import (
     PredictionResult,
     bucket_conf_ok,
     candidate_key,
+    fit_delta_model,
     fit_bucket_model,
     infer_prices,
     metric_summary,
@@ -153,10 +154,29 @@ def test_bucket_model_marks_high_miss_bucket_low_confidence() -> None:
     p_side = np.array([0.80, 0.80, 0.80, 0.80])
     f = np.array([0.40, 0.41, 0.60, 0.60])
 
-    model = fit_bucket_model(calibration, y, p_side, f, delta_norm=0.0, config=config, tolerance=1e-6)
+    delta_model = fit_delta_model(y, p_side, f, 0.5, 0.0, config)
+    model = fit_bucket_model(calibration, y, p_side, f, delta_norm=0.0, delta_model=delta_model, config=config, tolerance=1e-6)
     ok = bucket_conf_ok(calibration, model, threshold=0.5)
 
     assert ok.tolist() == [True, True, False, False]
+
+
+def test_pside_bin_delta_model_uses_local_delta_with_global_fallback() -> None:
+    config = {
+        "loss": {"s_floor": 0.02},
+        "calibration": {"delta_mode": "pside_bin", "delta_min_bucket_count": 2},
+        "diagnostics": {"p_side_bin_edges": [0.0, 0.5, 1.0]},
+    }
+    y = np.array([0.40, 0.42, 0.75])
+    p_side = np.array([0.45, 0.46, 0.90])
+    f = np.array([0.30, 0.32, 0.70])
+
+    model = fit_delta_model(y, p_side, f, delta_quantile=0.5, delta_norm=0.25, config=config)
+
+    assert model["mode"] == "pside_bin"
+    assert np.isclose(model["table"][0]["delta_norm"], 0.6904761904761905)
+    assert model["table"][1]["delta_norm"] == 0.25
+    assert model["table"][1]["fallback_used"] == 1.0
 
 
 def test_residual_diagnostics_and_pside_bins_are_structured() -> None:
@@ -188,6 +208,7 @@ def test_residual_diagnostics_and_pside_bins_are_structured() -> None:
 def test_execution_numpy_safe_gap_uses_delta_norm_scaled_room() -> None:
     model = SafeLowestPriceGapNumpyModel.__new__(SafeLowestPriceGapNumpyModel)
     model.delta_norm = 0.50
+    model.delta_model = {"mode": "global", "fallback_delta_norm": 0.50, "table": []}
     model.tick_size = 0.01
     model.tick_rounding_tolerance = 1e-9
     model.s_floor = 0.02
@@ -199,6 +220,31 @@ def test_execution_numpy_safe_gap_uses_delta_norm_scaled_room() -> None:
 
     assert np.allclose(p_pred, [0.55, 0.75])
     assert action.tolist() == ["active", "clamp_over_pside"]
+
+
+def test_execution_numpy_safe_gap_can_use_pside_bin_delta_model() -> None:
+    model = SafeLowestPriceGapNumpyModel.__new__(SafeLowestPriceGapNumpyModel)
+    model.delta_norm = 0.50
+    model.delta_model = {
+        "mode": "pside_bin",
+        "fallback_delta_norm": 0.50,
+        "edges": [0.0, 0.5, 1.0],
+        "table": [
+            {"bucket_index": 1.0, "delta_norm": 0.25},
+            {"bucket_index": 2.0, "delta_norm": 0.75},
+        ],
+    }
+    model.tick_size = 0.01
+    model.tick_rounding_tolerance = 1e-9
+    model.s_floor = 0.02
+    f = np.array([0.20, 0.40])
+    p_side = np.array([0.40, 0.80])
+    conf_ok = np.array([True, True])
+
+    p_pred, action = model._infer_prices(f, p_side, conf_ok)
+
+    assert np.allclose(p_pred, [0.25, 0.70])
+    assert action.tolist() == ["active", "active"]
 
 
 def test_split_fit_calibration_uses_train_tail_days() -> None:

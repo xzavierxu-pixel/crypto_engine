@@ -56,19 +56,21 @@ class CandidateResult:
     bucket_model: dict[str, Any]
     metrics: dict[str, float]
     prediction: PredictionResult
+    delta_model: dict[str, Any] | None = None
 
 
 class SafeGapDataset(Dataset):
-    def __init__(self, x: np.ndarray, y_safe: np.ndarray, s_eff: np.ndarray) -> None:
+    def __init__(self, x: np.ndarray, y_safe: np.ndarray, s_eff: np.ndarray, sample_weight: np.ndarray) -> None:
         self.x = torch.from_numpy(x.astype(np.float32))
         self.y_safe = torch.from_numpy(y_safe.astype(np.float32)).view(-1, 1)
         self.s_eff = torch.from_numpy(s_eff.astype(np.float32)).view(-1, 1)
+        self.sample_weight = torch.from_numpy(sample_weight.astype(np.float32)).view(-1, 1)
 
     def __len__(self) -> int:
         return int(self.x.shape[0])
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        return self.x[idx], self.y_safe[idx], self.s_eff[idx]
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        return self.x[idx], self.y_safe[idx], self.s_eff[idx], self.sample_weight[idx]
 
 
 def git_commit() -> str | None:
@@ -101,6 +103,16 @@ def safe_targets(df: pd.DataFrame, config: dict[str, Any]) -> tuple[np.ndarray, 
     return y_safe.astype(np.float32), s.astype(np.float32), s_eff.astype(np.float32)
 
 
+def loss_sample_weight(s: np.ndarray, config: dict[str, Any]) -> np.ndarray:
+    floor = config.get("loss", {}).get("small_room_weight_floor")
+    if floor is None:
+        return np.ones(len(s), dtype=np.float32)
+    floor = float(floor)
+    if floor <= 0:
+        raise ValueError("loss.small_room_weight_floor must be positive when set")
+    return np.clip(np.asarray(s, dtype=float) / floor, 0.0, 1.0).astype(np.float32)
+
+
 def split_fit_calibration(df: pd.DataFrame, config: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame]:
     ts_col = str(config["split"].get("timestamp_column", "timestamp"))
     days = int(config["split"].get("calibration_tail_days", 31))
@@ -123,6 +135,7 @@ def normalized_asym_loss(
     alpha: float,
     c: float,
     kappa: float,
+    sample_weight: torch.Tensor | None = None,
 ) -> torch.Tensor:
     f = torch.sigmoid(z)
     r = f - y_safe
@@ -133,7 +146,12 @@ def normalized_asym_loss(
     over_quad = 0.5 * t * t
     over_lin = float(kappa) * (t - 0.5 * float(kappa))
     over = torch.where(t <= float(kappa), over_quad, over_lin)
-    return torch.where(r < 0.0, under, over).mean()
+    loss = torch.where(r < 0.0, under, over)
+    if sample_weight is None:
+        return loss.mean()
+    weight = torch.clamp_min(sample_weight, 0.0)
+    denom = torch.clamp_min(weight.sum(), 1e-6)
+    return (loss * weight).sum() / denom
 
 
 @torch.no_grad()
@@ -155,7 +173,7 @@ def infer_prices(
     f: np.ndarray,
     p_side: np.ndarray,
     conf_ok: np.ndarray,
-    delta_norm: float,
+    delta_norm: float | np.ndarray,
     tick_size: float,
     tick_tol: float,
     s_floor: float,
@@ -164,7 +182,8 @@ def infer_prices(
     p_side = np.asarray(p_side, dtype=float)
     conf_ok = np.asarray(conf_ok, dtype=bool)
     s_proxy = np.clip(p_side - f, float(s_floor), None)
-    raw = f + float(delta_norm) * s_proxy
+    delta = np.asarray(delta_norm, dtype=float)
+    raw = f + delta * s_proxy
     ticked = ceil_to_tick(raw, tick_size, tick_tol)
     ticked = np.maximum(ticked, 0.0)
     p_pred = np.minimum(ticked, p_side)
@@ -175,6 +194,81 @@ def infer_prices(
     p_pred[~conf_ok] = p_side[~conf_ok]
     p_pred[clamp] = p_side[clamp]
     return PredictionResult(p_pred=p_pred, action=action.astype(str), conf_ok=conf_ok)
+
+
+def pside_bin_indices(p_side: np.ndarray, edges: list[float]) -> np.ndarray:
+    p = np.asarray(p_side, dtype=float)
+    idx = np.digitize(p, edges, right=False)
+    return np.clip(idx, 1, max(1, len(edges) - 1))
+
+
+def fit_delta_model(
+    y_safe: np.ndarray,
+    p_side: np.ndarray,
+    f: np.ndarray,
+    delta_quantile: float,
+    delta_norm: float,
+    config: dict[str, Any],
+) -> dict[str, Any]:
+    mode = str(config.get("calibration", {}).get("delta_mode", "global"))
+    if mode == "global":
+        return {"mode": "global", "fallback_delta_norm": float(delta_norm), "table": []}
+    if mode != "pside_bin":
+        raise ValueError(f"Unsupported calibration.delta_mode: {mode}")
+
+    edges = pside_bin_edges(config)
+    min_count = int(config.get("calibration", {}).get("delta_min_bucket_count", 30))
+    s_floor = float(config["loss"]["s_floor"])
+    y = np.asarray(y_safe, dtype=float)
+    p = np.asarray(p_side, dtype=float)
+    ff = np.asarray(f, dtype=float)
+    feasible = y < p
+    s_proxy = np.clip(p - ff, s_floor, None)
+    r_norm = (y - ff) / s_proxy
+    idx = pside_bin_indices(p, edges)
+    table: list[dict[str, float]] = []
+    for bucket_idx in range(1, len(edges)):
+        mask = feasible & (idx == bucket_idx)
+        count = int(mask.sum())
+        if count >= min_count:
+            local_delta = float(np.quantile(r_norm[mask], float(delta_quantile)))
+            fallback_used = 0.0
+        else:
+            local_delta = float(delta_norm)
+            fallback_used = 1.0
+        table.append({
+            "bucket_index": float(bucket_idx),
+            "edge_lo": float(edges[bucket_idx - 1]),
+            "edge_hi": float(edges[bucket_idx]),
+            "feasible_count": float(count),
+            "delta_norm": local_delta,
+            "fallback_used": fallback_used,
+        })
+    return {
+        "mode": "pside_bin",
+        "fallback_delta_norm": float(delta_norm),
+        "delta_quantile": float(delta_quantile),
+        "min_bucket_count": min_count,
+        "edges": [float(v) for v in edges],
+        "table": table,
+    }
+
+
+def apply_delta_model(p_side: np.ndarray, delta_model: dict[str, Any] | None, fallback_delta_norm: float) -> np.ndarray:
+    if not delta_model or str(delta_model.get("mode", "global")) == "global":
+        return np.full(len(p_side), float(fallback_delta_norm), dtype=float)
+    if str(delta_model.get("mode")) != "pside_bin":
+        raise ValueError(f"Unsupported delta model mode: {delta_model.get('mode')}")
+    edges = [float(v) for v in delta_model.get("edges", [])]
+    if len(edges) < 2:
+        return np.full(len(p_side), float(delta_model.get("fallback_delta_norm", fallback_delta_norm)), dtype=float)
+    fallback = float(delta_model.get("fallback_delta_norm", fallback_delta_norm))
+    by_index = {
+        int(row["bucket_index"]): float(row.get("delta_norm", fallback))
+        for row in delta_model.get("table", [])
+    }
+    idx = pside_bin_indices(np.asarray(p_side, dtype=float), edges)
+    return np.asarray([by_index.get(int(i), fallback) for i in idx], dtype=float)
 
 
 def metric_summary(
@@ -281,17 +375,19 @@ def fit_bucket_model(
     p_side: np.ndarray,
     f_cal: np.ndarray,
     delta_norm: float,
+    delta_model: dict[str, Any] | None,
     config: dict[str, Any],
     tolerance: float,
 ) -> dict[str, Any]:
     tick_size = float(config["target"]["tick_size"])
     tick_tol = float(config["target"]["tick_rounding_tolerance"])
     s_floor = float(config["loss"]["s_floor"])
+    delta_values = apply_delta_model(p_side, delta_model, delta_norm)
     base_pred = infer_prices(
         f_cal,
         p_side,
         np.ones(len(f_cal), dtype=bool),
-        delta_norm,
+        delta_values,
         tick_size,
         tick_tol,
         s_floor,
@@ -392,15 +488,21 @@ def select_calibration_candidate(
     candidates: list[CandidateResult] = []
     for q in [float(v) for v in config["calibration"]["delta_quantiles"]]:
         delta_norm = float(np.quantile(r_norm, q))
-        bucket_model = fit_bucket_model(calibration, y_safe, p_side, f_cal, delta_norm, config, tolerance)
+        delta_model = fit_delta_model(y_safe, p_side, f_cal, q, delta_norm, config)
+        bucket_model = fit_bucket_model(calibration, y_safe, p_side, f_cal, delta_norm, delta_model, config, tolerance)
         for threshold in [float(v) for v in config["calibration"]["bucket_miss_rate_thresholds"]]:
             conf_ok = bucket_conf_ok(calibration, bucket_model, threshold)
-            pred = infer_prices(f_cal, p_side, conf_ok, delta_norm, tick_size, tick_tol, s_floor)
+            delta_values = apply_delta_model(p_side, delta_model, delta_norm)
+            pred = infer_prices(f_cal, p_side, conf_ok, delta_values, tick_size, tick_tol, s_floor)
             metrics = metric_summary(y_safe, p_side, pred, tolerance)
             row = {
                 "alpha": float(alpha),
                 "delta_norm": delta_norm,
                 "delta_quantile": q,
+                "delta_mode": str(delta_model.get("mode", "global")),
+                "local_delta_fallback_bucket_count": float(
+                    sum(1 for item in delta_model.get("table", []) if float(item.get("fallback_used", 0.0)) > 0.0)
+                ),
                 "bucket_miss_threshold": threshold,
                 **metrics,
             }
@@ -414,6 +516,7 @@ def select_calibration_candidate(
                     bucket_model=bucket_model,
                     metrics=metrics,
                     prediction=pred,
+                    delta_model=delta_model,
                 )
             )
     optimize_metric = str(config["objective"].get("optimize_metric", "active_covered_gap_norm_mean"))
@@ -430,6 +533,7 @@ def train_one_alpha(
     x_fit: np.ndarray,
     y_fit: np.ndarray,
     s_eff_fit: np.ndarray,
+    sample_weight_fit: np.ndarray,
     x_cal: np.ndarray,
     y_cal: np.ndarray,
     p_cal: np.ndarray,
@@ -449,7 +553,7 @@ def train_one_alpha(
         lr=float(config["training"]["learning_rate"]),
         weight_decay=float(config["training"]["weight_decay"]),
     )
-    dataset = SafeGapDataset(x_fit, y_fit, s_eff_fit)
+    dataset = SafeGapDataset(x_fit, y_fit, s_eff_fit, sample_weight_fit)
     generator = torch.Generator().manual_seed(seed)
     loader = DataLoader(
         dataset,
@@ -481,13 +585,14 @@ def train_one_alpha(
     for epoch in range(1, epochs + 1):
         model.train()
         losses: list[float] = []
-        for xb, yb, s_eff_b in loader:
+        for xb, yb, s_eff_b, wb in loader:
             xb = xb.to(device)
             yb = yb.to(device)
             s_eff_b = s_eff_b.to(device)
+            wb = wb.to(device)
             optimizer.zero_grad(set_to_none=True)
             z = model(xb)
-            loss = normalized_asym_loss(z, yb, s_eff_b, alpha=alpha, c=c, kappa=kappa)
+            loss = normalized_asym_loss(z, yb, s_eff_b, alpha=alpha, c=c, kappa=kappa, sample_weight=wb)
             loss.backward()
             if grad_clip > 0:
                 nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
@@ -540,11 +645,12 @@ def evaluate_with_candidate(
     config: dict[str, Any],
 ) -> tuple[PredictionResult, dict[str, float], dict[str, dict[str, float]]]:
     conf_ok = bucket_conf_ok(df, candidate.bucket_model, candidate.bucket_miss_threshold)
+    delta_values = apply_delta_model(p_side, candidate.delta_model, candidate.delta_norm)
     pred = infer_prices(
         f,
         p_side,
         conf_ok,
-        candidate.delta_norm,
+        delta_values,
         float(config["target"]["tick_size"]),
         float(config["target"]["tick_rounding_tolerance"]),
         float(config["loss"]["s_floor"]),
@@ -749,6 +855,7 @@ def main() -> None:
     x_validation = preprocessor.transform(validation)
 
     y_fit, s_fit, s_eff_fit = safe_targets(fit, config)
+    sample_weight_fit = loss_sample_weight(s_fit, config)
     y_cal, s_cal, _ = safe_targets(calibration, config)
     y_train_all, s_train_all, _ = safe_targets(train_all, config)
     y_validation, s_validation, _ = safe_targets(validation, config)
@@ -781,6 +888,7 @@ def main() -> None:
             x_fit,
             y_fit,
             s_eff_fit,
+            sample_weight_fit,
             x_cal,
             y_cal,
             p_cal,
@@ -904,6 +1012,11 @@ def main() -> None:
             "delta_quantile": selected_candidate.delta_quantile,
             "bucket_miss_threshold": selected_candidate.bucket_miss_threshold,
             "bucket_model": selected_candidate.bucket_model,
+            "delta_model": selected_candidate.delta_model or {
+                "mode": "global",
+                "fallback_delta_norm": selected_candidate.delta_norm,
+                "table": [],
+            },
         },
     }
     checkpoint_path = models_dir / "safe_lowest_price_gap.pt"
@@ -940,9 +1053,17 @@ def main() -> None:
             "alpha": selected_candidate.alpha,
             "delta_norm": selected_candidate.delta_norm,
             "delta_quantile": selected_candidate.delta_quantile,
+            "delta_mode": str((selected_candidate.delta_model or {}).get("mode", "global")),
+            "local_delta_fallback_bucket_count": float(
+                sum(
+                    1
+                    for item in (selected_candidate.delta_model or {}).get("table", [])
+                    if float(item.get("fallback_used", 0.0)) > 0.0
+                )
+            ),
             "bucket_miss_threshold": selected_candidate.bucket_miss_threshold,
         },
-        "calibration_metric_note": "delta_norm candidates use feasible normalized residual quantiles; selection is hard-filtered by calibration coverage_feasible plus calibration_coverage_buffer and non_active_share",
+        "calibration_metric_note": "delta_norm candidates use feasible normalized residual quantiles; pside_bin mode applies per-p_side-bin additive deltas with global fallback; selection is hard-filtered by calibration coverage_feasible plus calibration_coverage_buffer and non_active_share",
         "loss": config["loss"],
         "bucket_abstain": {
             **config["bucket_abstain"],
