@@ -339,20 +339,24 @@ def candidate_key(
     candidate: CandidateResult,
     min_coverage: float,
     max_non_active_share: float,
+    optimize_metric: str,
+    tie_breaker_metric: str,
 ) -> tuple[float, float, float, float, float]:
     m = candidate.metrics
+    primary = float(m.get(optimize_metric, float("nan")))
+    tie_breaker = float(m.get(tie_breaker_metric, float("nan")))
     valid = (
         m["coverage_feasible"] >= min_coverage
         and m["side_violation_rate"] == 0.0
         and m["non_active_share"] <= max_non_active_share
-        and math.isfinite(m["covered_gap_norm_mean"])
+        and math.isfinite(primary)
     )
     if not valid:
         return (1.0, -m["coverage_feasible"], float("inf"), float("inf"), float("inf"))
     return (
         0.0,
-        m["covered_gap_norm_mean"],
-        m["active_covered_gap_norm_mean"],
+        primary,
+        tie_breaker if math.isfinite(tie_breaker) else float("inf"),
         m["non_active_share"],
         -m["covered_feasible_count"],
     )
@@ -412,7 +416,12 @@ def select_calibration_candidate(
                     prediction=pred,
                 )
             )
-    best = min(candidates, key=lambda c: candidate_key(c, min_coverage, max_non_active_share))
+    optimize_metric = str(config["objective"].get("optimize_metric", "active_covered_gap_norm_mean"))
+    tie_breaker_metric = str(config["objective"].get("tie_breaker_metric", "covered_gap_norm_mean"))
+    best = min(
+        candidates,
+        key=lambda c: candidate_key(c, min_coverage, max_non_active_share, optimize_metric, tie_breaker_metric),
+    )
     return best, frontier
 
 
@@ -467,6 +476,8 @@ def train_one_alpha(
     )
     min_coverage += float(config["objective"].get("calibration_coverage_buffer", 0.0))
     max_non_active_share = float(config["objective"].get("max_non_active_share", 1.0))
+    optimize_metric = str(config["objective"].get("optimize_metric", "active_covered_gap_norm_mean"))
+    tie_breaker_metric = str(config["objective"].get("tie_breaker_metric", "covered_gap_norm_mean"))
     for epoch in range(1, epochs + 1):
         model.train()
         losses: list[float] = []
@@ -484,7 +495,7 @@ def train_one_alpha(
             losses.append(float(loss.detach().cpu()))
         f_cal = predict_f(model, x_cal, device, int(config["training"]["batch_size"]))
         candidate, _ = select_calibration_candidate(calibration, y_cal, p_cal, f_cal, alpha, config)
-        key = candidate_key(candidate, min_coverage, max_non_active_share)
+        key = candidate_key(candidate, min_coverage, max_non_active_share, optimize_metric, tie_breaker_metric)
         row = {
             "alpha": float(alpha),
             "epoch": epoch,
@@ -762,6 +773,8 @@ def main() -> None:
     )
     min_coverage += float(config["objective"].get("calibration_coverage_buffer", 0.0))
     max_non_active_share = float(config["objective"].get("max_non_active_share", 1.0))
+    optimize_metric = str(config["objective"].get("optimize_metric", "active_covered_gap_norm_mean"))
+    tie_breaker_metric = str(config["objective"].get("tie_breaker_metric", "covered_gap_norm_mean"))
     for alpha in [float(v) for v in config["loss"]["alpha_grid"]]:
         model, candidate, rows = train_one_alpha(
             alpha,
@@ -783,7 +796,13 @@ def main() -> None:
 
     selected_model, selected_candidate = min(
         trained,
-        key=lambda item: candidate_key(item[1], min_coverage, max_non_active_share),
+        key=lambda item: candidate_key(
+            item[1],
+            min_coverage,
+            max_non_active_share,
+            optimize_metric,
+            tie_breaker_metric,
+        ),
     )
     f_fit = predict_f(selected_model, x_fit, device, int(config["training"]["batch_size"]))
     f_cal = predict_f(selected_model, x_cal, device, int(config["training"]["batch_size"]))
@@ -913,7 +932,7 @@ def main() -> None:
         "experiment_id": config["experiment_id"],
         "git_commit_at_training": git_commit(),
         "config_path": args.config,
-        "primary_metric": "validation covered_gap_norm_mean subject to coverage_feasible >= objective.min_feasible_coverage",
+        "primary_metric": f"validation {optimize_metric} subject to coverage_feasible >= objective.min_feasible_coverage",
         "model_family": "safe_lowest_price_gap_single_mlp_normalized_asym_bucket_abstain",
         "objective": config["objective"],
         "coverage_constraint_satisfied": coverage_constraint_satisfied,
@@ -990,7 +1009,7 @@ def main() -> None:
         "success_criteria": {
             "coverage_feasible_at_least_target": coverage_constraint_satisfied,
             "side_violation_rate_is_zero": validation_metrics["side_violation_rate"] == 0.0,
-            "primary_metric": validation_metrics["covered_gap_norm_mean"],
+            "primary_metric": validation_metrics.get(optimize_metric),
         },
     }
     report_path = reports_dir / "summary_metrics.json"

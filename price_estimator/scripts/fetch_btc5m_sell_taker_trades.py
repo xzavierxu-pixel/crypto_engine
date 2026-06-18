@@ -18,6 +18,7 @@ from price_estimator_common import load_config, resolve_path
 KEEP_TRADE_COLUMNS = [
     "price",
     "timestamp",
+    "side",
     "condition_id",
     "slug",
     "asset",
@@ -140,7 +141,8 @@ def build_market_refs(config: dict[str, Any], workers: int, limit_markets: int |
 
 def normalize_trade(trade: dict[str, Any], ref: pd.Series) -> dict[str, Any] | None:
     side = str(trade.get("side", "")).upper()
-    if side != "SELL":
+    side_filter = ref.get("response_side_filter")
+    if side_filter and side != str(side_filter).upper():
         return None
     asset = str(trade.get("asset") or trade.get("token") or trade.get("tokenId") or "")
     outcome = norm_outcome(trade.get("outcome"))
@@ -153,6 +155,7 @@ def normalize_trade(trade: dict[str, Any], ref: pd.Series) -> dict[str, Any] | N
     return {
         "price": trade.get("price"),
         "timestamp": trade.get("timestamp"),
+        "side": side,
         "condition_id": ref["condition_id"],
         "slug": ref["polymarket_slug"],
         "asset": asset,
@@ -165,6 +168,9 @@ def normalize_trade(trade: dict[str, Any], ref: pd.Series) -> dict[str, Any] | N
 
 def fetch_trades_for_market(ref_dict: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
     ref = pd.Series(ref_dict)
+    response_side_filter = config["api"].get("response_side_filter")
+    if response_side_filter is not None:
+        ref["response_side_filter"] = str(response_side_filter).upper()
     session = requests.Session()
     rows: list[dict[str, Any]] = []
     offset = 0
@@ -174,7 +180,6 @@ def fetch_trades_for_market(ref_dict: dict[str, Any], config: dict[str, Any]) ->
             "limit": int(config["api"]["limit"]),
             "offset": offset,
             "takerOnly": "true",
-            "side": "SELL",
         }
         data = get_json(
             session,

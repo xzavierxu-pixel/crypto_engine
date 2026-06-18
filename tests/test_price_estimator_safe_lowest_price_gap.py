@@ -6,7 +6,10 @@ import torch
 
 from execution_engine.artifacts import SafeLowestPriceGapNumpyModel
 from price_estimator.safe_lowest_price_gap.train_safe_lowest_price_gap import (
+    CandidateResult,
+    PredictionResult,
     bucket_conf_ok,
+    candidate_key,
     fit_bucket_model,
     infer_prices,
     metric_summary,
@@ -86,6 +89,47 @@ def test_metric_summary_uses_feasible_coverage_not_overall_ceiling() -> None:
     assert metrics["coverage_overall"] == 0.5
     assert metrics["active_covered_gap_norm_mean"] == metrics["covered_gap_norm_mean"]
     assert metrics["non_active_share"] == 0.5
+
+
+def test_candidate_key_uses_configured_active_metric_before_full_gap() -> None:
+    def candidate(active_gap: float, full_gap: float) -> CandidateResult:
+        return CandidateResult(
+            alpha=1.0,
+            delta_norm=0.5,
+            delta_quantile=0.7,
+            bucket_miss_threshold=0.1,
+            bucket_model={},
+            metrics={
+                "coverage_feasible": 0.72,
+                "side_violation_rate": 0.0,
+                "non_active_share": 0.2,
+                "active_covered_gap_norm_mean": active_gap,
+                "covered_gap_norm_mean": full_gap,
+                "covered_feasible_count": 100.0,
+            },
+            prediction=PredictionResult(
+                p_pred=np.array([], dtype=float),
+                action=np.array([], dtype=str),
+                conf_ok=np.array([], dtype=bool),
+            ),
+        )
+
+    better_active = candidate(active_gap=0.50, full_gap=0.80)
+    better_full = candidate(active_gap=0.60, full_gap=0.40)
+
+    assert candidate_key(
+        better_active,
+        min_coverage=0.70,
+        max_non_active_share=0.45,
+        optimize_metric="active_covered_gap_norm_mean",
+        tie_breaker_metric="covered_gap_norm_mean",
+    ) < candidate_key(
+        better_full,
+        min_coverage=0.70,
+        max_non_active_share=0.45,
+        optimize_metric="active_covered_gap_norm_mean",
+        tie_breaker_metric="covered_gap_norm_mean",
+    )
 
 
 def test_bucket_model_marks_high_miss_bucket_low_confidence() -> None:

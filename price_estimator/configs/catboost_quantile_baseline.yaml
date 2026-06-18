@@ -20,6 +20,7 @@ api:
   data_trades_url: https://data-api.polymarket.com/trades
   workers: 5
   limit: 10000
+  response_side_filter: null
   sleep_seconds: 0.0
   request_timeout_seconds: 30
   max_retries: 4
