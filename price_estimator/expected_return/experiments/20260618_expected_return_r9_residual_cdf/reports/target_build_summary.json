@@ -1,0 +1,142 @@
+{
+  "config_path": "price_estimator\\expected_return\\config.yaml",
+  "deploy_experiment_id": "20260611_catboost_calendar_coordinate_search",
+  "experiment_id": "20260618_expected_return_r9_residual_cdf",
+  "fee": 0.0,
+  "git_commit_at_build": "a2c24584c72fcf7ada1a5f28c1c47e6e6822fc16",
+  "order_window": "until_settlement",
+  "outputs": {
+    "train": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\expected_return\\experiments\\20260618_expected_return_r9_residual_cdf\\data\\expected_return_train.parquet",
+    "validation": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\expected_return\\experiments\\20260618_expected_return_r9_residual_cdf\\data\\expected_return_validation.parquet"
+  },
+  "threshold_policy": {
+    "fallback_t_down": 0.43142857142857144,
+    "fallback_t_up": 0.5792857142857143,
+    "thresholds": {
+      "d0_asia": {
+        "t_down": 0.4,
+        "t_up": 0.59
+      },
+      "d0_europe": {
+        "t_down": 0.415,
+        "t_up": 0.575
+      },
+      "d0_us": {
+        "t_down": 0.385,
+        "t_up": 0.54
+      },
+      "d1_asia": {
+        "t_down": 0.425,
+        "t_up": 0.57
+      },
+      "d1_europe": {
+        "t_down": 0.425,
+        "t_up": 0.575
+      },
+      "d1_us": {
+        "t_down": 0.445,
+        "t_up": 0.59
+      },
+      "d2_asia": {
+        "t_down": 0.475,
+        "t_up": 0.62
+      },
+      "d2_europe": {
+        "t_down": 0.43,
+        "t_up": 0.57
+      },
+      "d2_us": {
+        "t_down": 0.43,
+        "t_up": 0.58
+      },
+      "d3_asia": {
+        "t_down": 0.43,
+        "t_up": 0.575
+      },
+      "d3_europe": {
+        "t_down": 0.435,
+        "t_up": 0.57
+      },
+      "d3_us": {
+        "t_down": 0.425,
+        "t_up": 0.57
+      },
+      "d4_asia": {
+        "t_down": 0.475,
+        "t_up": 0.61
+      },
+      "d4_europe": {
+        "t_down": 0.415,
+        "t_up": 0.56
+      },
+      "d4_us": {
+        "t_down": 0.455,
+        "t_up": 0.6
+      },
+      "d5_asia": {
+        "t_down": 0.425,
+        "t_up": 0.57
+      },
+      "d5_europe": {
+        "t_down": 0.43,
+        "t_up": 0.57
+      },
+      "d5_us": {
+        "t_down": 0.43,
+        "t_up": 0.575
+      },
+      "d6_asia": {
+        "t_down": 0.475,
+        "t_up": 0.62
+      },
+      "d6_europe": {
+        "t_down": 0.4,
+        "t_up": 0.56
+      },
+      "d6_us": {
+        "t_down": 0.435,
+        "t_up": 0.575
+      }
+    },
+    "type": "utc_day_session_coordinate"
+  },
+  "threshold_source": "offline_validation_calendar_coordinate",
+  "train_summary": {
+    "accepted_accuracy": 0.6716753644052547,
+    "accepted_coverage_vs_source": 0.7098422430861595,
+    "accepted_rows_before_low_join": 11114,
+    "correct_count": 7465,
+    "end": "2026-04-10 23:35:00+00:00",
+    "input_rows": 15657,
+    "missing_low_rows": 0,
+    "output_rows": 11114,
+    "selected_down_rows": 5123,
+    "selected_up_rows": 5991,
+    "split": "train",
+    "start": "2026-02-12 01:10:00+00:00",
+    "threshold_policy_type": "utc_day_session_coordinate",
+    "wrong_count": 3649,
+    "wrong_low_lte_001_share": 0.5623458481775829,
+    "wrong_low_mean": 0.05145959509071124,
+    "wrong_low_p95": 0.26
+  },
+  "validation_summary": {
+    "accepted_accuracy": 0.6666666666666666,
+    "accepted_coverage_vs_source": 0.6967168998923574,
+    "accepted_rows_before_low_join": 5178,
+    "correct_count": 3452,
+    "end": "2026-05-10 23:50:00+00:00",
+    "input_rows": 7432,
+    "missing_low_rows": 0,
+    "output_rows": 5178,
+    "selected_down_rows": 2484,
+    "selected_up_rows": 2694,
+    "split": "validation",
+    "start": "2026-04-11 00:15:00+00:00",
+    "threshold_policy_type": "utc_day_session_coordinate",
+    "wrong_count": 1726,
+    "wrong_low_lte_001_share": 0.5921205098493627,
+    "wrong_low_mean": 0.046364945456483425,
+    "wrong_low_p95": 0.23
+  }
+}
