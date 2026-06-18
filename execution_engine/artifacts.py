@@ -149,12 +149,13 @@ class SafeLowestPriceGapNumpyModel:
         self.arrays = arrays
         self.preprocessor = SafeGapPreprocessor(dict(payload["preprocessor"]))
         calibration = payload["calibration"]
-        self.delta = float(calibration["delta"])
+        self.delta_norm = float(calibration["delta_norm"])
         self.bucket_miss_threshold = float(calibration["bucket_miss_threshold"])
         self.bucket_model = calibration["bucket_model"]
         target = payload["target"]
         self.tick_size = float(target["tick_size"])
         self.tick_rounding_tolerance = float(target["tick_rounding_tolerance"])
+        self.s_floor = float(payload["loss"]["s_floor"])
 
     def predict(self, frame: Any) -> Any:
         import numpy as np
@@ -239,7 +240,8 @@ class SafeLowestPriceGapNumpyModel:
     def _infer_prices(self, f_model: Any, p_side: Any, conf_ok: Any) -> tuple[Any, Any]:
         import numpy as np
 
-        raw = f_model + self.delta
+        s_proxy = np.clip(p_side - f_model, self.s_floor, None)
+        raw = f_model + self.delta_norm * s_proxy
         ticked = np.ceil(raw / self.tick_size - self.tick_rounding_tolerance) * self.tick_size
         ticked = np.maximum(ticked, 0.0)
         p_pred = np.minimum(ticked, p_side)

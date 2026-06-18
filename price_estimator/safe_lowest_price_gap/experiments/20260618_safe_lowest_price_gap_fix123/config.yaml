@@ -1,15 +1,15 @@
-experiment_id: 20260617_safe_lowest_price_gap_baseline
+experiment_id: 20260618_safe_lowest_price_gap_fix123
 
 paths:
   deploy_artifact_dir: execution_engine/deploy/baseline
   feature_manifest: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/artifact_manifest.json
   train_dataset: price_estimator/data/price_estimator_train.parquet
   validation_dataset: price_estimator/data/price_estimator_valid.parquet
-  models_dir: price_estimator/safe_lowest_price_gap/models
-  reports_dir: price_estimator/safe_lowest_price_gap/reports
-  predictions_train: price_estimator/safe_lowest_price_gap/reports/predictions_train.parquet
-  predictions_calibration: price_estimator/safe_lowest_price_gap/reports/predictions_calibration.parquet
-  predictions_validation: price_estimator/safe_lowest_price_gap/reports/predictions_validation.parquet
+  models_dir: price_estimator/safe_lowest_price_gap/experiments/20260618_safe_lowest_price_gap_fix123/models
+  reports_dir: price_estimator/safe_lowest_price_gap/experiments/20260618_safe_lowest_price_gap_fix123/reports
+  predictions_train: price_estimator/safe_lowest_price_gap/experiments/20260618_safe_lowest_price_gap_fix123/reports/predictions_train.parquet
+  predictions_calibration: price_estimator/safe_lowest_price_gap/experiments/20260618_safe_lowest_price_gap_fix123/reports/predictions_calibration.parquet
+  predictions_validation: price_estimator/safe_lowest_price_gap/experiments/20260618_safe_lowest_price_gap_fix123/reports/predictions_validation.parquet
 
 target:
   raw_column: target_raw

@@ -50,7 +50,7 @@ class PredictionResult:
 @dataclass(frozen=True)
 class CandidateResult:
     alpha: float
-    delta: float
+    delta_norm: float
     delta_quantile: float
     bucket_miss_threshold: float
     bucket_model: dict[str, Any]
@@ -126,8 +126,10 @@ def normalized_asym_loss(
 ) -> torch.Tensor:
     f = torch.sigmoid(z)
     r = f - y_safe
-    under = float(alpha) * (torch.sqrt(r * r + float(c) * float(c)) - float(c))
-    t = torch.clamp(r / torch.clamp_min(s_eff, 1e-6), min=0.0)
+    s = torch.clamp_min(s_eff, 1e-6)
+    rn = r / s
+    under = float(alpha) * (torch.sqrt(rn * rn + float(c) * float(c)) - float(c))
+    t = torch.clamp(rn, min=0.0)
     over_quad = 0.5 * t * t
     over_lin = float(kappa) * (t - 0.5 * float(kappa))
     over = torch.where(t <= float(kappa), over_quad, over_lin)
@@ -153,14 +155,16 @@ def infer_prices(
     f: np.ndarray,
     p_side: np.ndarray,
     conf_ok: np.ndarray,
-    delta: float,
+    delta_norm: float,
     tick_size: float,
     tick_tol: float,
+    s_floor: float,
 ) -> PredictionResult:
     f = np.asarray(f, dtype=float)
     p_side = np.asarray(p_side, dtype=float)
     conf_ok = np.asarray(conf_ok, dtype=bool)
-    raw = f + float(delta)
+    s_proxy = np.clip(p_side - f, float(s_floor), None)
+    raw = f + float(delta_norm) * s_proxy
     ticked = ceil_to_tick(raw, tick_size, tick_tol)
     ticked = np.maximum(ticked, 0.0)
     p_pred = np.minimum(ticked, p_side)
@@ -195,6 +199,8 @@ def metric_summary(
     active = prediction.action == "active"
     abstain = prediction.action == "abstain_low_conf"
     clamp = prediction.action == "clamp_over_pside"
+    active_cov = covered_feasible & active
+    active_gap = gap_norm[active_cov]
     metrics = {
         "sample_count": float(len(y)),
         "feasible_count": float(feasible.sum()),
@@ -208,12 +214,15 @@ def metric_summary(
         "covered_gap_norm_median": float(np.median(covered_gap)) if len(covered_gap) else float("nan"),
         "covered_gap_norm_q25": q(covered_gap, 0.25),
         "covered_gap_norm_q75": q(covered_gap, 0.75),
+        "active_covered_gap_norm_mean": float(np.mean(active_gap)) if len(active_gap) else float("nan"),
+        "active_covered_gap_norm_median": float(np.median(active_gap)) if len(active_gap) else float("nan"),
         "active_count": float(active.sum()),
         "active_share": float(active.mean()) if len(active) else float("nan"),
         "abstain_low_conf_count": float(abstain.sum()),
         "abstain_low_conf_share": float(abstain.mean()) if len(abstain) else float("nan"),
         "clamp_over_pside_count": float(clamp.sum()),
         "clamp_over_pside_share": float(clamp.mean()) if len(clamp) else float("nan"),
+        "non_active_share": float((~active).mean()) if len(active) else float("nan"),
         "side_violation_count": float((pred > p + tolerance).sum()),
         "side_violation_rate": float((pred > p + tolerance).mean()) if len(pred) else float("nan"),
         "mean_p_pred": float(np.mean(pred)) if len(pred) else float("nan"),
@@ -271,19 +280,21 @@ def fit_bucket_model(
     y_safe: np.ndarray,
     p_side: np.ndarray,
     f_cal: np.ndarray,
-    delta: float,
+    delta_norm: float,
     config: dict[str, Any],
     tolerance: float,
 ) -> dict[str, Any]:
     tick_size = float(config["target"]["tick_size"])
     tick_tol = float(config["target"]["tick_rounding_tolerance"])
+    s_floor = float(config["loss"]["s_floor"])
     base_pred = infer_prices(
         f_cal,
         p_side,
         np.ones(len(f_cal), dtype=bool),
-        delta,
+        delta_norm,
         tick_size,
         tick_tol,
+        s_floor,
     )
     feasible = y_safe < p_side
     covered = (base_pred.p_pred + tolerance >= y_safe) & (base_pred.p_pred <= p_side + tolerance)
@@ -324,11 +335,16 @@ def bucket_conf_ok(df: pd.DataFrame, bucket_model: dict[str, Any], threshold: fl
     return miss_rate <= float(threshold)
 
 
-def candidate_key(candidate: CandidateResult, min_coverage: float) -> tuple[float, float, float, float, float]:
+def candidate_key(
+    candidate: CandidateResult,
+    min_coverage: float,
+    max_non_active_share: float,
+) -> tuple[float, float, float, float, float]:
     m = candidate.metrics
     valid = (
         m["coverage_feasible"] >= min_coverage
         and m["side_violation_rate"] == 0.0
+        and m["non_active_share"] <= max_non_active_share
         and math.isfinite(m["covered_gap_norm_mean"])
     )
     if not valid:
@@ -336,8 +352,8 @@ def candidate_key(candidate: CandidateResult, min_coverage: float) -> tuple[floa
     return (
         0.0,
         m["covered_gap_norm_mean"],
-        m["covered_gap_norm_median"],
-        m["abstain_low_conf_share"],
+        m["active_covered_gap_norm_mean"],
+        m["non_active_share"],
         -m["covered_feasible_count"],
     )
 
@@ -351,8 +367,10 @@ def select_calibration_candidate(
     config: dict[str, Any],
 ) -> tuple[CandidateResult, list[dict[str, float]]]:
     feasible = y_safe < p_side
-    residual = y_safe[feasible] - f_cal[feasible]
-    if len(residual) == 0:
+    s_floor = float(config["loss"]["s_floor"])
+    s_proxy = np.clip(p_side[feasible] - f_cal[feasible], s_floor, None)
+    r_norm = (y_safe[feasible] - f_cal[feasible]) / s_proxy
+    if len(r_norm) == 0:
         raise ValueError("No feasible calibration rows available")
     tolerance = float(config["target"]["feasibility_tolerance"])
     tick_size = float(config["target"]["tick_size"])
@@ -363,18 +381,21 @@ def select_calibration_candidate(
             config["objective"]["min_feasible_coverage"],
         )
     )
+    min_coverage += float(config["objective"].get("calibration_coverage_buffer", 0.0))
+    max_non_active_share = float(config["objective"].get("max_non_active_share", 1.0))
+    max_non_active_share = float(config["objective"].get("max_non_active_share", 1.0))
     frontier: list[dict[str, float]] = []
     candidates: list[CandidateResult] = []
     for q in [float(v) for v in config["calibration"]["delta_quantiles"]]:
-        delta = float(np.quantile(residual, q))
-        bucket_model = fit_bucket_model(calibration, y_safe, p_side, f_cal, delta, config, tolerance)
+        delta_norm = float(np.quantile(r_norm, q))
+        bucket_model = fit_bucket_model(calibration, y_safe, p_side, f_cal, delta_norm, config, tolerance)
         for threshold in [float(v) for v in config["calibration"]["bucket_miss_rate_thresholds"]]:
             conf_ok = bucket_conf_ok(calibration, bucket_model, threshold)
-            pred = infer_prices(f_cal, p_side, conf_ok, delta, tick_size, tick_tol)
+            pred = infer_prices(f_cal, p_side, conf_ok, delta_norm, tick_size, tick_tol, s_floor)
             metrics = metric_summary(y_safe, p_side, pred, tolerance)
             row = {
                 "alpha": float(alpha),
-                "delta": delta,
+                "delta_norm": delta_norm,
                 "delta_quantile": q,
                 "bucket_miss_threshold": threshold,
                 **metrics,
@@ -383,7 +404,7 @@ def select_calibration_candidate(
             candidates.append(
                 CandidateResult(
                     alpha=float(alpha),
-                    delta=delta,
+                    delta_norm=delta_norm,
                     delta_quantile=q,
                     bucket_miss_threshold=threshold,
                     bucket_model=bucket_model,
@@ -391,7 +412,7 @@ def select_calibration_candidate(
                     prediction=pred,
                 )
             )
-    best = min(candidates, key=lambda c: candidate_key(c, min_coverage))
+    best = min(candidates, key=lambda c: candidate_key(c, min_coverage, max_non_active_share))
     return best, frontier
 
 
@@ -444,6 +465,8 @@ def train_one_alpha(
             config["objective"]["min_feasible_coverage"],
         )
     )
+    min_coverage += float(config["objective"].get("calibration_coverage_buffer", 0.0))
+    max_non_active_share = float(config["objective"].get("max_non_active_share", 1.0))
     for epoch in range(1, epochs + 1):
         model.train()
         losses: list[float] = []
@@ -461,12 +484,12 @@ def train_one_alpha(
             losses.append(float(loss.detach().cpu()))
         f_cal = predict_f(model, x_cal, device, int(config["training"]["batch_size"]))
         candidate, _ = select_calibration_candidate(calibration, y_cal, p_cal, f_cal, alpha, config)
-        key = candidate_key(candidate, min_coverage)
+        key = candidate_key(candidate, min_coverage, max_non_active_share)
         row = {
             "alpha": float(alpha),
             "epoch": epoch,
             "loss": float(np.mean(losses)) if losses else float("nan"),
-            "selected_delta": candidate.delta,
+            "selected_delta_norm": candidate.delta_norm,
             "selected_delta_quantile": candidate.delta_quantile,
             "selected_bucket_miss_threshold": candidate.bucket_miss_threshold,
             **{f"calibration_{k}": v for k, v in candidate.metrics.items()},
@@ -486,6 +509,7 @@ def train_one_alpha(
                 "loss": row["loss"],
                 "calibration_coverage_feasible": candidate.metrics["coverage_feasible"],
                 "calibration_gap_mean": candidate.metrics["covered_gap_norm_mean"],
+                "calibration_active_gap_mean": candidate.metrics["active_covered_gap_norm_mean"],
                 "calibration_abstain_share": candidate.metrics["abstain_low_conf_share"],
             }, sort_keys=True))
         if stale >= patience:
@@ -509,13 +533,135 @@ def evaluate_with_candidate(
         f,
         p_side,
         conf_ok,
-        candidate.delta,
+        candidate.delta_norm,
         float(config["target"]["tick_size"]),
         float(config["target"]["tick_rounding_tolerance"]),
+        float(config["loss"]["s_floor"]),
     )
     metrics = metric_summary(y_safe, p_side, pred, float(config["target"]["feasibility_tolerance"]))
     diagnostics = action_diagnostics(y_safe, p_side, pred, float(config["target"]["feasibility_tolerance"]))
     return pred, metrics, diagnostics
+
+
+def _dist_stats(vals: np.ndarray, quantiles: list[float]) -> dict[str, float]:
+    vals = np.asarray(vals, dtype=float)
+    vals = vals[np.isfinite(vals)]
+    if len(vals) == 0:
+        return {"count": 0.0}
+    out = {
+        "count": float(len(vals)),
+        "mean": float(np.mean(vals)),
+        "std": float(np.std(vals)),
+        "min": float(np.min(vals)),
+        "max": float(np.max(vals)),
+    }
+    for quantile in quantiles:
+        out[f"q{int(round(float(quantile) * 100)):02d}"] = float(np.quantile(vals, float(quantile)))
+    out["spread_q90_q50"] = out.get("q90", float("nan")) - out.get("q50", float("nan"))
+    return out
+
+
+def normalized_residual_diagnostics(
+    y_safe: np.ndarray,
+    p_side: np.ndarray,
+    f: np.ndarray,
+    s_floor: float,
+    quantiles: list[float],
+) -> dict[str, Any]:
+    y = np.asarray(y_safe, dtype=float)
+    p = np.asarray(p_side, dtype=float)
+    ff = np.asarray(f, dtype=float)
+    feasible = y < p
+    yf = y[feasible]
+    pf = p[feasible]
+    ff_feasible = ff[feasible]
+    s_true = np.clip(pf - yf, float(s_floor), None)
+    s_proxy = np.clip(pf - ff_feasible, float(s_floor), None)
+    residual = yf - ff_feasible
+    return {
+        "feasible_count": float(feasible.sum()),
+        "abs_residual": _dist_stats(residual, quantiles),
+        "norm_residual_true_s": _dist_stats(residual / s_true, quantiles),
+        "norm_residual_proxy_s": _dist_stats(residual / s_proxy, quantiles),
+        "room_s_true": _dist_stats(s_true, quantiles),
+        "room_s_proxy": _dist_stats(s_proxy, quantiles),
+    }
+
+
+def pside_bin_edges(config: dict[str, Any]) -> list[float]:
+    diagnostics = config.get("diagnostics", {})
+    if "pside_bin_step" in diagnostics:
+        step = float(diagnostics.get("pside_bin_step", 0.05))
+        if step <= 0 or step > 1:
+            raise ValueError("diagnostics.pside_bin_step must be in (0, 1]")
+        n = int(round(1.0 / step))
+        return [round(i * step, 10) for i in range(n + 1)]
+    return [float(v) for v in diagnostics.get("p_side_bin_edges", [0.0, 1.0])]
+
+
+def per_pside_bin_delta_norm(
+    y_safe: np.ndarray,
+    p_side: np.ndarray,
+    f: np.ndarray,
+    edges: list[float],
+    s_floor: float,
+    delta_quantile: float,
+) -> list[dict[str, float]]:
+    y = np.asarray(y_safe, dtype=float)
+    p = np.asarray(p_side, dtype=float)
+    ff = np.asarray(f, dtype=float)
+    feasible = y < p
+    s_proxy = np.clip(p - ff, float(s_floor), None)
+    r_norm = (y - ff) / s_proxy
+    idx = np.digitize(p, edges, right=False)
+    rows: list[dict[str, float]] = []
+    for bucket_idx in range(1, len(edges)):
+        mask = feasible & (idx == bucket_idx)
+        row = {
+            "pside_bin": f"[{edges[bucket_idx - 1]:.2f}, {edges[bucket_idx]:.2f})",
+            "edge_lo": float(edges[bucket_idx - 1]),
+            "edge_hi": float(edges[bucket_idx]),
+            "feasible_count": float(mask.sum()),
+        }
+        if mask.any():
+            row.update({
+                "norm_residual_q50": float(np.quantile(r_norm[mask], 0.50)),
+                "norm_residual_q90": float(np.quantile(r_norm[mask], 0.90)),
+                "local_delta_norm": float(np.quantile(r_norm[mask], float(delta_quantile))),
+                "mean_room_s_true": float(np.mean(np.clip(p[mask] - y[mask], float(s_floor), None))),
+                "mean_room_s_proxy": float(np.mean(s_proxy[mask])),
+            })
+        rows.append(row)
+    return rows
+
+
+def pside_bin_metrics(
+    y_safe: np.ndarray,
+    p_side: np.ndarray,
+    prediction: PredictionResult,
+    edges: list[float],
+    tolerance: float,
+) -> list[dict[str, float]]:
+    p = np.asarray(p_side, dtype=float)
+    idx = np.digitize(p, edges, right=False)
+    rows: list[dict[str, float]] = []
+    for bucket_idx in range(1, len(edges)):
+        mask = idx == bucket_idx
+        row = {
+            "pside_bin": f"[{edges[bucket_idx - 1]:.2f}, {edges[bucket_idx]:.2f})",
+            "edge_lo": float(edges[bucket_idx - 1]),
+            "edge_hi": float(edges[bucket_idx]),
+            "sample_count": float(mask.sum()),
+        }
+        if mask.any():
+            sub = PredictionResult(
+                p_pred=prediction.p_pred[mask],
+                action=prediction.action[mask],
+                conf_ok=prediction.conf_ok[mask],
+            )
+            row.update(metric_summary(y_safe[mask], p[mask], sub, tolerance))
+        rows.append(row)
+    return rows
 
 
 def write_predictions(
@@ -550,6 +696,18 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
+
+
+def write_numpy_artifact(
+    path: Path,
+    model: nn.Module,
+    metadata: dict[str, Any],
+) -> None:
+    arrays: dict[str, np.ndarray] = {}
+    for name, tensor in model.state_dict().items():
+        arrays[name.replace(".", "__")] = tensor.detach().cpu().numpy()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(path, metadata=json.dumps(metadata, sort_keys=True), **arrays)
 
 
 def main() -> None:
@@ -602,6 +760,8 @@ def main() -> None:
             config["objective"]["min_feasible_coverage"],
         )
     )
+    min_coverage += float(config["objective"].get("calibration_coverage_buffer", 0.0))
+    max_non_active_share = float(config["objective"].get("max_non_active_share", 1.0))
     for alpha in [float(v) for v in config["loss"]["alpha_grid"]]:
         model, candidate, rows = train_one_alpha(
             alpha,
@@ -621,7 +781,10 @@ def main() -> None:
         frontier_rows.extend(frontier)
         trained.append((model, selected))
 
-    selected_model, selected_candidate = min(trained, key=lambda item: candidate_key(item[1], min_coverage))
+    selected_model, selected_candidate = min(
+        trained,
+        key=lambda item: candidate_key(item[1], min_coverage, max_non_active_share),
+    )
     f_fit = predict_f(selected_model, x_fit, device, int(config["training"]["batch_size"]))
     f_cal = predict_f(selected_model, x_cal, device, int(config["training"]["batch_size"]))
     f_train_all = predict_f(selected_model, x_train_all, device, int(config["training"]["batch_size"]))
@@ -639,28 +802,101 @@ def main() -> None:
     validation_pred, validation_metrics, validation_action_diag = evaluate_with_candidate(
         validation, y_validation, p_validation, f_validation, selected_candidate, config
     )
+    tolerance = float(config["target"]["feasibility_tolerance"])
+    s_floor = float(config["loss"]["s_floor"])
+    diag_quantiles = [
+        float(v)
+        for v in config.get("diagnostics", {}).get(
+            "normalized_residual_quantiles",
+            [0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99],
+        )
+    ]
+    edges = pside_bin_edges(config)
+    normalized_residual_report = {
+        "fit": normalized_residual_diagnostics(
+            y_fit,
+            pd.to_numeric(fit["p_side"], errors="coerce").to_numpy(dtype=float),
+            f_fit,
+            s_floor,
+            diag_quantiles,
+        ),
+        "calibration": normalized_residual_diagnostics(y_cal, p_cal, f_cal, s_floor, diag_quantiles),
+        "train": normalized_residual_diagnostics(y_train_all, p_train_all, f_train_all, s_floor, diag_quantiles),
+        "validation": normalized_residual_diagnostics(y_validation, p_validation, f_validation, s_floor, diag_quantiles),
+    }
+    per_pside_delta_norm_report = {
+        "fit": per_pside_bin_delta_norm(
+            y_fit,
+            pd.to_numeric(fit["p_side"], errors="coerce").to_numpy(dtype=float),
+            f_fit,
+            edges,
+            s_floor,
+            selected_candidate.delta_quantile,
+        ),
+        "calibration": per_pside_bin_delta_norm(
+            y_cal,
+            p_cal,
+            f_cal,
+            edges,
+            s_floor,
+            selected_candidate.delta_quantile,
+        ),
+        "train": per_pside_bin_delta_norm(
+            y_train_all,
+            p_train_all,
+            f_train_all,
+            edges,
+            s_floor,
+            selected_candidate.delta_quantile,
+        ),
+        "validation": per_pside_bin_delta_norm(
+            y_validation,
+            p_validation,
+            f_validation,
+            edges,
+            s_floor,
+            selected_candidate.delta_quantile,
+        ),
+    }
+    pside_bin_metric_report = {
+        "fit": pside_bin_metrics(
+            y_fit,
+            pd.to_numeric(fit["p_side"], errors="coerce").to_numpy(dtype=float),
+            fit_pred,
+            edges,
+            tolerance,
+        ),
+        "calibration": pside_bin_metrics(y_cal, p_cal, cal_pred, edges, tolerance),
+        "train": pside_bin_metrics(y_train_all, p_train_all, train_pred, edges, tolerance),
+        "validation": pside_bin_metrics(y_validation, p_validation, validation_pred, edges, tolerance),
+    }
 
+    model_metadata = {
+        "input_dim": x_fit.shape[1],
+        "model": config["model"],
+        "preprocessor": preprocessor.to_dict(),
+        "feature_columns": columns,
+        "categorical_columns": cat_cols,
+        "target": config["target"],
+        "loss": config["loss"],
+        "calibration": {
+            "alpha": selected_candidate.alpha,
+            "delta_norm": selected_candidate.delta_norm,
+            "delta_quantile": selected_candidate.delta_quantile,
+            "bucket_miss_threshold": selected_candidate.bucket_miss_threshold,
+            "bucket_model": selected_candidate.bucket_model,
+        },
+    }
     checkpoint_path = models_dir / "safe_lowest_price_gap.pt"
+    numpy_artifact_path = models_dir / "safe_lowest_price_gap.npz"
     torch.save(
         {
             "state_dict": selected_model.state_dict(),
-            "input_dim": x_fit.shape[1],
-            "model": config["model"],
-            "preprocessor": preprocessor.to_dict(),
-            "feature_columns": columns,
-            "categorical_columns": cat_cols,
-            "target": config["target"],
-            "loss": config["loss"],
-            "calibration": {
-                "alpha": selected_candidate.alpha,
-                "delta": selected_candidate.delta,
-                "delta_quantile": selected_candidate.delta_quantile,
-                "bucket_miss_threshold": selected_candidate.bucket_miss_threshold,
-                "bucket_model": selected_candidate.bucket_model,
-            },
+            **model_metadata,
         },
         checkpoint_path,
     )
+    write_numpy_artifact(numpy_artifact_path, selected_model, model_metadata)
 
     train_pred_path = resolve_path(config["paths"]["predictions_train"])
     cal_pred_path = resolve_path(config["paths"]["predictions_calibration"])
@@ -683,11 +919,11 @@ def main() -> None:
         "coverage_constraint_satisfied": coverage_constraint_satisfied,
         "selected_calibration": {
             "alpha": selected_candidate.alpha,
-            "delta": selected_candidate.delta,
+            "delta_norm": selected_candidate.delta_norm,
             "delta_quantile": selected_candidate.delta_quantile,
             "bucket_miss_threshold": selected_candidate.bucket_miss_threshold,
         },
-        "calibration_metric_note": "delta candidates use feasible residual quantiles; selection is hard-filtered by calibration coverage_feasible",
+        "calibration_metric_note": "delta_norm candidates use feasible normalized residual quantiles; selection is hard-filtered by calibration coverage_feasible plus calibration_coverage_buffer and non_active_share",
         "loss": config["loss"],
         "bucket_abstain": {
             **config["bucket_abstain"],
@@ -706,6 +942,12 @@ def main() -> None:
         "calibration_action_diagnostics": cal_action_diag,
         "train_action_diagnostics": train_action_diag,
         "validation_action_diagnostics": validation_action_diag,
+        "normalized_residual_diagnostics": normalized_residual_report,
+        "per_pside_bin_delta_norm": per_pside_delta_norm_report,
+        "fit_pside_bin_metrics": pside_bin_metric_report["fit"],
+        "calibration_pside_bin_metrics": pside_bin_metric_report["calibration"],
+        "train_pside_bin_metrics": pside_bin_metric_report["train"],
+        "validation_pside_bin_metrics": pside_bin_metric_report["validation"],
         "fit_window": {
             "row_count": int(len(fit)),
             "start": str(pd.to_datetime(fit["timestamp"], utc=True).min()) if "timestamp" in fit else None,
@@ -728,6 +970,7 @@ def main() -> None:
         },
         "artifacts": {
             "checkpoint": str(checkpoint_path),
+            "numpy_artifact": str(numpy_artifact_path),
             "config_snapshot": str(reports_dir / "config_used.yaml"),
             "epoch_metrics": str(reports_dir / "epoch_metrics.csv"),
             "calibration_frontier": str(reports_dir / "calibration_frontier.csv"),
