@@ -1,0 +1,15 @@
+experiment_id: 20260619_deploy_baseline_pnl_backtest
+
+paths:
+  validation_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_validation.parquet
+  deploy_manifest: execution_engine/deploy/baseline/artifact_manifest.json
+  experiments_dir: price_estimator/safe_lowest_price_gap/experiments
+  output_dir: price_estimator/safe_lowest_price_gap/experiments/20260619_deploy_baseline_pnl_backtest/reports
+
+objective:
+  optimize_metric: total_pnl_per_one_share
+  min_coverage: 0.70
+
+backtest:
+  stake_mode: one_share_per_accepted_signal
+  fill_assumption: correct direction fills only when chosen_low <= bid; wrong direction submitted orders are conservatively forced filled
