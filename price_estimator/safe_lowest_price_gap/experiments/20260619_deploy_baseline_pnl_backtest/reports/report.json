@@ -6,8 +6,8 @@
   "coverage_constraint_satisfied": true,
   "experiment_id": "20260619_deploy_baseline_pnl_backtest",
   "fill_assumption": "correct direction fills only when chosen_low <= bid; wrong direction submitted orders are conservatively forced filled",
-  "git_commit": "00baf3b",
-  "git_commit_before_experiment": "3260efb458ef566d93f072216a4f5e610c3b5403",
+  "git_commit": "eea1b0fc2cea9e048e59f3c4acc7c81299df02fd",
+  "git_commit_before_experiment": "eea1b0fc2cea9e048e59f3c4acc7c81299df02fd",
   "pnl_unit": "USDC per one token share ordered per accepted baseline signal",
   "price_experiment_results": [
     {
@@ -287,6 +287,28 @@
       "unfilled_count": 989,
       "win_pnl": 913.6649738743647,
       "winning_fill_count": 2709,
+      "wrong_signal_forced_fill_rate": 1.0
+    },
+    {
+      "action_counts": {
+        "p_side": 5228
+      },
+      "correct_signal_fill_rate": 0.8301784748512709,
+      "experiment_id": "p_side_full_price",
+      "fill_rate": 0.8798775822494261,
+      "filled_accuracy": 0.6673913043478261,
+      "filled_count": 4600,
+      "losing_fill_count": 1530,
+      "loss_pnl": -1015.6868509018879,
+      "mean_bid": 0.682879761206939,
+      "mean_pnl_per_fill": -0.01377752941139396,
+      "mean_pnl_per_order": -0.012122539267867678,
+      "missing_chosen_low_count": 27,
+      "order_count": 5228,
+      "total_pnl_per_one_share": -63.37663529241222,
+      "unfilled_count": 628,
+      "win_pnl": 952.3102156094756,
+      "winning_fill_count": 3070,
       "wrong_signal_forced_fill_rate": 1.0
     }
   ],

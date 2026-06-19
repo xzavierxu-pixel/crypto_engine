@@ -12,4 +12,7 @@ objective:
 
 backtest:
   stake_mode: one_share_per_accepted_signal
+  include_p_side_baseline: true
+  summary_filename: pnl_summary_with_p_side.csv
+  predictions_filename: predictions_validation_with_p_side.parquet
   fill_assumption: correct direction fills only when chosen_low <= bid; wrong direction submitted orders are conservatively forced filled
