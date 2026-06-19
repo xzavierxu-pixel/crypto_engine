@@ -96,7 +96,7 @@ orders:
   max_price: 0.99
   tick_size_default: 0.01
   on_invalid_second_order: skip
-  cancel_unfilled_after_seconds: 60
+  cancel_unfilled_after_seconds: 0
 execution_edge:
   enabled: false
   min_edge: 0.0

@@ -69,6 +69,7 @@ def test_execution_config_example_loads() -> None:
     assert config.orders.second.round_decimals == 2
     assert config.orders.second.size == 5.0
     assert config.orders.min_price == 0.10
+    assert config.orders.cancel_unfilled_after_seconds == 0
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
     assert config.price_estimator.enabled is True
     assert config.price_estimator.active_artifact == "expected_return_h14"
