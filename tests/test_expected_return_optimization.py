@@ -22,6 +22,7 @@ from run_empirical_pside_bin_cdf import (  # noqa: E402
     gc_for_frame,
     pside_bin_index,
 )
+from run_h2_gc_calibration import adjust_gc, choose_best_policy, split_calibration_halves  # noqa: E402
 from train_low_cdf_and_backtest import (  # noqa: E402
     backtest_metrics,
     backtest_with_bid,
@@ -285,3 +286,45 @@ def test_empirical_pside_bin_cdf_and_empty_bin_fallback() -> None:
     assert np.allclose(gc[2], [0.0, 1.0, 1.0])
     assert bool(summary.loc[summary["bin_index"] == 31, "fallback_used"].iloc[0])
     assert np.all(np.diff(gc, axis=1) >= 0.0)
+
+
+def test_h2_gc_adjustments_are_monotone_and_conservative() -> None:
+    h2 = np.asarray([[0.20, 0.50, 0.80], [0.10, 0.40, 0.90]])
+    empirical = np.zeros((50, 3))
+    empirical[30] = [0.10, 0.30, 0.70]
+    upper = np.zeros((50, 3))
+    upper[30] = [0.15, 0.45, 0.75]
+    calibrator = {"empirical": empirical, "upper_0.9": upper}
+    p_side = np.asarray([0.601, 0.619])
+
+    blend = adjust_gc(h2, p_side, calibrator, 0.02, "blend", 0.5)
+    capped = adjust_gc(h2, p_side, calibrator, 0.02, "upper_cap", 0.9)
+
+    assert np.allclose(blend[0], [0.15, 0.40, 0.75])
+    assert np.all(capped <= h2 + 1e-12)
+    assert np.all(np.diff(blend, axis=1) >= 0.0)
+    assert np.all(np.diff(capped, axis=1) >= 0.0)
+
+
+def test_gc_policy_selection_uses_pnl_then_orders_and_parameter() -> None:
+    rows = [
+        {"parameter": 0.25, "min_ev": 0.0, "order_count": 100.0, "mean_accepted_pnl": 0.01},
+        {"parameter": 0.50, "min_ev": 0.0, "order_count": 110.0, "mean_accepted_pnl": 0.01},
+        {"parameter": 0.75, "min_ev": 0.0, "order_count": 90.0, "mean_accepted_pnl": 0.02},
+    ]
+
+    selected = choose_best_policy(rows, 100)
+
+    assert selected["parameter"] == 0.50
+
+
+def test_calibration_halves_are_chronological_and_disjoint() -> None:
+    frame = pd.DataFrame(
+        {"timestamp": pd.date_range("2026-01-01", periods=6, freq="h", tz="UTC"), "row": range(6)}
+    )
+
+    gc_fit, policy_select = split_calibration_halves(frame, "timestamp")
+
+    assert gc_fit["row"].tolist() == [0, 1, 2]
+    assert policy_select["row"].tolist() == [3, 4, 5]
+    assert gc_fit["timestamp"].max() < policy_select["timestamp"].min()
