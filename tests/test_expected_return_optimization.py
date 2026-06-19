@@ -12,7 +12,11 @@ MODULE_DIR = Path(__file__).resolve().parents[1] / "price_estimator" / "expected
 sys.path.insert(0, str(MODULE_DIR))
 
 from build_expected_return_target import apply_trades_coverage_start, classify_low_join  # noqa: E402
-from run_fixed_bid_validation import evaluate_fixed_bid_frame, evaluate_pside_multiplier_bid_frame  # noqa: E402
+from run_fixed_bid_validation import (  # noqa: E402
+    evaluate_fixed_bid_frame,
+    evaluate_pside_multiplier_bid_frame,
+    evaluate_pside_piecewise_bid_frame,
+)
 from train_low_cdf_and_backtest import (  # noqa: E402
     backtest_metrics,
     backtest_with_bid,
@@ -230,3 +234,28 @@ def test_pside_multiplier_bid_is_ticked_before_accepted_filter() -> None:
     assert all_metrics["order_coverage"] == 1.0
     assert accepted_metrics["order_coverage"] == 1.0
     assert np.isclose(accepted_metrics["sum_pnl"], -0.28)
+
+
+def test_pside_piecewise_bid_boundaries_and_abstention() -> None:
+    frame = pd.DataFrame(
+        {
+            "threshold_accepted": [True] * 4,
+            "correct": [True, True, True, False],
+            "chosen_low": [0.01, 0.01, 0.01, np.nan],
+            "selected_side": ["UP"] * 4,
+            "p_up": [0.29, 0.30, 0.70, 0.71],
+            "p_side": [0.29, 0.30, 0.70, 0.71],
+            "target": [1, 1, 1, 0],
+            "selected_t_up": [0.6] * 4,
+            "selected_t_down": [0.4] * 4,
+        }
+    )
+
+    all_result, accepted_result, _, _, accepted_metrics = evaluate_pside_piecewise_bid_frame(
+        frame, 0.30, 0.70, 0.90, 0.01, 0.01
+    )
+
+    assert np.allclose(all_result.bid, [0.0, 0.27, 0.63, 0.70])
+    assert np.array_equal(accepted_result.bid, all_result.bid)
+    assert accepted_metrics["order_count"] == 3.0
+    assert accepted_metrics["order_coverage"] == 0.75

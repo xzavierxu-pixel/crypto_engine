@@ -80,6 +80,44 @@ def evaluate_pside_multiplier_bid_frame(
     return all_result, accepted_result, accepted, all_metrics, accepted_metrics
 
 
+def evaluate_pside_piecewise_bid_frame(
+    frame: pd.DataFrame,
+    no_order_below: float,
+    multiplier_until: float,
+    middle_multiplier: float,
+    high_offset: float,
+    tick_size: float,
+) -> tuple[BacktestResult, BacktestResult, pd.DataFrame, dict[str, float], dict[str, float]]:
+    if not 0.0 <= no_order_below < multiplier_until < 1.0:
+        raise ValueError("piecewise boundaries must satisfy 0 <= no_order_below < multiplier_until < 1")
+    if not 0.0 < middle_multiplier <= 1.0:
+        raise ValueError("middle_multiplier must be in (0, 1]")
+    if not 0.0 <= high_offset < 1.0:
+        raise ValueError("high_offset must be in [0, 1)")
+    if tick_size <= 0.0:
+        raise ValueError("tick_size must be positive")
+    if "p_side" not in frame.columns:
+        raise ValueError("validation frame is missing p_side")
+    if "threshold_accepted" not in frame.columns:
+        raise ValueError("validation frame is missing threshold_accepted")
+    p_side = pd.to_numeric(frame["p_side"], errors="raise").to_numpy(dtype=float)
+    if not np.isfinite(p_side).all() or np.any((p_side <= 0.0) | (p_side >= 1.0)):
+        raise ValueError("p_side must contain finite probabilities strictly between 0 and 1")
+    raw_bid = np.where(
+        p_side < no_order_below,
+        0.0,
+        np.where(p_side <= multiplier_until, middle_multiplier * p_side, p_side - high_offset),
+    )
+    bid = floor_to_tick(np.maximum(raw_bid, 0.0), tick_size)
+    all_result = backtest_with_bid(frame, bid)
+    accepted_mask = frame["threshold_accepted"].astype(bool).to_numpy()
+    accepted = frame.loc[accepted_mask].copy()
+    accepted_result = subset_result(all_result, accepted_mask)
+    all_metrics = backtest_metrics(frame, all_result, len(frame))
+    accepted_metrics = backtest_metrics(accepted, accepted_result, len(frame))
+    return all_result, accepted_result, accepted, all_metrics, accepted_metrics
+
+
 def write_predictions(frame: pd.DataFrame, result: BacktestResult, path: Path) -> None:
     columns = [
         "timestamp",
@@ -111,6 +149,33 @@ def window(frame: pd.DataFrame) -> dict[str, Any]:
     return {"row_count": int(len(frame)), "start": str(timestamp.min()), "end": str(timestamp.max())}
 
 
+def bid_policy_diagnostics(
+    frame: pd.DataFrame,
+    result: BacktestResult,
+    bid_policy: str,
+    bid_parameters: dict[str, float],
+) -> dict[str, Any]:
+    diagnostics: dict[str, Any] = {
+        "row_count": int(len(frame)),
+        "submitted_count": int((result.bid > 0.0).sum()),
+        "no_order_count": int((result.bid <= 0.0).sum()),
+    }
+    if bid_policy == "p_side_piecewise":
+        p_side = frame["p_side"].to_numpy(dtype=float)
+        lower = bid_parameters["no_order_below"]
+        upper = bid_parameters["multiplier_until"]
+        diagnostics.update(
+            {
+                "below_no_order_boundary_count": int((p_side < lower).sum()),
+                "middle_multiplier_count": int(((p_side >= lower) & (p_side <= upper)).sum()),
+                "high_offset_count": int((p_side > upper).sum()),
+                "p_side_min": float(p_side.min()),
+                "p_side_max": float(p_side.max()),
+            }
+        )
+    return diagnostics
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
@@ -130,6 +195,20 @@ def main() -> None:
             "validation accepted-sample forced mean_accepted_pnl at "
             f"floor_to_tick({multiplier:.6g} * p_side)"
         )
+    elif bid_policy == "p_side_piecewise":
+        no_order_below = float(backtest_config["no_order_below"])
+        multiplier_until = float(backtest_config["multiplier_until"])
+        middle_multiplier = float(backtest_config["middle_multiplier"])
+        high_offset = float(backtest_config["high_offset"])
+        tick_size = float(backtest_config["tick_size"])
+        bid_parameters = {
+            "no_order_below": no_order_below,
+            "multiplier_until": multiplier_until,
+            "middle_multiplier": middle_multiplier,
+            "high_offset": high_offset,
+            "tick_size": tick_size,
+        }
+        primary_metric = "validation accepted-sample forced mean_accepted_pnl for p_side piecewise bid"
     else:
         raise ValueError(f"Unsupported bid_policy: {bid_policy}")
     reports_dir = resolve_path(config["paths"]["reports_dir"])
@@ -143,24 +222,37 @@ def main() -> None:
     ]:
         frame = pd.read_parquet(resolve_path(config["paths"][source_key]))
         if bid_policy == "fixed_absolute":
-            all_result, _, accepted, all_metrics, accepted_metrics = evaluate_fixed_bid_frame(frame, fixed_bid)
+            all_result, accepted_result, accepted, all_metrics, accepted_metrics = evaluate_fixed_bid_frame(
+                frame, fixed_bid
+            )
             if not np.all(all_result.bid == fixed_bid):
                 raise AssertionError("Not every source row received the configured fixed bid")
-        else:
-            all_result, _, accepted, all_metrics, accepted_metrics = evaluate_pside_multiplier_bid_frame(
+        elif bid_policy == "p_side_multiplier":
+            all_result, accepted_result, accepted, all_metrics, accepted_metrics = evaluate_pside_multiplier_bid_frame(
                 frame, multiplier, tick_size
             )
             expected_bid = floor_to_tick(multiplier * frame["p_side"].to_numpy(dtype=float), tick_size)
             if not np.array_equal(all_result.bid, expected_bid):
                 raise AssertionError("Not every source row received the configured p_side multiplier bid")
-        if not np.all(all_result.bid > 0.0):
-            raise AssertionError("Every source row must receive a positive bid")
+        else:
+            all_result, accepted_result, accepted, all_metrics, accepted_metrics = evaluate_pside_piecewise_bid_frame(
+                frame,
+                no_order_below,
+                multiplier_until,
+                middle_multiplier,
+                high_offset,
+                tick_size,
+            )
         write_predictions(frame, all_result, resolve_path(config["paths"][prediction_key]))
         outputs[split] = {
             "all_metrics": all_metrics,
             "accepted_metrics": accepted_metrics,
             "all_window": window(frame),
             "accepted_window": window(accepted),
+            "all_bid_diagnostics": bid_policy_diagnostics(frame, all_result, bid_policy, bid_parameters),
+            "accepted_bid_diagnostics": bid_policy_diagnostics(
+                accepted, accepted_result, bid_policy, bid_parameters
+            ),
         }
 
     min_coverage = float(config.get("objective", {}).get("min_coverage", 0.70))
@@ -181,6 +273,9 @@ def main() -> None:
         "train_window": outputs["train"]["accepted_window"],
         "validation_metrics": outputs["validation"]["accepted_metrics"],
         "validation_all_samples_diagnostic": outputs["validation"]["all_metrics"],
+        "train_bid_policy_diagnostics": outputs["train"]["accepted_bid_diagnostics"],
+        "validation_bid_policy_diagnostics": outputs["validation"]["accepted_bid_diagnostics"],
+        "validation_all_samples_bid_policy_diagnostics": outputs["validation"]["all_bid_diagnostics"],
         "validation_window": outputs["validation"]["accepted_window"],
         "signal_coverage": outputs["validation"]["accepted_metrics"]["coverage"],
         "coverage_constraint_satisfied": bool(
