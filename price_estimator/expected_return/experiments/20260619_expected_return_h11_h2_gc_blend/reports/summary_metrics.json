@@ -70,7 +70,7 @@
   "gc_calibration_method": "blend",
   "gc_fit_source": "first_chronological_half_of_original_calibration_correct",
   "gc_monotonicity_check": true,
-  "git_commit": "5b3e5cd9c5dae3492fe09f907441785136b46cdf",
+  "git_commit": "15173dde04ecb392403aa0bac71e3870541e0327",
   "git_commit_at_evaluation": "5b3e5cd9c5dae3492fe09f907441785136b46cdf",
   "model_family": "h2_hazard_gc_calibration",
   "offline_validation_metric_source": "price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_validation.parquet",
