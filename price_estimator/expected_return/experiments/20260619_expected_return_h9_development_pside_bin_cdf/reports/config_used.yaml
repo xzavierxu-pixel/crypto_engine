@@ -1,0 +1,41 @@
+experiment_id: 20260619_expected_return_h9_development_pside_bin_cdf
+
+objective:
+  min_coverage: 0.70
+
+paths:
+  train_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_train.parquet
+  validation_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_validation.parquet
+  models_dir: price_estimator/expected_return/experiments/20260619_expected_return_h9_development_pside_bin_cdf/models
+  reports_dir: price_estimator/expected_return/experiments/20260619_expected_return_h9_development_pside_bin_cdf/reports
+  predictions_train: price_estimator/expected_return/experiments/20260619_expected_return_h9_development_pside_bin_cdf/reports/predictions_train.parquet
+  predictions_calibration: price_estimator/expected_return/experiments/20260619_expected_return_h9_development_pside_bin_cdf/reports/predictions_calibration.parquet
+  predictions_validation: price_estimator/expected_return/experiments/20260619_expected_return_h9_development_pside_bin_cdf/reports/predictions_validation.parquet
+
+target:
+  order_window: until_settlement
+  tick_size: 0.01
+  min_bid: 0.01
+  min_ev_grid:
+    - 0.00
+    - 0.01
+    - 0.02
+    - 0.03
+    - 0.05
+  min_ev_selection_source: calibration
+  min_ev_min_order_count: 100
+
+split:
+  calibration_tail_days: 7
+  timestamp_column: timestamp
+
+model:
+  family: empirical_pside_bin_cdf
+  gc_fit_source: fit_correct
+  p_side_bin_width: 0.02
+  max_price: 0.85
+  empty_bin_fallback: nearest_nonempty_fit_source_bin
+
+backtest:
+  wrong_fill_policy: forced
+  pnl_scope: threshold_accepted_rows
