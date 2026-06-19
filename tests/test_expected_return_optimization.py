@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import torch
 
 
 MODULE_DIR = Path(__file__).resolve().parents[1] / "price_estimator" / "expected_return"
@@ -15,7 +16,13 @@ from train_low_cdf_and_backtest import (  # noqa: E402
     backtest_metrics,
     backtest_with_bid,
     choose_expected_return_bids,
+    choose_survival_expected_return_bids,
+    build_tick_grid,
+    event_indices,
+    hazard_nll,
+    select_min_ev,
     split_fit_calibration,
+    survival_cdf,
 )
 
 
@@ -122,3 +129,52 @@ def test_trade_coverage_start_filters_before_target_building() -> None:
     assert report["source_rows_before_coverage_filter"] == 3
     assert report["rows_excluded_before_trades_coverage"] == 1
     assert report["rows_after_trades_coverage_filter"] == 2
+
+
+def test_survival_cdf_is_monotone_and_matches_hazard_product() -> None:
+    logits = torch.zeros((2, 3))
+    gc = survival_cdf(logits).numpy()
+
+    assert np.allclose(gc[0], [0.5, 0.75, 0.875])
+    assert np.all(np.diff(gc, axis=1) >= 0.0)
+
+
+def test_hazard_event_index_and_masked_likelihood() -> None:
+    grid = build_tick_grid(0.01, 0.03)
+    index = event_indices(np.asarray([0.015, 0.04]), grid)
+    logits = torch.zeros((2, 3))
+
+    assert index.tolist() == [1, 3]
+    # First row uses survival at tick 1 + event at tick 2; second is censored after all 3 ticks.
+    assert np.isclose(float(hazard_nll(logits, torch.from_numpy(index))), 2.5 * np.log(2.0))
+
+
+def test_survival_bid_selection_uses_sample_specific_cdf() -> None:
+    grid = build_tick_grid(0.01, 0.03)
+    q = np.asarray([0.7, 0.7])
+    gc = np.asarray([[0.9, 0.95, 0.99], [0.01, 0.02, 0.03]])
+    bid, ev, fill = choose_survival_expected_return_bids(q, gc, grid, 0.01, -1.0)
+
+    assert bid[0] == 0.03
+    assert bid[1] == 0.03
+    assert ev[0] > ev[1]
+    assert fill.tolist() == [0.99, 0.03]
+
+
+def test_min_ev_selection_is_calibration_only_with_agreed_ties() -> None:
+    frame = pd.DataFrame(
+        {
+            "correct": [True, False],
+            "chosen_low": [0.01, np.nan],
+            "selected_side": ["UP", "DOWN"],
+            "p_up": [0.8, 0.2],
+            "target": [1, 1],
+            "selected_t_up": [0.6, 0.6],
+            "selected_t_down": [0.4, 0.4],
+        }
+    )
+    same = backtest_with_bid(frame, np.asarray([0.01, 0.01]))
+    selected, rows = select_min_ev({0.0: same, 0.01: same}, frame, len(frame), 2)
+
+    assert selected == 0.01
+    assert len(rows) == 2

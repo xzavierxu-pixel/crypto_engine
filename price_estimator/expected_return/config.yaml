@@ -1,4 +1,7 @@
-experiment_id: 20260619_expected_return_trade_coverage_start
+experiment_id: 20260619_expected_return_h1_hazard_survival
+
+objective:
+  min_coverage: 0.70
 
 paths:
   deploy_artifact_dir: execution_engine/deploy/baseline
@@ -6,14 +9,15 @@ paths:
   train_dataset_source: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/development_frame.parquet
   validation_dataset_source: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/validation_frame.parquet
   trades_dir: price_estimator/data/sell_taker_trades_daily
-  experiment_dir: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start
+  experiment_dir: price_estimator/expected_return/experiments/20260619_expected_return_h1_hazard_survival
+  target_summary_source: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/reports/target_build_summary.json
   train_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_train.parquet
   validation_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_validation.parquet
-  models_dir: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/models
-  reports_dir: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/reports
-  predictions_train: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/reports/predictions_train.parquet
-  predictions_calibration: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/reports/predictions_calibration.parquet
-  predictions_validation: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/reports/predictions_validation.parquet
+  models_dir: price_estimator/expected_return/experiments/20260619_expected_return_h1_hazard_survival/models
+  reports_dir: price_estimator/expected_return/experiments/20260619_expected_return_h1_hazard_survival/reports
+  predictions_train: price_estimator/expected_return/experiments/20260619_expected_return_h1_hazard_survival/reports/predictions_train.parquet
+  predictions_calibration: price_estimator/expected_return/experiments/20260619_expected_return_h1_hazard_survival/reports/predictions_calibration.parquet
+  predictions_validation: price_estimator/expected_return/experiments/20260619_expected_return_h1_hazard_survival/reports/predictions_validation.parquet
 
 target:
   selected_side_source: deploy_manifest_threshold_policy
@@ -30,6 +34,8 @@ target:
     - 0.02
     - 0.03
     - 0.05
+  min_ev_selection_source: calibration
+  min_ev_min_order_count: 100
 
 split:
   calibration_tail_days: 7
@@ -72,7 +78,7 @@ features:
     - chosen_low_reason
 
 model:
-  family: r9_point_plus_global_residual_cdf
+  family: hazard_survival_cdf
   hidden_dims:
     - 256
     - 128
@@ -81,6 +87,12 @@ model:
     - 0.10
     - 0.05
     - 0.00
+  hazard:
+    tick_size: 0.01
+    max_price: 0.85
+    smoothness_penalty: 0.0
+  q_calibration:
+    enabled: false
 
 training:
   batch_size: 512
