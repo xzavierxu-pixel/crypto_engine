@@ -956,11 +956,18 @@ def test_polymarket_v2_adapter_places_gtc_buy(monkeypatch) -> None:
             self.last_order = None
             self.last_type = None
 
-        def create_and_post_order(self, order_args, options, order_type):
+        def create_order(self, order_args, options):
             self.last_order = order_args
             self.last_options = options
+            return "signed-order"
+
+        def post_order(self, signed_order, order_type):
+            assert signed_order == "signed-order"
             self.last_type = order_type
             return {"success": True, "orderID": "1"}
+
+        def create_and_post_order(self, order_args, options, order_type):
+            raise AssertionError("combined post path may duplicate successful orders")
 
     config = load_execution_config("execution_engine/config.example.yaml") 
     orders_config = _legacy_two_leg_orders_config() 

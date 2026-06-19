@@ -175,15 +175,18 @@ class PolymarketV2Adapter:
             side=Side.BUY,
         )
         options = PartialCreateOrderOptions(tick_size=str(order.metadata.get("tick_size", "0.01")))
-        if hasattr(self.client, "create_and_post_order"):
+        if hasattr(self.client, "create_order") and hasattr(self.client, "post_order"):
+            # Do not use create_and_post_order here. py-clob-client-v2 may retry the
+            # complete POST when its order-version probe changes, creating two live
+            # orders even though the first POST succeeded.
+            signed = self.client.create_order(args, options)
+            response = self.client.post_order(signed, OrderType.GTC)
+        else:
             response = self.client.create_and_post_order(
                 order_args=args,
                 options=options,
                 order_type=OrderType.GTC,
             )
-        else:
-            signed = self.client.create_order(args)
-            response = self.client.post_order(signed, OrderType.GTC)
         return {
             "request": {
                 "token_id": order.market_id,
