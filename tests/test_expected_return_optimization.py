@@ -12,6 +12,7 @@ MODULE_DIR = Path(__file__).resolve().parents[1] / "price_estimator" / "expected
 sys.path.insert(0, str(MODULE_DIR))
 
 from build_expected_return_target import apply_trades_coverage_start, classify_low_join  # noqa: E402
+from run_fixed_bid_validation import evaluate_fixed_bid_frame  # noqa: E402
 from train_low_cdf_and_backtest import (  # noqa: E402
     backtest_metrics,
     backtest_with_bid,
@@ -178,3 +179,27 @@ def test_min_ev_selection_is_calibration_only_with_agreed_ties() -> None:
 
     assert selected == 0.01
     assert len(rows) == 2
+
+
+def test_fixed_absolute_bid_is_generated_before_accepted_filter() -> None:
+    frame = pd.DataFrame(
+        {
+            "threshold_accepted": [True, False, True],
+            "correct": [True, False, False],
+            "chosen_low": [0.40, np.nan, np.nan],
+            "selected_side": ["UP", "DOWN", "UP"],
+            "p_up": [0.8, 0.2, 0.8],
+            "target": [1, 1, 0],
+            "selected_t_up": [0.6] * 3,
+            "selected_t_down": [0.4] * 3,
+        }
+    )
+
+    all_result, accepted_result, accepted, all_metrics, accepted_metrics = evaluate_fixed_bid_frame(frame, 0.50)
+
+    assert all_result.bid.tolist() == [0.5, 0.5, 0.5]
+    assert accepted_result.bid.tolist() == [0.5, 0.5]
+    assert len(accepted) == 2
+    assert all_metrics["order_coverage"] == 1.0
+    assert accepted_metrics["order_coverage"] == 1.0
+    assert accepted_metrics["sum_pnl"] == 0.0
