@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import pickle
 import shutil
 import sys
 from pathlib import Path
@@ -26,6 +27,43 @@ from expected_return_common import (  # noqa: E402
 )
 
 
+def load_deploy_model(config: dict[str, Any], manifest: dict[str, Any]) -> Any:
+    artifact_dir = resolve_path(config["paths"]["deploy_artifact_dir"])
+    model_plugin = str(manifest["model_plugin"])
+    model_path = artifact_dir / f"{model_plugin}.binary.pkl"
+    if not model_path.exists():
+        raise FileNotFoundError(f"Deploy model not found: {model_path}")
+    with model_path.open("rb") as handle:
+        payload = pickle.load(handle)
+    if isinstance(payload, dict) and "model" in payload:
+        return payload["model"]
+    if hasattr(payload, "predict_proba"):
+        return payload
+    raise TypeError(f"Unsupported deploy model payload in {model_path}: {type(payload)!r}")
+
+
+def refresh_deploy_p_up(df: pd.DataFrame, model: Any, manifest: dict[str, Any], source_path: Path) -> pd.DataFrame:
+    feature_columns = [str(column) for column in manifest["feature_columns"]]
+    missing = [column for column in feature_columns if column not in df.columns]
+    if missing:
+        preview = ", ".join(missing[:20])
+        raise ValueError(
+            f"{source_path} is missing {len(missing)} deploy feature columns; first missing: {preview}"
+        )
+    refreshed = df.copy()
+    proba = model.predict_proba(refreshed[feature_columns])
+    if isinstance(proba, pd.Series):
+        p_up = proba.to_numpy(dtype=float)
+    else:
+        p_up = np.asarray(proba, dtype=float)
+        if p_up.ndim == 2:
+            if p_up.shape[1] < 2:
+                raise ValueError(f"Deploy model predict_proba returned shape {p_up.shape}, expected class probabilities")
+            p_up = p_up[:, 1]
+    refreshed["p_up"] = np.clip(np.asarray(p_up, dtype=float).reshape(-1), 0.0, 1.0)
+    return refreshed
+
+
 def read_trades(trades_dir: Path) -> pd.DataFrame:
     files = sorted(trades_dir.glob("date=*.parquet"))
     if not files:
@@ -38,16 +76,28 @@ def read_trades(trades_dir: Path) -> pd.DataFrame:
     return trades.dropna(subset=["price", "trade_time", "condition_id", "outcome"])
 
 
-def build_split(config: dict[str, Any], manifest: dict[str, Any], split: str, source_path: Path, trades: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
+def build_split(
+    config: dict[str, Any],
+    manifest: dict[str, Any],
+    model: Any,
+    split: str,
+    source_path: Path,
+    trades: pd.DataFrame,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
     df = pd.read_parquet(source_path)
     for col in ["timestamp", "decision_time", "market_t0", "endDate"]:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], utc=True, errors="coerce")
     before_rows = len(df)
-    if "p_up" not in df.columns:
-        raise ValueError(f"{source_path} is missing p_up")
     if "target" not in df.columns:
         raise ValueError(f"{source_path} is missing target")
+    source_p_up = pd.to_numeric(df["p_up"], errors="coerce") if "p_up" in df.columns else None
+    df = refresh_deploy_p_up(df, model, manifest, source_path)
+    p_up_refresh_report = {
+        "source_had_p_up": bool(source_p_up is not None),
+        "max_abs_p_up_delta": float((df["p_up"] - source_p_up).abs().max()) if source_p_up is not None else None,
+        "mean_abs_p_up_delta": float((df["p_up"] - source_p_up).abs().mean()) if source_p_up is not None else None,
+    }
 
     side = choose_side(df["p_up"], df["decision_time"], manifest)
     for col in ["selected_side", "selected_outcome", "accepted", "selected_t_up", "selected_t_down"]:
@@ -118,6 +168,7 @@ def build_split(config: dict[str, Any], manifest: dict[str, Any], split: str, so
         "wrong_low_p95": float(wrong_low.quantile(0.95)) if len(wrong_low) else float("nan"),
         "wrong_low_lte_001_share": float((wrong_low <= 0.01).mean()) if len(wrong_low) else float("nan"),
         "threshold_policy_type": str((manifest.get("threshold_policy") or {}).get("type", "fallback")),
+        "p_up_refresh": p_up_refresh_report,
     }
     return out, summary
 
@@ -128,6 +179,7 @@ def main() -> None:
     args = parser.parse_args()
     config = load_config(args.config)
     manifest = load_deploy_manifest(config)
+    model = load_deploy_model(config, manifest)
     trades = read_trades(resolve_path(config["paths"]["trades_dir"]))
 
     reports_dir = resolve_path(config["paths"]["reports_dir"])
@@ -149,7 +201,7 @@ def main() -> None:
         ("train", "train_dataset_source", "train_dataset"),
         ("validation", "validation_dataset_source", "validation_dataset"),
     ]:
-        data, summary = build_split(config, manifest, split, resolve_path(config["paths"][source_key]), trades)
+        data, summary = build_split(config, manifest, model, split, resolve_path(config["paths"][source_key]), trades)
         out_path = resolve_path(config["paths"][out_key])
         out_path.parent.mkdir(parents=True, exist_ok=True)
         data.to_parquet(out_path, index=False)

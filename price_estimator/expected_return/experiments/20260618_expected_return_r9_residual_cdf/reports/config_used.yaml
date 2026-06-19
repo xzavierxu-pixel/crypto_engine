@@ -3,8 +3,8 @@ experiment_id: 20260618_expected_return_r9_residual_cdf
 paths:
   deploy_artifact_dir: execution_engine/deploy/baseline
   feature_manifest: execution_engine/deploy/baseline/artifact_manifest.json
-  train_dataset_source: price_estimator/data/price_estimator_train.parquet
-  validation_dataset_source: price_estimator/data/price_estimator_valid.parquet
+  train_dataset_source: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/development_frame.parquet
+  validation_dataset_source: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/validation_frame.parquet
   trades_dir: price_estimator/data/sell_taker_trades_daily
   experiment_dir: price_estimator/expected_return/experiments/20260618_expected_return_r9_residual_cdf
   train_dataset: price_estimator/expected_return/experiments/20260618_expected_return_r9_residual_cdf/data/expected_return_train.parquet
