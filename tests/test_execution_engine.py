@@ -124,6 +124,29 @@ def test_expected_return_context_converts_numpy_scalars_to_python_types() -> Non
     assert isinstance(context["price_estimator_expected_return_bid"], float)
 
 
+def test_polymarket_v2_cancel_wraps_order_id_for_v2_client() -> None:
+    class Client:
+        creds = object()
+
+        def __init__(self):
+            self.payload = None
+
+        def cancel_order(self, payload):
+            if isinstance(payload, str):
+                raise AttributeError("'str' object has no attribute 'orderID'")
+            self.payload = payload
+            return {"canceled": payload.orderID}
+
+    config = load_execution_config("execution_engine/config.example.yaml")
+    client = Client()
+    adapter = PolymarketV2Adapter(config.polymarket, client=client)
+
+    response = adapter.cancel_order("order-1")
+
+    assert response == {"canceled": "order-1"}
+    assert client.payload.orderID == "order-1"
+
+
 def test_execution_edge_max_order_notional_defaults_to_first_order_size(tmp_path) -> None:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
