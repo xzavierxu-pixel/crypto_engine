@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 
 import execution_engine.run_once as run_once_module
 from execution_engine.scripts.evaluate_paper_results import (
@@ -92,6 +93,35 @@ def test_execution_config_example_loads() -> None:
     assert config.execution_edge.size_to_max_notional is False
     assert config.paper_test.max_duration_minutes == 60
     assert config.paper_test.stop_when_pnl_gt == 25.0
+
+
+def test_expected_return_context_converts_numpy_scalars_to_python_types() -> None:
+    class Model:
+        def predict(self, frame):
+            return pd.DataFrame(
+                {
+                    "expected_return_bid": [np.float32(0.54)],
+                    "expected_return_ev": [np.float32(0.02)],
+                    "expected_return_fill_probability": [np.float32(0.81)],
+                    "expected_return_eligible": [np.bool_(True)],
+                },
+                index=frame.index,
+            )
+
+    artifact = PriceEstimatorArtifact(
+        artifact_dir=Path("deploy"), manifest={}, model_path=Path("model.npz"), model=Model(),
+        feature_columns=["p_side", "selected_side", "p_bin", "p_side_bucket", "market_time_bucket"],
+        prediction_column="expected_return_bid", selected_side_column="selected_side", yes_value="UP",
+        no_value="DOWN", round_decimals=2, best_ask_offset=0.01, fallback_price_mode="skip",
+    )
+    engine = object.__new__(RuntimeInferenceEngine)
+    engine.price_estimator = artifact
+    frame = pd.DataFrame({"timestamp": [pd.Timestamp("2026-06-19T14:25:00Z")]})
+
+    context = engine.predict_price_q80(frame, row_index=0, selected_side="YES", p_up=0.70)
+
+    assert context["price_estimator_expected_return_eligible"] is True
+    assert isinstance(context["price_estimator_expected_return_bid"], float)
 
 
 def test_execution_edge_max_order_notional_defaults_to_first_order_size(tmp_path) -> None:

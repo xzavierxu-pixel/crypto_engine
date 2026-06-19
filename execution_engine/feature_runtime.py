@@ -116,7 +116,8 @@ class RuntimeInferenceEngine:
                 "expected_return_fill_probability",
                 "expected_return_eligible",
             ):
-                context[f"price_estimator_{column}"] = raw_prediction[column].iloc[0]
+                value = raw_prediction[column].iloc[0]
+                context[f"price_estimator_{column}"] = value.item() if isinstance(value, np.generic) else value
         return context
 
     def _thresholds_for_signal(self, signal_t0: pd.Timestamp | None) -> tuple[float, float, dict[str, str | None]]:
