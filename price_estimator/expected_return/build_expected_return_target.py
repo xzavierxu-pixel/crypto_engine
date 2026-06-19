@@ -76,6 +76,75 @@ def read_trades(trades_dir: Path) -> pd.DataFrame:
     return trades.dropna(subset=["price", "trade_time", "condition_id", "outcome"])
 
 
+def classify_low_join(
+    rows: pd.DataFrame,
+    trades: pd.DataFrame,
+    matched_low: pd.Series,
+) -> pd.Series:
+    """Explain missing selected-side lows without using threshold acceptance."""
+    condition_keys = pd.Index(trades["condition_id"].dropna().unique())
+    outcome_keys = pd.MultiIndex.from_frame(trades[["condition_id", "outcome"]].drop_duplicates())
+    row_outcome_keys = pd.MultiIndex.from_frame(
+        rows[["condition_id", "predicted_outcome"]].rename(columns={"predicted_outcome": "outcome"})
+    )
+    condition_present = rows["condition_id"].isin(condition_keys).to_numpy()
+    outcome_present = row_outcome_keys.isin(outcome_keys)
+
+    last_trade = (
+        trades.groupby(["condition_id", "outcome"], as_index=False)["trade_time"]
+        .max()
+        .rename(columns={"outcome": "predicted_outcome", "trade_time": "last_selected_trade_time"})
+    )
+    timing = rows[["condition_id", "predicted_outcome", "decision_time", "endDate"]].merge(
+        last_trade,
+        on=["condition_id", "predicted_outcome"],
+        how="left",
+    )
+    has_after_decision = timing["last_selected_trade_time"] > timing["decision_time"]
+
+    reason = np.full(len(rows), "matched", dtype=object)
+    missing = matched_low.isna().to_numpy()
+    reason[missing & ~condition_present] = "no_condition_trades"
+    reason[missing & condition_present & ~outcome_present] = "no_predicted_outcome_trades"
+    reason[missing & outcome_present & ~has_after_decision.to_numpy()] = "no_trades_after_decision"
+    reason[missing & outcome_present & has_after_decision.to_numpy()] = "no_trades_before_settlement"
+    return pd.Series(reason, index=rows.index, dtype="string")
+
+
+def low_join_diagnostics(df: pd.DataFrame, split: str) -> tuple[dict[str, Any], pd.DataFrame]:
+    diagnostic = df.copy()
+    diagnostic["date"] = diagnostic["decision_time"].dt.strftime("%Y-%m-%d")
+    diagnostic["week"] = diagnostic["decision_time"].dt.tz_localize(None).dt.to_period("W").astype(str)
+    dimensions = ["date", "week", "predicted_side", "threshold_accepted", "chosen_low_reason"]
+    tables: dict[str, Any] = {}
+    csv_frames: list[pd.DataFrame] = []
+    for dimension in dimensions:
+        grouped = (
+            diagnostic.groupby(dimension, dropna=False)
+            .agg(row_count=("condition_id", "size"), missing_low_rows=("chosen_low", lambda value: int(value.isna().sum())))
+            .reset_index()
+        )
+        grouped["missing_low_rate"] = grouped["missing_low_rows"] / grouped["row_count"]
+        grouped.insert(0, "dimension", dimension)
+        grouped = grouped.rename(columns={dimension: "value"})
+        tables[dimension] = grouped.to_dict(orient="records")
+        csv_frames.append(grouped)
+    reason_counts = diagnostic["chosen_low_reason"].value_counts(dropna=False)
+    summary = {
+        "split": split,
+        "row_count": int(len(diagnostic)),
+        "missing_low_rows": int(diagnostic["chosen_low"].isna().sum()),
+        "missing_low_rate": float(diagnostic["chosen_low"].isna().mean()) if len(diagnostic) else float("nan"),
+        "reason_counts": {str(key): int(value) for key, value in reason_counts.items()},
+        "by_dimension": tables,
+        "threshold_not_causal_note": (
+            "Rows are assigned predicted_side before thresholding and diagnostics include both "
+            "threshold_accepted states; threshold only controls final ordering."
+        ),
+    }
+    return summary, pd.concat(csv_frames, ignore_index=True)
+
+
 def build_split(
     config: dict[str, Any],
     manifest: dict[str, Any],
@@ -83,7 +152,7 @@ def build_split(
     split: str,
     source_path: Path,
     trades: pd.DataFrame,
-) -> tuple[pd.DataFrame, dict[str, Any]]:
+) -> tuple[pd.DataFrame, dict[str, Any], dict[str, Any], pd.DataFrame]:
     df = pd.read_parquet(source_path)
     for col in ["timestamp", "decision_time", "market_t0", "endDate"]:
         if col in df.columns:
@@ -104,9 +173,11 @@ def build_split(
         if col in df.columns:
             df = df.drop(columns=[col])
     df = pd.concat([df.reset_index(drop=True), side.reset_index(drop=True)], axis=1)
-    df = df.loc[df["accepted"]].copy()
-    df["selected_side"] = df["selected_side"].astype("string")
-    df["selected_outcome"] = df["selected_outcome"].astype("string")
+    df = df.rename(columns={"accepted": "threshold_accepted"})
+    df["predicted_side"] = np.where(df["p_up"] >= 0.5, "UP", "DOWN")
+    df["predicted_outcome"] = np.where(df["predicted_side"] == "UP", "up", "down")
+    df["selected_side"] = df["predicted_side"].astype("string")
+    df["selected_outcome"] = df["predicted_outcome"].astype("string")
     df["correct"] = (
         ((df["target"].astype(int) == 1) & df["selected_side"].eq("UP"))
         | ((df["target"].astype(int) == 0) & df["selected_side"].eq("DOWN"))
@@ -117,11 +188,11 @@ def build_split(
     df["p_side_bucket"] = p_side_bucket(pd.Series(df["p_side"], index=df.index))
     df["market_time_bucket"] = session_label(df["decision_time"]).reset_index(drop=True).to_numpy()
 
-    selected = df[["condition_id", "selected_outcome", "decision_time", "endDate"]].copy()
+    selected = df[["condition_id", "predicted_outcome", "decision_time", "endDate"]].copy()
     joined = trades.merge(
         selected,
         left_on=["condition_id", "outcome"],
-        right_on=["condition_id", "selected_outcome"],
+        right_on=["condition_id", "predicted_outcome"],
         how="inner",
     )
     start_mask = joined["trade_time"] > joined["decision_time"]
@@ -130,36 +201,43 @@ def build_split(
     if joined.empty:
         raise ValueError(f"No selected-side trades matched for split {split}")
 
-    joined = joined.sort_values(["condition_id", "selected_outcome", "decision_time", "price", "trade_time"])
-    lowest = joined.groupby(["condition_id", "selected_outcome", "decision_time"], as_index=False).first()
+    joined = joined.sort_values(["condition_id", "predicted_outcome", "decision_time", "price", "trade_time"])
+    lowest = joined.groupby(["condition_id", "predicted_outcome", "decision_time"], as_index=False).first()
     lowest = lowest.rename(columns={"price": "chosen_low", "trade_time": "chosen_low_trade_time"})
     lowest["time_to_chosen_low_sec"] = (lowest["chosen_low_trade_time"] - lowest["decision_time"]).dt.total_seconds()
     target_cols = [
         "condition_id",
-        "selected_outcome",
+        "predicted_outcome",
         "decision_time",
         "chosen_low",
         "chosen_low_trade_time",
         "time_to_chosen_low_sec",
     ]
-    out = df.merge(lowest[target_cols], on=["condition_id", "selected_outcome", "decision_time"], how="left")
+    out = df.merge(lowest[target_cols], on=["condition_id", "predicted_outcome", "decision_time"], how="left")
     missing_low = int(out["chosen_low"].isna().sum())
-    out = out.dropna(subset=["chosen_low", "p_up", "p_side"]).copy()
-    out["target_raw"] = out["chosen_low"].astype(float)
+    out["chosen_low_reason"] = classify_low_join(out, trades, out["chosen_low"])
+    out = out.dropna(subset=["p_up", "p_side"]).copy()
+    out["target_raw"] = pd.to_numeric(out["chosen_low"], errors="coerce")
+    diagnostics, diagnostic_table = low_join_diagnostics(out, split)
 
     correct = out["correct"].astype(bool)
     wrong = ~correct
+    threshold_accepted = out["threshold_accepted"].astype(bool)
+    accepted_correct = correct[threshold_accepted]
     wrong_low = pd.to_numeric(out.loc[wrong, "chosen_low"], errors="coerce")
     summary = {
         "split": split,
         "input_rows": int(before_rows),
-        "accepted_rows_before_low_join": int(len(df)),
+        "all_side_rows_before_low_join": int(len(df)),
+        "threshold_accepted_rows": int(out["threshold_accepted"].sum()),
         "missing_low_rows": missing_low,
         "output_rows": int(len(out)),
-        "accepted_coverage_vs_source": float(len(df) / before_rows) if before_rows else float("nan"),
-        "correct_count": int(correct.sum()),
-        "wrong_count": int(wrong.sum()),
-        "accepted_accuracy": float(correct.mean()) if len(correct) else float("nan"),
+        "accepted_coverage_vs_source": float(out["threshold_accepted"].mean()) if len(out) else float("nan"),
+        "all_side_correct_count": int(correct.sum()),
+        "all_side_wrong_count": int(wrong.sum()),
+        "threshold_accepted_correct_count": int(accepted_correct.sum()),
+        "threshold_accepted_wrong_count": int((~accepted_correct).sum()),
+        "accepted_accuracy": float(accepted_correct.mean()) if len(accepted_correct) else float("nan"),
         "selected_up_rows": int(out["selected_side"].eq("UP").sum()),
         "selected_down_rows": int(out["selected_side"].eq("DOWN").sum()),
         "start": str(out["timestamp"].min()) if len(out) and "timestamp" in out.columns else None,
@@ -170,7 +248,7 @@ def build_split(
         "threshold_policy_type": str((manifest.get("threshold_policy") or {}).get("type", "fallback")),
         "p_up_refresh": p_up_refresh_report,
     }
-    return out, summary
+    return out, summary, diagnostics, diagnostic_table
 
 
 def main() -> None:
@@ -190,23 +268,30 @@ def main() -> None:
     summaries: dict[str, Any] = {
         "experiment_id": config["experiment_id"],
         "git_commit_at_build": git_commit(),
-        "config_path": args.config,
+        "config_path": str(reports_dir / "config_used.yaml"),
         "deploy_experiment_id": manifest.get("experiment_id"),
         "threshold_source": manifest.get("threshold_source"),
         "threshold_policy": manifest.get("threshold_policy"),
         "order_window": config["target"]["order_window"],
-        "fee": config["target"]["fee"],
     }
     for split, source_key, out_key in [
         ("train", "train_dataset_source", "train_dataset"),
         ("validation", "validation_dataset_source", "validation_dataset"),
     ]:
-        data, summary = build_split(config, manifest, model, split, resolve_path(config["paths"][source_key]), trades)
+        data, summary, diagnostics, diagnostic_table = build_split(
+            config, manifest, model, split, resolve_path(config["paths"][source_key]), trades
+        )
         out_path = resolve_path(config["paths"][out_key])
         out_path.parent.mkdir(parents=True, exist_ok=True)
         data.to_parquet(out_path, index=False)
         outputs[split] = str(out_path)
         summaries[f"{split}_summary"] = summary
+        diagnostic_json_path = reports_dir / f"chosen_low_missing_{split}.json"
+        diagnostic_csv_path = reports_dir / f"chosen_low_missing_{split}.csv"
+        write_json(diagnostic_json_path, diagnostics)
+        diagnostic_table.to_csv(diagnostic_csv_path, index=False)
+        summaries[f"{split}_summary"]["chosen_low_diagnostic_json"] = str(diagnostic_json_path)
+        summaries[f"{split}_summary"]["chosen_low_diagnostic_csv"] = str(diagnostic_csv_path)
     summaries["outputs"] = outputs
     write_json(reports_dir / "target_build_summary.json", summaries)
     print(summaries)

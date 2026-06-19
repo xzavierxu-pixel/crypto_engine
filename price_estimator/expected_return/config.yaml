@@ -1,4 +1,4 @@
-experiment_id: 20260618_expected_return_r9_residual_cdf
+experiment_id: 20260619_expected_return_o0_o1_o2
 
 paths:
   deploy_artifact_dir: execution_engine/deploy/baseline
@@ -6,14 +6,14 @@ paths:
   train_dataset_source: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/development_frame.parquet
   validation_dataset_source: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/validation_frame.parquet
   trades_dir: price_estimator/data/sell_taker_trades_daily
-  experiment_dir: price_estimator/expected_return/experiments/20260618_expected_return_r9_residual_cdf
-  train_dataset: price_estimator/expected_return/experiments/20260618_expected_return_r9_residual_cdf/data/expected_return_train.parquet
-  validation_dataset: price_estimator/expected_return/experiments/20260618_expected_return_r9_residual_cdf/data/expected_return_validation.parquet
-  models_dir: price_estimator/expected_return/experiments/20260618_expected_return_r9_residual_cdf/models
-  reports_dir: price_estimator/expected_return/experiments/20260618_expected_return_r9_residual_cdf/reports
-  predictions_train: price_estimator/expected_return/experiments/20260618_expected_return_r9_residual_cdf/reports/predictions_train.parquet
-  predictions_calibration: price_estimator/expected_return/experiments/20260618_expected_return_r9_residual_cdf/reports/predictions_calibration.parquet
-  predictions_validation: price_estimator/expected_return/experiments/20260618_expected_return_r9_residual_cdf/reports/predictions_validation.parquet
+  experiment_dir: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2
+  train_dataset: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/data/expected_return_train.parquet
+  validation_dataset: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/data/expected_return_validation.parquet
+  models_dir: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/models
+  reports_dir: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/reports
+  predictions_train: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/reports/predictions_train.parquet
+  predictions_calibration: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/reports/predictions_calibration.parquet
+  predictions_validation: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/reports/predictions_validation.parquet
 
 target:
   selected_side_source: deploy_manifest_threshold_policy
@@ -22,12 +22,16 @@ target:
   include_end: true
   eps: 0.01
   tick_size: 0.01
-  fee: 0.0
-  allow_negative_ev_bid: true
   min_bid: 0.01
+  min_ev_grid:
+    - 0.00
+    - 0.01
+    - 0.02
+    - 0.03
+    - 0.05
 
 split:
-  calibration_tail_days: 31
+  calibration_tail_days: 7
   timestamp_column: timestamp
 
 features:
@@ -61,6 +65,10 @@ features:
     - chosen_low
     - correct
     - accepted
+    - threshold_accepted
+    - predicted_side
+    - predicted_outcome
+    - chosen_low_reason
 
 model:
   family: r9_point_plus_global_residual_cdf
