@@ -17,6 +17,11 @@ from run_fixed_bid_validation import (  # noqa: E402
     evaluate_pside_multiplier_bid_frame,
     evaluate_pside_piecewise_bid_frame,
 )
+from run_empirical_pside_bin_cdf import (  # noqa: E402
+    fit_empirical_pside_bin_cdf,
+    gc_for_frame,
+    pside_bin_index,
+)
 from train_low_cdf_and_backtest import (  # noqa: E402
     backtest_metrics,
     backtest_with_bid,
@@ -259,3 +264,24 @@ def test_pside_piecewise_bid_boundaries_and_abstention() -> None:
     assert np.array_equal(accepted_result.bid, all_result.bid)
     assert accepted_metrics["order_count"] == 3.0
     assert accepted_metrics["order_coverage"] == 0.75
+
+
+def test_empirical_pside_bin_cdf_and_empty_bin_fallback() -> None:
+    calibration = pd.DataFrame(
+        {
+            "p_side": [0.601, 0.619, 0.641],
+            "chosen_low": [0.01, 0.03, 0.02],
+        }
+    )
+    grid = np.asarray([0.01, 0.02, 0.03])
+
+    gc_by_bin, summary = fit_empirical_pside_bin_cdf(calibration, grid, 0.02)
+    frame = pd.DataFrame({"p_side": [0.60, 0.62, 0.64]})
+    gc = gc_for_frame(frame, gc_by_bin, 0.02)
+
+    assert pside_bin_index(np.asarray([0.60, 0.6199, 0.62]), 0.02).tolist() == [30, 30, 31]
+    assert np.allclose(gc[0], [0.5, 0.5, 1.0])
+    assert np.allclose(gc[1], gc[0])
+    assert np.allclose(gc[2], [0.0, 1.0, 1.0])
+    assert bool(summary.loc[summary["bin_index"] == 31, "fallback_used"].iloc[0])
+    assert np.all(np.diff(gc, axis=1) >= 0.0)
