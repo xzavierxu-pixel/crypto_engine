@@ -100,16 +100,25 @@ def main() -> None:
 
     train_all = pd.read_parquet(resolve_path(config["paths"]["train_dataset"]))
     validation = pd.read_parquet(resolve_path(config["paths"]["validation_dataset"]))
-    _, calibration_all = split_fit_calibration(train_all, config)
+    fit_all, calibration_all = split_fit_calibration(train_all, config)
     calibration_correct = calibration_all.loc[
         calibration_all["correct"].astype(bool) & calibration_all["chosen_low"].notna()
     ].copy()
+    gc_fit_source = str(config["model"].get("gc_fit_source", "calibration_correct"))
+    if gc_fit_source == "calibration_correct":
+        gc_fit_frame = calibration_correct
+    elif gc_fit_source == "fit_correct":
+        gc_fit_frame = fit_all.loc[
+            fit_all["correct"].astype(bool) & fit_all["chosen_low"].notna()
+        ].copy()
+    else:
+        raise ValueError(f"Unsupported model.gc_fit_source: {gc_fit_source}")
 
     tick_size = float(config["target"]["tick_size"])
     min_bid = float(config["target"].get("min_bid", tick_size))
     tick_grid = build_tick_grid(tick_size, float(config["model"]["max_price"]))
     bin_width = float(config["model"]["p_side_bin_width"])
-    gc_by_bin, bin_summary = fit_empirical_pside_bin_cdf(calibration_correct, tick_grid, bin_width)
+    gc_by_bin, bin_summary = fit_empirical_pside_bin_cdf(gc_fit_frame, tick_grid, bin_width)
     bin_summary_path = reports_dir / "p_side_bin_summary.csv"
     bin_summary.to_csv(bin_summary_path, index=False)
     distribution_path = reports_dir / "p_side_bin_gc.csv"
@@ -127,6 +136,24 @@ def main() -> None:
     train_accepted = train_all.loc[train_mask].copy()
     calibration_accepted = calibration_all.loc[calibration_mask].copy()
     validation_accepted = validation.loc[validation_mask].copy()
+    validation_bin_indices = pside_bin_index(
+        validation_accepted["p_side"].to_numpy(dtype=float), bin_width
+    )
+    used_bins, used_counts = np.unique(validation_bin_indices, return_counts=True)
+    fallback_bins = set(
+        bin_summary.loc[bin_summary["fallback_used"], "bin_index"].astype(int).tolist()
+    )
+    validation_bin_diagnostics = {
+        "used_bin_count": int(len(used_bins)),
+        "used_bins": [int(value) for value in used_bins],
+        "fallback_bins_used": [int(value) for value in used_bins if int(value) in fallback_bins],
+        "fallback_affected_count": int(
+            sum(count for value, count in zip(used_bins, used_counts) if int(value) in fallback_bins)
+        ),
+        "minimum_fit_samples_in_used_own_bin": int(
+            bin_summary.set_index("bin_index").loc[used_bins, "sample_count"].min()
+        ),
+    }
 
     def run(frame: pd.DataFrame, min_ev: float) -> BacktestResult:
         q = frame["p_side"].to_numpy(dtype=float)
@@ -186,7 +213,8 @@ def main() -> None:
 
     model_payload = {
         "family": "empirical_pside_bin_cdf",
-        "source_split": "calibration_correct",
+        "source_split": gc_fit_source,
+        "source_sample_count": int(len(gc_fit_frame)),
         "p_side_bin_width": bin_width,
         "tick_grid": tick_grid.tolist(),
         "gc_by_bin": gc_by_bin.tolist(),
@@ -204,11 +232,13 @@ def main() -> None:
         "report_path": str(reports_dir / "summary_metrics.json"),
         "primary_metric": "validation forced mean_accepted_pnl for empirical p_side-bin Gc",
         "model_family": "empirical_pside_bin_cdf",
-        "gc_fit_source": "calibration_correct_only",
+        "gc_fit_source": gc_fit_source,
+        "gc_fit_sample_count": int(len(gc_fit_frame)),
         "validation_selection_note": "Validation did not participate in Gc fitting or min_ev selection.",
         "p_side_bin_width": bin_width,
-        "empty_bin_fallback": "nearest_nonempty_calibration_bin",
+        "empty_bin_fallback": "nearest_nonempty_fit_source_bin",
         "empty_bin_count": int(bin_summary["fallback_used"].sum()),
+        "validation_bin_diagnostics": validation_bin_diagnostics,
         "selected_min_ev": selected_min_ev,
         "min_ev_selection_source": "calibration",
         "min_ev_search": min_ev_search,
