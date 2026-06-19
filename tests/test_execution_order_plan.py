@@ -62,6 +62,26 @@ def _signal_with_safe_gap(price: float, *, offset: float = 0.01) -> Signal:
     )
 
 
+def _signal_with_expected_return(bid: float, *, eligible: bool = True) -> Signal:
+    signal = _signal()
+    return Signal(
+        asset=signal.asset,
+        horizon=signal.horizon,
+        t0=signal.t0,
+        p_up=signal.p_up,
+        p_down=signal.p_down,
+        model_version=signal.model_version,
+        feature_version=signal.feature_version,
+        decision_context={
+            **signal.decision_context,
+            "price_estimator_expected_return_bid": bid,
+            "price_estimator_expected_return_ev": 0.025,
+            "price_estimator_expected_return_fill_probability": 0.81,
+            "price_estimator_expected_return_eligible": eligible,
+        },
+    )
+
+
 def _decision() -> Decision:
     return Decision(
         should_trade=True,
@@ -356,6 +376,37 @@ def test_safe_gap_best_ask_offset_mode_uses_best_ask_offset_when_lower() -> None
     assert len(result.orders) == 1
     assert result.orders[0].price == 0.61
     assert result.orders[0].price > config.first.price_cap
+
+
+def test_expected_return_mode_uses_minimum_of_best_ask_minus_tick_and_optimal_bid() -> None:
+    config = OrdersConfig(first=OrderLegConfig(price_mode="expected_return_optimal_bid", size=5.0))
+
+    result = build_two_limit_order_plan(_signal_with_expected_return(0.54), _decision(), _quote(), config)
+
+    assert len(result.orders) == 1
+    assert result.orders[0].price == 0.54
+    assert result.orders[0].metadata["quote_source"] == "min_best_ask_minus_0p01_and_expected_return_optimal_bid"
+    assert result.orders[0].metadata["price_estimator_expected_return_fill_probability"] == 0.81
+
+
+def test_expected_return_mode_caps_optimal_bid_at_best_ask_minus_tick() -> None:
+    config = OrdersConfig(first=OrderLegConfig(price_mode="expected_return_optimal_bid", size=5.0))
+
+    result = build_two_limit_order_plan(_signal_with_expected_return(0.90), _decision(), _quote(), config)
+
+    assert len(result.orders) == 1
+    assert result.orders[0].price == 0.61
+
+
+def test_expected_return_mode_skips_ineligible_candidate() -> None:
+    config = OrdersConfig(first=OrderLegConfig(price_mode="expected_return_optimal_bid", size=5.0))
+
+    result = build_two_limit_order_plan(
+        _signal_with_expected_return(0.54, eligible=False), _decision(), _quote(), config
+    )
+
+    assert result.orders == []
+    assert result.skipped[0]["reason"] == "expected_return_policy_rejected"
 
 
 def test_active_artifact_selects_configured_artifact_dir(tmp_path: Path) -> None:

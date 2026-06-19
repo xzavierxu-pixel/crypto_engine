@@ -12,23 +12,28 @@ baseline:
       artifact_dir: execution_engine/deploy/baseline
 price_estimator:
   enabled: true
-  active_artifact: safe_lowest_price_gap
-  artifact_dir: execution_engine/deploy/price_estimator_safe_lowest_price_gap
+  active_artifact: expected_return_h14
+  artifact_dir: execution_engine/deploy/price_estimator_expected_return_h14
   artifacts:
     safe_lowest_price_gap:
       artifact_dir: execution_engine/deploy/price_estimator_safe_lowest_price_gap
       manifest_file: artifact_manifest.json
       model_file: safe_lowest_price_gap.npz
       prediction_column: p_pred
+    expected_return_h14:
+      artifact_dir: execution_engine/deploy/price_estimator_expected_return_h14
+      manifest_file: artifact_manifest.json
+      model_file: expected_return_hazard.npz
+      prediction_column: expected_return_bid
   manifest_file: artifact_manifest.json
-  model_file: safe_lowest_price_gap.npz
-  prediction_column: p_pred
+  model_file: expected_return_hazard.npz
+  prediction_column: expected_return_bid
   selected_side_column: selected_side
   yes_value: UP
   no_value: DOWN
   round_decimals: 2
   best_ask_offset: 0.01
-  fallback_price_mode: limit_config_best_ask_offset
+  fallback_price_mode: skip
 runtime:
   mode: live
   timezone: UTC
@@ -73,7 +78,7 @@ orders:
   mode: live
   first:
     enabled: true
-    price_mode: min_safe_gap_price_and_best_ask_offset
+    price_mode: expected_return_optimal_bid
     price_cap: 0.65
     offset: 0.01
     best_bid_offset: 0.0

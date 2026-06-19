@@ -13,6 +13,7 @@ LOGGER = logging.getLogger(__name__)
 LIMIT_CONFIG_BEST_ASK_OFFSET_MODE = "limit_config_best_ask_offset"
 Q80_BEST_ASK_OFFSET_MODE = "min_q80_final_price_and_best_ask_offset"
 SAFE_GAP_BEST_ASK_OFFSET_MODE = "min_safe_gap_price_and_best_ask_offset"
+EXPECTED_RETURN_OPTIMAL_BID_MODE = "expected_return_optimal_bid"
 
 
 @dataclass(frozen=True)
@@ -201,9 +202,29 @@ def build_two_limit_order_plan(
         offset = None
         q80_price = None
         safe_gap_price = None
+        expected_return_bid = None
         best_ask_offset_price = None
         price_estimator_fallback = None
-        if leg.price_mode in {Q80_BEST_ASK_OFFSET_MODE, SAFE_GAP_BEST_ASK_OFFSET_MODE}:
+        if leg.price_mode == EXPECTED_RETURN_OPTIMAL_BID_MODE:
+            eligible = signal.decision_context.get("price_estimator_expected_return_eligible")
+            expected_return_bid = signal.decision_context.get("price_estimator_expected_return_bid")
+            if eligible is not True or expected_return_bid is None or float(expected_return_bid) <= 0.0 or best_ask is None:
+                skipped.append(
+                    {
+                        "leg": name,
+                        "reason": "expected_return_policy_rejected",
+                        "eligible": eligible,
+                        "expected_return_bid": expected_return_bid,
+                        "has_best_ask": best_ask is not None,
+                    }
+                )
+                continue
+            best_ask_offset = float(signal.decision_context.get("price_estimator_best_ask_offset", 0.01))
+            best_ask_offset_price = float(best_ask) - best_ask_offset
+            raw_price = min(float(expected_return_bid), best_ask_offset_price)
+            quote_reference = float(best_ask)
+            quote_source = "min_best_ask_minus_0p01_and_expected_return_optimal_bid"
+        elif leg.price_mode in {Q80_BEST_ASK_OFFSET_MODE, SAFE_GAP_BEST_ASK_OFFSET_MODE}:
             if leg.price_mode == Q80_BEST_ASK_OFFSET_MODE:
                 context_key = "price_estimator_q80_rounded"
                 context_label = "q80"
@@ -340,6 +361,14 @@ def build_two_limit_order_plan(
                     "price_estimator_safe_gap_action": signal.decision_context.get("price_estimator_safe_gap_action"),
                     "price_estimator_safe_gap_conf_ok": signal.decision_context.get("price_estimator_safe_gap_conf_ok"),
                     "price_estimator_safe_gap_f_model": signal.decision_context.get("price_estimator_safe_gap_f_model"),
+                    "price_estimator_expected_return_bid": expected_return_bid,
+                    "price_estimator_expected_return_ev": signal.decision_context.get("price_estimator_expected_return_ev"),
+                    "price_estimator_expected_return_fill_probability": signal.decision_context.get(
+                        "price_estimator_expected_return_fill_probability"
+                    ),
+                    "price_estimator_expected_return_eligible": signal.decision_context.get(
+                        "price_estimator_expected_return_eligible"
+                    ),
                     "price_estimator_best_ask_offset_price": best_ask_offset_price,
                     "price_estimator_fallback_price_mode": price_estimator_fallback,
                 },

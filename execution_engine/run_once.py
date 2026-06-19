@@ -203,6 +203,14 @@ def run_once(
             "price_estimator_safe_gap_action": signal.decision_context.get("price_estimator_safe_gap_action"),
             "price_estimator_safe_gap_conf_ok": signal.decision_context.get("price_estimator_safe_gap_conf_ok"),
             "price_estimator_safe_gap_f_model": signal.decision_context.get("price_estimator_safe_gap_f_model"),
+            "price_estimator_expected_return_bid": signal.decision_context.get("price_estimator_expected_return_bid"),
+            "price_estimator_expected_return_ev": signal.decision_context.get("price_estimator_expected_return_ev"),
+            "price_estimator_expected_return_fill_probability": signal.decision_context.get(
+                "price_estimator_expected_return_fill_probability"
+            ),
+            "price_estimator_expected_return_eligible": signal.decision_context.get(
+                "price_estimator_expected_return_eligible"
+            ),
             "price_estimator_best_ask_offset": signal.decision_context.get("price_estimator_best_ask_offset"),
             "price_estimator_selected_side": signal.decision_context.get("price_estimator_selected_side"),
             "price_estimator_artifact_dir": signal.decision_context.get("price_estimator_artifact_dir"),

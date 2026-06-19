@@ -57,7 +57,7 @@ def test_execution_config_example_loads() -> None:
     assert config.orders.enabled is True
     assert config.baseline.model_file is None
     assert config.baseline.calibrator_file is None
-    assert config.orders.first.price_mode == "min_safe_gap_price_and_best_ask_offset"
+    assert config.orders.first.price_mode == "expected_return_optimal_bid"
     assert config.orders.first.price_cap == 0.65
     assert config.orders.first.offset == 0.01
     assert config.orders.first.reference_multiplier == 1.0
@@ -70,14 +70,14 @@ def test_execution_config_example_loads() -> None:
     assert config.orders.min_price == 0.10
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
     assert config.price_estimator.enabled is True
-    assert config.price_estimator.active_artifact == "safe_lowest_price_gap"
-    assert config.price_estimator.artifact_dir == "execution_engine/deploy/price_estimator_safe_lowest_price_gap"
-    assert config.price_estimator.model_file == "safe_lowest_price_gap.npz"
-    assert config.price_estimator.prediction_column == "p_pred"
+    assert config.price_estimator.active_artifact == "expected_return_h14"
+    assert config.price_estimator.artifact_dir == "execution_engine/deploy/price_estimator_expected_return_h14"
+    assert config.price_estimator.model_file == "expected_return_hazard.npz"
+    assert config.price_estimator.prediction_column == "expected_return_bid"
     assert config.price_estimator.yes_value == "UP"
     assert config.price_estimator.no_value == "DOWN"
     assert config.price_estimator.best_ask_offset == 0.01
-    assert config.price_estimator.fallback_price_mode == "limit_config_best_ask_offset"
+    assert config.price_estimator.fallback_price_mode == "skip"
     assert config.thresholds.t_up is None
     assert config.thresholds.t_down is None
     assert config.binance.require_agg_trade_through_last_second is True

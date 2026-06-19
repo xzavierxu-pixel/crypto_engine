@@ -289,6 +289,64 @@ def _load_safe_gap_numpy_model(path: Path) -> SafeLowestPriceGapNumpyModel:
     return SafeLowestPriceGapNumpyModel(payload, arrays)
 
 
+class ExpectedReturnHazardNumpyModel:
+    """NumPy implementation of the accepted H2 hazard expected-return policy."""
+
+    def __init__(self, payload: dict[str, Any], arrays: dict[str, Any]) -> None:
+        self.arrays = arrays
+        self.preprocessor = SafeGapPreprocessor(dict(payload["preprocessor"]))
+        self.tick_grid = arrays["tick_grid"].astype(float)
+        policy = payload["order_policy"]
+        self.min_bid = float(policy["min_bid"])
+        self.min_ev = float(policy["min_ev"])
+        self.gc_floor = float(policy["candidate_gc_strict_floor"])
+        self.layer_count = int(payload["model"]["layer_count"])
+
+    def predict(self, frame: Any) -> Any:
+        import numpy as np
+        import pandas as pd
+
+        x = self.preprocessor.transform(frame)
+        for index in range(self.layer_count):
+            x = np.maximum(0.0, self._linear(x, f"hidden_{index}"))
+        logits = self._linear(x, "output")
+        hazard = 1.0 / (1.0 + np.exp(-np.clip(logits, -80.0, 80.0)))
+        gc = 1.0 - np.cumprod(1.0 - hazard, axis=1)
+        q = frame["p_side"].astype(float).to_numpy()
+        valid = (
+            (self.tick_grid[None, :] >= self.min_bid - 1e-12)
+            & (self.tick_grid[None, :] <= q[:, None] + 1e-12)
+            & (gc > self.gc_floor)
+        )
+        ev = q[:, None] * gc * (1.0 - self.tick_grid[None, :]) - (1.0 - q[:, None]) * self.tick_grid[None, :]
+        eligible_ev = np.where(valid, ev, -np.inf)
+        best_index = np.argmax(eligible_ev, axis=1)
+        row = np.arange(len(frame))
+        best_ev = eligible_ev[row, best_index]
+        eligible = np.isfinite(best_ev) & (best_ev > self.min_ev)
+        return pd.DataFrame(
+            {
+                "expected_return_bid": np.where(eligible, self.tick_grid[best_index], 0.0),
+                "expected_return_ev": np.where(eligible, best_ev, 0.0),
+                "expected_return_fill_probability": np.where(eligible, gc[row, best_index], 0.0),
+                "expected_return_eligible": eligible,
+            },
+            index=frame.index,
+        )
+
+    def _linear(self, x: Any, prefix: str) -> Any:
+        return x @ self.arrays[f"{prefix}__weight"].T + self.arrays[f"{prefix}__bias"]
+
+
+def _load_expected_return_numpy_model(path: Path) -> ExpectedReturnHazardNumpyModel:
+    import numpy as np
+
+    loaded = np.load(path, allow_pickle=False)
+    payload = json.loads(str(loaded["metadata"]))
+    arrays = {key: loaded[key] for key in loaded.files if key != "metadata"}
+    return ExpectedReturnHazardNumpyModel(payload, arrays)
+
+
 def load_price_estimator_artifact(config: PriceEstimatorConfig) -> PriceEstimatorArtifact | None:
     if not config.enabled:
         return None
@@ -313,6 +371,8 @@ def load_price_estimator_artifact(config: PriceEstimatorConfig) -> PriceEstimato
     model_format = str(manifest.get("model_format", ""))
     if model_format == "safe_lowest_price_gap_numpy":
         model = _load_safe_gap_numpy_model(model_path)
+    elif model_format == "expected_return_hazard_numpy":
+        model = _load_expected_return_numpy_model(model_path)
     else:
         model = _load_pickle_model(model_path)
 

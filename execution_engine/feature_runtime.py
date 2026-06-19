@@ -69,6 +69,9 @@ class RuntimeInferenceEngine:
             frame["p_side"] = p_side
             frame["direction_confidence"] = abs(p_up_value - 0.5)
             frame["p_bin"] = _p_side_bucket(p_side)
+            frame["p_side_bucket"] = _p_side_bucket(p_side)
+            timestamp = pd.to_datetime(frame.loc[row_index, DEFAULT_TIMESTAMP_COLUMN], utc=True)
+            frame["market_time_bucket"] = _market_time_bucket(timestamp)
         missing = [column for column in artifact.feature_columns if column not in frame.columns]
         if missing:
             preview = ", ".join(missing[:20])
@@ -106,6 +109,14 @@ class RuntimeInferenceEngine:
                 for column in ("safe_gap_action", "safe_gap_conf_ok", "safe_gap_f_model"):
                     if column in raw_prediction.columns:
                         context[f"price_estimator_{column}"] = raw_prediction[column].iloc[0]
+        if artifact.prediction_column == "expected_return_bid" and isinstance(raw_prediction, pd.DataFrame):
+            for column in (
+                "expected_return_bid",
+                "expected_return_ev",
+                "expected_return_fill_probability",
+                "expected_return_eligible",
+            ):
+                context[f"price_estimator_{column}"] = raw_prediction[column].iloc[0]
         return context
 
     def _thresholds_for_signal(self, signal_t0: pd.Timestamp | None) -> tuple[float, float, dict[str, str | None]]:
@@ -299,3 +310,12 @@ def _p_side_bucket(p_side: float) -> str:
     if p_side <= 1.0:
         return "0.70_1.00"
     return "missing"
+
+
+def _market_time_bucket(timestamp: pd.Timestamp) -> str:
+    hour = int(timestamp.hour)
+    if hour <= 7:
+        return "asia"
+    if hour <= 15:
+        return "europe"
+    return "us"
