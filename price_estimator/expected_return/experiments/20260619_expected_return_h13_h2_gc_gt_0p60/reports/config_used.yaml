@@ -1,0 +1,31 @@
+experiment_id: 20260619_expected_return_h13_h2_gc_gt_0p60
+
+objective:
+  min_coverage: 0.70
+
+paths:
+  train_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_train.parquet
+  validation_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_validation.parquet
+  h2_checkpoint: price_estimator/expected_return/experiments/20260619_expected_return_h2_hazard_smooth/models/hazard_survival_cdf.pt
+  reports_dir: price_estimator/expected_return/experiments/20260619_expected_return_h13_h2_gc_gt_0p60/reports
+
+split:
+  calibration_tail_days: 7
+  timestamp_column: timestamp
+
+target:
+  tick_size: 0.01
+  min_bid: 0.01
+  min_ev_grid: [0.00, 0.01, 0.02, 0.03, 0.05]
+  min_ev_min_order_count: 100
+
+order_policy:
+  candidate_gc_strict_floor: 0.60
+
+evaluation:
+  device: cpu
+  batch_size: 512
+
+metadata:
+  deploy_training_mode: calendar_coordinate_offline_train
+  offline_validation_metric_source: execution_engine/deploy/baseline/artifact_manifest.json

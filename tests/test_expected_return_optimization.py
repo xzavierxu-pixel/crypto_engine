@@ -71,6 +71,17 @@ def test_min_ev_abstains_without_changing_best_ev() -> None:
     assert ev[0] < 1.0
 
 
+def test_survival_bid_selection_strictly_filters_gc_candidates() -> None:
+    q = np.array([0.8])
+    grid = np.array([0.1, 0.2, 0.3])
+    gc = np.array([[0.5, 0.6, 0.7]])
+    bids, _, fill_prob = choose_survival_expected_return_bids(
+        q, gc, grid, 0.01, float("-inf"), min_fill_probability=0.6
+    )
+    assert bids.tolist() == [0.3]
+    assert fill_prob.tolist() == [0.7]
+
+
 def test_seven_day_split_is_time_based_and_all_side() -> None:
     frame = pd.DataFrame(
         {

@@ -365,6 +365,7 @@ def choose_survival_expected_return_bids(
     tick_grid: np.ndarray,
     min_bid: float,
     min_ev: float,
+    min_fill_probability: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     q_values = np.asarray(q_side, dtype=float)
     gc_values = np.asarray(gc_matrix, dtype=float)
@@ -376,7 +377,11 @@ def choose_survival_expected_return_bids(
     evs = np.zeros(len(q_values), dtype=float)
     fill_probs = np.zeros(len(q_values), dtype=float)
     for i, q in enumerate(q_values):
-        valid = (tick_grid >= min_bid - 1e-12) & (tick_grid <= q + 1e-12)
+        valid = (
+            (tick_grid >= min_bid - 1e-12)
+            & (tick_grid <= q + 1e-12)
+            & (gc_values[i] > min_fill_probability)
+        )
         if not valid.any():
             continue
         grid = tick_grid[valid]
