@@ -15,11 +15,6 @@ price_estimator:
   active_artifact: safe_lowest_price_gap
   artifact_dir: execution_engine/deploy/price_estimator_safe_lowest_price_gap
   artifacts:
-    q80:
-      artifact_dir: execution_engine/deploy/price_estimator_q80
-      manifest_file: artifact_manifest.json
-      model_file: catboost_q80.cbm
-      prediction_column: pred_q80
     safe_lowest_price_gap:
       artifact_dir: execution_engine/deploy/price_estimator_safe_lowest_price_gap
       manifest_file: artifact_manifest.json
