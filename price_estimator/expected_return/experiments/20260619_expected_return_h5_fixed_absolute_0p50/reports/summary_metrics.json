@@ -10,7 +10,7 @@
   "deploy_training_mode": "not_applicable_fixed_bid_replay",
   "experiment_id": "20260619_expected_return_h5_fixed_absolute_0p50",
   "fixed_bid": 0.5,
-  "git_commit": "fc9649aeda1917010b1284e2048d6188671beb2a",
+  "git_commit": "26cc15d",
   "git_commit_at_evaluation": "fc9649aeda1917010b1284e2048d6188671beb2a",
   "offline_validation_metric_source": "price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_validation.parquet",
   "pnl_scope": "threshold_accepted_rows",
