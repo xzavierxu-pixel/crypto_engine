@@ -14,7 +14,7 @@
   "coverage_constraint_satisfied": true,
   "deploy_training_mode": "not_applicable_fixed_bid_replay",
   "experiment_id": "20260619_expected_return_h6_0p90_pside",
-  "git_commit": "dbfa45b8c0b4d7c8e40efbe044f4d49e3099eee8",
+  "git_commit": "80513c179353af9bff91b1d494d05ce10766f628",
   "git_commit_at_evaluation": "dbfa45b8c0b4d7c8e40efbe044f4d49e3099eee8",
   "offline_validation_metric_source": "price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_validation.parquet",
   "pnl_scope": "threshold_accepted_rows",
