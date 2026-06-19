@@ -1,4 +1,4 @@
-experiment_id: 20260619_expected_return_o0_o1_o2
+experiment_id: 20260619_expected_return_trade_coverage_start
 
 paths:
   deploy_artifact_dir: execution_engine/deploy/baseline
@@ -6,18 +6,19 @@ paths:
   train_dataset_source: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/development_frame.parquet
   validation_dataset_source: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features/validation_frame.parquet
   trades_dir: price_estimator/data/sell_taker_trades_daily
-  experiment_dir: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2
-  train_dataset: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/data/expected_return_train.parquet
-  validation_dataset: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/data/expected_return_validation.parquet
-  models_dir: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/models
-  reports_dir: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/reports
-  predictions_train: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/reports/predictions_train.parquet
-  predictions_calibration: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/reports/predictions_calibration.parquet
-  predictions_validation: price_estimator/expected_return/experiments/20260619_expected_return_o0_o1_o2/reports/predictions_validation.parquet
+  experiment_dir: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start
+  train_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_train.parquet
+  validation_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_validation.parquet
+  models_dir: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/models
+  reports_dir: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/reports
+  predictions_train: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/reports/predictions_train.parquet
+  predictions_calibration: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/reports/predictions_calibration.parquet
+  predictions_validation: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/reports/predictions_validation.parquet
 
 target:
   selected_side_source: deploy_manifest_threshold_policy
   order_window: until_settlement
+  trades_coverage_start: 2026-02-12T00:00:00Z
   include_start: false
   include_end: true
   eps: 0.01

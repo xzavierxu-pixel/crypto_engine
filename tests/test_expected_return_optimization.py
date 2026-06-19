@@ -10,7 +10,7 @@ import pandas as pd
 MODULE_DIR = Path(__file__).resolve().parents[1] / "price_estimator" / "expected_return"
 sys.path.insert(0, str(MODULE_DIR))
 
-from build_expected_return_target import classify_low_join  # noqa: E402
+from build_expected_return_target import apply_trades_coverage_start, classify_low_join  # noqa: E402
 from train_low_cdf_and_backtest import (  # noqa: E402
     backtest_metrics,
     backtest_with_bid,
@@ -104,3 +104,21 @@ def test_missing_low_reason_is_independent_of_threshold() -> None:
         "no_trades_before_settlement",
         "matched",
     ]
+
+
+def test_trade_coverage_start_filters_before_target_building() -> None:
+    frame = pd.DataFrame(
+        {
+            "decision_time": pd.to_datetime(
+                ["2026-02-11T23:55:00Z", "2026-02-12T00:00:00Z", "2026-02-12T00:05:00Z"]
+            ),
+            "condition_id": ["old", "first", "next"],
+        }
+    )
+
+    filtered, report = apply_trades_coverage_start(frame, "2026-02-12T00:00:00Z")
+
+    assert filtered["condition_id"].tolist() == ["first", "next"]
+    assert report["source_rows_before_coverage_filter"] == 3
+    assert report["rows_excluded_before_trades_coverage"] == 1
+    assert report["rows_after_trades_coverage_filter"] == 2

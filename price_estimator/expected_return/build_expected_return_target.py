@@ -76,6 +76,23 @@ def read_trades(trades_dir: Path) -> pd.DataFrame:
     return trades.dropna(subset=["price", "trade_time", "condition_id", "outcome"])
 
 
+def apply_trades_coverage_start(
+    df: pd.DataFrame,
+    coverage_start: Any,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    cutoff = pd.Timestamp(coverage_start)
+    cutoff = cutoff.tz_localize("UTC") if cutoff.tzinfo is None else cutoff.tz_convert("UTC")
+    decision_time = pd.to_datetime(df["decision_time"], utc=True, errors="coerce")
+    eligible = decision_time >= cutoff
+    filtered = df.loc[eligible].copy()
+    return filtered, {
+        "trades_coverage_start": cutoff.isoformat(),
+        "source_rows_before_coverage_filter": int(len(df)),
+        "rows_excluded_before_trades_coverage": int((~eligible).sum()),
+        "rows_after_trades_coverage_filter": int(eligible.sum()),
+    }
+
+
 def classify_low_join(
     rows: pd.DataFrame,
     trades: pd.DataFrame,
@@ -157,7 +174,10 @@ def build_split(
     for col in ["timestamp", "decision_time", "market_t0", "endDate"]:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], utc=True, errors="coerce")
+    df, coverage_filter = apply_trades_coverage_start(df, config["target"]["trades_coverage_start"])
     before_rows = len(df)
+    if not before_rows:
+        raise ValueError(f"No {split} rows remain at or after trades coverage start")
     if "target" not in df.columns:
         raise ValueError(f"{source_path} is missing target")
     source_p_up = pd.to_numeric(df["p_up"], errors="coerce") if "p_up" in df.columns else None
@@ -228,6 +248,7 @@ def build_split(
     summary = {
         "split": split,
         "input_rows": int(before_rows),
+        **coverage_filter,
         "all_side_rows_before_low_join": int(len(df)),
         "threshold_accepted_rows": int(out["threshold_accepted"].sum()),
         "missing_low_rows": missing_low,
@@ -258,7 +279,19 @@ def main() -> None:
     config = load_config(args.config)
     manifest = load_deploy_manifest(config)
     model = load_deploy_model(config, manifest)
-    trades = read_trades(resolve_path(config["paths"]["trades_dir"]))
+    trades_dir = resolve_path(config["paths"]["trades_dir"])
+    trade_files = sorted(trades_dir.glob("date=*.parquet"))
+    if not trade_files:
+        raise FileNotFoundError(f"No trade parquet files found in {trades_dir}")
+    first_partition_date = trade_files[0].stem.removeprefix("date=")
+    configured_coverage_start = pd.Timestamp(config["target"]["trades_coverage_start"])
+    configured_date = configured_coverage_start.strftime("%Y-%m-%d")
+    if configured_date < first_partition_date:
+        raise ValueError(
+            "Configured trades_coverage_start precedes the first local trade partition: "
+            f"configured={configured_date}, first_partition={first_partition_date}"
+        )
+    trades = read_trades(trades_dir)
 
     reports_dir = resolve_path(config["paths"]["reports_dir"])
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -273,6 +306,12 @@ def main() -> None:
         "threshold_source": manifest.get("threshold_source"),
         "threshold_policy": manifest.get("threshold_policy"),
         "order_window": config["target"]["order_window"],
+        "trades_coverage": {
+            "configured_start": str(config["target"]["trades_coverage_start"]),
+            "first_local_partition": first_partition_date,
+            "last_local_partition": trade_files[-1].stem.removeprefix("date="),
+            "partition_count": len(trade_files),
+        },
     }
     for split, source_key, out_key in [
         ("train", "train_dataset_source", "train_dataset"),
