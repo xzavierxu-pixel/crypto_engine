@@ -220,6 +220,17 @@ def main() -> None:
     direction_metrics = _direction_metrics(accepted, len(frame))
     results: list[dict[str, Any]] = []
     prediction_frames: list[pd.DataFrame] = []
+    if bool(config["backtest"].get("include_p_side_baseline", False)):
+        p_side_predictions = pd.DataFrame(
+            {
+                "p_pred": pd.to_numeric(accepted["p_side"], errors="raise").to_numpy(dtype=float),
+                "safe_gap_action": np.full(len(accepted), "p_side", dtype=object),
+            }
+        )
+        metrics, replay = _pnl_metrics(accepted, p_side_predictions)
+        replay.insert(0, "experiment_id", "p_side_full_price")
+        prediction_frames.append(replay)
+        results.append({"experiment_id": "p_side_full_price", **metrics})
     for experiment_dir in sorted(path for path in experiments_dir.iterdir() if path.is_dir()):
         if not (experiment_dir / "models").exists():
             continue
@@ -236,6 +247,7 @@ def main() -> None:
     }
     report = {
         "experiment_id": config["experiment_id"],
+        "git_commit": _git_commit(),
         "git_commit_before_experiment": _git_commit(),
         "config_path": str(config_path.relative_to(ROOT)),
         "report_path": str((output_dir / "report.json").relative_to(ROOT)),
@@ -254,8 +266,10 @@ def main() -> None:
     }
     (output_dir / "config_used.yaml").write_text(config_path.read_text(encoding="utf-8"), encoding="utf-8")
     (output_dir / "report.json").write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
-    pd.DataFrame(results).to_csv(output_dir / "pnl_summary.csv", index=False)
-    pd.concat(prediction_frames, ignore_index=True).to_parquet(output_dir / "predictions_validation.parquet", index=False)
+    summary_filename = str(config["backtest"].get("summary_filename", "pnl_summary.csv"))
+    predictions_filename = str(config["backtest"].get("predictions_filename", "predictions_validation.parquet"))
+    pd.DataFrame(results).to_csv(output_dir / summary_filename, index=False)
+    pd.concat(prediction_frames, ignore_index=True).to_parquet(output_dir / predictions_filename, index=False)
     print(json.dumps({"output_dir": str(output_dir), "best": results[0], "experiment_count": len(results)}, indent=2))
 
 
