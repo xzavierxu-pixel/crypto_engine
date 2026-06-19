@@ -1,0 +1,558 @@
+{
+  "by_dimension": {
+    "chosen_low_reason": [
+      {
+        "dimension": "chosen_low_reason",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 15654,
+        "value": "matched"
+      },
+      {
+        "dimension": "chosen_low_reason",
+        "missing_low_rate": 1.0,
+        "missing_low_rows": 22,
+        "row_count": 22,
+        "value": "no_condition_trades"
+      },
+      {
+        "dimension": "chosen_low_reason",
+        "missing_low_rate": 1.0,
+        "missing_low_rows": 5,
+        "row_count": 5,
+        "value": "no_predicted_outcome_trades"
+      },
+      {
+        "dimension": "chosen_low_reason",
+        "missing_low_rate": 1.0,
+        "missing_low_rows": 5,
+        "row_count": 5,
+        "value": "no_trades_after_decision"
+      },
+      {
+        "dimension": "chosen_low_reason",
+        "missing_low_rate": 1.0,
+        "missing_low_rows": 10,
+        "row_count": 10,
+        "value": "no_trades_before_settlement"
+      }
+    ],
+    "date": [
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.03237410071942446,
+        "missing_low_rows": 9,
+        "row_count": 278,
+        "value": "2026-02-12"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 279,
+        "value": "2026-02-13"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 264,
+        "value": "2026-02-14"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0035842293906810036,
+        "missing_low_rows": 1,
+        "row_count": 279,
+        "value": "2026-02-15"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 279,
+        "value": "2026-02-16"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 273,
+        "value": "2026-02-17"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 281,
+        "value": "2026-02-18"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 279,
+        "value": "2026-02-19"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 285,
+        "value": "2026-02-20"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 244,
+        "value": "2026-02-21"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 227,
+        "value": "2026-02-22"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.014134275618374558,
+        "missing_low_rows": 4,
+        "row_count": 283,
+        "value": "2026-02-23"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 283,
+        "value": "2026-02-24"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 282,
+        "value": "2026-02-25"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 281,
+        "value": "2026-02-26"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0035335689045936395,
+        "missing_low_rows": 1,
+        "row_count": 283,
+        "value": "2026-02-27"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 268,
+        "value": "2026-02-28"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.007168458781362007,
+        "missing_low_rows": 2,
+        "row_count": 279,
+        "value": "2026-03-01"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 283,
+        "value": "2026-03-02"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.007017543859649123,
+        "missing_low_rows": 2,
+        "row_count": 285,
+        "value": "2026-03-03"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 283,
+        "value": "2026-03-04"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 280,
+        "value": "2026-03-05"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0035842293906810036,
+        "missing_low_rows": 1,
+        "row_count": 279,
+        "value": "2026-03-06"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0036900369003690036,
+        "missing_low_rows": 1,
+        "row_count": 271,
+        "value": "2026-03-07"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 273,
+        "value": "2026-03-08"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 282,
+        "value": "2026-03-09"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 281,
+        "value": "2026-03-10"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 276,
+        "value": "2026-03-11"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0036101083032490976,
+        "missing_low_rows": 1,
+        "row_count": 277,
+        "value": "2026-03-12"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 283,
+        "value": "2026-03-13"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 264,
+        "value": "2026-03-14"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 270,
+        "value": "2026-03-15"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 274,
+        "value": "2026-03-16"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 281,
+        "value": "2026-03-17"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 279,
+        "value": "2026-03-18"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 275,
+        "value": "2026-03-19"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.04411764705882353,
+        "missing_low_rows": 12,
+        "row_count": 272,
+        "value": "2026-03-20"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 230,
+        "value": "2026-03-21"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 271,
+        "value": "2026-03-22"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 272,
+        "value": "2026-03-23"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.021352313167259787,
+        "missing_low_rows": 6,
+        "row_count": 281,
+        "value": "2026-03-24"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 276,
+        "value": "2026-03-25"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 271,
+        "value": "2026-03-26"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 276,
+        "value": "2026-03-27"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 255,
+        "value": "2026-03-28"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.00398406374501992,
+        "missing_low_rows": 1,
+        "row_count": 251,
+        "value": "2026-03-29"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 266,
+        "value": "2026-03-30"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 277,
+        "value": "2026-03-31"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 282,
+        "value": "2026-04-01"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 278,
+        "value": "2026-04-02"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 258,
+        "value": "2026-04-03"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 167,
+        "value": "2026-04-04"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.004484304932735426,
+        "missing_low_rows": 1,
+        "row_count": 223,
+        "value": "2026-04-05"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 274,
+        "value": "2026-04-06"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 278,
+        "value": "2026-04-07"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 269,
+        "value": "2026-04-08"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 276,
+        "value": "2026-04-09"
+      },
+      {
+        "dimension": "date",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 270,
+        "value": "2026-04-10"
+      }
+    ],
+    "predicted_side": [
+      {
+        "dimension": "predicted_side",
+        "missing_low_rate": 0.002698327037236913,
+        "missing_low_rows": 20,
+        "row_count": 7412,
+        "value": "DOWN"
+      },
+      {
+        "dimension": "predicted_side",
+        "missing_low_rate": 0.002655721873491067,
+        "missing_low_rows": 22,
+        "row_count": 8284,
+        "value": "UP"
+      }
+    ],
+    "threshold_accepted": [
+      {
+        "dimension": "threshold_accepted",
+        "missing_low_rate": 0.0016237531895151936,
+        "missing_low_rows": 7,
+        "row_count": 4311,
+        "value": false
+      },
+      {
+        "dimension": "threshold_accepted",
+        "missing_low_rate": 0.0030742204655248135,
+        "missing_low_rows": 35,
+        "row_count": 11385,
+        "value": true
+      }
+    ],
+    "week": [
+      {
+        "dimension": "week",
+        "missing_low_rate": 0.00909090909090909,
+        "missing_low_rows": 10,
+        "row_count": 1100,
+        "value": "2026-02-09/2026-02-15"
+      },
+      {
+        "dimension": "week",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 1868,
+        "value": "2026-02-16/2026-02-22"
+      },
+      {
+        "dimension": "week",
+        "missing_low_rate": 0.0035732516590096988,
+        "missing_low_rows": 7,
+        "row_count": 1959,
+        "value": "2026-02-23/2026-03-01"
+      },
+      {
+        "dimension": "week",
+        "missing_low_rate": 0.0020470829068577278,
+        "missing_low_rows": 4,
+        "row_count": 1954,
+        "value": "2026-03-02/2026-03-08"
+      },
+      {
+        "dimension": "week",
+        "missing_low_rate": 0.0005173305742369374,
+        "missing_low_rows": 1,
+        "row_count": 1933,
+        "value": "2026-03-09/2026-03-15"
+      },
+      {
+        "dimension": "week",
+        "missing_low_rate": 0.006376195536663124,
+        "missing_low_rows": 12,
+        "row_count": 1882,
+        "value": "2026-03-16/2026-03-22"
+      },
+      {
+        "dimension": "week",
+        "missing_low_rate": 0.0037194473963868225,
+        "missing_low_rows": 7,
+        "row_count": 1882,
+        "value": "2026-03-23/2026-03-29"
+      },
+      {
+        "dimension": "week",
+        "missing_low_rate": 0.0005711022272986865,
+        "missing_low_rows": 1,
+        "row_count": 1751,
+        "value": "2026-03-30/2026-04-05"
+      },
+      {
+        "dimension": "week",
+        "missing_low_rate": 0.0,
+        "missing_low_rows": 0,
+        "row_count": 1367,
+        "value": "2026-04-06/2026-04-12"
+      }
+    ]
+  },
+  "missing_low_rate": 0.002675840978593272,
+  "missing_low_rows": 42,
+  "reason_counts": {
+    "matched": 15654,
+    "no_condition_trades": 22,
+    "no_predicted_outcome_trades": 5,
+    "no_trades_after_decision": 5,
+    "no_trades_before_settlement": 10
+  },
+  "row_count": 15696,
+  "split": "train",
+  "threshold_not_causal_note": "Rows are assigned predicted_side before thresholding and diagnostics include both threshold_accepted states; threshold only controls final ordering."
+}

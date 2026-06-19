@@ -1,0 +1,175 @@
+{
+  "config_path": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\expected_return\\experiments\\20260619_expected_return_trade_coverage_start\\reports\\config_used.yaml",
+  "deploy_experiment_id": "20260611_catboost_calendar_coordinate_search",
+  "experiment_id": "20260619_expected_return_trade_coverage_start",
+  "git_commit_at_build": "0826b6cb447d8d39c71772fd5f0b51521ec23814",
+  "order_window": "until_settlement",
+  "outputs": {
+    "train": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\expected_return\\experiments\\20260619_expected_return_trade_coverage_start\\data\\expected_return_train.parquet",
+    "validation": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\expected_return\\experiments\\20260619_expected_return_trade_coverage_start\\data\\expected_return_validation.parquet"
+  },
+  "threshold_policy": {
+    "fallback_t_down": 0.43142857142857144,
+    "fallback_t_up": 0.5792857142857143,
+    "thresholds": {
+      "d0_asia": {
+        "t_down": 0.4,
+        "t_up": 0.59
+      },
+      "d0_europe": {
+        "t_down": 0.415,
+        "t_up": 0.575
+      },
+      "d0_us": {
+        "t_down": 0.385,
+        "t_up": 0.54
+      },
+      "d1_asia": {
+        "t_down": 0.425,
+        "t_up": 0.57
+      },
+      "d1_europe": {
+        "t_down": 0.425,
+        "t_up": 0.575
+      },
+      "d1_us": {
+        "t_down": 0.445,
+        "t_up": 0.59
+      },
+      "d2_asia": {
+        "t_down": 0.475,
+        "t_up": 0.62
+      },
+      "d2_europe": {
+        "t_down": 0.43,
+        "t_up": 0.57
+      },
+      "d2_us": {
+        "t_down": 0.43,
+        "t_up": 0.58
+      },
+      "d3_asia": {
+        "t_down": 0.43,
+        "t_up": 0.575
+      },
+      "d3_europe": {
+        "t_down": 0.435,
+        "t_up": 0.57
+      },
+      "d3_us": {
+        "t_down": 0.425,
+        "t_up": 0.57
+      },
+      "d4_asia": {
+        "t_down": 0.475,
+        "t_up": 0.61
+      },
+      "d4_europe": {
+        "t_down": 0.415,
+        "t_up": 0.56
+      },
+      "d4_us": {
+        "t_down": 0.455,
+        "t_up": 0.6
+      },
+      "d5_asia": {
+        "t_down": 0.425,
+        "t_up": 0.57
+      },
+      "d5_europe": {
+        "t_down": 0.43,
+        "t_up": 0.57
+      },
+      "d5_us": {
+        "t_down": 0.43,
+        "t_up": 0.575
+      },
+      "d6_asia": {
+        "t_down": 0.475,
+        "t_up": 0.62
+      },
+      "d6_europe": {
+        "t_down": 0.4,
+        "t_up": 0.56
+      },
+      "d6_us": {
+        "t_down": 0.435,
+        "t_up": 0.575
+      }
+    },
+    "type": "utc_day_session_coordinate"
+  },
+  "threshold_source": "offline_validation_calendar_coordinate",
+  "trades_coverage": {
+    "configured_start": "2026-02-12 00:00:00+00:00",
+    "first_local_partition": "2026-02-12",
+    "last_local_partition": "2026-05-10",
+    "partition_count": 88
+  },
+  "train_summary": {
+    "accepted_accuracy": 0.7031181379007466,
+    "accepted_coverage_vs_source": 0.7253440366972477,
+    "all_side_correct_count": 10328,
+    "all_side_rows_before_low_join": 15696,
+    "all_side_wrong_count": 5368,
+    "chosen_low_diagnostic_csv": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\expected_return\\experiments\\20260619_expected_return_trade_coverage_start\\reports\\chosen_low_missing_train.csv",
+    "chosen_low_diagnostic_json": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\expected_return\\experiments\\20260619_expected_return_trade_coverage_start\\reports\\chosen_low_missing_train.json",
+    "end": "2026-04-10 23:40:00+00:00",
+    "input_rows": 15696,
+    "missing_low_rows": 42,
+    "output_rows": 15696,
+    "p_up_refresh": {
+      "max_abs_p_up_delta": null,
+      "mean_abs_p_up_delta": null,
+      "source_had_p_up": false
+    },
+    "rows_after_trades_coverage_filter": 15696,
+    "rows_excluded_before_trades_coverage": 8553,
+    "selected_down_rows": 7412,
+    "selected_up_rows": 8284,
+    "source_rows_before_coverage_filter": 24249,
+    "split": "train",
+    "start": "2026-02-12 00:35:00+00:00",
+    "threshold_accepted_correct_count": 8005,
+    "threshold_accepted_rows": 11385,
+    "threshold_accepted_wrong_count": 3380,
+    "threshold_policy_type": "utc_day_session_coordinate",
+    "trades_coverage_start": "2026-02-12T00:00:00+00:00",
+    "wrong_low_lte_001_share": 0.5275707898658718,
+    "wrong_low_mean": 0.05722514397805677,
+    "wrong_low_p95": 0.29
+  },
+  "validation_summary": {
+    "accepted_accuracy": 0.70734506503443,
+    "accepted_coverage_vs_source": 0.7000535618639528,
+    "all_side_correct_count": 4855,
+    "all_side_rows_before_low_join": 7468,
+    "all_side_wrong_count": 2613,
+    "chosen_low_diagnostic_csv": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\expected_return\\experiments\\20260619_expected_return_trade_coverage_start\\reports\\chosen_low_missing_validation.csv",
+    "chosen_low_diagnostic_json": "C:\\Users\\ROG\\Desktop\\crypto_engine_version1\\price_estimator\\expected_return\\experiments\\20260619_expected_return_trade_coverage_start\\reports\\chosen_low_missing_validation.json",
+    "end": "2026-05-10 23:50:00+00:00",
+    "input_rows": 7468,
+    "missing_low_rows": 35,
+    "output_rows": 7468,
+    "p_up_refresh": {
+      "max_abs_p_up_delta": null,
+      "mean_abs_p_up_delta": null,
+      "source_had_p_up": false
+    },
+    "rows_after_trades_coverage_filter": 7468,
+    "rows_excluded_before_trades_coverage": 0,
+    "selected_down_rows": 3393,
+    "selected_up_rows": 4075,
+    "source_rows_before_coverage_filter": 7468,
+    "split": "validation",
+    "start": "2026-04-11 00:15:00+00:00",
+    "threshold_accepted_correct_count": 3698,
+    "threshold_accepted_rows": 5228,
+    "threshold_accepted_wrong_count": 1530,
+    "threshold_policy_type": "utc_day_session_coordinate",
+    "trades_coverage_start": "2026-02-12T00:00:00+00:00",
+    "wrong_low_lte_001_share": 0.5480290853425182,
+    "wrong_low_mean": 0.05251334032569888,
+    "wrong_low_p95": 0.25
+  }
+}
