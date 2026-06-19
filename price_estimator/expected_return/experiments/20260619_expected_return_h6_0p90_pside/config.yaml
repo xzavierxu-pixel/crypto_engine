@@ -1,0 +1,19 @@
+experiment_id: 20260619_expected_return_h6_0p90_pside
+
+objective:
+  min_coverage: 0.70
+
+paths:
+  train_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_train.parquet
+  validation_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_validation.parquet
+  reports_dir: price_estimator/expected_return/experiments/20260619_expected_return_h6_0p90_pside/reports
+  predictions_train: price_estimator/expected_return/experiments/20260619_expected_return_h6_0p90_pside/reports/predictions_train.parquet
+  predictions_validation: price_estimator/expected_return/experiments/20260619_expected_return_h6_0p90_pside/reports/predictions_validation.parquet
+
+backtest:
+  bid_policy: p_side_multiplier
+  p_side_multiplier: 0.90
+  tick_size: 0.01
+  wrong_fill_policy: forced
+  bid_scope: all_validation_rows
+  pnl_scope: threshold_accepted_rows
