@@ -650,7 +650,7 @@
   "feature_count_encoded": 591,
   "feature_count_raw": 576,
   "gc_monotonicity_check": true,
-  "git_commit": "43a22ab45b75e73e0f5cb84a8325e385ba0f82d1",
+  "git_commit": "a5978db",
   "git_commit_at_training": "43a22ab45b75e73e0f5cb84a8325e385ba0f82d1",
   "min_ev_search": [
     {

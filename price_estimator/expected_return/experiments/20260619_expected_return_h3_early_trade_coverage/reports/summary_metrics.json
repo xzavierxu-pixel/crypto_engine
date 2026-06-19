@@ -1,7 +1,7 @@
 {
   "experiment_id": "20260619_expected_return_h3_early_trade_coverage",
   "status": "blocked_by_data",
-  "git_commit": "43a22ab",
+  "git_commit": "a4ea624",
   "config_path": "price_estimator/expected_return/experiments/20260619_expected_return_h3_early_trade_coverage/config.yaml",
   "report_path": "price_estimator/expected_return/experiments/20260619_expected_return_h3_early_trade_coverage/reports/summary_metrics.json",
   "primary_metric": "validation forced mean_accepted_pnl for expected_return policy",
