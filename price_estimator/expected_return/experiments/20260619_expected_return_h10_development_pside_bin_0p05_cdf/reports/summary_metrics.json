@@ -71,7 +71,7 @@
   "gc_fit_sample_count": 9119,
   "gc_fit_source": "fit_correct",
   "gc_monotonicity_check": true,
-  "git_commit": "a7ed02bbe879acadc42599bdb18025e8c4545123",
+  "git_commit": "2d716d7089d98b053ced0bc38b95d6582249860d",
   "git_commit_at_evaluation": "a7ed02bbe879acadc42599bdb18025e8c4545123",
   "min_ev_search": [
     {
