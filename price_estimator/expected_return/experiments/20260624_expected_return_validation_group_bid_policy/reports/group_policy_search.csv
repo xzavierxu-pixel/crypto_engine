@@ -1,0 +1,16 @@
+group_columns,selection_source,sum_pnl,enabled_group_count,searched_group_count
+selected_side,validation,18.179999999999975,2,2
+hour,validation,89.36,21,24
+dow,validation,33.56999999999999,7,7
+session,validation,36.17999999999998,2,3
+p_side_bin,validation,69.57999999999996,7,8
+"selected_side,hour",validation,134.39000000000001,41,48
+"selected_side,dow",validation,70.32999999999998,12,14
+"selected_side,p_side_bin",validation,78.78999999999999,13,15
+"hour,dow",validation,276.0400000000001,141,168
+"hour,p_side_bin",validation,260.69,126,144
+"dow,p_side_bin",validation,144.45999999999998,45,52
+"selected_side,hour,dow",validation,361.87000000000006,248,308
+"selected_side,hour,p_side_bin",validation,327.0,199,237
+"selected_side,dow,p_side_bin",validation,202.18,80,93
+"hour,dow,p_side_bin",validation,64.19,54,67
