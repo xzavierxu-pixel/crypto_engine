@@ -10,6 +10,7 @@ from pathlib import Path
 import lightgbm as lgb
 import numpy as np
 import pandas as pd
+from sklearn.isotonic import IsotonicRegression
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PRICE_ESTIMATOR_DIR = SCRIPT_DIR.parent
@@ -87,6 +88,11 @@ def fit_lgbm_ev(
     )
     calibration_q = q_model.predict_proba(x_cal)[:, 1]
     validation_q = q_model.predict_proba(x_val)[:, 1]
+    if bool(model_config.get("isotonic_q", False)):
+        q_iso = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip")
+        q_iso.fit(calibration_q, calibration["correct"].astype(int))
+        calibration_q = np.asarray(q_iso.predict(calibration_q), dtype=float)
+        validation_q = np.asarray(q_iso.predict(validation_q), dtype=float)
 
     correct_fit = fit["correct"].astype(bool)
     correct_cal = calibration["correct"].astype(bool)
@@ -108,8 +114,18 @@ def fit_lgbm_ev(
             eval_metric="binary_logloss",
             callbacks=[lgb.early_stopping(early_stopping_rounds, verbose=False)],
         )
-        gc_cal.append(gc_model.predict_proba(x_cal)[:, 1])
-        gc_val.append(gc_model.predict_proba(x_val)[:, 1])
+        calibration_gc = gc_model.predict_proba(x_cal)[:, 1]
+        validation_gc = gc_model.predict_proba(x_val)[:, 1]
+        if bool(model_config.get("isotonic_gc", False)):
+            gc_iso = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip")
+            gc_iso.fit(
+                calibration_gc[correct_cal.to_numpy()],
+                (pd.to_numeric(calibration.loc[correct_cal, "chosen_low"], errors="coerce") <= bid).astype(int),
+            )
+            calibration_gc = np.asarray(gc_iso.predict(calibration_gc), dtype=float)
+            validation_gc = np.asarray(gc_iso.predict(validation_gc), dtype=float)
+        gc_cal.append(calibration_gc)
+        gc_val.append(validation_gc)
 
     return (
         {"q": calibration_q, "gc": np.vstack(gc_cal).T},
@@ -203,6 +219,8 @@ def main() -> None:
             "bid_max": float(config["policy_search"]["bid_max"]),
             "bid_step": float(config["policy_search"]["bid_step"]),
             "min_order_count": int(config["policy_search"]["min_order_count"]),
+            "isotonic_q": bool(config.get("model", {}).get("isotonic_q", False)),
+            "isotonic_gc": bool(config.get("model", {}).get("isotonic_gc", False)),
         },
         "leakage_note": "Model and policy selection use fit/calibration labels only. Validation labels are used only for final evaluation.",
         "feature_count": len(columns),
