@@ -1,0 +1,26 @@
+{
+  "bid_offset_steps": 1,
+  "fallback_min_ev": 0.035,
+  "group_min_ev": {
+    "DOWN|(0.55, 0.6]": -0.02,
+    "DOWN|(0.6, 0.65]": 0.035,
+    "DOWN|(0.65, 0.7]": -0.04,
+    "DOWN|(0.7, 0.75]": -0.02,
+    "DOWN|(0.75, 0.8]": -0.005,
+    "DOWN|(0.8, 0.85]": -0.05,
+    "UP|(0.55, 0.6]": -0.04,
+    "UP|(0.6, 0.65]": 0.01,
+    "UP|(0.65, 0.7]": 0.17,
+    "UP|(0.7, 0.75]": -0.015,
+    "UP|(0.75, 0.8]": -0.01,
+    "UP|(0.8, 0.85]": -0.06,
+    "UP|(0.85, 1.01]": -0.055
+  },
+  "min_group_order_count": 20.0,
+  "mode": "group_min_ev",
+  "selected_group_columns": [
+    "selected_side",
+    "p_side_bin"
+  ],
+  "selected_group_count": 13
+}

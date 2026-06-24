@@ -1,0 +1,43 @@
+{
+  "bid_offset_steps": 0,
+  "blend_members": [
+    "xgboost",
+    "catboost"
+  ],
+  "blend_weight_first": 0.45,
+  "blend_weight_second": 0.55,
+  "fallback_min_ev": -0.005,
+  "group_min_ev": {
+    "0": 0.115,
+    "1": 0.015,
+    "10": 0.085,
+    "11": -0.005,
+    "12": -0.005,
+    "13": -0.005,
+    "14": -0.005,
+    "15": 0.0,
+    "16": -0.005,
+    "17": 0.085,
+    "18": -0.005,
+    "19": 0.075,
+    "2": 0.14,
+    "20": 0.0,
+    "21": 0.0,
+    "22": -0.005,
+    "23": -0.005,
+    "3": 0.025,
+    "4": 0.005,
+    "5": -0.005,
+    "6": -0.005,
+    "7": -0.005,
+    "8": -0.005,
+    "9": -0.005
+  },
+  "min_group_order_count": 20.0,
+  "mode": "group_min_ev",
+  "prediction_candidate": "blend_xgboost_0.450_catboost_0.550",
+  "selected_group_columns": [
+    "hour"
+  ],
+  "selected_group_count": 24
+}

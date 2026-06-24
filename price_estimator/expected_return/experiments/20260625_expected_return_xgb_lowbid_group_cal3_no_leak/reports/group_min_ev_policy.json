@@ -1,0 +1,14 @@
+{
+  "bid_offset_steps": 0,
+  "fallback_min_ev": 0.025,
+  "group_min_ev": {
+    "DOWN": 0.08,
+    "UP": 0.025
+  },
+  "min_group_order_count": 10.0,
+  "mode": "group_min_ev",
+  "selected_group_columns": [
+    "selected_side"
+  ],
+  "selected_group_count": 2
+}
