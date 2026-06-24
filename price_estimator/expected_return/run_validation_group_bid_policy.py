@@ -28,7 +28,10 @@ def window(frame: pd.DataFrame) -> dict[str, object]:
 def add_policy_columns(frame: pd.DataFrame, p_side_bins: list[float]) -> pd.DataFrame:
     out = frame.copy()
     timestamp = pd.to_datetime(out["timestamp"], utc=True)
+    out["date"] = timestamp.dt.strftime("%Y-%m-%d")
+    out["day"] = timestamp.dt.day.astype("int64")
     out["hour"] = timestamp.dt.hour.astype("int64")
+    out["minute"] = timestamp.dt.minute.astype("int64")
     out["dow"] = timestamp.dt.dayofweek.astype("int64")
     out["session"] = pd.cut(
         timestamp.dt.hour,
