@@ -35,11 +35,12 @@ def window(frame: pd.DataFrame) -> dict[str, object]:
     return {"row_count": len(frame), "start": str(timestamp.min()), "end": str(timestamp.max())}
 
 
-def feature_columns(frame: pd.DataFrame) -> list[str]:
+def feature_columns(frame: pd.DataFrame, forbidden_columns: list[str] | None = None) -> list[str]:
+    forbidden = set(forbidden_columns or [])
     return [
         column
         for column in frame.select_dtypes(include=[np.number, bool]).columns
-        if not LEAKAGE_FEATURE_PATTERN.search(column)
+        if column not in forbidden and not LEAKAGE_FEATURE_PATTERN.search(column)
     ]
 
 
@@ -379,7 +380,12 @@ def main() -> None:
     calibration = train_all.loc[(timestamp >= cutoff) & train_all["threshold_accepted"].astype(bool)].copy().reset_index(drop=True)
     validation = validation_all.loc[validation_all["threshold_accepted"].astype(bool)].copy().reset_index(drop=True)
 
-    columns = feature_columns(train_all)
+    forbidden_columns = [str(value) for value in config.get("features", {}).get("forbidden_columns", [])]
+    columns = feature_columns(train_all, forbidden_columns)
+    forbidden_feature_overlap = sorted(set(forbidden_columns).intersection(columns))
+    if forbidden_feature_overlap:
+        raise ValueError(f"Forbidden feature columns present: {forbidden_feature_overlap}")
+    forbidden_columns_present = sorted(set(forbidden_columns).intersection(train_all.columns))
     bid_grid = np.round(
         np.arange(
             float(config["policy_search"]["bid_min"]),
@@ -557,6 +563,8 @@ def main() -> None:
         "leakage_note": "Model and policy selection use fit/calibration labels only. Validation labels are used only for final evaluation.",
         "feature_count": len(columns),
         "excluded_feature_pattern": LEAKAGE_FEATURE_PATTERN.pattern,
+        "excluded_feature_forbidden_columns": forbidden_columns,
+        "forbidden_columns_present_in_dataset": forbidden_columns_present,
         "train_metrics": backtest_metrics(accepted_train, train_result, len(train_all)),
         "train_window": window(train_all),
         "global_calibration_metrics": [
