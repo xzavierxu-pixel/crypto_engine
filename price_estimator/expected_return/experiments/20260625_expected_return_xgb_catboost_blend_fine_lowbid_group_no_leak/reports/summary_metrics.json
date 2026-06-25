@@ -102,7 +102,7 @@
     "target_raw",
     "threshold_accepted"
   ],
-  "git_commit": "98cb5594bcc683988c4bda3c4e5a512a01a358ab",
+  "git_commit": "5ecc12e915f5be9c9a6f9b9fb8b6f905a30d8613",
   "global_calibration_metrics": {
     "accepted_count": 1242.0,
     "accepted_sample_accuracy": 0.7334943639291466,

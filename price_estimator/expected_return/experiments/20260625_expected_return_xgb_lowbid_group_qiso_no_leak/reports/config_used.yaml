@@ -19,6 +19,28 @@ split:
   calibration_tail_days: 7
   timestamp_column: timestamp
 
+features:
+  forbidden_columns:
+    - target
+    - future_close
+    - abs_return
+    - signed_return
+    - stage1_target
+    - stage2_target
+    - lowest_trade_price_next4
+    - lowest_trade_time_next4
+    - time_to_lowest_trade_sec
+    - target_raw
+    - chosen_low_next4
+    - chosen_low_trade_time
+    - chosen_low
+    - correct
+    - accepted
+    - threshold_accepted
+    - predicted_side
+    - predicted_outcome
+    - chosen_low_reason
+
 policy_search:
   bid_min: 0.01
   bid_max: 0.91
