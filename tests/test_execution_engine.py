@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import types
 import json
+import pickle
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -21,8 +22,14 @@ from execution_engine.scripts.evaluate_paper_results import (
 )
 from execution_engine.scripts.run_paper_experiment import next_trigger_time
 from execution_engine.scripts import run_paper_experiment as paper_experiment_module
-from execution_engine.artifacts import PriceEstimatorArtifact
-from execution_engine.config import BinanceConfig, OrderLegConfig, OrdersConfig, load_execution_config
+from execution_engine.artifacts import PriceEstimatorArtifact, load_price_estimator_artifact
+from execution_engine.config import (
+    BinanceConfig,
+    OrderLegConfig,
+    OrdersConfig,
+    PriceEstimatorConfig,
+    load_execution_config,
+)
 from execution_engine.feature_runtime import RuntimeInferenceEngine
 from execution_engine.order_plan import build_two_limit_order_plan
 from execution_engine.polymarket_v2 import PolymarketV2Adapter, normalize_gamma_market
@@ -36,6 +43,19 @@ from execution_engine.run_once import build_btc_5m_slug, build_idempotency_key, 
 from src.core.config import FeatureProfileConfig
 from src.core.schemas import Decision, MarketQuote, Signal
 from src.features.momentum import MomentumFeaturePack
+
+
+class _ConstantProbaModel:
+    def __init__(self, probability: float) -> None:
+        self.probability = probability
+
+    def predict_proba(self, frame):
+        return np.column_stack(
+            [
+                np.full(len(frame), 1.0 - self.probability),
+                np.full(len(frame), self.probability),
+            ]
+        )
 
 
 def _signal(p_up: float = 0.60) -> Signal:
@@ -123,6 +143,50 @@ def test_expected_return_context_converts_numpy_scalars_to_python_types() -> Non
 
     assert context["price_estimator_expected_return_eligible"] is True
     assert isinstance(context["price_estimator_expected_return_bid"], float)
+
+
+def test_load_expected_return_bid_gc_pickle_artifact(tmp_path) -> None:
+    artifact_dir = tmp_path / "expected_return"
+    artifact_dir.mkdir()
+    payload = {
+        "q_model": _ConstantProbaModel(0.75),
+        "q_calibrator": None,
+        "gc_models": [_ConstantProbaModel(0.40), _ConstantProbaModel(0.90)],
+        "gc_calibrators": [None, None],
+        "bid_grid": np.asarray([0.20, 0.40], dtype=float),
+        "policy": {"selected_min_ev": 0.0, "bid_offset_steps": 0, "min_q": 0.0},
+    }
+    with (artifact_dir / "expected_return_bid_gc.pkl").open("wb") as handle:
+        pickle.dump(payload, handle)
+    (artifact_dir / "artifact_manifest.json").write_text(
+        json.dumps(
+            {
+                "model_format": "expected_return_bid_gc_pickle",
+                "model_file": "expected_return_bid_gc.pkl",
+                "feature_columns": ["feature_a"],
+                "prediction_column": "expected_return_bid",
+                "selected_side_column": "selected_side",
+                "yes_value": "UP",
+                "no_value": "DOWN",
+            }
+        ),
+        encoding="utf-8",
+    )
+    config = PriceEstimatorConfig(
+        enabled=True,
+        artifact_dir=str(artifact_dir),
+        model_file="expected_return_bid_gc.pkl",
+        prediction_column="expected_return_bid",
+        selected_side_column="selected_side",
+        yes_value="UP",
+        no_value="DOWN",
+    )
+
+    artifact = load_price_estimator_artifact(config)
+    prediction = artifact.model.predict(pd.DataFrame({"feature_a": [1.0]}))
+
+    assert prediction["expected_return_bid"].iloc[0] == 0.40
+    assert bool(prediction["expected_return_eligible"].iloc[0]) is True
 
 
 def test_polymarket_v2_cancel_wraps_order_id_for_v2_client() -> None:

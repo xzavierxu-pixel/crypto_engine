@@ -347,6 +347,62 @@ def _load_expected_return_numpy_model(path: Path) -> ExpectedReturnHazardNumpyMo
     return ExpectedReturnHazardNumpyModel(payload, arrays)
 
 
+class ExpectedReturnBidGcModel:
+    """Pickle-backed expected-return policy using a Q model plus per-bid GC models."""
+
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self.q_model = payload["q_model"]
+        self.q_calibrator = payload.get("q_calibrator")
+        self.gc_models = list(payload["gc_models"])
+        self.gc_calibrators = list(payload.get("gc_calibrators") or [None] * len(self.gc_models))
+        self.bid_grid = payload["bid_grid"].astype(float)
+        policy = payload["policy"]
+        self.min_ev = float(policy["selected_min_ev"])
+        self.bid_offset_steps = int(policy.get("bid_offset_steps", 0))
+        self.min_q = float(policy.get("min_q", 0.0))
+        if len(self.gc_models) != len(self.bid_grid):
+            raise ValueError("Expected-return bid/GC artifact has mismatched gc_models and bid_grid lengths.")
+
+    def predict(self, frame: Any) -> Any:
+        import numpy as np
+        import pandas as pd
+
+        x = frame.replace([np.inf, -np.inf], np.nan)
+        q = self.q_model.predict_proba(x)[:, 1]
+        if self.q_calibrator is not None:
+            q = np.asarray(self.q_calibrator.predict(q), dtype=float)
+        gc_columns = []
+        for model, calibrator in zip(self.gc_models, self.gc_calibrators):
+            values = model.predict_proba(x)[:, 1]
+            if calibrator is not None:
+                values = np.asarray(calibrator.predict(values), dtype=float)
+            gc_columns.append(values)
+        gc = np.vstack(gc_columns).T
+        ev = q[:, None] * gc * (1.0 - self.bid_grid[None, :]) - (1.0 - q[:, None]) * self.bid_grid[None, :]
+        best_index = np.argmax(ev, axis=1)
+        selected_index = np.clip(best_index + self.bid_offset_steps, 0, len(self.bid_grid) - 1)
+        row = np.arange(len(frame))
+        selected_ev = ev[row, selected_index]
+        eligible = (selected_ev > self.min_ev) & (q >= self.min_q)
+        return pd.DataFrame(
+            {
+                "expected_return_bid": np.where(eligible, self.bid_grid[selected_index], 0.0),
+                "expected_return_ev": np.where(eligible, selected_ev, 0.0),
+                "expected_return_fill_probability": np.where(eligible, gc[row, selected_index], 0.0),
+                "expected_return_eligible": eligible,
+            },
+            index=frame.index,
+        )
+
+
+def _load_expected_return_bid_gc_model(path: Path) -> ExpectedReturnBidGcModel:
+    with path.open("rb") as handle:
+        payload = pickle.load(handle)
+    if not isinstance(payload, dict):
+        raise ValueError("Expected-return bid/GC artifact payload must be a mapping.")
+    return ExpectedReturnBidGcModel(payload)
+
+
 def load_price_estimator_artifact(config: PriceEstimatorConfig) -> PriceEstimatorArtifact | None:
     if not config.enabled:
         return None
@@ -373,6 +429,8 @@ def load_price_estimator_artifact(config: PriceEstimatorConfig) -> PriceEstimato
         model = _load_safe_gap_numpy_model(model_path)
     elif model_format == "expected_return_hazard_numpy":
         model = _load_expected_return_numpy_model(model_path)
+    elif model_format == "expected_return_bid_gc_pickle":
+        model = _load_expected_return_bid_gc_model(model_path)
     else:
         model = _load_pickle_model(model_path)
 
