@@ -1,0 +1,64 @@
+experiment_id: 20260626_xgb_gciso_q_full_validation_eval
+
+objective:
+  min_coverage: 0.70
+  optimize_metric: selection_score
+
+baseline:
+  deploy_manifest: execution_engine/deploy/baseline/artifact_manifest.json
+  expected_return_experiment: price_estimator/expected_return/experiments/20260625_expected_return_xgb_lowbid_group_gciso_no_leak
+
+paths:
+  train_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_train.parquet
+  validation_dataset: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/data/expected_return_validation.parquet
+  reports_dir: price_estimator/expected_return/experiments/20260626_xgb_gciso_q_full_validation_eval/reports
+
+split:
+  calibration_tail_days: 7
+  timestamp_column: timestamp
+
+features:
+  forbidden_columns:
+    - target
+    - future_close
+    - abs_return
+    - signed_return
+    - stage1_target
+    - stage2_target
+    - lowest_trade_price_next4
+    - lowest_trade_time_next4
+    - time_to_lowest_trade_sec
+    - target_raw
+    - chosen_low_next4
+    - chosen_low_trade_time
+    - chosen_low
+    - correct
+    - accepted
+    - threshold_accepted
+    - predicted_side
+    - predicted_outcome
+    - chosen_low_reason
+
+threshold_search:
+  enabled: true
+  min_q: 0.50
+  max_q: 0.95
+  step: 0.001
+
+model:
+  family: xgboost
+  n_estimators: 180
+  learning_rate: 0.04
+  max_depth: 4
+  subsample: 0.80
+  colsample_bytree: 0.45
+  min_child_weight: 20
+  reg_lambda: 5.0
+  random_state: 909
+  n_jobs: -1
+  tree_method: hist
+  isotonic_q: false
+
+metadata:
+  deploy_training_mode: no_leak_full_validation_diagnostic
+  offline_validation_metric_source: execution_engine/deploy/baseline/artifact_manifest.json
