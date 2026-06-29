@@ -6,6 +6,27 @@ This is an existing, complete BTC/USDT 5-minute Polymarket settlement-direction 
 
 Codex should improve the current system with small, measurable, low-risk changes. Do not rewrite the architecture unless clearly necessary.
 
+## Codex / ChatGPT collaboration
+
+Default collaboration model:
+
+- Local Codex is the primary execution agent, especially in Goal mode.
+- Local Codex owns implementation, file edits, tests, training runs, reports, git checks, and commits.
+- Web ChatGPT may be used through MCP/DevSpace as a read-code, planning, and review collaborator.
+- Web ChatGPT must not be treated as the executor of local changes.
+- Local Codex must verify Web ChatGPT recommendations against the local codebase before implementation.
+- Do not expose secrets, private keys, `.env` files, trading credentials, or other sensitive local data to Web ChatGPT.
+- When uncertainty is high, use Web ChatGPT for a second-pass review of design, leakage risk, offline/online consistency, required metrics, and diffs.
+
+DevSpace usage:
+
+- Use the configured local DevSpace workspace for this project when available.
+- Open `C:\Users\ROG\Desktop\crypto_engine_version1` in `checkout` mode and reuse the same workspaceId for this project.
+- Prefer DevSpace `read` for file inspection, `write` for new files, `edit` for targeted edits, and DevSpace shell for tests, git inspection, and searches.
+- For shell commands, still follow this project rule: prefer `rtk`.
+- For Web ChatGPT integration, use Waishnav/devspace's public HTTPS MCP URL pattern: `https://<public-host>/mcp`, with `publicBaseUrl` set in DevSpace config. Do not use OpenAI Secure MCP Tunnel for this project unless explicitly requested.
+- See `devspace_codex_workflow.md` for the full workflow and prompt templates.
+
 Core architecture:
 
 - shared core in `src/` for features, labels, schemas, training, inference
@@ -25,6 +46,14 @@ Current default workflow:
 ---
 
 ## Primary objective
+
+Current active optimization target:
+
+```text
+Optimize validation-set sum_pnl.
+```
+
+The historical `selection_score` framework below remains an important diagnostic and risk-control reference unless the user explicitly narrows a task to PnL-only analysis. When optimizing `sum_pnl`, still report coverage, accepted sample accuracy, signal counts, and leakage/consistency checks so PnL improvements are not accepted blindly.
 
 Optimize:
 
