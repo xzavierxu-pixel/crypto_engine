@@ -79,7 +79,7 @@ orders:
   first:
     enabled: true
     price_mode: reference_multiplier_offset_and_cap
-    price_cap: 0.50
+    price_cap: 0.75
     offset: 0.01
     best_bid_offset: 0.0
     reference_multiplier: 1.0

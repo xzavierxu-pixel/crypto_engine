@@ -79,7 +79,7 @@ def test_execution_config_example_loads() -> None:
     assert config.baseline.model_file is None
     assert config.baseline.calibrator_file is None
     assert config.orders.first.price_mode == "reference_multiplier_offset_and_cap"
-    assert config.orders.first.price_cap == 0.50
+    assert config.orders.first.price_cap == 0.75
     assert config.orders.first.offset == 0.01
     assert config.orders.first.reference_multiplier == 1.0
     assert config.orders.first.size == 5.0
