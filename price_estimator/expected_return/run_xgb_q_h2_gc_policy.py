@@ -119,6 +119,18 @@ def fit_q_predictions(
     model_config: dict[str, object],
 ) -> tuple[np.ndarray, np.ndarray]:
     family = str(model_config.get("family", "lightgbm"))
+    if family == "market_mid":
+        column = str(model_config.get("probability_column", "pm_l2_selected_mid"))
+        if column not in calibration or column not in validation:
+            raise ValueError(f"market_mid probability column missing: {column}")
+        calibration_q = pd.to_numeric(calibration[column], errors="coerce").fillna(0.5).clip(0.0, 1.0).to_numpy()
+        validation_q = pd.to_numeric(validation[column], errors="coerce").fillna(0.5).clip(0.0, 1.0).to_numpy()
+        if bool(model_config.get("isotonic_q", False)):
+            q_iso = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip")
+            q_iso.fit(calibration_q, calibration["correct"].astype(int))
+            calibration_q = np.asarray(q_iso.predict(calibration_q), dtype=float)
+            validation_q = np.asarray(q_iso.predict(validation_q), dtype=float)
+        return calibration_q, validation_q
     seed = int(model_config.get("random_state", 31))
     early_stopping_rounds = int(model_config.get("early_stopping_rounds", 20))
     model = make_classifier(family, model_config, seed)

@@ -1,0 +1,31 @@
+experiment_id: 20260702_l2_common_window_direction
+output_dir: artifacts/data_v2/experiments/20260702_l2_common_window_direction
+baseline_frame_dir: artifacts/data_v2/experiments/20260521_regime_reversal_second_agg_features
+classifier_manifest: execution_engine/deploy/baseline/artifact_manifest.json
+frozen_splits: artifacts/data_v2/polymarket_l2/l2_frozen_splits.parquet
+resolved_labels: artifacts/data_v2/labels/polymarket_resolved/btc_updown_5m.parquet
+l2_feature_dir: artifacts/data_v2/polymarket_l2/first_minute_features
+variants:
+  A0_common_window: false
+  A2_classifier_l2: true
+  A2_market_l2: market_mid
+model:
+  iterations: 400
+  learning_rate: 0.025
+  depth: 5
+  l2_leaf_reg: 24.0
+  random_strength: 1.0
+  bootstrap_type: Bernoulli
+  subsample: 0.85
+  loss_function: Logloss
+  eval_metric: Logloss
+  allow_writing_files: false
+  verbose: false
+  random_seed: 20260611
+threshold_search:
+  min_coverage: 0.70
+  t_up_min: 0.45
+  t_up_max: 0.75
+  t_down_min: 0.25
+  t_down_max: 0.55
+  step: 0.005

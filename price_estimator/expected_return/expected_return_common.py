@@ -11,6 +11,69 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 
+L2_SELECTED_PREFIX = "pm_l2_selected_"
+
+
+def derive_selected_side_l2_features(frame: pd.DataFrame) -> pd.DataFrame:
+    """Derive price-estimator-only features after direction selection.
+
+    This function requires calibrated direction probabilities by name and refuses
+    raw classifier probability columns so the downstream estimator cannot silently
+    bypass probability calibration.
+    """
+    required = {"selected_side", "calibrated_p_up"}
+    missing = required.difference(frame.columns)
+    if missing:
+        raise ValueError(f"selected-side L2 derivation missing columns: {sorted(missing)}")
+    if "raw_p_up" in frame.columns and "p_up" in frame.columns:
+        raw = pd.to_numeric(frame["raw_p_up"], errors="coerce")
+        downstream = pd.to_numeric(frame["p_up"], errors="coerce")
+        if raw.equals(downstream):
+            raise ValueError("price estimator p_up aliases raw_p_up; calibrated_p_up is required")
+    result = frame.copy()
+    result["p_up"] = pd.to_numeric(result["calibrated_p_up"], errors="coerce")
+    result["p_side"] = np.where(result["selected_side"].eq("UP"), result["p_up"], 1.0 - result["p_up"])
+    suffixes = sorted(
+        column.removeprefix("pm_l2_1m_up_")
+        for column in result.columns
+        if column.startswith("pm_l2_1m_up_")
+        and "future" not in column.lower()
+        and f"pm_l2_1m_down_{column.removeprefix('pm_l2_1m_up_')}" in result.columns
+    )
+    derived: dict[str, Any] = {}
+    for suffix in suffixes:
+        up = pd.to_numeric(result[f"pm_l2_1m_up_{suffix}"], errors="coerce")
+        down = pd.to_numeric(result[f"pm_l2_1m_down_{suffix}"], errors="coerce")
+        selected = np.where(result["selected_side"].eq("UP"), up, down)
+        opposite = np.where(result["selected_side"].eq("UP"), down, up)
+        derived[f"{L2_SELECTED_PREFIX}{suffix}"] = selected
+        derived[f"{L2_SELECTED_PREFIX}{suffix}_minus_opposite"] = selected - opposite
+    derived_frame = pd.DataFrame(derived, index=result.index)
+    result = pd.concat([result, derived_frame], axis=1)
+    if L2_SELECTED_PREFIX + "last_trade" in result:
+        result[L2_SELECTED_PREFIX + "p_side_minus_last_trade"] = (
+            result["p_side"] - result[L2_SELECTED_PREFIX + "last_trade"]
+        )
+    if L2_SELECTED_PREFIX + "mid" in result:
+        result[L2_SELECTED_PREFIX + "p_side_minus_mid"] = result["p_side"] - result[L2_SELECTED_PREFIX + "mid"]
+    return result
+
+
+def attach_future_low_target(frame: pd.DataFrame, future_lows: pd.DataFrame) -> pd.DataFrame:
+    """Attach the physically separate L2 label product after feature construction."""
+    required = {"market_t0", "selected_side", "up_future_low_4m", "down_future_low_4m"}
+    missing = required.difference(set(frame.columns) | set(future_lows.columns))
+    if missing:
+        raise ValueError(f"future-low target join missing columns: {sorted(missing)}")
+    if future_lows["market_t0"].duplicated().any():
+        raise ValueError("duplicate market_t0 in future-low target product")
+    labels = future_lows[["market_t0", "up_future_low_4m", "down_future_low_4m"]].copy()
+    result = frame.merge(labels, on="market_t0", how="left", validate="many_to_one")
+    result["future_low_4m"] = np.where(
+        result["selected_side"].eq("UP"), result["up_future_low_4m"], result["down_future_low_4m"]
+    )
+    return result
+
 
 def git_commit() -> str | None:
     try:

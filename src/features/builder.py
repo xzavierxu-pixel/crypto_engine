@@ -60,6 +60,7 @@ def build_feature_frame(
     derivatives_frame: pd.DataFrame | None = None,
     second_level_features_frame: pd.DataFrame | None = None,
     polymarket_trade_features_frame: pd.DataFrame | None = None,
+    polymarket_l2_features_frame: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     normalized = normalize_ohlcv_frame(df, timestamp_column=DEFAULT_TIMESTAMP_COLUMN, require_volume=False)
     horizon = get_horizon_spec(settings, horizon_name)
@@ -98,6 +99,16 @@ def build_feature_frame(
             )
         feature_frame = feature_frame.merge(
             trade_features,
+            on=DEFAULT_TIMESTAMP_COLUMN,
+            how="left",
+            validate="one_to_one",
+        )
+
+    if polymarket_l2_features_frame is not None and not polymarket_l2_features_frame.empty:
+        l2_features = polymarket_l2_features_frame.copy()
+        l2_features[DEFAULT_TIMESTAMP_COLUMN] = pd.to_datetime(l2_features[DEFAULT_TIMESTAMP_COLUMN], utc=True)
+        feature_frame = feature_frame.merge(
+            l2_features,
             on=DEFAULT_TIMESTAMP_COLUMN,
             how="left",
             validate="one_to_one",

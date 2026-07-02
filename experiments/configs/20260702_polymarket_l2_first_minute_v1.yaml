@@ -1,0 +1,21 @@
+polymarket_l2:
+  enabled: true
+  source_dir: artifacts/pmdata/poly_l2
+  canonical_dir: artifacts/data_v2/polymarket_l2/canonical_events
+  feature_dir: artifacts/data_v2/polymarket_l2/first_minute_features
+  price_reference_dir: artifacts/data_v2/polymarket_l2/first_minute_price_reference
+  future_low_dir: artifacts/data_v2/polymarket_l2/future_four_minute_lows
+  feature_pack: polymarket_l2_first_minute_v1
+  market_duration_seconds: 300
+  feature_window_seconds: 60
+  availability_lag_ms: 0
+  future_low_start_inclusive: false
+  future_low_end_inclusive: true
+  primary_token_side: UP
+  book_semantics: primary_token_complement
+  require_explicit_trade_mirror: true
+  depth_levels: [1, 2, 3, 5, 10]
+  rolling_windows_seconds: [5, 15, 30, 60]
+  safe_divide_epsilon: 1.0e-9
+  missing_policy: preserve_sample_with_flags
+  side_mapping_version: primary_up_mirror_down_v1

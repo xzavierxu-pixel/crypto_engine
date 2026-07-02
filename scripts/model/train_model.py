@@ -26,6 +26,7 @@ from src.data.derivatives.feature_store import (
 )
 from src.data.loaders import load_ohlcv_csv, load_ohlcv_feather, load_ohlcv_parquet
 from src.data.polymarket_trades import build_preopen_trade_feature_frame, load_polymarket_trade_frame
+from src.data.polymarket_l2 import load_first_minute_feature_frame
 from src.data.second_level_features import load_sampled_second_level_features
 from src.model.train import (
     load_cached_training_split,
@@ -306,6 +307,10 @@ def main() -> None:
         help="Optional Polymarket trade input override. Defaults to settings.polymarket_trades.path.",
     )
     parser.add_argument(
+        "--polymarket-l2-feature-store",
+        help="Cutoff-safe Polymarket L2 first-minute feature directory override.",
+    )
+    parser.add_argument(
         "--derivatives-path-mode",
         choices=["latest", "archive"],
         default=None,
@@ -406,6 +411,13 @@ def main() -> None:
                 load_polymarket_trade_frame(polymarket_trades_path),
                 preopen_window_seconds=settings.polymarket_trades.preopen_window_seconds,
             )
+        polymarket_l2_features_frame = None
+        polymarket_l2_path = args.polymarket_l2_feature_store or settings.polymarket_l2.feature_path
+        if settings.polymarket_l2.enabled:
+            if polymarket_l2_path is None:
+                raise ValueError("settings.polymarket_l2.enabled requires feature_path")
+            logging.info("Loading cutoff-safe Polymarket L2 features from %s", polymarket_l2_path)
+            polymarket_l2_features_frame = load_first_minute_feature_frame(polymarket_l2_path)
         logging.info("Building training frame for horizon=%s", args.horizon)
         training = build_training_frame(
             source,
@@ -414,6 +426,7 @@ def main() -> None:
             derivatives_frame=derivatives_frame,
             second_level_features_frame=second_level_features_frame,
             polymarket_trade_features_frame=polymarket_trade_features_frame,
+            polymarket_l2_features_frame=polymarket_l2_features_frame,
         )
         development, validation = split_recent_train_validation_frame(
             training,

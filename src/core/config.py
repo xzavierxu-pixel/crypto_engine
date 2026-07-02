@@ -270,6 +270,13 @@ class PolymarketTradesConfig:
 
 
 @dataclass(frozen=True)
+class PolymarketL2StoreConfig:
+    enabled: bool = False
+    feature_path: str | None = None
+    feature_pack: str = "polymarket_l2_first_minute_v1"
+
+
+@dataclass(frozen=True)
 class DataBackfillMarketConfig:
     enabled: bool = False
     symbols: list[str] = field(default_factory=list)
@@ -388,6 +395,7 @@ class Settings:
     derivatives: DerivativesConfig
     second_level: SecondLevelFeatureStoreConfig
     polymarket_trades: PolymarketTradesConfig
+    polymarket_l2: PolymarketL2StoreConfig
     data_backfill: DataBackfillConfig
     model: PluginGroupConfig
     calibration: PluginGroupConfig
@@ -415,6 +423,7 @@ class Settings:
         derivatives_payload = payload.get("derivatives", {})
         second_level_payload = payload.get("second_level", {})
         polymarket_trades_payload = payload.get("polymarket_trades", {})
+        polymarket_l2_payload = payload.get("polymarket_l2", {})
         data_backfill_payload = payload.get("data_backfill", {})
         return cls(
             project=ProjectConfig(**payload["project"]),
@@ -454,6 +463,11 @@ class Settings:
             ),
             second_level=SecondLevelFeatureStoreConfig(**second_level_payload),
             polymarket_trades=PolymarketTradesConfig(**polymarket_trades_payload),
+            polymarket_l2=PolymarketL2StoreConfig(
+                enabled=polymarket_l2_payload.get("enabled", False),
+                feature_path=polymarket_l2_payload.get("feature_path", polymarket_l2_payload.get("feature_dir")),
+                feature_pack=polymarket_l2_payload.get("feature_pack", "polymarket_l2_first_minute_v1"),
+            ),
             data_backfill=DataBackfillConfig(
                 provider=data_backfill_payload.get("provider", ""),
                 start_date=data_backfill_payload.get("start_date", ""),
