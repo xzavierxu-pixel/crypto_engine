@@ -5,6 +5,8 @@ universe contains 8,446 markets. Direction thresholds are tuned on validation
 and therefore optimistic. Models, imputers, feature selection, and probability
 calibrators do not fit validation rows.
 
+Implementation and experiment commit: `886aaeb`.
+
 | Experiment | sum_pnl | coverage | accepted accuracy | orders | trades |
 |---|---:|---:|---:|---:|---:|
 | P0 / A0 common window | -23.98 | 0.7546 | 0.6454 | 2,321 | 1,608 |
