@@ -1,0 +1,142 @@
+experiment_id: 20260702_l2_market_direction_xgb_q_hazard
+objective:
+  min_coverage: 0.7
+  target_validation_sum_pnl: 1000.0
+baseline:
+  experiment_id: 20260702_l2_A4_full
+  source: price_estimator/expected_return/experiments/20260702_l2_A4_full/reports/summary_metrics.json
+  row_filter: validation_metrics
+  validation_sum_pnl: -89.71
+paths:
+  train_dataset: price_estimator/expected_return/experiments/20260702_l2_common_window_data/A2_market_l2/expected_return_train.parquet
+  validation_dataset: price_estimator/expected_return/experiments/20260702_l2_common_window_data/A2_market_l2/expected_return_validation.parquet
+  reports_dir: price_estimator/expected_return/experiments/20260702_l2_market_direction_xgb_q_hazard/reports
+  h2_checkpoint: price_estimator/expected_return/experiments/20260702_l2_A4_market_direction_full/models/hazard_survival_cdf.pt
+split:
+  calibration_tail_days: 7
+  timestamp_column: timestamp
+features:
+  forbidden_columns:
+  - abs_return
+  - accepted
+  - chosen_low
+  - chosen_low_next4
+  - chosen_low_reason
+  - chosen_low_trade_time
+  - correct
+  - future_close
+  - lowest_trade_price_next4
+  - lowest_trade_time_next4
+  - predicted_outcome
+  - predicted_side
+  - raw_p_up
+  - signed_return
+  - stage1_target
+  - stage2_target
+  - target
+  - target_prediction
+  - target_raw
+  - threshold_accepted
+  - time_to_lowest_trade_sec
+policy_search:
+  bid_min: 0.01
+  bid_max: 0.85
+  bid_step: 0.01
+  min_ev_grid:
+  - -0.3
+  - -0.29
+  - -0.28
+  - -0.27
+  - -0.26
+  - -0.25
+  - -0.24
+  - -0.23
+  - -0.22
+  - -0.21
+  - -0.2
+  - -0.19
+  - -0.18
+  - -0.17
+  - -0.16
+  - -0.15
+  - -0.14
+  - -0.13
+  - -0.12
+  - -0.11
+  - -0.1
+  - -0.09
+  - -0.08
+  - -0.07
+  - -0.06
+  - -0.05
+  - -0.04
+  - -0.03
+  - -0.02
+  - -0.01
+  - 0.0
+  - 0.01
+  - 0.02
+  - 0.03
+  - 0.04
+  - 0.05
+  - 0.06
+  - 0.07
+  - 0.08
+  - 0.09
+  - 0.1
+  - 0.11
+  - 0.12
+  - 0.13
+  - 0.14
+  - 0.15
+  - 0.16
+  - 0.17
+  - 0.18
+  - 0.19
+  - 0.2
+  - 0.21
+  - 0.22
+  - 0.23
+  - 0.24
+  - 0.25
+  - 0.26
+  - 0.27
+  - 0.28
+  - 0.29
+  - 0.3
+  min_order_count: 20
+  min_q_grid:
+  - 0.0
+  - 0.5
+  - 0.55
+  - 0.6
+  - 0.65
+  - 0.7
+  - 0.75
+  - 0.8
+  bid_offset_steps_grid:
+  - -5
+  - -3
+  - -2
+  - -1
+  - 0
+  - 1
+model:
+  family: xgboost
+  n_estimators: 180
+  learning_rate: 0.04
+  max_depth: 4
+  subsample: 0.8
+  colsample_bytree: 0.45
+  min_child_weight: 20
+  reg_lambda: 5.0
+  random_state: 909
+  n_jobs: -1
+  tree_method: hist
+  isotonic_q: true
+  isotonic_gc: true
+metadata:
+  deploy_training_mode: no_leak_l2_common_window
+  offline_validation_metric_source: artifacts/data_v2/experiments/20260702_l2_common_window_direction/A2_market_l2/report.json
+  probability_source: calibrated_p_up
+  raw_p_up_diagnostic_only: true

@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Context
-
+DO NOT need to use the commentary channel to report progress.
 This is an existing, complete BTC/USDT 5-minute Polymarket settlement-direction project. Do not treat it as a greenfield build.
 
 Codex should improve the current system with small, measurable, low-risk changes. Do not rewrite the architecture unless clearly necessary.
