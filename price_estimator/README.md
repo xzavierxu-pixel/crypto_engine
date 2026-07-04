@@ -1,73 +1,28 @@
 # Price Estimator
 
-Independent Polymarket BTC 5m winner-token price estimator.
+Price estimation for the Polymarket BTC 5m execution engine.
 
-The active baseline is now `safe_lowest_price_gap`: one low-latency model
-predicts a raw safe-price location `f(X)` in probability space, then a calibrated
-normalized margin `delta_norm * clip(p_side - f, s_floor)` plus bucket abstain
-policy turns it into `p_pred <= p_side`.
-For execution deployment, use the deploy-feature experiment
-`price_estimator/safe_lowest_price_gap/experiments/20260617_deploy_baseline_features/config.yaml`
-and the tracked artifact in
-`execution_engine/deploy/price_estimator_safe_lowest_price_gap`.
-
-Primary objective:
+The current execution workflow uses the expected-return hazard artifact:
 
 ```text
-minimize covered_gap_norm.mean
-subject to coverage_feasible >= 0.90
+active_artifact: expected_return_h14
+artifact_dir: execution_engine/deploy/price_estimator_expected_return_h14
+model_file: expected_return_hazard.npz
+prediction_column: expected_return_bid
 ```
 
-Where:
+This artifact is `20260619_expected_return_h14_h2_gc_gt_0p75`. It predicts the
+bid for the classifier-selected side (`selected_side` = `UP` or `DOWN`) and the
+runtime prices the order as:
 
 ```text
-target_raw = lowest_trade_price_next4
-y          = target_safe = target_raw + 0.01
-p          = p_side
-s          = p - y
-feasible   = y <= p
-covered    = p_pred >= y and p_pred <= p
-gap_norm   = (p_pred - y) / s, only for covered feasible rows
+min(best_ask - 0.01, expected_return_optimal_bid)
 ```
 
-The baseline trains on all rows, including infeasible rows where `y > p_side`.
-`target_safe`, `s`, and `s_eff` are label-derived quantities used only by the
-training loss and offline evaluation; they must not be model features.
+The deployed policy skips rows without a valid price-estimator output. The
+manifest reports 576 features, validation coverage `0.7000535618639528`, order
+coverage `0.49674827850038256`, and validation `sum_pnl = 27.44`.
 
-The old `upper_bound_mlp` and CatBoost Q70/Q80/Q90 quantile scripts and
-artifacts are retained as historical/deprecated baseline material.
-
-Target build command:
-
-```powershell
-rtk proxy powershell -NoProfile -Command "python price_estimator/scripts/fetch_btc5m_sell_taker_trades.py --config price_estimator/configs/catboost_quantile_baseline.yaml"
-rtk proxy powershell -NoProfile -Command "python price_estimator/scripts/build_price_target.py --config price_estimator/configs/catboost_quantile_baseline.yaml"
-```
-
-Safe lowest-price normalized-gap baseline:
-
-```powershell
-rtk python price_estimator/safe_lowest_price_gap/train_safe_lowest_price_gap.py --config price_estimator/safe_lowest_price_gap/config.yaml
-```
-
-This script:
-
-- splits the train dataset chronologically, using the last 31 days as
-  calibration;
-- trains a single MLP with normalized asymmetric loss for
-  `alpha in {0.5,1.0,1.5,2.0}`;
-- selects `delta_norm` and bucket abstain threshold on calibration only;
-- evaluates the selected configuration once on validation;
-- writes `summary_metrics.json`, `calibration_frontier.csv`, predictions, a
-  PyTorch checkpoint, and a deployable numpy artifact under
-  `price_estimator/safe_lowest_price_gap/reports` and
-  `price_estimator/safe_lowest_price_gap/models`.
-
-Deprecated upper-bound MLP command:
-
-```powershell
-rtk python price_estimator/upper_bound_mlp/train_upper_bound_mlp.py --config price_estimator/upper_bound_mlp/configs/upper_bound_mlp_aug_lagrangian.yaml
-```
-
-`time_to_lowest_trade_sec` is saved for evaluation strata only and is not used
-as a model input.
+`safe_lowest_price_gap` is retained as a historical normalized-gap baseline and
+backup artifact, but it is no longer the active execution price estimator. The
+old `upper_bound_mlp` and CatBoost quantile material is deprecated.

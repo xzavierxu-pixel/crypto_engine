@@ -1,220 +1,265 @@
 # crypto_engine
 
-Agent-oriented overview for the current `crypto_engine` repo.
+`crypto_engine` is a BTCUSDT 5-minute Polymarket trading research and execution repository. It builds market features, trains a selective UP/DOWN direction model, estimates an order price for accepted signals, and feeds both artifacts into a Polymarket execution adapter.
+The system is intentionally narrow: one asset, one main horizon, one resolved Polymarket label family, one shared feature pipeline, one accepted direction artifact, and one execution-facing price-estimator artifact.
 
-`crypto_engine` predicts BTC 5-minute Polymarket UP/DOWN settlement outcomes from Binance BTCUSDT market data, then passes the calibrated decision to a separate execution layer that can paper trade, audit, or submit Polymarket orders.
+## Current Production State
 
-The repo is intentionally narrow: one asset, one base timeframe, one horizon, one primary resolved-market label, one shared feature pipeline, and one production deploy artifact. The priority is offline/online parity and reproducible validation, not a generic trading framework.
-
-See also: [AGENTS.md](AGENTS.md), [DATA_PIPELINE.md](DATA_PIPELINE.md), [scripts/README.md](scripts/README.md), and [docs/project_architecture_overview.md](docs/project_architecture_overview.md).
-
----
-
-## Current Baseline
-
-Current accepted validation baseline:
+Direction classifier:
 
 ```yaml
 experiment_id: 20260611_catboost_calendar_coordinate_search
+artifact_dir: execution_engine/deploy/baseline
 config_path: experiments/configs/20260611_catboost_calendar_coordinate_search.yaml
 report_path: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_calendar_coordinate_search/report.json
-label_source: polymarket_resolved
 model_plugin: catboost
 calibration_plugin: none
+feature_count: 569
 threshold_policy: utc_day_session_coordinate
-selection_score: 0.6413740846
-coverage: 0.7000535619
-accepted_sample_accuracy: 0.7073450650
-utility: 0.2903053026
-accepted_count: 5228
-```
-
-Current deploy artifact:
-
-```yaml
-artifact_dir: execution_engine/deploy/baseline
-training_mode: calendar_coordinate_offline_train
 threshold_source: offline_validation_calendar_coordinate
-offline_validation_selection_score: 0.6413740846
-limit_config_source: execution_engine/limit_configs.py
+validation_selection_score: 0.6413740846
+validation_coverage: 0.7000535619
+validation_accepted_sample_accuracy: 0.7073450650
+validation_accepted_count: 5228
+fallback_t_up: 0.5792857143
+fallback_t_down: 0.4314285714
 ```
 
-Previous accepted validation baseline for comparison:
+Execution price estimator:
 
 ```yaml
-experiment_id: 20260520_polymarket_resolved_extended_history_baseline
-selection_score: 0.5748509217
-coverage: 0.7001874665
-accepted_sample_accuracy: 0.6909542934
-utility: 0.2674076058
-accepted_count: 5229
+active_artifact: expected_return_h14
+artifact_dir: execution_engine/deploy/price_estimator_expected_return_h14
+experiment_id: 20260619_expected_return_h14_h2_gc_gt_0p75
+artifact_type: price_estimator_expected_return_hazard
+prediction_column: expected_return_bid
+order_price_policy: min(best_ask - 0.01, expected_return_optimal_bid)
+validation_sum_pnl: 27.44
+validation_mean_accepted_pnl: 0.0052486611
 ```
 
-Future experiments should use `20260611_catboost_calendar_coordinate_search` as the baseline unless explicitly stated otherwise.
+Execution template:
 
----
+```yaml
+runtime.mode: live
+orders.enabled: true
+orders.first.enabled: true
+orders.second.enabled: false
+price_estimator.enabled: true
+```
 
-## What This System Does
+Artifact manifests and config files are the source of truth. Older experiment documents are useful history, but they may not describe the current deploy state.
 
-- Ingests BTCUSDT market history from Binance.
-- Builds a shared feature frame on 5-minute grid decision rows.
-- Joins resolved Polymarket BTC 5-minute UP/DOWN labels.
-- Trains a binary selective model with validation threshold search.
-- Retrains the accepted configuration on all split rows for deployment.
-- Loads the deploy artifact in `execution_engine` for paper, shadow, or live Polymarket execution.
+## Stage Relationships
 
----
+```text
+Binance and Polymarket source data -> normalized source tables and label stores -> shared feature builders and training frames -> direction classifier validation and threshold policy -> accepted direction artifact in execution_engine/deploy/baseline -> price-estimator / bid-policy artifact for accepted signals -> execution_engine runtime feature prep, market mapping, guards, and orders -> audit logs, live summaries, and PnL analysis
+```
+
+Each stage has a different job:
+
+| Stage | Primary question | Main output | Main metric |
+| ---|---|---|--- |
+| Data and labels | Are the inputs reproducible and timestamp-safe? | `artifacts/data_v2/*` | QA manifests, leakage checks, row coverage |
+| Direction model | Should the system trade, and on which side? | `p_up`, UP/DOWN/NO-SIGNAL thresholds, direction artifact | `selection_score` with coverage >= 0.70 |
+| Price estimator | At what limit price should an accepted signal bid? | `expected_return_bid` or abstain | realized/simulated PnL, fill diagnostics |
+| Execution | Can the artifacts be applied safely online? | orders, audit logs, summaries | order success, fill rate, realized PnL, guard behavior |
+
+The direction model defines the accepted signal universe. The price estimator operates only after that universe is selected. A bid-policy PnL result should therefore always be read together with the direction coverage and accepted accuracy that produced the accepted rows.
 
 ## Prediction Target
 
-Current default target:
-
-```text
-y_t = resolved Polymarket BTC 5m UP/DOWN settlement outcome
-```
-
-Key settings:
+The default direction target is the resolved Polymarket BTC 5-minute UP/DOWN outcome:
 
 ```yaml
-asset: BTC/USDT
-base_timeframe: 1m
-horizon: 5m
 label_builder: polymarket_resolved
 label_version: polymarket_resolved_gamma_v1
 label_store_path: artifacts/data_v2/labels/polymarket_resolved/btc_updown_5m.parquet
 ```
 
-Historical BTC OHLCV direction, `1{close[t0 + 4m] >= open[t0]}`, is diagnostic only unless explicitly selected for an experiment.
+The historical BTC OHLCV direction label, such as `close[t0 + 4m] >= open[t0]`, is diagnostic only unless an experiment explicitly selects it.
 
----
+## Feature Leakage Guardrails
 
-## High-Level Flow
+Feature columns must be available at decision time and must not encode the label, future price path, settlement result, or post-decision order outcome.
 
-```text
-Binance BTCUSDT 1m data
-    -> normalized Parquet
-    -> shared feature builder
-    -> Polymarket resolved label join
-    -> chronological split training and validation threshold search
-    -> accepted thresholds and offline validation metrics
-    -> online_full_train deploy artifact
-    -> execution_engine/deploy/baseline
-    -> Polymarket execution or shadow/audit output
-```
-
-Acceptance and deployment are intentionally separate:
-
-- `scripts/model/train_model.py` performs split train/validation training and threshold search. Validation is the acceptance set.
-- `scripts/model/train_online_full_train.py` retrains on development + validation rows and writes the deploy artifact.
-- The deploy manifest copies `offline_validation_metrics` from the accepted split artifact.
-- Full-train metrics are not acceptance metrics.
-
----
-
-## Non-Negotiable Rules
-
-1. Offline and online logic must share the same feature and label builders.
-2. Business parameters live in `config/settings.yaml` or an experiment-specific config copied from it.
-3. Do not duplicate feature or label logic in scripts, execution code, or strategy adapters.
-4. Keep Freqtrade and execution adapters thin.
-5. The execution layer must not recompute BTC features.
-6. Thresholds must come from config or artifact, never hard-coded `0.5`.
-7. Validation `coverage` must be at least `0.70`; reject lower-coverage results even if `selection_score` is higher.
-8. Use `rtk` for verbose shell commands.
-
----
-
-## Architecture
+For the direction model, `src/data/dataset_builder.py` is the main feature-column gate. It excludes base data columns, raw metadata, label audit metadata, and label-derived fields. These columns are forbidden as model features:
 
 ```text
-config/settings.yaml
-    -> src/core/        schemas, timegrid, constants, validation
-    -> src/features/    shared FeaturePacks and registry
-    -> src/labels/      polymarket_resolved primary label, grid_direction diagnostics
-    -> src/data/        loaders, preprocessing, dataset_builder.TrainingFrame
-    -> src/model/       plugin models and training functions
-    -> src/calibration/ platt, isotonic, none
-    -> src/services/    shared signal service
-    -> execution_engine deploy/runtime adapter
+target
+future_close
+abs_return
+signed_return
+stage1_target
+stage2_target
+stage1_sample_weight
+polymarket_slug
+polymarket_label_status
+original_target
+original_btc_direction_target
+polymarket_target
+label_mismatch
+label_mismatch_vs_btc_direction
+market_id
+condition_id
+question
+endDate
+closedTime
+closed
+umaResolutionStatus
+outcomes
+outcomePrices
+winner
+label_source
+label_store_path
+unresolved_or_missing_label_count
+fetched_at
+source
 ```
 
-Dependency direction is one-way:
+Raw/source/checksum metadata is also forbidden, including columns such as `raw_timestamp`, `source_file`, `source_date`, `checksum_status`, and any column prefixed with `raw_`, `source_`, or `checksum_`.
+
+For expected-return, bid-policy, and price-estimator experiments, be stricter. Do not use columns or patterns that reveal post-decision fills, future lows, correctness, realized PnL, market identity, or timestamp keys. The current expected-return runners reject feature names matching this leakage pattern:
 
 ```text
-core -> features/labels/horizons -> data -> model/calibration -> services -> execution/strategies
+target|label|winner|correct|chosen_low|future|closed|endDate|condition|market_id|question|slug|outcome|fetched|source|time_to|trade_time|timestamp|date|pnl
 ```
 
----
+Common high-risk columns include:
 
-## Main Entry Points
-
-| Task | Path |
-|---|---|
-| Feature builder | `src/features/builder.py` |
-| Feature registry | `src/features/registry.py` |
-| Polymarket label builder | `src/labels/polymarket_resolved.py` |
-| BTC direction diagnostic label | `src/labels/grid_direction.py` |
-| Training frame assembly | `src/data/dataset_builder.py` |
-| Dataset build script | `scripts/data/step4_features/build_dataset.py` |
-| Split training and threshold search | `scripts/model/train_model.py` |
-| Full-train deploy generation | `scripts/model/train_online_full_train.py` |
-| Execution artifact loader | `execution_engine/artifacts.py` |
-| Runtime config example | `execution_engine/config.example.yaml` |
-| Execution docs | `execution_engine/README.md` |
-
----
-
-## Quick Commands
-
-Build the current extended training frame:
-
-```powershell
-rtk python scripts/data/step4_features/build_dataset.py `
-  --input artifacts/data_v2/normalized/binance/spot/BTCUSDT/klines/BTCUSDT-1m.parquet `
-  --output artifacts/data_v2/datasets/market=BTCUSDT/horizon=5m/polymarket_resolved_extended_training_frame.parquet `
-  --config config/settings.yaml `
-  --horizon 5m
+```text
+correct
+chosen_low
+chosen_low_next4
+chosen_low_trade_time
+lowest_trade_price_next4
+lowest_trade_time_next4
+time_to_chosen_low_sec
+time_to_lowest_trade_sec
+target_raw
+threshold_accepted
+predicted_side
+predicted_outcome
+realized_pnl
+filled
+printed_filled
 ```
 
-Run accepted split training:
+Some of these columns are valid labels, diagnostics, grouping keys, or report fields. They are not valid model features unless an experiment explicitly proves they are available before the decision and documents why they are safe.
 
-```powershell
-rtk python scripts/analysis/catboost_calendar_coordinate_search.py `
+## Changing Objectives
+
+Do not change the project objective by editing `AGENTS.md` alone. `AGENTS.md` tells coding agents how to behave; it is not the source of truth for labels, metrics, or deploy behavior.
+
+Use this order instead:
+
+1. Decide which stage is changing: direction selection, price estimation, execution policy, or label construction.
+2. Update the real source of truth: `config/settings.yaml`, a new experiment config under `experiments/configs/`, a price-estimator config, or `execution_engine/config.example.yaml`.
+3. Update the code only if the current builders, metrics, or reports do not support the new objective.
+4. Run a no-leak validation report against the previous baseline.
+5. Promote artifacts only after validation is accepted.
+6. Then update `README.md` for project state and `AGENTS.md` for agent instructions/current facts.
+
+Keep experiments isolated by default. Do not modify the main workflow, default configs, deploy artifacts, or execution policy for an experiment unless the change has been reviewed and explicitly accepted for promotion. Put each experiment under a self-contained directory named with a date and short description, for example:
+
+```text
+experiments/configs/20260703_short_description.yaml
+artifacts/data_v2/reports/<experiment_family>/20260703_short_description/
+price_estimator/expected_return/experiments/20260703_short_description/
+```
+
+An experiment can read from the current baseline artifacts, but it should write its own configs, reports, predictions, models, and summaries. After the result is accepted, promote the minimal required changes into the real main flow and update the deploy/config documentation in the same change.
+
+Examples:
+
+| Goal change | Primary files to change first | Documentation to update after validation |
+| ---|---|--- |
+| Change direction metric or coverage constraint | Experiment config or `config/settings.yaml` | `README.md`, `AGENTS.md`, experiment report |
+| Change direction label semantics | `src/labels/`, horizon config, label store build scripts | `README.md`, `AGENTS.md`, data docs |
+| Change bid/PnL objective | `price_estimator/*/config.yaml`, bid-policy code/reporting | `README.md`, price-estimator docs, `AGENTS.md` if it becomes current |
+| Change live order behavior | `execution_engine/config.example.yaml`, order-plan/runtime code | `README.md`, `execution_engine/README.md`, `AGENTS.md` current facts |
+| Change agent working rules only | `AGENTS.md` | Usually no project config change needed |
+
+## Repository Map
+
+| Path | Role |
+| ---|--- |
+| `config/settings.yaml` | Default offline data, feature, label, objective, and split configuration. |
+| `src/core/` | Schemas, time grid logic, constants, and validation helpers. |
+| `src/features/` | Shared feature packs and registry used offline and online. |
+| `src/labels/` | Polymarket resolved labels and diagnostic labels. |
+| `src/data/` | Loaders, preprocessing, and training-frame assembly. |
+| `src/model/` | Model plugins, evaluation, training, and artifact helpers. |
+| `scripts/` | Offline data/model/runtime commands. See `scripts/README.md`. |
+| `execution_engine/` | Runtime adapter, artifact loading, order planning, CLOB client, and deploy artifacts. |
+| `price_estimator/` | Historical and current bid/price-estimator experiments and artifacts. |
+| `artifacts/data_v2/` | Local raw, normalized, label, feature, dataset, report, and experiment outputs. |
+| `tests/` | Focused unit and integration tests for data/model/execution behavior. |
+
+## Offline to Online Flow
+
+1. Build or refresh raw and normalized data under `artifacts/data_v2`.
+2. Build the Polymarket resolved label store.
+3. Build second-level feature stores when configured. Current `second_level.enabled` is `true`.
+4. Build the 5-minute training frame with the shared feature and label builders.
+5. Run direction-model validation. The current accepted direction artifact comes from `scripts/analysis/catboost_calendar_coordinate_search.py`.
+6. Promote only validation-accepted direction artifacts. Full-train or deployment metrics are diagnostics, not acceptance scores.
+7. Train or select a price-estimator artifact for accepted signals. The current execution template uses expected-return hazard H14.
+8. Configure `execution_engine/config.example.yaml` or the server-local equivalent to load both artifacts.
+9. Run shadow, paper, or live execution and analyze logs with `scripts/analysis/` helpers.
+
+## Main Commands
+
+Build a training frame shape:
+
+```bash
+rtk python scripts/data/step4_features/build_dataset.py \
+  --input artifacts/data_v2/normalized/binance/spot/BTCUSDT/klines/BTCUSDT-1m.parquet \
+  --config config/settings.yaml \
+  --horizon 5m \
+  --data-root artifacts/data_v2
+```
+
+Reproduce the current accepted direction run:
+
+```bash
+rtk python scripts/analysis/catboost_calendar_coordinate_search.py \
   --config experiments/configs/20260611_catboost_calendar_coordinate_search.yaml
 ```
 
-Regenerate the deploy artifact:
+Run one execution-engine cycle in paper/audit mode:
 
-```powershell
-rtk python scripts/analysis/catboost_calendar_coordinate_search.py `
-  --config experiments/configs/20260611_catboost_calendar_coordinate_search.yaml
+```bash
+rtk python execution_engine/run_once.py \
+  --config execution_engine/config.example.yaml \
+  --mode paper \
+  --print-json
 ```
 
-Run focused verification:
+Use a server-local `execution_engine/config.yaml` for live execution. Use `--help` on each script for exact required inputs. Some commands intentionally require local artifact paths or server-specific runtime config.
 
-```powershell
-rtk python -m pytest -q `
-  tests/test_model_pipeline.py::test_online_full_train_script_uses_accepted_thresholds_and_writes_deploy_artifacts `
-  tests/test_model_artifacts.py::test_load_binary_selective_artifacts_from_manifest_and_directory `
+## Validation
+
+Useful focused checks:
+
+```bash
+rtk python -m pytest -q \
+  tests/test_model_pipeline.py::test_online_full_train_script_uses_accepted_thresholds_and_writes_deploy_artifacts \
+  tests/test_model_artifacts.py::test_load_binary_selective_artifacts_from_manifest_and_directory \
   tests/test_execution_engine.py::test_execution_config_example_loads
 ```
 
----
+For docs-only changes:
 
-## Before Changing Code
+```bash
+git diff --check -- <changed-files>
+```
 
-- Feature changes: edit the relevant `src/features/` pack, update `src/features/registry.py`, and bump `CORE_FEATURE_VERSION` when semantics change.
-- Label changes: edit the relevant `src/labels/` builder and bump `CORE_LABEL_VERSION` when semantics change.
-- Model changes: implement `src/model/base.py` and register in `src/model/registry.py`.
-- Business parameter changes: copy `config/settings.yaml` to `experiments/configs/<timestamp>_<description>.yaml` for experiments.
-- Deploy changes: regenerate `execution_engine/deploy/baseline` only after a split artifact is accepted.
+## Notes for Contributors
 
----
-
-## Do Not
-
-- Do not recompute BTC features inside `execution_engine` or `src/strategies`.
-- Do not silently switch labels between Polymarket resolved outcomes and BTC OHLCV direction.
-- Do not use full-train metrics as acceptance metrics.
-- Do not bypass `src/core/timegrid.py`.
-- Do not hard-code thresholds in execution code.
+- Keep feature and label logic centralized in `src/`.
+- Keep execution adapters thin and config-driven.
+- Do not hard-code thresholds or runtime business rules in scripts.
+- Compare direction experiments against the current validation baseline.
+- Compare price-estimator and execution-policy experiments on PnL while preserving direction metrics.
+- Read `AGENTS.md` before asking an agent to modify code or run experiments.

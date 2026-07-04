@@ -1,0 +1,39 @@
+backtest:
+  pnl_scope: threshold_accepted_rows
+  wrong_fill_policy: forced
+evaluation:
+  batch_size: 512
+  device: cpu
+experiment_id: 20260703_arbor_bdev_gc_blend_0p2
+gc_calibration:
+  beta_prior: 1.0
+  method: blend
+  p_side_bin_width: 0.2
+  parameter_grid:
+  - 0.25
+  - 0.5
+  - 0.75
+objective:
+  min_coverage: 0.7
+paths:
+  h2_checkpoint: .arbor/sessions/20260703_sum_pnl_no_leak/bdev_h2/models/hazard_survival_cdf.pt
+  models_dir: .arbor/sessions/20260703_sum_pnl_no_leak/experiments/1.4/models
+  predictions_policy_select: .arbor/sessions/20260703_sum_pnl_no_leak/experiments/1.4/reports/predictions_policy_select.parquet
+  predictions_train: .arbor/sessions/20260703_sum_pnl_no_leak/experiments/1.4/reports/predictions_train.parquet
+  predictions_validation: .arbor/sessions/20260703_sum_pnl_no_leak/experiments/1.4/reports/predictions_validation.parquet
+  reports_dir: .arbor/sessions/20260703_sum_pnl_no_leak/experiments/1.4/reports
+  train_dataset: .arbor/sessions/20260703_sum_pnl_no_leak/bdev_data/train_before_20260328.parquet
+  validation_dataset: .arbor/sessions/20260703_sum_pnl_no_leak/bdev_data/dev_20260328_20260410.parquet
+split:
+  calibration_tail_days: 7
+  timestamp_column: timestamp
+target:
+  min_bid: 0.01
+  min_ev_grid:
+  - 0.0
+  - 0.01
+  - 0.02
+  - 0.03
+  - 0.05
+  min_ev_min_order_count: 100
+  tick_size: 0.01

@@ -1,0 +1,3 @@
+{"event":"session.start","run_name":"20260703_sum_pnl_skills_batch1"}
+{"event":"cycle.end","count":10,"detail":"five mechanisms evaluated on two chronological B_dev folds"}
+{"event":"session.end","reason":"winner failed frozen B_test; no merge"}

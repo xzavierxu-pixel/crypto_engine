@@ -1,0 +1,6 @@
+{"event":"session.start","run_name":"20260703_sum_pnl_no_leak","mode":"keyless_codex_harness","max_cycles":10}
+{"event":"baseline.reproduced","split":"B_test","score":27.44,"feature_count":576,"stage1_sample_weight_present":false}
+{"event":"baseline.measured","split":"B_dev","score":88.38,"window":"2026-03-28..2026-04-10"}
+{"event":"idea.completed","node_id":"1.5","score":95.84,"split":"B_dev"}
+{"event":"idea.rejected","node_id":"1.5","reason":"earlier blocked fold delta -16.38"}
+{"event":"session.end","completed_cycles":10,"merged_nodes":0,"candidate_btest_runs":0}

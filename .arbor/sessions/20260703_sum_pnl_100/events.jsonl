@@ -1,0 +1,4 @@
+{"event":"session.start","run_name":"20260703_sum_pnl_100","budget_experiments":100}
+{"event":"cycle.end","count":100,"detail":"joint q-alpha, Gc-floor, min-EV search on two chronological B_dev folds"}
+{"event":"idea.completed","node_id":"1.37","detail":"selected by highest worst-fold delta"}
+{"event":"session.end","reason":"frozen B_test 5.48 did not beat 27.44 baseline; no merge"}

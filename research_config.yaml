@@ -1,0 +1,18 @@
+task: >
+  Follow ARBOR_RESEARCH_BRIEF.md and ARBOR_CONTRACT.md. Optimize the complete
+  workflow until verified frozen B_test sum_pnl exceeds 500 under the fixed
+  fill semantics. Use chronological B_dev for routine selection and reserve
+  B_test for materially distinct milestone candidates. Explore decision-time
+  features, alternative models and policies, ensembles, and relevant skills
+  from .codex/skills_disabled in staged batches. Never use label-derived,
+  future, or sample-weight columns as features. Do not modify deploy artifacts,
+  live execution configuration, raw data, existing reports, or evaluation
+  semantics. Work only in isolated experiment branches; do not merge into
+  pmdata without explicit user approval.
+coordinator:
+  max_cycles: 50
+  max_depth: 3
+  ui:
+    interaction_mode: auto
+executor:
+  max_turns: 100

@@ -1,94 +1,171 @@
 # AGENTS.md
 
-## Context
-DO NOT need to use the commentary channel to report progress.
-This is an existing, complete BTC/USDT 5-minute Polymarket settlement-direction project. Do not treat it as a greenfield build.
+This file is for Codex-style coding agents working in this repository. For a project overview, read `README.md`. For script commands, read `scripts/README.md`.
 
-Codex should improve the current system with small, measurable, low-risk changes. Do not rewrite the architecture unless clearly necessary.
+## Mission
 
-## Codex / ChatGPT collaboration
+Improve an existing BTCUSDT 5-minute Polymarket trading system with small, measurable, low-risk changes. Do not treat this as a greenfield project.
 
-Default collaboration model:
+The target workflow has five connected stages:
 
-- Local Codex is the primary execution agent, especially in Goal mode.
-- Local Codex owns implementation, file edits, tests, training runs, reports, git checks, and commits.
+1. Data and features produce reproducible offline/online inputs.
+2. The direction model selects UP or DOWN with one threshold and no trade/no-trade filtering.
+3. A calibration layer calibrates the selected-side probability.
+4. The price estimator / bid-policy stage chooses a limit price or policy action from the selected side and calibrated probability.
+5. The execution layer applies the artifacts, guards, market mapping, and order submission/audit logic.
 
-Core architecture:
+Keep these stages separate. Direction accuracy improvements, bid-policy improvements, and live execution changes use different metrics and must not be mixed without an explicit report.
 
-- shared core in `src/` for features, labels, schemas, training, inference
-- thin Freqtrade / FreqAI adapter
-- plugin-friendly model layer
-- separate Polymarket execution layer
-- shared core is the single source of truth
+## Current Facts
 
-Current default workflow:
+As of 2026-07-03, the accepted direction baseline is:
 
-1. Build a BTCUSDT 1m feature frame on 5-minute grid decision rows.
-2. Join resolved Polymarket BTC 5m UP/DOWN outcomes from `artifacts/data_v2/labels/polymarket_resolved/btc_updown_5m.parquet`.
-3. Run split training with `scripts/model/train_model.py`; validation is the only acceptance set.
-4. If accepted, run `scripts/model/train_online_full_train.py` with the same config and accepted split artifact. This retrains on all split rows and writes deploy artifacts to `execution_engine/deploy/baseline`.
-5. Execution loads the deploy artifact manifest. It must not recompute BTC features.
-
----
-
-## Primary objective
-
-Current active optimization target:
-
-```text
-Optimize validation-set sum_pnl.
+```yaml
+experiment_id: 20260611_catboost_calendar_coordinate_search
+config_path: experiments/configs/20260611_catboost_calendar_coordinate_search.yaml
+report_path: artifacts/data_v2/reports/reversal_hybrid/20260611_catboost_calendar_coordinate_search/report.json
+deploy_artifact_dir: execution_engine/deploy/baseline
+model_plugin: catboost
+calibration_plugin: none
+feature_count: 569
+threshold_policy: utc_day_session_coordinate
+threshold_source: offline_validation_calendar_coordinate
+validation_selection_score: 0.6413740846
+validation_coverage: 0.7000535619
+validation_accepted_sample_accuracy: 0.7073450650
+validation_accepted_count: 5228
+fallback_t_up: 0.5792857143
+fallback_t_down: 0.4314285714
 ```
 
-The historical `selection_score` framework below remains an important diagnostic and risk-control reference unless the user explicitly narrows a task to PnL-only analysis. When optimizing `sum_pnl`, still report coverage, accepted sample accuracy, signal counts, and leakage/consistency checks so PnL improvements are not accepted blindly.
+The execution config template currently enables:
 
-Optimize:
-
-```text
-Score = Utility / Downside Risk
-      = coverage * (2 * accepted_sample_accuracy - 1)
-        / sqrt(coverage * (1 - accepted_sample_accuracy))
+```yaml
+runtime.mode: live
+orders.enabled: true
+price_estimator.active_artifact: expected_return_h14
+price_estimator.artifact_dir: execution_engine/deploy/price_estimator_expected_return_h14
 ```
 
-Subject to:
+The active execution price estimator manifest is:
 
-```text
-coverage >= 0.70
+```yaml
+artifact_type: price_estimator_expected_return_hazard
+experiment_id: 20260619_expected_return_h14_h2_gc_gt_0p75
+model_file: expected_return_hazard.npz
+prediction_column: expected_return_bid
+feature_count: 576
+order_price_policy: min(best_ask - 0.01, expected_return_optimal_bid)
+validation_sum_pnl: 27.44
+validation_mean_accepted_pnl: 0.0052486611
+validation_order_coverage: 0.4967482785
+wrong_fill_forced: 1.0
 ```
 
-Where:
+Use the artifact manifests and config files as source of truth for the current deployed/accepted state. The target workflow below is a proposed objective redesign for new experiments; it is not promoted into the main flow until validation results are reviewed and accepted.
+
+## Target Objective Redesign
+
+Do not overwrite the current deploy facts with this redesign until it has a dated proposal, isolated experiment outputs, no-leak validation, and explicit user approval to promote.
+
+The intended direction is:
+
+1. Direction model: select only UP or DOWN using one threshold. This stage no longer filters samples out of the trade universe, so direction coverage is `100%`.
+2. Direction evaluation: optimize validation accuracy. Keep existing direction metrics such as coverage, selection_score, utility, precision_up, precision_down, AUC, Brier, and logloss as diagnostics, but do not use selective `selection_score` as the primary target for this redesign.
+3. Calibration layer: after selecting a side, calibrate the probability that the selected side is correct. Evaluate calibration primarily with Brier score, plus reliability curves/logloss when available. Feed the calibrated selected-side probability into the price estimator.
+4. Price estimator / bid policy: evaluate multiple schemes. Expected-return EV is the current leading direction, but other bid-policy or direct-PnL approaches are allowed when they are isolated and reported clearly.
+5. EV mechanics: use the fill model where a correct prediction may not fill, while a wrong submitted order is forced filled. With calibrated correctness probability `q`, bid `b`, and winner-fill CDF `Gc(b|X)`, the base EV form is `q * Gc(b|X) * (1 - b) - (1 - q) * b`.
+6. Gc evaluation: if a scheme estimates `Gc`, evaluate it as a probability forecast with Brier score and reliability diagnostics for the event `winner_low <= bid`, in addition to downstream PnL.
+7. Final objective: maximize validation-set `sum_pnl` under the documented fill rule. If the current EV/Gc path stops improving validation `sum_pnl`, consider other isolated approaches rather than forcing more changes into the same path.
+
+## Stage Boundaries
+
+### Data and Feature Stage
+
+- Source config: `config/settings.yaml`.
+- Main outputs: `artifacts/data_v2/raw`, `normalized`, `labels`, `second_level`, `datasets`, and `manifests`.
+- Main scripts: `scripts/data/` and `src/data/`.
+- Current `second_level.enabled` is `true`; do not assume second-level features are disabled.
+- Feature logic belongs in `src/features/`; label logic belongs in `src/labels/`.
+
+### Direction Model Stage
+
+- Purpose: produce `p_up` and a selected UP/DOWN side.
+- Target-redesign behavior: use one threshold to split UP vs DOWN and do not create NO-SIGNAL rows; direction coverage is `100%`.
+- Target-redesign primary metric: validation accuracy.
+- Legacy/selective metrics such as `selection_score`, coverage, accepted accuracy, and utility remain diagnostics for comparison with existing artifacts.
+- Current accepted direction baseline is `20260611_catboost_calendar_coordinate_search`.
+- Thresholds must come from config or artifact manifests, never from hard-coded `0.5` logic.
+
+### Calibration Layer Stage
+
+- Purpose: convert the selected-side raw model probability into a calibrated probability of being correct.
+- Primary metric: validation Brier score for selected-side correctness.
+- Secondary diagnostics: reliability tables/plots, logloss, calibration by probability bucket, and calibration drift by time bucket.
+- The calibrated probability is an input to the price estimator; do not let the price estimator silently reuse uncalibrated probabilities unless the experiment is explicitly testing that ablation.
+
+### Price Estimator Stage
+
+- Purpose: choose the limit price or bid-policy action after direction selection and probability calibration.
+- Primary metric is validation `sum_pnl` under the documented fill rule, not direction `selection_score`.
+- Current leading approach is expected-return EV with calibrated correctness probability and a winner-fill model, but direct-PnL, empirical, grouped, or policy-learning alternatives may be explored in isolated experiments.
+- If the estimator models `Gc(b|X)`, evaluate `Gc` with Brier score/reliability for the fill event as well as downstream PnL.
+- Current execution template uses expected-return hazard artifact `expected_return_h14`.
+- Older `safe_lowest_price_gap` material is historical unless the task explicitly asks for that line of work.
+
+### Execution Stage
+
+- Purpose: load the direction artifact, load the price-estimator artifact, prepare runtime features, map the Polymarket market, and submit or audit orders.
+- Runtime order behavior is config-driven through `execution_engine/config.example.yaml` and server-local config.
+- Do not move model training, feature definitions, or label definitions into `execution_engine/`.
+
+## Non-Negotiable Rules
+
+- Preserve offline/online feature parity.
+- Do not introduce future-looking features or label-derived feature columns.
+- Do not silently change label, horizon, timestamp alignment, side semantics, or fill semantics.
+- Do not duplicate feature, label, model, or threshold logic in scripts or execution adapters.
+- Keep business parameters in `config/settings.yaml`, experiment configs, artifact manifests, or execution config.
+- Use chronological splits for validation unless the user explicitly requests another protocol.
+- Treat full-train metrics as deployment diagnostics only; never compare them against validation acceptance metrics.
+- Do not commit changes unless the user explicitly asks.
+- Prefer `rtk python ...` for long local commands when `rtk` is available.
+- DO NOT send optional commentary.
+
+## Direction Metrics
+
+For the target redesign, the direction stage uses one UP/DOWN threshold, has `coverage = 1.0`, and optimizes validation accuracy. Report at least:
 
 ```text
-coverage                 = accepted_count / total_available_samples
-accepted_sample_accuracy = correct accepted predictions / accepted_count
-Utility                  = coverage * (2 * accepted_sample_accuracy - 1)
-Downside Risk            = sqrt(coverage * (1 - accepted_sample_accuracy))
+sample_count
+accuracy
+selected_threshold
+up_prediction_count
+down_prediction_count
+share_up_predictions
+share_down_predictions
+precision_up
+precision_down
+balanced_precision
+roc_auc
+brier_score
+log_loss
 ```
 
-YES/NO balance, AUC, logloss, Brier, F1, and generic accuracy are diagnostics only. Do not optimize primarily for them.
-
-Reject any result where coverage falls below 0.70, even if score improves.
-
-YES/NO balance should be recorded for diagnosis, but it is not part of the objective.
-
----
-
-## Required metrics
-
-Every training, validation, threshold search, or optimization run must report:
+For legacy/selective comparisons, also report the existing fields:
 
 ```text
 sample_count
 coverage
+accepted_count
+accepted_sample_accuracy
 precision_up
 precision_down
 balanced_precision
-all_sample_accuracy
-accepted_sample_accuracy
 share_up_predictions
 share_down_predictions
 selected_t_up
 selected_t_down
-accepted_count
 up_prediction_count
 down_prediction_count
 roc_auc
@@ -97,472 +174,140 @@ log_loss
 utility
 downside_risk
 selection_score
-up_signal_count
-down_signal_count
-total_signal_count
-signal_coverage
-overall_signal_accuracy
 ```
 
-Every experiment `report.json` must include top-level train and validation sections with these fields:
+The target-redesign ranking rule is:
 
-```json
-{
-  "train_metrics": {
-    "sample_count": 0.0,
-    "coverage": 0.0,
-    "precision_up": 0.0,
-    "precision_down": 0.0,
-    "balanced_precision": 0.0,
-    "all_sample_accuracy": 0.0,
-    "accepted_sample_accuracy": 0.0,
-    "share_up_predictions": 0.0,
-    "share_down_predictions": 0.0,
-    "selected_t_up": 0.0,
-    "selected_t_down": 0.0,
-    "accepted_count": 0.0,
-    "up_prediction_count": 0.0,
-    "down_prediction_count": 0.0,
-    "roc_auc": 0.0,
-    "brier_score": 0.0,
-    "log_loss": 0.0,
-    "utility": 0.0,
-    "downside_risk": 0.0,
-    "selection_score": 0.0
-  },
-  "train_window": {
-    "row_count": 0,
-    "start": "ISO-8601 timestamp",
-    "end": "ISO-8601 timestamp"
-  },
-  "validation_metrics": {
-    "sample_count": 0.0,
-    "coverage": 0.0,
-    "precision_up": 0.0,
-    "precision_down": 0.0,
-    "balanced_precision": 0.0,
-    "all_sample_accuracy": 0.0,
-    "accepted_sample_accuracy": 0.0,
-    "share_up_predictions": 0.0,
-    "share_down_predictions": 0.0,
-    "selected_t_up": 0.0,
-    "selected_t_down": 0.0,
-    "accepted_count": 0.0,
-    "up_prediction_count": 0.0,
-    "down_prediction_count": 0.0,
-    "roc_auc": 0.0,
-    "brier_score": 0.0,
-    "log_loss": 0.0,
-    "utility": 0.0,
-    "downside_risk": 0.0,
-    "selection_score": 0.0
-  },
-  "validation_window": {
-    "row_count": 0,
-    "start": "ISO-8601 timestamp",
-    "end": "ISO-8601 timestamp"
-  }
-}
-```
+1. maximize validation accuracy with coverage fixed at `100%`
+2. prefer better side balance and stability across time splits when accuracy is tied
+3. keep legacy selective metrics as diagnostics, not the primary target
 
-The legacy aliases `up_signal_count`, `down_signal_count`, `total_signal_count`, `signal_coverage`, and `overall_signal_accuracy` may also be reported for compatibility, but they must not replace the explicit `*_prediction_count`, `accepted_count`, `coverage`, and `accepted_sample_accuracy` fields above.
+The legacy/selective ranking rule remains:
 
-Minimum valid result:
+1. maximize validation `selection_score` with `coverage >= 0.70`
+2. prefer positive utility and accepted accuracy above `0.50`
+3. prefer more stable time splits, simpler thresholds, and lower leakage risk
 
-```yaml
-objective:
-  min_coverage: 0.70
+Do not mix these ranking rules in the same claim.
 
-threshold_search:
-  hard_constraint: coverage_only
-```
+## Calibration Metrics
 
-Optimization ranking:
-
-1. validation selection_score with coverage >= objective.min_coverage
-2. positive utility and accepted_sample_accuracy > 0.50
-3. coverage and accepted_count
-4. stability across time splits
-5. leakage risk and implementation simplicity
-6. YES/NO balance, AUC / logloss / Brier as diagnostics only
-
----
-
-## Non-negotiable rules
-
-- Keep offline and online logic consistent.
-- Keep all business parameters in the unified config.
-- Do not duplicate feature logic.
-- Do not duplicate label logic.
-- Keep Freqtrade strategy thin.
-- Execution must not recompute BTC features.
-- Do not silently change label, horizon, timestamp alignment, or feature semantics.
-- Do not introduce future-looking features.
-- Prefer small, local, testable changes.
-- Do not add new model complexity unless it is isolated, reproducible, and evaluated against the current accepted Polymarket validation baseline.
-
----
-
-## Existing baseline
-
-The project already supports:
-
-- BTC/USDT
-- 1m data
-- 1s data
-- 5m horizon
-- shared feature builders
-- shared label builders
-- current production baseline: `catboost_lgbm_logit_blend` with `platt_logit`
-- unified settings file
-- model artifacts
-- inference path
-- derivatives feature inputs
-- tests and training reports
-
-Codex should focus on controlled optimization, validation, leakage checks, threshold tuning, reporting, and ablation.
-
-Current accepted validation baseline:
-
-```yaml
-experiment_id: 20260520_polymarket_resolved_extended_history_baseline
-config_path: experiments/configs/20260520_polymarket_resolved_extended_history_baseline.yaml
-report_path: artifacts/data_v2/experiments/20260520_polymarket_resolved_extended_history_baseline/report.json
-split_used_for_baseline: validation
-t_up: 0.62
-t_down: 0.415
-selection_score: 0.5748509217
-utility: 0.2674076058
-downside_risk: 0.4651773107
-accepted_sample_accuracy: 0.6909542934
-precision_up: 0.7065709970
-precision_down: 0.6749321968
-balanced_precision: 0.6907515969
-up_prediction_count: 2648
-down_prediction_count: 2581
-accepted_count: 5229
-coverage: 0.7001874665
-coverage_constraint_satisfied: true
-```
-
-Current deploy artifact:
-
-```yaml
-artifact_dir: execution_engine/deploy/baseline
-training_mode: online_full_train
-model_plugin: catboost_lgbm_logit_blend
-calibration_plugin: platt_logit
-feature_count: 1016
-threshold_source: offline_validation
-offline_validation_selection_score: 0.5748509217
-full_train_selection_score: 0.7523651248  # diagnostic only, not acceptance
-```
-
----
-
-## Label rule
-
-Do not change the current label unless explicitly instructed:
+For selected-side probability calibration, report:
 
 ```text
-y = resolved Polymarket BTC 5m UP/DOWN settlement outcome
-label_builder = polymarket_resolved
-label_version = polymarket_resolved_gamma_v1
+sample_count
+brier_score
+log_loss
+calibration_method
+raw_probability_column
+calibrated_probability_column
+reliability_by_probability_bucket
+accuracy_by_probability_bucket
 ```
 
-The historical BTC OHLCV direction rule `1{close[t0 + 4m] >= open[t0]}` is no longer the default acceptance target. It may be used only as a diagnostic or explicitly requested experiment. Do not silently switch between Polymarket resolved labels and BTC OHLCV direction labels.
+The calibrated selected-side probability is the probability input to price-estimator and EV experiments.
 
-Do not change the label to `close[t0 + 5m]`, `open[t0 + 5m]`, log return, thresholded return, BTC settlement direction, or any other label automatically.
+## PnL Metrics
 
----
-
-## Signal rule
-
-For a binary model outputting `p_up`:
+For price-estimator, bid-policy, or execution-policy experiments, report:
 
 ```text
-p_down = 1 - p_up
-
-UP signal     if p_up >= up_threshold
-DOWN signal   if p_up <= down_threshold
-NO-SIGNAL     otherwise
-```
-
-Thresholds must come from config or the trained artifact. Do not hardcode `0.5`.
-
-Example:
-
-```yaml
-signal:
-  policies:
-    selective_binary_policy:
-      t_up: null
-      t_down: null
-```
-
-If null, load thresholds from the artifact.
-
----
-
-## Threshold tuning
-
-Threshold search must maximize selection_score subject to the coverage constraint:
-
-```text
-coverage >= objective.min_coverage
-```
-
-For each candidate, report:
-
-```text
-coverage
-accepted_sample_accuracy
-utility
-downside_risk
-selection_score
 accepted_count
-up_prediction_count
-down_prediction_count
-share_up_predictions
-share_down_predictions
+order_count
+order_coverage
+trade_count
+fill_rate
+sum_pnl
+mean_accepted_pnl
+mean_pnl_filled
+mean_bid
+win_pnl_sum
+loss_pnl_sum
+correct_fill_rate
+wrong_fill_forced
+wrong_fill_printed, if available as a diagnostic
 ```
 
-Tie-breakers:
+Keep direction and calibration metrics in the same report so a PnL gain is not accepted if it comes from changing side selection, probability calibration, or the signal universe unexpectedly.
 
-1. higher utility
-2. higher coverage
-3. higher accepted_count
-4. simpler thresholds
-5. better time-split stability
+## Leakage Checks
 
----
-
-## Validation protocol
-
-Use time-based splits only.
-
-Preferred structure:
+Before claiming an improvement, verify that feature columns exclude:
 
 ```text
-train / development
-validation / threshold tuning and final acceptance
+target
+future_*
+abs_return
+signed_return
+stage1_target
+stage2_target
+chosen_low
+correct
+winner
+pnl
+trade_time
+endDate
+condition_id
+market_id
+slug
+outcome
 ```
 
-Rules:
+Also verify that scalers, imputers, encoders, feature selectors, calibration maps, and policy thresholds are not fitted on validation rows unless the document explicitly labels the run as a leaky diagnostic.
 
-- Tune thresholds on validation only.
-- Use validation as the acceptance set for the current project workflow.
-- Do not keep or add a separate holdout unless explicitly requested.
-- Clearly mark validation metrics as threshold-tuned and optimistic.
-- Compare future experiments against the current validation baseline recorded in this file.
-- After acceptance, `train_online_full_train.py` may retrain on development + validation rows for deployment only.
-- Full-train metrics are in-sample diagnostics. They must not be compared against validation acceptance scores.
-- The full-train deploy manifest must copy `offline_validation_metrics` from the accepted split artifact and use those metrics for acceptance reporting.
+## Change Protocol
 
----
+Do not change the project objective by editing this file alone. `AGENTS.md` records how agents should work and what the current accepted facts are; objective changes must start in the relevant config, code path, and validation report.
 
-## Leakage and consistency checks
+Keep experiments isolated. Do not edit the main workflow, default configs, deploy artifacts, or live execution behavior for a trial unless the user has accepted the result and asked to promote it. Use date-plus-description experiment directories such as `20260703_short_description`, and keep that run's config, report, predictions, models, and notes together.
 
-Before claiming improvement, verify:
+For the target objective redesign above, create a dated proposal/design document before changing the main workflow. The proposal should define the exact direction threshold rule, calibration method, price-estimator candidates, EV/fill assumptions, validation windows, leakage guards, and promotion criteria. After the proposal is reviewed, implement experiments in isolated dated directories. Promote only the minimal winning pieces after validation and user approval.
 
-- no future OHLCV or future return columns are features
-- no label-derived columns are features
-- no `target`, `future_close`, `abs_return`, `signed_return`, `stage1_target`, or `stage2_target` in features
-- rolling features do not include future bars
-- joins use only data available at prediction time
-- scalers, imputers, encoders, selectors are not fitted on validation
-- offline, validation, inference, and signal generation use the same shared feature builder
+Use the stage as the routing key:
 
-If a feature cannot be built online at decision time, it must not be used offline.
+- Direction objective or coverage rule: update an isolated experiment config first, then validate against the current direction baseline.
+- Calibration objective: update an isolated calibration experiment/config and report Brier score before feeding calibrated probabilities downstream.
+- Label semantics: update `src/labels/`, horizon config, label-store generation, and tests.
+- Price-estimator or bid-policy objective: update the relevant `price_estimator/` config and report PnL metrics with direction metrics preserved.
+- Live order behavior: update `execution_engine/config.example.yaml` or execution code, then verify runtime config loading and order-plan tests.
 
----
+After validation, update `README.md` for project state and update this file only for agent instructions/current facts.
 
-## Allowed improvements
+Before editing code, identify:
 
-Prefer these before adding complex models:
+- the stage being changed
+- the metric being improved
+- the files and configs affected
+- the validation command or report that can falsify the change
 
-- threshold tuning for selection_score with coverage >= 0.70
-- validation discipline
-- feature ablation
-- feature importance review
-- leakage removal
-- class weight and sample weight experiments
-- probability bucket analysis
-- time-regime analysis
-- conservative evaluation/reporting refactors
+After editing, run the narrowest useful validation. For docs-only changes, at least run `git diff --check` on the touched files.
 
-For any new feature pack, include loader/source, builder, registry entry, timestamp alignment, tests, online availability check, and ablation result.
+For completed experiments, save or reference:
 
----
+- config path
+- report path
+- split windows
+- feature set
+- artifact path, if generated
+- before/after metrics against the current baseline
 
-## Experiment protocol
+## Useful Entry Points
 
-Before changing code, state:
+| Task | Path |
+|---|---|
+| Project overview | `README.md` |
+| Script reference | `scripts/README.md` |
+| Default config | `config/settings.yaml` |
+| Direction deploy manifest | `execution_engine/deploy/baseline/artifact_manifest.json` |
+| Execution config template | `execution_engine/config.example.yaml` |
+| Feature builder | `src/features/builder.py` |
+| Feature registry | `src/features/registry.py` |
+| Polymarket label builder | `src/labels/polymarket_resolved.py` |
+| Training frame assembly | `src/data/dataset_builder.py` |
+| Direction training | `scripts/model/train_model.py` |
+| Current accepted direction runner | `scripts/analysis/catboost_calendar_coordinate_search.py` |
+| Runtime artifact loading | `execution_engine/artifacts.py` |
 
-```text
-metric being improved
-files affected
-reason it may improve selection_score
-how coverage >= 0.70 is preserved
-tests or reports to verify it
-```
+## Definition of Done
 
-After changing code, report:
-
-```text
-before / after selection_score
-before / after utility and accepted_sample_accuracy
-before / after signal_count
-before / after coverage
-coverage constraint satisfied: yes/no
-```
-
-Do not claim improvement without running or producing the relevant evaluation.
-
-If metrics cannot be computed, say so clearly.
-
-
----
-
-## Experiment reproducibility
-
-Every completed experiment must be reproducible.
-
-After each experiment run, Codex must:
-
-1. save the exact config file used for the run
-2. save or reference the training report / evaluation output
-3. record the feature set, thresholds, split dates, and model settings used
-4. create a git commit for the completed experiment
-5. include the commit hash in the experiment summary
-6. if a deploy artifact is regenerated, record the accepted offline artifact used as threshold source
-
-Do not overwrite the only copy of an experiment config.
-
-If the main config is modified for an experiment, copy it to an experiment-specific path first, for example:
-
-```text
-experiments/configs/<timestamp>_<short_description>.yaml
-```
-
-The experiment summary must include:
-
-```text
-git_commit
-config_path
-report_path
-primary_metric
-signal_coverage
-coverage_constraint_satisfied
-deploy_training_mode
-offline_validation_metric_source
-```
-
-A result is not considered complete unless the corresponding config and commit can reproduce it.
-
-Use an experiment-specific commit for each completed experiment. Do not mix unrelated user edits into that commit.
-
----
-
-## Config rules
-
-All business parameters must live in the unified settings file.
-
-Example:
-
-```yaml
-objective:
-  label: polymarket_resolved_btc_updown_5m
-  optimize_metric: selection_score
-  min_coverage: 0.70
-  tie_breaker_metric: coverage
-  balanced_precision_tie_tolerance: 0.002
-
-threshold_search:
-  enabled: true
-  t_up_min: 0.45
-  t_up_max: 0.70
-  t_down_min: 0.30
-  t_down_max: 0.55
-  step: 0.005
-  enforce_min_side_share: false
-  min_side_share: 0.20
-  min_up_signals: 1000
-  min_down_signals: 1000
-  min_total_signals: 4000
-
-validation:
-  mode: chronological_validation
-  train_days: 60
-  validation_days: 30
-
-decision_alignment:
-  enabled: true
-  mode: delayed_feature_offset
-  feature_offset_minutes: 1
-  row_policy: delayed_1m_synthetic_decision_row
-
-signal:
-  policies:
-    selective_binary_policy:
-      t_up: null
-      t_down: null
-
-model:
-  active_plugin: catboost_lgbm_logit_blend
-
-calibration:
-  active_plugin: platt_logit
-```
-
-Do not hardcode thresholds, horizons, feature lists, coverage limits, or label rules.
-
----
-
-## Testing requirements
-
-Tests should cover:
-
-- label calculation and time grid alignment
-- feature exclusion of target / future columns
-- offline-online feature consistency
-- threshold search
-- UP / DOWN / NO-SIGNAL decisions
-- selection_score, utility, downside_risk, and coverage calculation
-- invalid result when coverage < 0.70
-- artifact save/load and artifact thresholds
-- execution layer does not recompute features
-
----
-
-## Shell tooling
-
-Prefer `rtk` for verbose shell commands to optimize context usage.
-
-Before declaring it unavailable, verify:
-
-```powershell
-rtk --version       # Expected >= 0.42.3
-rtk gain            # Check savings
-where.exe rtk       # Locate binary
-```
-
-Only fall back to raw PowerShell after `rtk --version` fails.
-
-See `@RTK.md`.
-
----
-
-## Definition of done
-
-A change is complete only when:
-
-1. offline and online logic remain consistent
-2. labels and features remain centralized
-3. thresholds come from config or artifact
-4. selection_score, utility, accepted_sample_accuracy, signal counts, and coverage are reported
-5. coverage >= 0.70
-6. tests pass
-7. no leakage columns are used
-8. result is compared against the previous baseline
-9. Codex states whether selection_score truly improved under the coverage constraint
+A task is done when the relevant stage still has clear inputs and outputs, the current baseline is not misrepresented, validation has been run or explicitly skipped with a reason, and the final report states whether the requested metric actually improved.

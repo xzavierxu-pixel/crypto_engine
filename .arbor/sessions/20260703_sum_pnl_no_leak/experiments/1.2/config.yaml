@@ -1,0 +1,24 @@
+experiment_id: 20260703_arbor_bdev_gc_upper_cap
+objective: {min_coverage: 0.70}
+paths:
+  h2_checkpoint: .arbor/sessions/20260703_sum_pnl_no_leak/bdev_h2/models/hazard_survival_cdf.pt
+  train_dataset: .arbor/sessions/20260703_sum_pnl_no_leak/bdev_data/train_before_20260328.parquet
+  validation_dataset: .arbor/sessions/20260703_sum_pnl_no_leak/bdev_data/dev_20260328_20260410.parquet
+  models_dir: .arbor/sessions/20260703_sum_pnl_no_leak/experiments/1.2/models
+  reports_dir: .arbor/sessions/20260703_sum_pnl_no_leak/experiments/1.2/reports
+  predictions_train: .arbor/sessions/20260703_sum_pnl_no_leak/experiments/1.2/reports/predictions_train.parquet
+  predictions_policy_select: .arbor/sessions/20260703_sum_pnl_no_leak/experiments/1.2/reports/predictions_policy_select.parquet
+  predictions_validation: .arbor/sessions/20260703_sum_pnl_no_leak/experiments/1.2/reports/predictions_validation.parquet
+split: {calibration_tail_days: 7, timestamp_column: timestamp}
+target:
+  tick_size: 0.01
+  min_bid: 0.01
+  min_ev_grid: [0.00, 0.01, 0.02, 0.03, 0.05]
+  min_ev_min_order_count: 100
+gc_calibration:
+  method: upper_cap
+  p_side_bin_width: 0.05
+  beta_prior: 1.0
+  parameter_grid: [0.80, 0.90, 0.95]
+evaluation: {device: cpu, batch_size: 512}
+backtest: {wrong_fill_policy: forced, pnl_scope: threshold_accepted_rows}
