@@ -1,0 +1,4 @@
+{"event":"session.start","run_name":"20260705_trade_l2_all","date":"2026-07-05","task":"Implement and evaluate T0-T9 from docs/trade l2 optimization-0705.md"}
+{"event":"idea.completed","nodes":["1.1","1.2","2.1","3.1","3.2","3.3","3.4","3.5","4.1","4.2"],"experiment_ids":["T0","T1","T9","T2","T3","T4","T5","T8","T6","T7"]}
+{"event":"evaluation.completed","split":"B_test","experiment_count":10,"anchor_sum_pnl":42.43,"best_experiment_ids":["T8","T9"],"best_sum_pnl":42.43}
+{"event":"session.end","exit_reason":"all requested experiments completed and audited","promotion":false}

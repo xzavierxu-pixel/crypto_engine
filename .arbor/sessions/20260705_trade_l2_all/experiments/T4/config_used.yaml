@@ -1,0 +1,32 @@
+experiment_id: 20260705_t4_trade_l2_empirical_gc_shrink
+stage: price_estimator_gc
+objective: maximize_chronological_rolling_sum_pnl
+selection:
+  folds: [w1, w2, w3, w4]
+  holdout_folds: [w5, w6]
+  rule: sum_pnl_minus_weekly_standard_deviation
+  btest_used: false
+bucket_model:
+  dimensions:
+    - p_side
+    - bid
+    - pm_trade_selected_count_60s
+    - pm_trade_opposite_count_60s
+    - pm_trade_selected_slope_60s
+  prior_count: 100
+  min_local_count: 20
+  upper_cap_confidence: 0.90
+variants:
+  - hazard_only
+  - full_empirical
+  - shrink_blend_0.25
+  - shrink_blend_0.50
+  - shrink_blend_0.75
+  - upper_cap_0.90
+policy:
+  gc_floor: 0.90
+  min_ev: 0.05
+  tick_size: 0.01
+fill_semantics:
+  correct: filled iff winner_low <= bid; pnl = 1 - bid
+  wrong: forced filled for every submitted bid; pnl = -bid

@@ -1,0 +1,22 @@
+experiment_id: 20260705_t8_two_minute_trade_l2_auxiliary
+stage: price_estimator_policy_auxiliary
+first_minute_anchor:
+  q: raw_tree_blend
+  gc_floor: 0.85
+  min_ev: 0.02
+  tick_size: 0.01
+two_minute_auxiliary:
+  target: correct and winner_low <= 0.60
+  model: lightgbm
+  role: no_order_gate_only
+  may_change_side: false
+  may_change_bid: false
+  missing_score_fallback: keep_anchor
+selection:
+  folds: [w1, w2, w3, w4]
+  untouched_holdout: [w5, w6]
+  rule: maximize sum_pnl minus weekly standard deviation
+  btest_used: false
+fill_semantics:
+  correct: filled iff winner_low <= bid; pnl = 1 - bid
+  wrong: forced filled for submitted bid; pnl = -bid

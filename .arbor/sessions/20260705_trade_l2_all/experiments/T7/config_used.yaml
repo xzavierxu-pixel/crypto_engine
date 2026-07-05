@@ -1,0 +1,27 @@
+experiment_id: T7_anchor_safe_challenger
+anchor_btest_sum_pnl: 42.43
+challenger_selection: maximum w1-w4 B_dev sum among T2/T3/T4
+frozen_policy:
+  scheme: q
+  prior_strength: 5.0
+  credibility: 0.8
+  min_count: 10
+  challenger_source: T4
+  challenger_dev_scores:
+    T2: 237.7
+    T3: 233.1
+    T4: 280.96
+  selected_on:
+  - w1
+  - w2
+  - w3
+  - w4
+  btest_used: false
+  anchor: raw_tree_blend/floor=.85/min_ev=.02
+posterior: normal-inverse-gamma per decision-time cell; replace iff lower credible
+  bound > 0
+reward_delta: challenger realized PnL - anchor realized PnL on differing historical
+  actions
+fill_semantics:
+  correct: winner_low <= bid
+  wrong: forced filled

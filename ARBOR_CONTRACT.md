@@ -1,12 +1,14 @@
-# Arbor Research Contract
+# Arbor Research Contract — Trade/L2 T0–T9
 
-- Target: `C:\Users\ROG\Desktop\crypto_engine_version1`, starting from branch `pmdata`.
-- Objective: optimize the complete direction/calibration/price-policy workflow until frozen `B_test sum_pnl > 500` under the existing forced-wrong-fill semantics.
-- Baseline anchor: `20260619_expected_return_h14_h2_gc_gt_0p75`, `validation.sum_pnl = 27.44`.
-- Development discipline: build chronological `B_dev` splits using data ending no later than 2026-04-10. The 2026-04-11 through 2026-05-10 month is frozen `B_test` and must not drive routine iteration.
-- Scope: performance-first mixed research across direction, calibration, Gc, bid policy, new decision-time features, alternative model families, ensembles, and staged use of relevant skills from `.codex/skills_disabled`.
-- Data: `artifacts/` and `price_estimator/data/` may be read. Raw data, existing reports, deploy artifacts, and live execution configuration are protected from modification.
-- Leakage guard: `stage1_sample_weight` is forbidden as a feature and must fail feature-matrix validation; other label/future/sample-weight fields are default-deny pending lineage audit.
-- Edit surface: isolated dated experiment code/config/report paths and Arbor session/worktree state. Internal experiment branches and commits are allowed; no merge or promotion into `pmdata` without explicit approval.
-- Budget: persistent real run. Continue across sessions until the verified frozen B_test target is reached. GPU, dependency installation, and internet access are allowed.
-- Deliverables: exact data universe and split windows, leakage audit, configs, predictions/artifacts, complete PnL/calibration/direction diagnostics, and comparison against 27.44.
+- Target: `C:\Users\ROG\Desktop\crypto_engine_version1`, based on branch `2mins` at `a2f1528`.
+- Objective: completely implement and evaluate T0–T9 from `docs/trade l2 optimization-0705.md`.
+- Primary metric: maximize frozen `B_test sum_pnl`; anchor is `42.43`.
+- Evaluation: every named experiment must record B_dev, rolling w1–w6, and B_test, as explicitly required by the design document.
+- Fill semantics: correct orders fill only when `winner_low <= bid`; every submitted wrong order is forced filled; printed wrong-side fill is diagnostic only.
+- Data discipline: fit models, calibration maps, abstention tables, gates, and posterior bounds only on chronological train/calibration/B_dev data earlier than their evaluation window. B_test is evaluation-only and must not tune any candidate.
+- Scope: isolated experiment/session code, configs, reports, predictions, manifests, and Arbor branches/worktrees. Long training, GPU use, package installation, internet access, worktrees, and experiment commits are authorized.
+- Protected paths: raw data, accepted/deployed artifacts, live execution configuration, label/fill semantics, existing historical reports, and the user-authored design document.
+- Promotion: no merge into `2mins`, deploy artifact replacement, or live behavior change without separate user approval.
+- Required per-experiment outputs: `REPORT.md`, `config_used.yaml`, `feature_manifest.json`, `leakage_check.json`, `metrics_bdev.json`, `metrics_btest.json`, `predictions_btest.parquet`, plus the session `trade_l2_btest_ledger.csv`.
+- Budget: persistent real run with no fixed cycle or wall-clock cap; stop only after T0–T9 and the completion audit are finished, or at a genuine external blocker.
+

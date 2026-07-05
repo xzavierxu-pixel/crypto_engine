@@ -1,0 +1,26 @@
+experiment_id: T5
+seed: 20260705
+windows_seconds:
+- 15
+- 30
+- 60
+- 120
+policy:
+  gc_floor: 0.9
+  min_ev: 0.05
+  tick_size: 0.01
+selection_folds:
+- w1
+- w2
+- w3
+- w4
+confirmation_folds:
+- w5
+- w6
+variants:
+- legacy
+- q_side
+- gc_side
+- q_gc_side
+fill_semantics: correct fills iff winner_low <= bid; every wrong submitted order is
+  forced filled

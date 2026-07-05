@@ -1,0 +1,24 @@
+experiment_id: 20260705_t9_segment_abstention
+anchor:
+  q_model: raw_tree_blend
+  shrink: 0.0
+  gc_floor: 0.85
+  min_ev: 0.02
+anchor_btest_sum_pnl: 42.43
+levels:
+- name: conservative
+  z: 0.0
+  min_count: 100
+- name: balanced
+  z: 0.75
+  min_count: 60
+- name: aggressive
+  z: 1.645
+  min_count: 40
+variants:
+- p_only
+- bid_only
+- joint
+selection: chronological prequential rolling; freeze table using w1-w6 before B_test
+data_root: C:\Users\ROG\Desktop\crypto_engine_version1
+btest_read_count: 1

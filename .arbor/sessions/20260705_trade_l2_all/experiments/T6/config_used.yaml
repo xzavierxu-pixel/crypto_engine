@@ -1,0 +1,22 @@
+experiment_id: 20260705_t6_loss_exposure_constrained_bid
+stage: price_estimator_policy
+base_candidate: T4_hazard_only
+base_reason: T4 selected hazard_only on w1-w4 and T3 was not available at dispatch
+selection_folds: [w1, w2, w3, w4]
+confirmation_folds: [w5, w6]
+policy_grid:
+  max_bid: [0.55, 0.60, 0.65, 0.70, 0.75, 1.00]
+  q_floor: [0.00, 0.55, 0.60, 0.65, 0.70, 0.75]
+  liquidity_disagreement_cap: [0.50, 1.00, 1.50, 99.00]
+  loser_proxy_cap: [0.08, 0.12, 0.16, 0.24, 99.00]
+selection:
+  minimum_win_pnl_retention: 0.75
+  require_loss_pnl_improvement: true
+  rule: max_w1_w4_sum_pnl_minus_weekly_std
+base_ev_policy:
+  gc_floor: 0.90
+  min_ev: 0.05
+  tick_size: 0.01
+fill_semantics:
+  correct: filled iff winner_low <= bid; pnl = 1 - bid
+  wrong: forced filled for every submitted bid; pnl = -bid

@@ -1,0 +1,26 @@
+experiment_id: T0
+name: frozen_trade_l2_baseline_reproduction
+data_root: C:\Users\ROG\Desktop\crypto_engine_version1
+frozen_policy:
+  q_model: oldnew_trade_lgbm_blend
+  gc_model: trade_conditioned_monotone
+  node1_policy:
+    gc_floor: 0.8
+    min_ev: 0.02
+  node1.1_policy:
+    gc_floor: 0.9
+    min_ev: 0.05
+  tick_size: 0.01
+  seed: 20260703
+selection_folds:
+- w1
+- w2
+- w3
+- w4
+rolling_holdout_folds:
+- w5
+- w6
+btest_anchor_sum_pnl: 42.43
+fill_semantics: correct order fills iff winner_low <= bid; every wrong submitted order
+  is forced filled
+btest_policy: exactly once after frozen development choices; never used for tuning

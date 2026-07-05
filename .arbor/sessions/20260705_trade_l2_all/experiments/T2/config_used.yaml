@@ -1,0 +1,28 @@
+experiment_id: T2_joint_profitable_fill
+seed: 20260705
+anchor_sum_pnl: 42.43
+selection_folds:
+- w1
+- w2
+- w3
+- w4
+rolling_holdout_folds:
+- w5
+- w6
+bid_grid: 5-cent legal ticks, 0.05..0.90
+q: 0.5 p_side + 0.5 trade/L2/BTC LGBM
+joint_target: correct and winner_low <= bid
+fixed_direction_and_accepted_universe: true
+fill_semantics:
+  correct: winner_low <= bid
+  wrong: forced filled
+frozen_policy:
+  model: joint_monotone
+  fill_floor: 0.6
+  min_ev: 0.03
+  selected_on:
+  - w1
+  - w2
+  - w3
+  - w4
+  btest_used: false

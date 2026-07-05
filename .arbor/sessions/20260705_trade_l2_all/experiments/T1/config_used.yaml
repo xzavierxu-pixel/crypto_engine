@@ -1,0 +1,18 @@
+experiment_id: T1_submitted_action_audit
+mode: diagnostic_only
+candidate: frozen_20260703_trade_conditioned_monotone_gc
+candidate_policy:
+  q: 0.5 * raw_tree_blend + 0.5 * q_trade
+  gc: trade_conditioned_monotone_gc
+  min_fill_probability: 0.90
+  min_ev: 0.05
+  tick_size: 0.01
+input_predictions: .arbor/sessions/20260703_trade_btc_feature_research/btest_trade_gc_diagnostics.parquet
+liquidity_proxy:
+  selected: pm_trade_selected_count_60s
+  opposite: pm_trade_opposite_count_60s
+  note: Candidate is trade-only; pre-decision 60-second trade counts are used, not L2 depth.
+fill_semantics:
+  correct: filled iff winner_low <= bid; pnl = 1 - bid when filled
+  wrong: forced filled when bid > 0; pnl = -bid
+anchor_sum_pnl: 42.43

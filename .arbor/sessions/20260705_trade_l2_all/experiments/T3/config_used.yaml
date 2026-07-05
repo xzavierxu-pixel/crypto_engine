@@ -1,0 +1,32 @@
+experiment_id: T3_submitted_action_calibration
+anchor_sum_pnl: 42.43
+source: C:\Users\ROG\Desktop\crypto_engine_version1\.arbor\sessions\20260705_trade_l2_all\experiments\T2
+raw_t2_policy:
+  model: joint_monotone
+  fill_floor: 0.6
+  min_ev: 0.03
+  selected_on:
+  - w1
+  - w2
+  - w3
+  - w4
+  btest_used: false
+frozen_t3_policy:
+  method: platt
+  blend: 0.5
+  fill_floor: 0.6
+  min_ev: 0.03
+  selected_on:
+  - w1
+  - w2
+  - w3
+  - w4
+  btest_used: false
+  calibration_training: strictly earlier rolling out-of-sample submitted actions
+calibration_target: correct and winner_low <= submitted bid
+calibration_subset: actions submitted by frozen T2 policy
+action_rule: T3 may abstain after calibrated EV/fill checks; never changes side/bid
+  or creates orders
+fill_semantics:
+  correct: winner_low <= bid
+  wrong: forced filled
