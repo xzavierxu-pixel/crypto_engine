@@ -93,6 +93,19 @@ def apply_trades_coverage_start(
     }
 
 
+def order_window_mask(joined: pd.DataFrame, target_config: dict[str, Any]) -> pd.Series:
+    """Return the configured decision-to-settlement trade window mask."""
+    if bool(target_config.get("include_start", False)):
+        start_mask = joined["trade_time"] >= joined["decision_time"]
+    else:
+        start_mask = joined["trade_time"] > joined["decision_time"]
+    if bool(target_config.get("include_end", True)):
+        end_mask = joined["trade_time"] <= joined["endDate"]
+    else:
+        end_mask = joined["trade_time"] < joined["endDate"]
+    return start_mask & end_mask
+
+
 def classify_low_join(
     rows: pd.DataFrame,
     trades: pd.DataFrame,
@@ -215,9 +228,7 @@ def build_split(
         right_on=["condition_id", "predicted_outcome"],
         how="inner",
     )
-    start_mask = joined["trade_time"] > joined["decision_time"]
-    end_mask = joined["trade_time"] <= joined["endDate"]
-    joined = joined.loc[start_mask & end_mask].copy()
+    joined = joined.loc[order_window_mask(joined, config["target"])].copy()
     if joined.empty:
         raise ValueError(f"No selected-side trades matched for split {split}")
 

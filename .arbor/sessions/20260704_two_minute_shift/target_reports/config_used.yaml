@@ -1,0 +1,106 @@
+experiment_id: 20260704_two_minute_shift
+objective:
+  min_coverage: 0.7
+paths:
+  deploy_artifact_dir: .arbor/sessions/20260704_two_minute_shift/direction/deploy
+  feature_manifest: .arbor/sessions/20260704_two_minute_shift/direction/deploy/artifact_manifest.json
+  train_dataset_source: .arbor/sessions/20260704_two_minute_shift/direction/base_split/development_frame.parquet
+  validation_dataset_source: .arbor/sessions/20260704_two_minute_shift/direction/base_split/validation_frame.parquet
+  trades_dir: price_estimator/data/sell_taker_trades_daily
+  experiment_dir: .arbor/sessions/20260704_two_minute_shift
+  target_summary_source: price_estimator/expected_return/experiments/20260619_expected_return_trade_coverage_start/reports/target_build_summary.json
+  train_dataset: .arbor/sessions/20260704_two_minute_shift/data/expected_return_train.parquet
+  validation_dataset: .arbor/sessions/20260704_two_minute_shift/data/expected_return_validation.parquet
+  models_dir: price_estimator/expected_return/experiments/20260619_expected_return_h1_hazard_survival/models
+  reports_dir: .arbor/sessions/20260704_two_minute_shift/target_reports
+  predictions_train: price_estimator/expected_return/experiments/20260619_expected_return_h1_hazard_survival/reports/predictions_train.parquet
+  predictions_calibration: price_estimator/expected_return/experiments/20260619_expected_return_h1_hazard_survival/reports/predictions_calibration.parquet
+  predictions_validation: price_estimator/expected_return/experiments/20260619_expected_return_h1_hazard_survival/reports/predictions_validation.parquet
+target:
+  selected_side_source: deploy_manifest_threshold_policy
+  order_window: until_settlement
+  trades_coverage_start: 2026-02-12 00:00:00+00:00
+  include_start: true
+  include_end: true
+  eps: 0.01
+  tick_size: 0.01
+  min_bid: 0.01
+  min_ev_grid:
+  - 0.0
+  - 0.01
+  - 0.02
+  - 0.03
+  - 0.05
+  min_ev_selection_source: calibration
+  min_ev_min_order_count: 100
+split:
+  calibration_tail_days: 7
+  timestamp_column: timestamp
+features:
+  source: split_artifact_feature_columns
+  added_columns:
+  - selected_side
+  - p_up
+  - p_side
+  - direction_confidence
+  - p_bin
+  - p_side_bucket
+  - market_time_bucket
+  categorical_columns:
+  - selected_side
+  - p_bin
+  - p_side_bucket
+  - market_time_bucket
+  forbidden_columns:
+  - abs_return
+  - accepted
+  - chosen_low
+  - chosen_low_next4
+  - chosen_low_reason
+  - chosen_low_trade_time
+  - correct
+  - future_close
+  - lowest_trade_price_next4
+  - lowest_trade_time_next4
+  - predicted_outcome
+  - predicted_side
+  - signed_return
+  - stage1_sample_weight
+  - stage1_target
+  - stage2_target
+  - target
+  - target_raw
+  - threshold_accepted
+  - time_to_lowest_trade_sec
+model:
+  family: hazard_survival_cdf
+  hidden_dims:
+  - 256
+  - 128
+  - 64
+  dropout:
+  - 0.1
+  - 0.05
+  - 0.0
+  hazard:
+    tick_size: 0.01
+    max_price: 0.85
+    smoothness_penalty: 0.0
+  q_calibration:
+    enabled: false
+training:
+  batch_size: 512
+  epochs: 45
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  random_seed: 42
+  num_workers: 0
+  device: auto
+  gradient_clip_norm: 5.0
+  early_stop_patience: 10
+backtest:
+  baselines:
+  - expected_return
+  - fixed_0p50_pside
+  - fixed_0p75_pside
+  - pay_pside

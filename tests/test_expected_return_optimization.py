@@ -11,7 +11,11 @@ import torch
 MODULE_DIR = Path(__file__).resolve().parents[1] / "price_estimator" / "expected_return"
 sys.path.insert(0, str(MODULE_DIR))
 
-from build_expected_return_target import apply_trades_coverage_start, classify_low_join  # noqa: E402
+from build_expected_return_target import (  # noqa: E402
+    apply_trades_coverage_start,
+    classify_low_join,
+    order_window_mask,
+)
 from run_fixed_bid_validation import (  # noqa: E402
     evaluate_fixed_bid_frame,
     evaluate_pside_multiplier_bid_frame,
@@ -133,6 +137,24 @@ def test_missing_low_reason_is_independent_of_threshold() -> None:
         "no_trades_before_settlement",
         "matched",
     ]
+
+
+def test_order_window_respects_inclusive_boundaries() -> None:
+    decision = pd.Timestamp("2026-01-01T00:02:00Z")
+    end = pd.Timestamp("2026-01-01T00:05:00Z")
+    joined = pd.DataFrame(
+        {
+            "trade_time": [decision, decision + pd.Timedelta(seconds=1), end],
+            "decision_time": [decision] * 3,
+            "endDate": [end] * 3,
+        }
+    )
+
+    inclusive = order_window_mask(joined, {"include_start": True, "include_end": True})
+    exclusive = order_window_mask(joined, {"include_start": False, "include_end": False})
+
+    assert inclusive.tolist() == [True, True, True]
+    assert exclusive.tolist() == [False, True, False]
 
 
 def test_trade_coverage_start_filters_before_target_building() -> None:
