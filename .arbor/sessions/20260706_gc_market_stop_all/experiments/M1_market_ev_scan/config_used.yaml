@@ -1,0 +1,4 @@
+experiment_id: M1_market_ev_scan
+q_model: raw_tree_blend
+tau: 0.0
+decision_offset_seconds: 68

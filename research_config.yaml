@@ -1,11 +1,12 @@
 task: >
-  Completely implement and evaluate T0-T9 from docs/trade l2 optimization-0705.md.
-  Maximize frozen B_test sum_pnl relative to the 42.43 anchor while preserving
-  fixed forced-wrong-fill semantics, chronological no-leak fitting, and all
-  required per-experiment reports, predictions, manifests, metrics, and ledger
-  rows. Do not promote or modify deployment/live behavior.
+  Complete all experiments in docs/requirement0706.md: G0-G3 high-Gc bid
+  thresholds and recalibration, M0-M2 market orders plus M3 when triggered,
+  and S0-S2 stop-loss/take-profit plus S3 when triggered. Maximize frozen
+  B_test sum_pnl relative to the 42.43 limit-order anchor, preserve the
+  specified chronological no-leak and one-read B_test protocol, produce every
+  required artifact and ledger row, and do not promote deployment changes.
 coordinator:
-  max_cycles: 20
+  max_cycles: 30
   max_depth: 3
   ui:
     interaction_mode: auto

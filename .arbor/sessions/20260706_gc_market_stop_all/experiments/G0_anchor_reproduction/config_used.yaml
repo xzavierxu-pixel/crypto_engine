@@ -1,0 +1,6 @@
+experiment_id: G0_anchor_reproduction
+q_model: raw_tree_blend
+q_shrink: 0.0
+gc_floor: 0.85
+min_ev: 0.02
+wrong_fill_forced: 1.0

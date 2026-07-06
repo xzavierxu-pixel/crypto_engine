@@ -1,0 +1,4 @@
+experiment_id: S3_combination_not_triggered
+trigger: S1_success
+trigger_value: false
+btest_reads: 0

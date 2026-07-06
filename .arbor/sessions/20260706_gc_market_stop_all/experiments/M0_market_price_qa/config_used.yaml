@@ -1,0 +1,3 @@
+experiment_id: M0_market_price_qa
+decision_offset_seconds: 68
+missing_m_policy: abstain

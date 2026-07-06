@@ -1,0 +1,4 @@
+experiment_id: S1_stop_grid
+stop_c1: 0.2
+stop_c2: None
+wrong_fill_forced: 1.0

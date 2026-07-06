@@ -1,0 +1,3 @@
+experiment_id: S0_fixed_stop_preflight
+stop: min(0.30, 0.50 * bid)
+wrong_fill_forced: 1.0

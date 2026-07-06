@@ -1,0 +1,4 @@
+experiment_id: S2_take_profit_overlay
+stop_c1: 0.2
+stop_c2: None
+take_profit: 0.95

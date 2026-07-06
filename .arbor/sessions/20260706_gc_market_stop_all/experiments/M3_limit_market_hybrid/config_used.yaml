@@ -1,0 +1,4 @@
+experiment_id: M3_limit_market_hybrid
+market_edge: 0.05
+max_limit_fill: 0.75
+q_model: raw_tree_blend

@@ -1,0 +1,9 @@
+experiment_id: G2_high_fill_conservative_q
+q_model: raw_tree_blend
+q_shrink: 0.0
+gc_floor: 0.9
+min_ev: 0.01
+gc_recalibration: none
+wrong_fill_forced: 1.0
+selection_folds: [w1, w2, w3, w4]
+holdout_gate_folds: [w5, w6]

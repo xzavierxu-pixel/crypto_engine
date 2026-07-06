@@ -1,0 +1,4 @@
+experiment_id: M2_same_universe_comparison
+source_candidate: M1_market_ev_scan
+q_model: raw_tree_blend
+tau: 0.0
