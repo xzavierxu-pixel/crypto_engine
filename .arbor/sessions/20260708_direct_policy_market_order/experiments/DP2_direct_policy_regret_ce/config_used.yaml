@@ -1,0 +1,13 @@
+experiment_id: DP2_direct_policy_regret_ce
+c: 0.01
+objective: multi:softprob
+num_class: 3
+max_depth: 3
+eta: 0.05
+subsample: 0.9
+colsample_bytree: 0.8
+min_child_weight: 50
+lambda: 5
+num_boost_round: 500
+early_stopping_rounds: 50
+internal_eval_split: last_15pct_of_train_chronological
