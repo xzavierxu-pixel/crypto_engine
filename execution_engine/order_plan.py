@@ -14,6 +14,7 @@ LIMIT_CONFIG_BEST_ASK_OFFSET_MODE = "limit_config_best_ask_offset"
 Q80_BEST_ASK_OFFSET_MODE = "min_q80_final_price_and_best_ask_offset"
 SAFE_GAP_BEST_ASK_OFFSET_MODE = "min_safe_gap_price_and_best_ask_offset"
 EXPECTED_RETURN_OPTIMAL_BID_MODE = "expected_return_optimal_bid"
+BEST_ASK_MARKET_MODE = "best_ask_market"
 
 
 @dataclass(frozen=True)
@@ -205,7 +206,14 @@ def build_two_limit_order_plan(
         expected_return_bid = None
         best_ask_offset_price = None
         price_estimator_fallback = None
-        if leg.price_mode == EXPECTED_RETURN_OPTIMAL_BID_MODE:
+        if leg.price_mode == BEST_ASK_MARKET_MODE:
+            if best_ask is None:
+                skipped.append({"leg": name, "reason": "missing_best_ask", "price_mode": leg.price_mode})
+                continue
+            raw_price = float(best_ask)
+            quote_reference = float(best_ask)
+            quote_source = "best_ask_market"
+        elif leg.price_mode == EXPECTED_RETURN_OPTIMAL_BID_MODE:
             eligible = signal.decision_context.get("price_estimator_expected_return_eligible")
             expected_return_bid = signal.decision_context.get("price_estimator_expected_return_bid")
             if eligible is not True or expected_return_bid is None or float(expected_return_bid) <= 0.0 or best_ask is None:
@@ -352,6 +360,7 @@ def build_two_limit_order_plan(
                     "t_up": signal.decision_context.get("t_up"),
                     "t_down": signal.decision_context.get("t_down"),
                     "configured_size": float(leg.size),
+                    "order_type": str(leg.order_type).upper(),
                     "size_to_max_notional": edge_config.size_to_max_notional,
                     "max_order_notional": edge_config.max_order_notional,
                     "limit_config_lookup_price": lookup_price,
@@ -429,7 +438,7 @@ def _edge_skip_reason(
         "best_ask": best_ask,
         "spread": spread,
     }
-    if edge < config.min_edge:
+    if edge <= config.min_edge:
         return {**details, "reason": "edge_below_minimum"}
     if config.max_buy_price is not None and price > config.max_buy_price:
         return {**details, "reason": "price_above_max_buy_price"}

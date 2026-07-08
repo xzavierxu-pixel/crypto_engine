@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from execution_engine.config import OrderLegConfig, OrdersConfig, load_execution_config
+from execution_engine.config import ExecutionEdgeConfig, OrderLegConfig, OrdersConfig, load_execution_config
 from execution_engine.order_plan import build_two_limit_order_plan
 from src.core.schemas import Decision, MarketQuote, Signal
 
@@ -138,6 +138,72 @@ def test_second_leg_can_be_enabled_explicitly() -> None:
     result = build_two_limit_order_plan(_signal(), _decision(), _quote(), config)
 
     assert [order.metadata["leg"] for order in result.orders] == ["first", "second"]
+
+
+def test_best_ask_market_mode_sets_fak_metadata_and_passes_edge() -> None:
+    config = OrdersConfig(
+        first=OrderLegConfig(
+            price_mode="best_ask_market",
+            order_type="FAK",
+            price_cap=0.99,
+            size=5.0,
+        )
+    )
+
+    result = build_two_limit_order_plan(
+        _signal(),
+        _decision(),
+        _quote(),
+        config,
+        ExecutionEdgeConfig(enabled=True, min_edge=0.01, max_buy_price=0.99, max_spread=None),
+    )
+
+    assert len(result.orders) == 1
+    assert result.orders[0].price == 0.62
+    assert result.orders[0].metadata["quote_source"] == "best_ask_market"
+    assert result.orders[0].metadata["order_type"] == "FAK"
+
+
+def test_best_ask_market_mode_rejects_edge_at_threshold_boundary() -> None:
+    signal = Signal(
+        asset="BTC/USDT",
+        horizon="5m",
+        t0=datetime(2026, 5, 20, 12, 0, tzinfo=UTC),
+        p_up=0.75,
+        p_down=0.25,
+        model_version="test",
+        feature_version="test",
+        decision_context={"t_up": 0.62, "t_down": 0.415},
+    )
+    config = OrdersConfig(
+        first=OrderLegConfig(
+            price_mode="best_ask_market",
+            order_type="FAK",
+            price_cap=0.99,
+            size=5.0,
+        )
+    )
+
+    result = build_two_limit_order_plan(
+        signal,
+        _decision(),
+        MarketQuote(
+            market_id="market",
+            yes_price=0.5,
+            metadata={
+                "yes_token_id": "yes-token",
+                "no_token_id": "no-token",
+                "best_bid": 0.49,
+                "best_ask": 0.5,
+                "tick_size": 0.01,
+            },
+        ),
+        config,
+        ExecutionEdgeConfig(enabled=True, min_edge=0.25, max_buy_price=0.99, max_spread=None),
+    )
+
+    assert result.orders == []
+    assert result.skipped[0]["reason"] == "edge_below_minimum"
 
 
 def test_first_leg_min_best_bid_offset_and_cap_price_mode() -> None:

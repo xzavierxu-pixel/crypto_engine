@@ -11,7 +11,7 @@ baseline:
     full_train:
       artifact_dir: execution_engine/deploy/baseline
 price_estimator:
-  enabled: true
+  enabled: false
   active_artifact: expected_return_h14
   artifact_dir: execution_engine/deploy/price_estimator_expected_return_h14
   artifacts:
@@ -78,9 +78,10 @@ orders:
   mode: live
   first:
     enabled: true
-    price_mode: reference_multiplier_offset_and_cap
-    price_cap: 0.75
-    offset: 0.01
+    price_mode: best_ask_market
+    order_type: FAK
+    price_cap: 0.99
+    offset: 0.0
     best_bid_offset: 0.0
     reference_multiplier: 1.0
     round_decimals: null
@@ -98,10 +99,10 @@ orders:
   on_invalid_second_order: skip
   cancel_unfilled_after_seconds: 0
 execution_edge:
-  enabled: false
-  min_edge: 0.0
-  max_buy_price: 0.8
-  max_spread: 0.08
+  enabled: true
+  min_edge: 0.01
+  max_buy_price: 0.99
+  max_spread: null
   max_order_notional: 5.0
   size_to_max_notional: false
   apply_to_first_leg: true

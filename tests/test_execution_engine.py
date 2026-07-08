@@ -25,6 +25,7 @@ from execution_engine.scripts import run_paper_experiment as paper_experiment_mo
 from execution_engine.artifacts import PriceEstimatorArtifact, load_price_estimator_artifact
 from execution_engine.config import (
     BinanceConfig,
+    ExecutionEdgeConfig,
     OrderLegConfig,
     OrdersConfig,
     PriceEstimatorConfig,
@@ -78,9 +79,10 @@ def test_execution_config_example_loads() -> None:
     assert config.orders.enabled is True
     assert config.baseline.model_file is None
     assert config.baseline.calibrator_file is None
-    assert config.orders.first.price_mode == "reference_multiplier_offset_and_cap"
-    assert config.orders.first.price_cap == 0.75
-    assert config.orders.first.offset == 0.01
+    assert config.orders.first.price_mode == "best_ask_market"
+    assert config.orders.first.order_type == "FAK"
+    assert config.orders.first.price_cap == 0.99
+    assert config.orders.first.offset == 0.0
     assert config.orders.first.reference_multiplier == 1.0
     assert config.orders.first.size == 5.0
     assert config.orders.second.offset == 0.0
@@ -91,7 +93,7 @@ def test_execution_config_example_loads() -> None:
     assert config.orders.min_price == 0.10
     assert config.orders.cancel_unfilled_after_seconds == 0
     assert config.baseline.artifact_dir == "execution_engine/deploy/baseline"
-    assert config.price_estimator.enabled is True
+    assert config.price_estimator.enabled is False
     assert config.price_estimator.active_artifact == "expected_return_h14"
     assert config.price_estimator.artifact_dir == "execution_engine/deploy/price_estimator_expected_return_h14"
     assert config.price_estimator.model_file == "expected_return_hazard.npz"
@@ -107,9 +109,9 @@ def test_execution_config_example_loads() -> None:
     assert config.binance.agg_trade_wait_seconds == 8
     assert config.schedule.trigger_delay_seconds == 68
     assert config.schedule.prewarm_seconds_before_trigger == 45
-    assert config.execution_edge.enabled is False
-    assert config.execution_edge.min_edge == 0.0
-    assert config.execution_edge.max_buy_price == 0.8
+    assert config.execution_edge.enabled is True
+    assert config.execution_edge.min_edge == 0.01
+    assert config.execution_edge.max_buy_price == 0.99
     assert config.execution_edge.max_order_notional == 5.0
     assert config.execution_edge.size_to_max_notional is False
     assert config.paper_test.max_duration_minutes == 60
@@ -999,6 +1001,7 @@ def test_polymarket_v2_adapter_places_gtc_buy(monkeypatch) -> None:
 
     class OrderType:
         GTC = "GTC"
+        FAK = "FAK"
 
     class PartialCreateOrderOptions:
         def __init__(self, tick_size):
@@ -1050,6 +1053,73 @@ def test_polymarket_v2_adapter_places_gtc_buy(monkeypatch) -> None:
     assert client.last_order.side == "BUY"
     assert client.last_options.tick_size == "0.01"
     assert client.last_type == "GTC"
+    assert response["response"]["success"] is True
+
+
+def test_polymarket_v2_adapter_places_fak_buy(monkeypatch) -> None:
+    clob_module = types.ModuleType("py_clob_client_v2")
+
+    class OrderArgs:
+        def __init__(self, token_id, price, size, side):
+            self.token_id = token_id
+            self.price = price
+            self.size = size
+            self.side = side
+
+    class OrderType:
+        GTC = "GTC"
+        FAK = "FAK"
+
+    class PartialCreateOrderOptions:
+        def __init__(self, tick_size):
+            self.tick_size = tick_size
+
+    class Side:
+        BUY = "BUY"
+
+    clob_module.OrderArgs = OrderArgs
+    clob_module.OrderType = OrderType
+    clob_module.PartialCreateOrderOptions = PartialCreateOrderOptions
+    clob_module.Side = Side
+    monkeypatch.setitem(sys.modules, "py_clob_client_v2", clob_module)
+
+    class FakeClient:
+        creds = object()
+
+        def __init__(self) -> None:
+            self.last_type = None
+
+        def create_order(self, order_args, options):
+            self.last_order = order_args
+            self.last_options = options
+            return "signed-order"
+
+        def post_order(self, signed_order, order_type):
+            assert signed_order == "signed-order"
+            self.last_type = order_type
+            return {"success": True, "orderID": "2"}
+
+    config = load_execution_config("execution_engine/config.example.yaml")
+    orders_config = OrdersConfig(
+        first=OrderLegConfig(price_mode="best_ask_market", order_type="FAK", price_cap=0.99, offset=0.0, size=5.0),
+        second=OrderLegConfig(enabled=False, price_cap=0.2, offset=0.0, size=5.0, reference_multiplier=0.25, round_decimals=2),
+        min_price=0.1,
+        max_price=0.99,
+        tick_size_default=0.01,
+    )
+    client = FakeClient()
+    adapter = PolymarketV2Adapter(config.polymarket, client=client)
+    response = adapter.place_limit_order(
+        build_two_limit_order_plan(
+            _signal(0.70),
+            Decision(True, "YES", 0.1, "selective_binary_signal_passed", 5.0),
+            MarketQuote("yes-token", 0.62, metadata={"best_bid": 0.60, "best_ask": 0.62, "tick_size": 0.01}),
+            orders_config,
+            ExecutionEdgeConfig(enabled=True, min_edge=0.01, max_buy_price=0.99, max_spread=None),
+        ).orders[0]
+    )
+
+    assert client.last_type == "FAK"
     assert response["response"]["success"] is True
 
 

@@ -311,3 +311,42 @@ For completed experiments, save or reference:
 ## Definition of Done
 
 A task is done when the relevant stage still has clear inputs and outputs, the current baseline is not misrepresented, validation has been run or explicitly skipped with a reason, and the final report states whether the requested metric actually improved.
+
+<!-- CBM_EXECUTION_ENGINE_POLICY_V1 -->
+
+## codebase-memory-mcp policy for execution_engine
+
+Never call codebase-memory-mcp.index_repository on:
+
+- C:\Users\ROG\Desktop\crypto_engine_version1
+- C:\Users\ROG\Desktop\crypto_engine_version1\execution_engine
+
+Those original paths can hang on native Windows.
+
+For architecture discovery, dependency tracing, call-path analysis, symbol search, or graph queries involving execution_engine:
+
+1. Run this command first from the repository root:
+
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\sync_execution_engine_mirror.ps1
+
+2. Then call codebase-memory-mcp.index_repository exactly once with:
+
+   repo_path: C:\Users\ROG\AppData\Local\cbm-staging\execution_engine_pyonly
+   mode: fast
+   persistence: false
+
+3. Use codebase-memory-mcp graph tools only on the mirror path above.
+
+4. Always read, edit, test, and save source files in:
+
+   C:\Users\ROG\Desktop\crypto_engine_version1\execution_engine
+
+5. Never edit files inside the mirror.
+
+6. After modifying Python files under execution_engine, resync the mirror and refresh its index before using graph results again.
+
+7. Do not retry indexing in a loop. If mirror indexing fails, use normal file search and file reads for execution_engine.
+
+8. execution_engine\scripts may be excluded from the mirror. Use normal file search and file reads for that folder.
+
+<!-- CBM_EXECUTION_ENGINE_POLICY_END -->

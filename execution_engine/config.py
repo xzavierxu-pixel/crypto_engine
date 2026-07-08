@@ -93,6 +93,7 @@ class PolymarketConfig:
 class OrderLegConfig:
     enabled: bool = True
     price_mode: str = "reference_multiplier_offset_and_cap"
+    order_type: str = "GTC"
     price_cap: float = 0.75
     offset: float = 0.01
     best_bid_offset: float | None = None

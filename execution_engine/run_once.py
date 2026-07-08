@@ -72,7 +72,7 @@ def run_once(
             time.sleep(wait_seconds)
         target_window_start = current_5m_window_start()
     baseline = load_baseline_artifact(config.baseline)
-    price_estimator = load_price_estimator_artifact(config.price_estimator)
+    price_estimator = load_price_estimator_artifact(config.price_estimator) if config.price_estimator.enabled else None
     settings = load_settings(config.baseline.settings_path)
     alignment = getattr(settings, "decision_alignment", None)
     feature_offset_minutes = (
