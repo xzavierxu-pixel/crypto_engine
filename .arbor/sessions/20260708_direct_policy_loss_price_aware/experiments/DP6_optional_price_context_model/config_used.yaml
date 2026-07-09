@@ -1,0 +1,5 @@
+experiment_id: DP6_optional_price_context_model
+c: 0.02
+temperature: 0.03
+objective: custom_soft_target_ce
+research_only_price_context: true

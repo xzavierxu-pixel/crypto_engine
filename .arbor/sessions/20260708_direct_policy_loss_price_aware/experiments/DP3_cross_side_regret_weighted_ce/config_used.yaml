@@ -1,0 +1,13 @@
+experiment_id: DP3_cross_side_regret_weighted_ce
+c: 0.02
+regret_scale: 0.08
+objective: multi:softprob
+num_class: 3
+max_depth: 3
+eta: 0.05
+subsample: 0.9
+colsample_bytree: 0.8
+min_child_weight: 50
+lambda: 5
+num_boost_round: 500
+early_stopping_rounds: 50

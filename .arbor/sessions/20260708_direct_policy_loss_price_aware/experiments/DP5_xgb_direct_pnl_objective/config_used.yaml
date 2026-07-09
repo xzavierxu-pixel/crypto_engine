@@ -1,0 +1,12 @@
+experiment_id: DP5_xgb_direct_pnl_objective
+price_mode: actual-price
+c: 0.00
+temperature: 0.08
+max_depth: 3
+eta: 0.05
+objective: custom_expected_reward_surrogate_hessian
+custom_hessian_mode: surrogate_diagonal
+subsample: 0.9
+colsample_bytree: 0.8
+num_boost_round: 800
+early_stopping_rounds: 50

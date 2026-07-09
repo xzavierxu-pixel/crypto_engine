@@ -1,0 +1,13 @@
+experiment_id: DP2_soft_reward_ce
+c: 0.00
+temperature: 0.03
+objective: custom_soft_target_ce
+num_class: 3
+max_depth: 3
+eta: 0.05
+subsample: 0.9
+colsample_bytree: 0.8
+min_child_weight: 50
+lambda: 5
+num_boost_round: 400
+early_stopping_rounds: 50

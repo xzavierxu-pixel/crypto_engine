@@ -1,0 +1,4 @@
+experiment_id: DP1_replay_v1_reference
+score_column: p_up
+tau: 0.00
+decision_rule: argmax(score-m_yes-tau, 1-score-m_no-tau, 0)

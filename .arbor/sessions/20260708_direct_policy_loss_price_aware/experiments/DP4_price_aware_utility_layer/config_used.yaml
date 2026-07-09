@@ -1,0 +1,4 @@
+experiment_id: DP4_price_aware_utility_layer
+source_model: DP5_xgb_direct_pnl_objective
+tau: 0.03
+decision_rule: argmax(s_yes-m_yes-tau, s_no-m_no-tau, 0)

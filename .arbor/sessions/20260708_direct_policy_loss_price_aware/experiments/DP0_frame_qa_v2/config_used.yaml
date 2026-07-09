@@ -1,0 +1,3 @@
+experiment_id: DP0_frame_qa_v2
+decision_offset_seconds: 68
+feature_manifest_source: execution_engine/deploy/baseline/artifact_manifest.json
