@@ -1,0 +1,4 @@
+experiment_id: F1_baseline_replay
+loss: regret_weighted_multiclass_ce
+c: 0.02
+decision_offset_seconds: 68

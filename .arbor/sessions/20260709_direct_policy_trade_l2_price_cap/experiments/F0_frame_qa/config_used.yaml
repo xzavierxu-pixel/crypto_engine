@@ -1,0 +1,3 @@
+experiment_id: F0_frame_qa
+decision_offset_seconds: 68
+lag_cutoff: decision_time_minus_60s

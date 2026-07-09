@@ -1,0 +1,4 @@
+experiment_id: F3_l2
+loss: regret_weighted_multiclass_ce
+c: 0.01
+decision_offset_seconds: 68

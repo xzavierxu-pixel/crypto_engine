@@ -1,0 +1,3 @@
+experiment_id: C1_price_cap_grid
+retune: false
+selection_rule: select_cap_on_w1_w4_tune_score_then_eval_btest_once

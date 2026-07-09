@@ -1,0 +1,4 @@
+experiment_id: F4_lag1m_price
+loss: regret_weighted_multiclass_ce
+c: 0.00
+decision_offset_seconds: 68
